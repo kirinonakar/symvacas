@@ -36,7 +36,7 @@ internal fun socialStatisticsPlan(id:String,rows:List<List<String>>,opts:Map<Str
             val selected=if(id in listOf("cfa","sem")&&missing=="fiml")rows.map {row->indices.map {row.getOrElse(it){""}.trim().ifBlank {"NA"}}} else complete(indices)
             indices.forEachIndexed {i,at->labels["feature:${i+1}"]=label(at,"Feature ${i+1}")}
             val samples=if(opts["factors"]=="parallel"&&(opts["parallelSamples"]?.toDoubleOrNull() ?: 0.0)==0.0)"100" else opts["parallelSamples"] ?: "0"
-            val efaExtra=if(opts["extraction"]=="pa"||(samples.toDoubleOrNull() ?: 0.0)>0.0||opts["factors"]=="parallel")",${opts["extraction"] ?: "pca"},$samples,${opts["seed"] ?: "0"},${opts["percentile"] ?: "0.95"}" else ""
+            val efaExtra=",${opts["extraction"] ?: "pa"},$samples,${opts["seed"] ?: "0"},${opts["percentile"] ?: "0.95"}"
             val suffix=when(id){"cronbach"->opts["mode"];"efa"->"${opts["factors"]},${opts["rotation"]}$efaExtra";"hcluster"->"${opts["clusters"]},${opts["linkage"]},${opts["standardize"]}";else->null}
             if(suffix!=null)"$id(${table(selected)},$suffix)" else {
                 val factors=opts.getValue("factors").trim().removeSurrounding("[","]").split(',').map(String::trim)
@@ -46,13 +46,20 @@ internal fun socialStatisticsPlan(id:String,rows:List<List<String>>,opts:Map<Str
                 require(paths.all {pair->pair.size==2&&pair.all {it.matches(Regex("\\d+"))}}){"Use latent paths like 1,2;2,3"}
                 val cross=opts["cross"].orEmpty().trim().split(';').filter(String::isNotBlank).map {it.split(',').map(String::trim)}
                 require(cross.all {pair->pair.size==2&&pair.all {it.matches(Regex("\\d+"))&&(it.toIntOrNull() ?: 0)>0}}){"Use cross-loadings like 2,2;5,1 in selected indicator order"}
-                val extra=if(cross.isNotEmpty()||missing=="fiml"||multigroup||opts["estimator"]=="wlsmv") {
+                val residual=opts["residual"].orEmpty().trim().split(';').filter(String::isNotBlank).map {it.split(',').map(String::trim)}
+                require(residual.all {pair->pair.size==2&&pair.all {it.matches(Regex("\\d+"))&&(it.toIntOrNull() ?: 0)>0}}){"Use residual covariance pairs like 2,3;5,6 in selected indicator order"}
+                val bootstrapSamples=(opts["bootstrapSamples"] ?: "0").toIntOrNull();val bootstrapSeed=(opts["bootstrapSeed"] ?: "0").toIntOrNull()
+                require(bootstrapSamples!=null&&(bootstrapSamples==0||bootstrapSamples>=20)&&bootstrapSeed!=null&&bootstrapSeed>=0){"Use 0 or at least 20 bootstrap samples and a nonnegative integer seed"}
+                val extended=residual.isNotEmpty()||(opts["modindices"] ?: "1")!="1"||bootstrapSamples!=0||bootstrapSeed!=0
+                val extra=if(cross.isNotEmpty()||missing=="fiml"||multigroup||opts["estimator"]=="wlsmv"||extended) {
                     val ids=if(multigroup) {
                         val groupRows=complete(listOf(group));val groups=groupRows.map {it[0]}.distinct()
                         groups.forEachIndexed {i,name->labels["group:${i+1}"]=name}
                         groupRows.map {(groups.indexOf(it[0])+1).toString()}
                     } else emptyList()
-                    ",${table(cross)},$missing,${vector(ids)},${opts["invariance"] ?: "configural"}${if(opts["estimator"]=="wlsmv")",wlsmv" else ""}"
+                    ",${table(cross)},$missing,${vector(ids)},${opts["invariance"] ?: "configural"}"+
+                        (if(opts["estimator"]=="wlsmv"||extended)",${opts["estimator"] ?: "ml"}" else "")+
+                        (if(extended)",${table(residual)},${opts["modindices"] ?: "1"},${opts["bootstrapSamples"] ?: "0"},${opts["bootstrapSeed"] ?: "0"}" else "")
                 } else ""
                 "$id(${table(selected)},${vector(factors)}${if(id=="sem")","+table(paths) else ""}$extra)"
             }

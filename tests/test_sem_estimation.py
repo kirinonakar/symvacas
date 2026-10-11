@@ -22,13 +22,13 @@ class SEMEstimationTests(unittest.TestCase):
                     for key in path: actual=actual[key]
                     self.assertAlmostEqual(float(actual),expected,delta=case['tolerance']*max(1,abs(expected)),msg=str(path))
 
-    def test_pca_default_and_explicit_principal_axis(self):
+    def test_principal_axis_default_and_explicit_pca(self):
         case=json.loads((ROOT/'tests/fixtures/social_statistics_reference.json').read_text(encoding='utf8'))['cases']
         rows=next(c['arguments'][0] for c in case if c['function']=='efa')
-        default=run('efa',rows,2,'none'); explicit=run('efa',rows,2,'none','pca')
+        default=run('efa',rows,2,'none'); explicit=run('efa',rows,2,'none','pa')
         self.assertEqual(default['loadings'],explicit['loadings'])
-        self.assertIn('Principal components',default['Extraction'])
-        self.assertIn('Principal axis',run('efa',rows,2,'none','pa')['Extraction'])
+        self.assertIn('Principal axis',default['Extraction'])
+        self.assertIn('Principal components',run('efa',rows,2,'none','pca')['Extraction'])
 
     def test_scalar_and_strict_are_nested_and_report_raw_equalities(self):
         case=next(c for c in self.cases if c['arguments'][-1]=='scalar'); rows,factors,_,_,ids,_=case['arguments']

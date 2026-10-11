@@ -34,6 +34,7 @@ def statistics_report(name, value, precision, labels=None):
     sections = []
     plots = []
     assumptions = []
+    details = []
     table_labels = labels if isinstance(labels, dict) else {}
     categorical = name in ('chi2independence', 'fisherexact', 'mcnemar','cramerv','phi','cohenkappa') and all(table_labels.get(key) for key in ('table:row', 'table:column'))
 
@@ -50,13 +51,31 @@ def statistics_report(name, value, precision, labels=None):
                 'approximate': bool(getattr(shown, 'has', lambda *_: False)(s.Float))}
 
     def add(title, columns, rows):
-        if rows:
+        if rows and columns:
             formatted = [[cell(v) for v in row] for row in rows]
             section = {'title': title, 'columns': columns, 'rows': formatted[:100], 'totalRows': len(rows)}
             if len(rows) > 100: section['copyRows'] = formatted
             sections.append(section)
 
     def vector(v): return isinstance(v, (list, tuple)) and all(not isinstance(x, (list, tuple, dict)) for x in v)
+
+    def explanatory(key, item):
+        # Match metadata, not text length: variable names and fitted expressions
+        # are still data, and numeric inference fields stay in tables.
+        key = str(key).lower().replace('_', ' ').strip()
+        metadata = ('method', 'estimator', 'estimation', 'extraction', 'rotation',
+                    'convention', 'inference', 'interpretation', 'description',
+                    'note', 'notes', 'warning', 'warnings', 'reason')
+        text = isinstance(item, str) or vector(item) and all(isinstance(x, str) for x in item)
+        return text and any(key == word or key.endswith(' '+word) for word in metadata)
+
+    def describe(title, key, item, context=()):
+        for text in item if isinstance(item, (list, tuple)) else [item]:
+            if text: details.append({'section':title, 'label':str(key), 'text':text, 'context':list(context)})
+
+    def extract_details(title, remaining, context=()):
+        for key in list(remaining):
+            if explanatory(key, remaining[key]): describe(title, key, remaining.pop(key), context)
 
     def finite(v):
         try: return float(v) if math.isfinite(float(v)) else None
@@ -76,6 +95,7 @@ def statistics_report(name, value, precision, labels=None):
             if name=='cfa': remaining.pop('Latent R²',None)
             if isinstance(remaining.get('Assumptions'), str):
                 assumptions.append(remaining.pop('Assumptions'))
+            extract_details(title, remaining)
             if isinstance(remaining.get('diagnostics'),dict):
                 visit('Model diagnostics',remaining.pop('diagnostics'))
             estimate=v.get('estimate',v.get('posterior mean',v.get('sample mean')))
@@ -111,7 +131,7 @@ def statistics_report(name, value, precision, labels=None):
             if not v: return
             if all(isinstance(row, dict) for row in v):
                 intervals=[]; expanded=[]
-                for raw in v:
+                for row_index, raw in enumerate(v):
                     row=dict(raw)
                     if name in ('cfa','sem') and title=='Latent R²' and row.get('Role')=='Exogenous (R² not applicable)': row['R²']='Not applicable'
                     bounds=row.pop('CI95',None)
@@ -120,6 +140,10 @@ def statistics_report(name, value, precision, labels=None):
                     standardized_bounds=row.pop('Standardized CI95',None)
                     if isinstance(standardized_bounds,(list,tuple)) and len(standardized_bounds)==2:
                         row['Standardized lower 95% CI'],row['Standardized upper 95% CI']=standardized_bounds
+                    for key,prefix in (('Bootstrap CI95','Bootstrap '),('Standardized bootstrap CI95','Standardized bootstrap ')):
+                        bounds=row.pop(key,None)
+                        if isinstance(bounds,(list,tuple)) and len(bounds)==2: row[prefix+'lower 95% CI'],row[prefix+'upper 95% CI']=bounds
+                        elif key in raw: row[prefix+'lower 95% CI']=row[prefix+'upper 95% CI']=None
                     label=row.get('term',row.get('Term',row.get('group',row.get('Group',row.get('Comparison','')))))
                     estimate=row.get('estimate',row.get('Estimate',row.get('Mean',row.get('adjusted mean',row.get('Mean difference')))))
                     low=row.get('Lower 95% CI',row.get('Lower CI'))
@@ -129,16 +153,29 @@ def statistics_report(name, value, precision, labels=None):
                         estimate=row.get('Standardized loading',row.get('Standardized path'))
                         low=row.get('Standardized lower 95% CI'); high=row.get('Standardized upper 95% CI')
                     if label:
+                        if title=='Effects': label=str(label)+' / '+str(row.get('Effect',''))
                         if name in ('cfa','sem') and 'Group' in row: label=str(row['Group'])+' / '+str(label)
                         if name in ('cfa','sem') and 'Factor' in row: label=str(label)+' / Factor '+str(row['Factor'])
                         intervals.append((label,estimate,low,high))
+                    identifiers = ('term','Term','group','Group','Factor','Feature','Variable','Parameter','Effect','Comparison','Check','Component','Threshold')
+                    context = [{'label':key, 'value':str(row[key])} for key in identifiers if key in row]
+                    if not context: context = [{'label':'Observation', 'value':str(row_index+1)}]
+                    extract_details(title, row, context)
                     expanded.append(row)
                 if intervals:
                     plot_title={'Loadings':'Standardized factor loadings (95% CI)','Structural paths':'Standardized structural paths (95% CI)'}.get(title,title+' intervals') if name in ('cfa','sem') else title+' intervals'
                     interval_plot(plot_title,intervals,0 if (name in ('cfa','sem','gameshowell') or 'coefficients' in title.lower() or 'post-hoc' in title.lower()) else None)
                 v=expanded
                 keys = list(dict.fromkeys(key for row in v for key in row))
-                add(title, keys, [[row.get(key, 'unavailable') for key in keys] for row in v])
+                if title=='Effects':
+                    raw_keys=[key for key in keys if not key.startswith('Standardized ')]
+                    add(title,raw_keys,[[row.get(key,'unavailable') for key in raw_keys] for row in v])
+                    standard_keys=[key for key in keys if key in ('term','Effect','Group') or key.startswith('Standardized ')]
+                    add('Standardized effects',standard_keys,[[row.get(key,'unavailable') for key in standard_keys] for row in v])
+                else:
+                    hidden=('First indicator position','Second indicator position') if title=='Residual covariances' else ()
+                    keys=[key for key in keys if key not in hidden and not (title=='Residual covariances' and key=='term')]
+                    add(title, keys, [[row.get(key, 'unavailable') for key in keys] for row in v])
             elif all(vector(row) for row in v) and len({len(row) for row in v}) == 1:
                 width = len(v[0])
                 headers = {'survival table':['Time','At risk','Events','Censored','Survival','Lower 95% CI','Upper 95% CI'],
@@ -161,6 +198,7 @@ def statistics_report(name, value, precision, labels=None):
                 add(title, ['Observation','Value'], [[i+1,item] for i,item in enumerate(v)])
             else:
                 for i,item in enumerate(v): visit(title+' '+str(i+1), item)
+        elif explanatory(title, v): describe(title, title, v)
         else: add(title, ['Metric','Value'], [[title,v]])
 
     if name in ('stats','mean','median','stdev','variance','sumdata','quartiles','correlation','covariance') and table_labels.get('sample:1'):
@@ -194,6 +232,7 @@ def statistics_report(name, value, precision, labels=None):
     highlights=[{'label':'p value' if name=='mcnemar' and key=='p' else key,'value':cell(value[key])} for key in priority if isinstance(value,dict) and key in value and finite(value[key]) is not None][:4]
     report = {'analysis': name, 'title': report_title, 'sections': sections,'highlights':highlights,'plots':plots}
     if assumptions: report['assumptions'] = assumptions
+    if details: report['details'] = details
     return report
 
 

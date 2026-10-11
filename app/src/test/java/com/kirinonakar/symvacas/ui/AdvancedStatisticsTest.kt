@@ -15,7 +15,7 @@ class AdvancedStatisticsTest {
             val factors=workflow.getJSONArray("factors")
             val assignment=settings.optString("factors",List(factors.length()){factors.getInt(it).toString()}.joinToString(","))
             val crosses=settings.optJSONArray("cross")?.let {array->List(array.length()){j->val pair=array.getJSONArray(j);List(pair.length()){pair.getInt(it)}}}
-            val result=runCatching {statisticsModelWorkflowPlan(workflow,assignment,settings.optString("paths"),crosses)}
+            val result=runCatching {statisticsModelWorkflowPlan(workflow,assignment,settings.optString("paths"),crosses,settings.optString("bootstrapSamples","0"),settings.optString("bootstrapSeed","0"))}
             item.optJSONArray("detected")?.let {expected->
                 val actual=statisticsDetectedCrossLoadings(workflow,assignment,settings.optDouble("threshold",workflow.optDouble("crossThreshold",.3)))
                 assertEquals(expected.length(),actual.size)

@@ -11,11 +11,14 @@ class StatisticsMarkdownTest {
     @Test fun completeMarkdownKeepsRowsPrecisionAndLiteralLabels() {
         val result=JSONObject("""{"exact":"source should not be copied","note":"Result only","statisticsReport":{"title":"Descriptive statistics","sections":[{"title":"Summary","columns":["Metric","Value"],"rows":[["mean",{"decimal":"1.234567"}]],"copyRows":[["mean",{"decimal":"1.234567"}],["A|B\n<row>",{"decimal":"12345.6789"}]]}]}}""")
         result.getJSONObject("statisticsReport").put("assumptions",org.json.JSONArray().put("Independent rows; ordered categories."))
+        result.getJSONObject("statisticsReport").put("details",org.json.JSONArray().put(JSONObject().put("section","Summary").put("label","Estimator").put("text","Normal-theory covariance ML (N divisor)")))
         val text=statisticsResultMarkdown(result,::format){it}
         assertTrue(text.contains("| Metric | Value |\n| --- | --- |\n| mean | 1.235 |"))
         assertTrue(text.contains("| A\\|B<br>&lt;row&gt; | 12,345.679 |"))
         assertTrue(text.endsWith("Result only"))
         assertTrue(text.contains("### Assumptions\n\nIndependent rows; ordered categories."))
+        assertTrue(text.contains("### Model details\n\nEstimator: Normal-theory covariance ML (N divisor)"))
+        assertTrue(text.indexOf("### Model details")>text.indexOf("| A\\|B"))
         assertFalse(text.contains("source should not be copied"))
         val korean=statisticsResultMarkdown(result,::format){translateLabel(it,"ko")}
         assertTrue(korean.startsWith("## "+translateLabel("Descriptive statistics","ko")))

@@ -1,6 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {EngineClient} from '../engine-client.js';
+import {parse} from '../parser.js';
+
+test('SEM bootstrap survives the ordinary deadline, keeps a bounded deadline and remains cancellable',async t=>{
+  const {engine,workers,tick}=runtime(t);workers[0].message({type:'ready'});
+  const request={tree:parse('sem([[1,2,3,4,5,6]],[1,1,1,2,2,2],[[1,2]],[],complete,[],configural,ml,[],0,20,7)')};
+  const result=engine.execute(request);tick(60001);assert.equal(workers[0].terminated,false);
+  tick(719998);assert.equal(workers[0].terminated,false);tick(1);
+  assert.equal((await result).ok,false);assert.equal(workers[0].terminated,true);
+  workers[1].message({type:'ready'});const next=engine.execute(request);engine.cancel();assert.equal((await next).error,'계산이 중지되었습니다.');
+});
 
 function runtime(t) {
   const workers=[],statuses=[];

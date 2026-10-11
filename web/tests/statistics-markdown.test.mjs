@@ -2,17 +2,31 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {statisticsResultMarkdown,regressionEquationCopyText,statisticsFormattedCopyCell} from '../statistics-markdown.js';
 import {setLanguage,t} from '../i18n.js';
+import {renderStatisticsReport} from '../statistics-report.js';
 
 const cell=value=>({exact:value,decimal:value,decimalTree:{kind:'number',value}});
+test('method details render after the result tables in a closed explanation block',context=>{
+  class Node{constructor(tag){this.tag=tag;this.children=[];}append(...nodes){this.children.push(...nodes);}replaceChildren(...nodes){this.children=[...nodes];}setAttribute(){} }
+  const previous=globalThis.document;context.after(()=>globalThis.document=previous);globalThis.document={createElement:tag=>new Node(tag)};
+  const container=new Node('div'),report={title:'Structural equation model (SEM)',sections:[{title:'Summary',columns:['Metric','Value'],rows:[['n','100']],totalRows:1}],plots:[],details:[{section:'Summary',label:'Estimator',text:'Normal-theory covariance ML (N divisor)'}]};
+  renderStatisticsReport(container,report);
+  const children=container.children[0].children,table=children.findIndex(node=>node.tag==='section'),detail=children.findIndex(node=>node.tag==='details');
+  assert.ok(detail>table);assert.notEqual(children[detail].open,true);
+  assert.equal(children[detail].children[1].textContent,'Estimator: Normal-theory covariance ML (N divisor)');
+});
 test('result markdown retains table relationships, all rows, formatting and safe literal labels',()=>{
   const report={title:'Descriptive statistics',sections:[{title:'Summary',columns:['Metric','Value'],rows:[['mean',cell('1.234567')]],copyRows:[['mean',cell('1.234567')],['A|B\n<row>',cell('12345.6789')]]}]};
   setLanguage('en');
   report.assumptions=['Independent rows; ordered categories.'];
+  report.details=[{section:'Summary',label:'Estimator',text:'Normal-theory covariance ML (N divisor)'},{section:'coefficients',label:'Inference',text:'Hall–Sheather',context:[{label:'Term',value:'A|B'}]}];
   const text=statisticsResultMarkdown({statisticsReport:report,note:'Result only',exact:'source should not be copied'},{digits:3,grouping:true});
   assert.ok(text.includes('| Metric | Value |\n| --- | --- |\n| mean | 1.235 |'));
   assert.ok(text.includes('| A\\|B<br>&lt;row&gt; | 12,345.679 |'));
   assert.ok(text.endsWith('Result only'));
   assert.ok(text.includes('### Assumptions\n\nIndependent rows; ordered categories.'));
+  assert.ok(text.includes('### Model details\n\nEstimator: Normal-theory covariance ML (N divisor)'));
+  assert.ok(text.includes('coefficients · Term: A\\|B · Inference: Hall–Sheather'));
+  assert.ok(text.indexOf('### Model details')>text.indexOf('| A\\|B'));
   assert.ok(!text.includes('source should not be copied'));
   try{
     setLanguage('ko');const korean=statisticsResultMarkdown({statisticsReport:report});

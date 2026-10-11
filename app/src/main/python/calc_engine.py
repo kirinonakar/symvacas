@@ -41,7 +41,7 @@ def statistics_display_terms(value, labels):
     if not isinstance(value, dict): return value
     result = {}
     for key, item in value.items():
-        if key in ('term','group','Group') and isinstance(item, str):
+        if key in ('term','group','Group','First indicator','Second indicator') and isinstance(item, str):
             if item in labels: item = labels[item]
             elif ': ' in item:  # Multinomial category contrast followed by a predictor.
                 prefix, term = item.rsplit(': ', 1)
@@ -94,6 +94,11 @@ def _dispatch(payload, control=None):
         if seconds>=8: seconds=max(seconds,60)
     else:
         steps=3000000
+    from calc_execution_budget import bootstrap_work
+    resamples,work=bootstrap_work(request)
+    if resamples and seconds>=8:
+        seconds=max(seconds,60+work)
+        steps=max(steps,100000000*(1+resamples))
     if limits_removed(): seconds=steps=float("inf")
     budget=Budget(seconds,steps=steps,control=control)
     try:

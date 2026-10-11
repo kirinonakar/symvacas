@@ -24,17 +24,15 @@ internal fun statisticsDetectedCrossLoadings(workflow:JSONObject,factors:String,
     return (0 until matrix.length()).flatMap {i->val row=matrix.getJSONArray(i);(0 until row.length()).mapNotNull {j->val value=row.getDouble(j);if(j+1!=ids[i]&&kotlin.math.abs(value)>=threshold)StatisticsCrossLoading(i+1,j+1,value) else null}}
 }
 
-internal fun statisticsModelWorkflowPlan(workflow:JSONObject,factors:String,paths:String="",cross:List<List<Int>>?=null):StatisticsModelWorkflowPlan {
+internal fun statisticsModelWorkflowPlan(workflow:JSONObject,factors:String,paths:String="",cross:List<List<Int>>?=null,bootstrapSamples:String="0",bootstrapSeed:String="0"):StatisticsModelWorkflowPlan {
     val target=workflow.getString("target");val data=workflow.getJSONArray("data");val count=workflow.getInt("factorCount")
     require(target in listOf("cfa","sem")&&data.length()>0&&count>0){"Invalid measurement model transfer"}
     val assignment=factors.trim().split(',').map {value->require(value.trim().matches(Regex("\\d+"))){"Specify one positive factor ID per selected indicator"};value.trim().toInt()}
     require(assignment.size==data.getJSONArray(0).length()){"Factor ID count must match selected indicators"}
     require(assignment.all {it in 1..count}&&(1..count).all {it in assignment}){"Keep all analyzed factor IDs consecutive from 1"}
-    require((1..count).all {id->assignment.count {it==id}>=3}){"Each factor needs at least three indicators"}
     val existing=workflow.getJSONArray("cross")
     val crossPairs=if(target=="cfa"&&cross!=null)cross else if(target=="cfa"&&workflow.has("efaLoadings"))statisticsDetectedCrossLoadings(workflow,factors).map {listOf(it.indicator,it.factor)} else List(existing.length()){i->val pair=existing.getJSONArray(i);List(pair.length()){pair.getInt(it)}}
     require(crossPairs.all {it.size==2&&it[0] in 1..assignment.size&&it[1] in 1..count&&it[1]!=assignment[it[0]-1]}&&crossPairs.distinct().size==crossPairs.size){"Cross-loadings must be distinct additional indicator-factor pairs"}
-    require((1..count).all {id->assignment.indices.any {i->assignment[i]==id&&crossPairs.none {it[0]==i+1}}}){"Keep at least one indicator without cross-loadings per factor"}
     val pairs=if(paths.isBlank())emptyList() else paths.split(';').map {pair->pair.split(',').map {value->require(value.trim().matches(Regex("\\d+"))){"Use latent paths like 1,2;2,3"};value.trim().toInt()}}
     if(target=="sem") {
         require(count>=2){"SEM structural paths require at least two latent factors"}
@@ -55,7 +53,13 @@ internal fun statisticsModelWorkflowPlan(workflow:JSONObject,factors:String,path
     val groupIds=List(groups.length()){token(groups.getString(it))}
     val missing=workflow.getString("missing");val invariance=workflow.getString("invariance");val estimator=workflow.getString("estimator")
     require(missing in listOf("complete","fiml")&&invariance in listOf("configural","metric","scalar","strict")&&estimator in listOf("ml","wlsmv")){"Invalid measurement model transfer"}
-    val expression="$target(${table(rows)},${vector(assignment.map(Int::toString))}${if(target=="sem")","+table(pairs.map {it.map(Int::toString)}) else ""},${table(crossRows)},$missing,${vector(groupIds)},$invariance,$estimator)"
+    val residual=workflow.optJSONArray("residual") ?: JSONArray()
+    val residualPairs=List(residual.length()){i->val pair=residual.getJSONArray(i);List(pair.length()){pair.getInt(it)}}
+    require(residualPairs.all {it.size==2&&it.all {id->id in 1..assignment.size}&&it[0]!=it[1]}&&residualPairs.map {it.sorted()}.distinct().size==residualPairs.size){"Use distinct residual covariance pairs between selected indicators"}
+    val mi=workflow.optInt("modindices",1);val samples=bootstrapSamples.toIntOrNull();val seed=bootstrapSeed.toIntOrNull()
+    require(mi in 0..1&&samples!=null&&(samples==0||samples>=20)&&seed!=null&&seed>=0){"Use 0 or at least 20 bootstrap samples and a nonnegative integer seed"}
+    val extra=if(residualPairs.isNotEmpty()||mi!=1||samples!=0||seed!=0)",${table(residualPairs.map {it.map(Int::toString)})},$mi,$samples,$seed" else ""
+    val expression="$target(${table(rows)},${vector(assignment.map(Int::toString))}${if(target=="sem")","+table(pairs.map {it.map(Int::toString)}) else ""},${table(crossRows)},$missing,${vector(groupIds)},$invariance,$estimator$extra)"
     val labels=workflow.getJSONObject("termLabels")
     return StatisticsModelWorkflowPlan(target,expression,labels.keys().asSequence().associateWith {labels.getString(it)})
 }
@@ -64,6 +68,8 @@ internal fun statisticsModelWorkflowPlan(workflow:JSONObject,factors:String,path
     val c=LocalInstrument.current;val target=workflow.getString("target");val initial=workflow.getJSONArray("factors")
     var factors by remember(workflow){mutableStateOf(List(initial.length()){initial.getInt(it).toString()}.joinToString(","))}
     var paths by remember(workflow){mutableStateOf("")}
+    var bootstrapSamples by remember(workflow){mutableStateOf("0")}
+    var bootstrapSeed by remember(workflow){mutableStateOf("0")}
     var cutoff by remember(workflow){mutableStateOf(workflow.optDouble("crossThreshold",.3).toString())}
     var automatic by remember(workflow){mutableStateOf(true)}
     var excluded by remember(workflow){mutableStateOf(setOf<Pair<Int,Int>>())}
@@ -71,7 +77,7 @@ internal fun statisticsModelWorkflowPlan(workflow:JSONObject,factors:String,path
     val efa=target=="cfa"&&workflow.has("efaLoadings")
     val plan=runCatching {
         val cross=if(efa){if(automatic)detection.getOrThrow().filter {(it.indicator to it.factor) !in excluded}.map {listOf(it.indicator,it.factor)} else emptyList()} else null
-        statisticsModelWorkflowPlan(workflow,factors,paths,cross)
+        statisticsModelWorkflowPlan(workflow,factors,paths,cross,bootstrapSamples,bootstrapSeed)
     }
     Column(Modifier.fillMaxWidth().testTag("statistics-model-workflow"),verticalArrangement=Arrangement.spacedBy(6.dp)) {
         Text(tr(if(target=="cfa")"CFA from EFA" else "SEM from CFA"),fontSize=14.sp,color=c.ink)
@@ -88,14 +94,19 @@ internal fun statisticsModelWorkflowPlan(workflow:JSONObject,factors:String,path
                 val key=row.indicator to row.factor
                 Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){Checkbox(automatic&&key !in excluded,{checked->excluded=if(checked)excluded-key else excluded+key},enabled=enabled&&automatic);Text("${labels.optString("feature:${row.indicator}")} → ${tr("Factor")} ${row.factor} · ${String.format(java.util.Locale.ROOT,"%.4g",row.loading)}",fontSize=11.sp,color=c.ink)}
             }
-            Text(tr("Detection uses absolute rotated pattern loadings, not statistical significance. Uncheck candidates to exclude them. Each factor needs an indicator without cross-loadings."),fontSize=11.sp,color=c.muted)
+            Text(tr("Detection uses absolute rotated pattern loadings, not statistical significance. Uncheck candidates to exclude them. Model identification is checked during estimation."),fontSize=11.sp,color=c.muted)
         }else if(workflow.getJSONArray("cross").length()>0) {
             val pairs=workflow.getJSONArray("cross")
             Text(tr("Cross-loadings")+": "+List(pairs.length()){i->val pair=pairs.getJSONArray(i);"${labels.optString("feature:${pair.getInt(0)}")} → ${tr("Factor")} ${pair.getInt(1)}"}.joinToString("; "),fontSize=11.sp,color=c.muted)
         }
         if(target=="sem") {
             Field(paths,"Latent paths: source,target;…",Modifier.fillMaxWidth(),enabled=enabled){paths=it}
+            Field(bootstrapSamples,"Effect bootstrap samples (0 = off)",Modifier.fillMaxWidth(),enabled=enabled){bootstrapSamples=it}
+            Field(bootstrapSeed,"Bootstrap seed",Modifier.fillMaxWidth(),enabled=enabled){bootstrapSeed=it}
             Text(tr("CFA transfers the measurement model, data and estimation options. Specify structural paths before running SEM."),fontSize=11.sp,color=c.muted)
+        }
+        workflow.optJSONArray("residual")?.takeIf {it.length()>0}?.let {pairs->
+            Text(tr("Residual covariances")+": "+List(pairs.length()){i->val pair=pairs.getJSONArray(i);"${labels.optString("feature:${pair.getInt(0)}")} ↔ ${labels.optString("feature:${pair.getInt(1)}")}"}.joinToString("; "),fontSize=11.sp,color=c.muted)
         }
         plan.exceptionOrNull()?.message?.let {Text(tr(it),fontSize=11.sp,color=c.muted)}
         TextButton(onClick={plan.getOrNull()?.let(onRun)},enabled=enabled&&plan.isSuccess,modifier=Modifier.testTag("statistics-workflow-$target-run")){Text(tr(if(target=="cfa")"Run CFA" else "Run SEM"))}

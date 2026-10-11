@@ -125,15 +125,16 @@ def adjusted(statistic,u,gamma,df):
     return max(0.,statistic/scale+shift),scale,shift
 
 
-def calculate(engine,name,a):
+def calculate(engine,name,a,fast=False):
     offset=3 if name=='sem' else 2
     require(option(a,offset+1,'complete')=='complete','WLSMV requires complete ordinal rows; FIML is continuous ML only')
-    rows=table(a[0],5,3); p=len(rows[0])
+    rows=table(a[0],5,1); p=len(rows[0])
+    from calc_advanced_sem_extras import options, ordinal_mi, effects, residual_rows
+    residual,mi,_,_=options(name,a,p)
     assignment=[integer(v,1,p) for v in vector(a[1],p)] if len(a)>1 else [1]*p
     require(len(assignment)==p,'Specify one primary factor per indicator')
     k=max(assignment); require(set(assignment)==set(range(1,k+1)),'Factor IDs must be consecutive from 1')
     groups=[[i for i,f in enumerate(assignment) if f==j+1] for j in range(k)]
-    require(all(len(g)>=3 for g in groups),'Each factor needs at least three primary indicators')
     markers=[g[0] for g in groups]; cross=[]; paths=[]
     if len(a)>offset:
         require(isinstance(a[offset],(list,tuple)),'Use [indicator,factor] cross-loadings')
@@ -180,6 +181,7 @@ def calculate(engine,name,a):
         # Theta identification: response residual variances=1 in reference group.
         if invariance=='scalar' and group:
             for i in range(p): add('error',i,i,0.)
+        for i,j in residual: add('residual',i,j,0.,invariance=='strict')
         if scalar and group:
             for i in range(k): add('latentmean',i,i,0.)
         for i,cuts in enumerate(g['thresholds']):
@@ -196,7 +198,7 @@ def calculate(engine,name,a):
         at+=m
     sample=mp.matrix(sample)
     def model(x,g,derivatives=False):
-        load=mp.zeros(p,k); factor=mp.zeros(k); path=mp.zeros(k); errors=[1.]*p; means=mp.zeros(k,1)
+        load=mp.zeros(p,k); factor=mp.zeros(k); path=mp.zeros(k); errors=[1.]*p; theta=mp.zeros(p); means=mp.zeros(k,1)
         thresholds=[cuts[:] for cuts in g['thresholds']]
         for j,i in enumerate(markers): load[i,j]=1.
         for kind,i,j,index in g['local']:
@@ -206,10 +208,15 @@ def calculate(engine,name,a):
             elif kind=='covariance': factor[i,j]=value
             elif kind=='path': path[i,j]=value
             elif kind=='error': errors[i]=math.exp(value)
+            elif kind=='residual': theta[i,j]=theta[j,i]=value
             elif kind=='latentmean': means[i]=value
             else: thresholds[i][j]=value
         propagation=(mp.eye(k)-path)**-1; psi=factor*factor.T; latent=propagation*psi*propagation.T
-        sigma=load*latent*load.T+mp.diag(errors); mu=load*means; scales=[math.sqrt(float(sigma[i,i])) for i in range(p)]
+        theta+=mp.diag(errors)
+        if residual:
+            from calc_advanced_multivariate import positive
+            positive(theta)
+        sigma=load*latent*load.T+theta; mu=load*means; scales=[math.sqrt(float(sigma[i,i])) for i in range(p)]
         require(all(all(right>left for left,right in zip(cuts,cuts[1:])) for cuts in thresholds),'Thresholds must remain ordered')
         implied=mp.matrix([(cut-float(mu[i]))/scales[i] for i,cuts in enumerate(thresholds) for cut in cuts]
                           +[float(sigma[i,j])/(scales[i]*scales[j]) for i,j in g['pairs']])
@@ -220,6 +227,7 @@ def calculate(engine,name,a):
             if kind=='loading':
                 dl=mp.zeros(p,k); dl[i,j]=1.; part=dl*latent*load.T; ds=part+part.T; dm[i]=means[j]
             elif kind=='error': ds[i,i]=errors[i]
+            elif kind=='residual': ds[i,j]=ds[j,i]=1.
             elif kind in ('diagonal','covariance'):
                 dc=mp.zeros(k); dc[i,j]=factor[i,j] if kind=='diagonal' else 1.; ds=t*(dc*factor.T+factor*dc.T)*t.T
             elif kind=='path':
@@ -244,11 +252,23 @@ def calculate(engine,name,a):
         implied,jac=moments(x); residual=implied-sample
         return float((residual.T*w*residual)[0])/2,list(map(float,jac.T*w*residual))
     estimates,loss,iterations=minimize(parameters,objective,tolerance=1e-7,maximum=1500)
+    def summary_model(x,g):
+        values,load,latent,path,errors,means,thresholds,sigma=model(x,g)
+        return sigma,load,latent,path
     implied,jac=moments(estimates); bread=jac.T*w*jac
     scales=[math.sqrt(float(bread[i,i])) if bread[i,i]>0 else 0. for i in range(bread.rows)]
     require(all(scales),'Ordinal model is not identifiable')
     normalized=mp.matrix([[bread[i,j]/(scales[i]*scales[j]) for j in range(bread.cols)] for i in range(bread.rows)])
     require(min(mp.eigsy(normalized,eigvals_only=True))>1e-7,'Ordinal model is not identifiable; revise factors or category coverage')
+    if fast:
+        effect_rows=[]
+        for label,g in zip(labels,prepared):
+            values,load,latent,path,errors,means,thresholds,sigma=model(estimates,g)
+            require(all(errors[i]/float(sigma[i,i])>1e-6 for i in range(p)),'Heywood / boundary response residual variance in bootstrap fit')
+            for row in effects(estimates,None,lambda x:summary_model(x,g),g['local'],paths,[1.]*k):
+                if len(labels)>1: row['Group']='group:'+format(label,'.15g')
+                effect_rows.append(row)
+        return {'Effects':effect_rows}
     inv=bread**-1; cov=inv*jac.T*w*gamma*w*jac*inv/n
     u=w-w*jac*inv*jac.T*w; raw=2*n*loss; statistic,scale,shift=adjusted(raw,u,gamma,df)
     # Independence reference: thresholds free and all indicator correlations zero.
@@ -264,7 +284,7 @@ def calculate(engine,name,a):
             'TLI':(base/basedf-statistic/df)/(base/basedf-1) if df and abs(base/basedf-1)>1e-12 else None,
             'RMSEA':math.sqrt(max(statistic-df,0)*len(labels)/(df*(n-len(labels)))) if df else None,'Iterations':iterations,
             'Fit index convention':'Scaled-shifted model and independence tests; N−G RMSEA denominator with multiplier G.',
-            'Assumptions':'Complete ordinal numeric category codes ordered numerically; underlying bivariate-normal responses. Two-stage marginal thresholds/polychoric ML; full casewise influence covariance for sandwich Wald SEs and mean/variance-adjusted T3. Theta parameterization: residual variances fixed at 1 in each configural/metric group and the reference scalar group. Scalar shares loadings/response thresholds and frees other-group latent means and response residual variances; strict fixes residual variances at 1 in all groups. Multi-group scalar/strict requires at least three identical observed categories per indicator. The first pure indicator per factor is the marker with loading fixed at 1; acyclic latent paths and independent response errors. Adjusted χ² values cannot be subtracted for a nested-model difference test.'}
+            'Assumptions':'Complete ordinal numeric category codes ordered numerically; underlying bivariate-normal responses. Two-stage marginal thresholds/polychoric ML; full casewise influence covariance for sandwich Wald SEs and mean/variance-adjusted T3. Theta parameterization: residual variances fixed at 1 in each configural/metric group and the reference scalar group. Scalar shares loadings/response thresholds and frees other-group latent means and response residual variances; strict fixes residual variances at 1 in all groups. Multi-group scalar/strict requires at least three identical observed categories per indicator. The first pure indicator (otherwise the first primary indicator) per factor is the marker with primary loading fixed at 1. Cross-loadings may include markers; model df and the fitted moment Jacobian determine identification, without a fixed indicator count; acyclic latent paths and independent response errors. Adjusted χ² values cannot be subtracted for a nested-model difference test.'}
     locals=[]; discrepancy=0.
     for g in prepared:
         values,load,latent,path,errors,means,thresholds,sigma=model(estimates,g)
@@ -287,18 +307,21 @@ def calculate(engine,name,a):
         count=sum(map(len,g['thresholds']))
         discrepancy+=g['n']/n*sum(float(values[count+j]-g['values'][count+j])**2 for j in range(len(g['pairs'])))
         from calc_advanced_sem_summary import augment
-        def summary_model(x):
-            values,load,latent,path,errors,means,thresholds,sigma=model(x,g)
-            return sigma,load,latent,path
-        augment(local,estimates,cov,summary_model,g['local'],paths)
+        augment(local,estimates,cov,lambda x:summary_model(x,g),g['local'],paths)
+        local['Effects']=effects(estimates,cov,lambda x:summary_model(x,g),g['local'],paths,[1.]*k)
+        local['Residual covariances']=residual_rows(estimates,cov,lambda x:summary_model(x,g),g['local'],[1.]*p)
         locals.append(local)
     result['SRMR']=math.sqrt(discrepancy/(p*(p+1)/2))
     if len(labels)==1: result.update(locals[0])
     else:
         result.update({'Groups':len(labels),'Invariance':invariance})
-        for key in ('Loadings','Structural paths','Thresholds','Residual variances','Latent means','Latent R²','Exogenous correlations','Indicator R²'):
+        for key in ('Loadings','Structural paths','Thresholds','Residual variances','Residual covariances','Effects','Latent means','Latent R²','Exogenous correlations','Indicator R²'):
             result[key]=[dict(row,Group='group:'+format(label,'.15g')) for label,local in zip(labels,locals) for row in local[key]]
         result['Group summary']=[{'Group':'group:'+format(label,'.15g'),'n':local['n']} for label,local in zip(labels,locals)]
         for index,local in enumerate(locals):
             for key in ('Polychoric correlations','Implied covariance','Latent covariance'): result[key+' group '+str(index+1)]=local[key]
+    if mi:
+        result['Modification indices']=ordinal_mi(estimates,prepared,model,labels,p,k,assignment,markers,cross,paths,residual,jac,w,gamma,sample,implied,n)
+        result['MI method']='Single-parameter robust DWLS efficient score tests with full casewise moment covariance; EPC in underlying probit units. These indices are not differences of scaled-shifted T3 fit statistics. Each row frees one parameter in one group; review substantive theory before changing the model.'
+    result['Assumptions']+=' Selected response residual covariance pairs are free; strict invariance shares these covariances. Effects sum products over specified acyclic latent paths with sandwich delta-method Wald intervals.'
     return result

@@ -396,6 +396,9 @@ cases.extend([
  dict(id='efa',rows=[['1','2','3'],['4','5','6']],settings=dict(extraction='pca',rotation='promax',factors='parallel',seed='7'),expected='efa([[1,2,3],[4,5,6]],parallel,promax,pca,100,7,0.95)'),
  dict(id='cfa',rows=[['A','1','','3','4','5','6'],['B','2','3','4','5','6','7']],settings=dict(columns='1,2,3,4,5,6',factors='1,1,1,2,2,2',cross='2,2',missing='fiml',groupMode='multi',group='0',invariance='metric'),expected='cfa([[1,NA,3,4,5,6],[2,3,4,5,6,7]],[1,1,1,2,2,2],[[2,2]],fiml,[1,2],metric)'),
  dict(id='sem',rows=[['1','2','3','4','5','6']],settings=dict(cross='5,1'),expected='sem([[1,2,3,4,5,6]],[1,1,1,2,2,2],[[1,2]],[[5,1]],complete,[],configural)'),
+ dict(id='efa',rows=[['1','2','3'],['4','5','6']],settings=dict(extraction='ml',rotation='oblimin',factors='1'),expected='efa([[1,2,3],[4,5,6]],1,oblimin,ml,0,0,0.95)'),
+ dict(id='cfa',rows=[['1','2','3','4']],settings=dict(factors='1,1,2,2',residual='2,3',modindices='0'),expected='cfa([[1,2,3,4]],[1,1,2,2],[],complete,[],configural,ml,[[2,3]],0,0,0)'),
+ dict(id='sem',rows=[['1','2','3','4','5','6']],settings=dict(residual='2,3;5,6',bootstrapSamples='25',bootstrapSeed='31'),expected='sem([[1,2,3,4,5,6]],[1,1,1,2,2,2],[[1,2]],[],complete,[],configural,ml,[[2,3],[5,6]],1,25,31)'),
  dict(id='manova',rows=[['A','lo','1','2'],['B','hi','3','4']],settings=dict(design='factorial',factorColumns='0,1',responses='2,3',order='2'),expected='manova([[1,1,1,2],[2,2,3,4]],factorial,2,2)'),
  dict(id='manova',rows=[['ID','1','2','3'],['','4','5','6']],settings=dict(design='repeated',responses='1,2,3',occasions='3'),expected='manova([[1,2,3],[4,5,6]],repeated,3)'),
  dict(id='glm',rows=[['0','2'],['1','4'],['2','3']],settings=dict(family='nbinom',dispersionMode='estimate'),expected='glm([[0,2],[1,4],[2,3]],nbinom,auto,estimate)'),
@@ -405,7 +408,7 @@ cases.extend([
 ])
 cases.extend([
  dict(id='cronbach',rows=[['ID','1','2'],['','3','4']],settings=dict(columns='2,1',mode='standardized'),expected='cronbach([[2,1],[4,3]],standardized)'),
- dict(id='efa',rows=[['A','1','2','3'],['B','4','5','6']],settings=dict(columns='1,2,3',factors='1',rotation='none'),expected='efa([[1,2,3],[4,5,6]],1,none)'),
+ dict(id='efa',rows=[['A','1','2','3'],['B','4','5','6']],settings=dict(columns='1,2,3',factors='1',rotation='none'),expected='efa([[1,2,3],[4,5,6]],1,none,pa,0,0,0.95)'),
  dict(id='cfa',rows=[['id','1','2','3'],['','4','5','6']],settings=dict(columns='1,2,3',factors='1,1,1'),expected='cfa([[1,2,3],[4,5,6]],[1,1,1])'),
  dict(id='sem',rows=[['1','2','3','4','5','6']],settings={},expected='sem([[1,2,3,4,5,6]],[1,1,1,2,2,2],[[1,2]])'),
  dict(id='manova',rows=[['A','1','2',''],['B','4','5','unused']],settings=dict(responses='2,1'),expected='manova([[1,2,1],[2,5,4]])'),

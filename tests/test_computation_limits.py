@@ -21,6 +21,20 @@ def run(tree, **options):
     return json.loads(calc_engine.dispatch(json.dumps({'tree': tree, **options})))
 
 class ComputationLimitsTests(unittest.TestCase):
+    def test_bootstrap_time_and_step_budgets_scale_without_disabling_cancellation(self):
+        from calc_execution_budget import bootstrap_work
+        cases=json.loads((pathlib.Path(__file__).parent/'fixtures/execution_budget.json').read_text())
+        for item in cases:
+            samples,seconds=bootstrap_work(item['request'])
+            self.assertEqual(samples,item['samples']);self.assertEqual((60+seconds)*1000,item['timeoutMillis'])
+        budgets=[]
+        def capture(seconds,steps,control):
+            budgets.append((seconds,steps,control));return Budget(seconds,steps,control)
+        class Cancelled:
+            def isCancelled(self): return True
+        with patch.object(calc_engine,'Budget',capture):
+            response=json.loads(calc_engine.dispatch(json.dumps(cases[2]['request']),Cancelled()))
+        self.assertFalse(response['ok']);self.assertEqual(budgets[0][:2],(7260,20100000000))
     def test_time_and_workload_are_unlimited_but_cancellation_still_works(self):
         budgets = []
         def capture(seconds, steps, control):

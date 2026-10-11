@@ -51,7 +51,7 @@ def parallel_analysis(rows, corr, extraction, samples, seed, percentile):
     n,p=len(rows),len(rows[0]); rng=random.Random(seed)
     require(n>p,'Parallel analysis requires more rows than variables')
     def roots(matrix):
-        if extraction=='pa':
+        if extraction!='pca':
             matrix=matrix.copy(); inv=matrix**-1
             for i in range(p): matrix[i,i]=1-1/inv[i,i]
         return list(reversed([float(v) for v in mp.eigsy(matrix,eigvals_only=True)]))
@@ -69,4 +69,4 @@ def parallel_analysis(rows, corr, extraction, samples, seed, percentile):
         count+=1
     return {'Parallel analysis':[{'Number':i+1,'Observed eigenvalue':v,'Null percentile eigenvalue':t,'Retain':int(i<count)} for i,(v,t) in enumerate(zip(observed,thresholds))],
             'Suggested factors':count,'Parallel samples':samples,'Parallel seed':seed,'Parallel percentile':percentile,
-            'Parallel method':'Horn normal simulation; '+('SMC-reduced common roots' if extraction=='pa' else 'correlation component roots')}
+            'Parallel method':'Horn normal simulation; '+('SMC-reduced common roots' if extraction!='pca' else 'correlation component roots')}

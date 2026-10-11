@@ -17,6 +17,35 @@ import {statisticsModelWorkflowPlan,statisticsDetectedCrossLoadings} from '../st
 // scenario below explicitly loads its own interpreter to keep startup coverage.
 let sharedRuntime;
 
+test('common-factor ML, residual scores, sparse factors and refit bootstrap run in real WASM',async context=>{
+  setComputationLimitsRemoved(true);context.after(()=>setComputationLimitsRemoved(false));
+  const py=await runtime(),reference=JSON.parse(readFileSync(new URL('../../tests/fixtures/sem_extras_reference.json',import.meta.url),'utf8'));
+  const calculate=(expression,removeComputationLimit=true)=>{
+    py.globals.set('payload',JSON.stringify({tree:parse(expression),precision:15,removeComputationLimit}));
+    const result=JSON.parse(py.runPython('calc_engine.dispatch(payload)'));assert.equal(result.ok,true,result.error);return result.statisticsReport;
+  };
+  const rows=csvRows(readFileSync(new URL('../../tests/fixtures/efa_study_habits_sample.csv',import.meta.url),'utf8')).map(row=>row.map(Number));
+  const ml=calculate(`efa(${JSON.stringify(rows)},2,oblimin,ml)`);
+  assert.ok(ml.sections.find(section=>section.title==='Summary').rows.some(row=>row[0]==='ML χ²'));
+  assert.ok(ml.details.some(detail=>detail.label==='Extraction'&&detail.text.includes('Maximum likelihood')));
+  const sparse=reference.sem.rows.map(row=>[row[0],row[1],row[3],row[4]]);
+  assert.equal(calculate(`cfa(${JSON.stringify(sparse)},[1,1,2,2])`).sections.find(section=>section.title==='Loadings').rows.length,4);
+  const cfa=calculate(`cfa(${JSON.stringify(reference.cfa.rows)},[1,1,1,1],[],complete,[],configural,ml,[[2,3]])`);
+  assert.ok(cfa.sections.some(section=>section.title==='Modification indices'));
+  assert.equal(cfa.sections.find(section=>section.title==='Residual covariances').rows.length,1);
+  assert.deepEqual(cfa.modelWorkflow.residual,[[2,3]]);
+  assert.ok(cfa.plots.find(plot=>plot.kind==='sem-diagram').edges.some(edge=>edge.source.startsWith('x')&&edge.kind==='covariance'));
+  const effects=calculate(`sem(${JSON.stringify(reference.sem.rows)},[1,1,1,2,2,2,3,3,3],[[1,2],[2,3],[1,3]],[],complete,[],configural,ml,[],0)`);
+  const table=effects.sections.find(section=>section.title==='Effects'),estimate=table.columns.indexOf('Estimate');
+  assert.ok(Math.abs(Number(table.rows.find(row=>row[0]==='1 → 3'&&row[1]==='Indirect effect')[estimate].decimal)-reference.sem.expected.indirect)<2e-5);
+  const bootstrap=calculate(`sem(${JSON.stringify(rows)},[1,1,1,2,2,2],[[1,2]],[],complete,[],configural,ml,[],0,20,7)`,false);
+  const boot=bootstrap.sections.find(section=>section.title==='Effects');assert.ok(boot.columns.includes('Bootstrap lower 95% CI'));
+  assert.ok(bootstrap.sections.find(section=>section.title==='Summary').rows.some(row=>row[0]==='Bootstrap successful'&&Number(row[1].decimal)===20));
+  for(const report of [ml,cfa,effects,bootstrap]){
+    assert.ok(!report.sections.some(section=>section.rows.some(row=>row.includes('Normal-theory covariance ML (N divisor)'))));
+  }
+});
+
 test('analyzed EFA data executes CFA then SEM and keeps ordinal group options in real WASM',async()=>{
   const py=await runtime();
   const calculate=(expression,termLabels={})=>{
@@ -27,7 +56,7 @@ test('analyzed EFA data executes CFA then SEM and keeps ordinal group options in
   const csv=readFileSync(new URL('../../tests/fixtures/efa_study_habits_sample.csv',import.meta.url),'utf8');
   const rows=csvRows(csv).map(row=>[row[5],row[4],row[3],row[2],row[1],row[0]]);
   const names=statisticsColumnLabels(csv,'columns:6').reverse(),labels=Object.fromEntries(names.map((name,i)=>[`feature:${i+1}`,name]));
-  const efa=calculate(guidedStatisticsCommand(advancedStatisticsSchema.find(d=>d.id==='efa'),rows,{factors:'2',rotation:'varimax'}),labels);
+  const efa=calculate(guidedStatisticsCommand(advancedStatisticsSchema.find(d=>d.id==='efa'),rows,{factors:'2',rotation:'varimax',extraction:'pca'}),labels);
   const cross=statisticsDetectedCrossLoadings(efa.modelWorkflow,{threshold:.25}).map(row=>[row.indicator,row.factor]);
   assert.equal(cross.length,3);
   const cfaPlan=statisticsModelWorkflowPlan(efa.modelWorkflow,{cross}),cfa=calculate(cfaPlan.expression,cfaPlan.termLabels);

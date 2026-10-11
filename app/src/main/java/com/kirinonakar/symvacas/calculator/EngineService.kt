@@ -109,6 +109,7 @@ class EngineClient(private val context: Context) {
     private val inputHandlers = mutableMapOf<Int, (String, String, (String) -> Unit) -> Unit>()
     private val timeouts = mutableMapOf<Int, Runnable>()
     private val unlimitedRequests = mutableSetOf<Int>()
+    private val executionBudgets = mutableMapOf<Int, Long>()
     private val handler = Handler(Looper.getMainLooper())
     companion object {
         private val counter = AtomicInteger()
@@ -128,7 +129,7 @@ class EngineClient(private val context: Context) {
         } else {
             timeouts.remove(msg.arg1)?.let(handler::removeCallbacks)
             inputHandlers.remove(msg.arg1)
-            unlimitedRequests.remove(msg.arg1)
+            unlimitedRequests.remove(msg.arg1); executionBudgets.remove(msg.arg1)
             val continuation = pending.remove(msg.arg1)
             if (continuation?.isActive == true) {
                 val response=runCatching {JSONObject(EngineResultCodec.decode(msg.data.getString("result"),msg.data.getByteArray("resultGzip")))}
@@ -142,7 +143,7 @@ class EngineClient(private val context: Context) {
         override fun onServiceConnected(name: ComponentName, binder: IBinder) { remote = Messenger(binder); connected.complete(Unit) }
         override fun onServiceDisconnected(name: ComponentName) {
             remote = null; if(connected.isCompleted) connected = CompletableDeferred()
-            timeouts.values.forEach(handler::removeCallbacks); timeouts.clear(); inputHandlers.clear(); unlimitedRequests.clear()
+            timeouts.values.forEach(handler::removeCallbacks); timeouts.clear(); inputHandlers.clear(); unlimitedRequests.clear(); executionBudgets.clear()
             pending.values.toList().forEach { if(it.isActive) it.resume(JSONObject().put("ok",false).put("error","Calculation cancelled or engine restarted")) }; pending.clear()
         }
         override fun onBindingDied(name: ComponentName) {
@@ -157,10 +158,10 @@ class EngineClient(private val context: Context) {
         if(id in unlimitedRequests)return
         val timeout = Runnable {
             pending.remove(id)?.let { if(it.isActive) it.resume(JSONObject().put("ok",false).put("error","Computation timed out. Reduce complexity and try again.")) }
-            unlimitedRequests.remove(id); inputHandlers.remove(id); timeouts.remove(id); cancelRequest(id)
+            unlimitedRequests.remove(id); executionBudgets.remove(id); inputHandlers.remove(id); timeouts.remove(id); cancelRequest(id)
         }
         timeouts[id] = timeout
-        handler.postDelayed(timeout, EXECUTION_TIMEOUT_MS)
+        handler.postDelayed(timeout, executionBudgets[id] ?: EXECUTION_TIMEOUT_MS)
     }
     suspend fun execute(request: JSONObject, onInput: ((String, String, (String) -> Unit) -> Unit)? = null): JSONObject = withContext(Dispatchers.Main.immediate) {
         try {
@@ -168,16 +169,17 @@ class EngineClient(private val context: Context) {
             suspendCancellableCoroutine { continuation ->
                     val id = counter.incrementAndGet()
                     pending[id] = continuation
+                    executionBudgets[id] = executionTimeoutMillis(request)
                     if(request.optBoolean("removeComputationLimit"))unlimitedRequests.add(id)
                     if (onInput != null) inputHandlers[id] = onInput
                     continuation.invokeOnCancellation { handler.post {
                         if(pending.remove(id) != null)cancelRequest(id)
-                        unlimitedRequests.remove(id); inputHandlers.remove(id); timeouts.remove(id)?.let(handler::removeCallbacks)
+                        unlimitedRequests.remove(id); executionBudgets.remove(id); inputHandlers.remove(id); timeouts.remove(id)?.let(handler::removeCallbacks)
                     } }
                     try {
                         remote!!.send(Message.obtain(null,1,id,0).apply { replyTo = incoming; data = Bundle().apply { putString("payload",request.toString()) } })
                         startTimeout(id)
-                    } catch(e: Exception) { pending.remove(id); unlimitedRequests.remove(id); inputHandlers.remove(id); continuation.resume(JSONObject().put("ok",false).put("error",e.message)) }
+                    } catch(e: Exception) { pending.remove(id); unlimitedRequests.remove(id); executionBudgets.remove(id); inputHandlers.remove(id); continuation.resume(JSONObject().put("ok",false).put("error",e.message)) }
             }
         } catch(e: TimeoutCancellationException) { JSONObject().put("ok",false).put("error","Computation timed out. Reduce complexity and try again.") }
     }
@@ -188,7 +190,7 @@ class EngineClient(private val context: Context) {
         val cancelled=pending.toMap()
         pending.clear()
         cancelled.forEach { (id, continuation) ->
-            unlimitedRequests.remove(id); inputHandlers.remove(id); timeouts.remove(id)?.let(handler::removeCallbacks)
+            unlimitedRequests.remove(id); executionBudgets.remove(id); inputHandlers.remove(id); timeouts.remove(id)?.let(handler::removeCallbacks)
             cancelRequest(id)
             if(continuation.isActive)continuation.resume(JSONObject().put("ok",false).put("error","Calculation cancelled"))
         }

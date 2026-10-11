@@ -52,6 +52,17 @@ internal fun markdownCell(value:String):String=value.replace("\\","\\\\")
     .replace("[","\\[").replace("]","\\]")
     .replace("\r\n","\n").replace("\r","\n").replace("\n","<br>")
 
+internal fun statisticsDetailText(detail:JSONObject,translate:(String)->String):String {
+    val context=detail.optJSONArray("context")
+    val identifiers=(0 until (context?.length() ?: 0)).joinToString(" / ") {
+        val item=context!!.getJSONObject(it)
+        translate(item.optString("label"))+": "+item.optString("value")
+    }
+    val section=detail.optString("section").takeUnless {it=="Summary"}.orEmpty()
+    return listOf(if(section.isBlank())"" else translate(section),identifiers,
+        translate(detail.optString("label"))+": "+translate(detail.optString("text"))).filter {it.isNotBlank()}.joinToString(" · ")
+}
+
 internal fun statisticsResultMarkdown(result:JSONObject,formatCell:(JSONObject)->String,regressionEquation:String?=null,translate:(String)->String):String {
     val report=result.optJSONObject("statisticsReport") ?: result.optJSONObject("statisticsCopyReport") ?: return formatCell(result)
     val blocks=mutableListOf("## "+markdownCell(translate(report.optString("title"))))
@@ -71,13 +82,16 @@ internal fun statisticsResultMarkdown(result:JSONObject,formatCell:(JSONObject)-
             if(regressionEquation!=null&&columns.optString(0)=="Metric"&&row.optString(0)=="Fitted expression")continue
             table.add(line(List(columns.length()){column->
                 val text=row.optJSONObject(column)?.let(formatCell) ?: row.optString(column).let {
-                    if(columns.optString(column) in listOf("Metric","Check","Interpretation","Sample","Role","R²"))translate(it)
+                    if(columns.optString(column) in listOf("Metric","Check","Interpretation","Sample","Role","R²","Kind","Effect"))translate(it)
                     else if(report===result.optJSONObject("statisticsCopyReport")&&it.toBigDecimalOrNull()!=null)formatCell(JSONObject().put("decimal",it).put("exact",it)) else it
                 }
                 markdownCell(text)
             }))
         }
         if(table.size>2)blocks.add("### "+markdownCell(translate(section.optString("title")))+"\n\n"+table.joinToString("\n"))
+    }
+    report.optJSONArray("details")?.takeIf {it.length()>0}?.let {details->
+        blocks.add("### "+translate("Model details")+"\n\n"+(0 until details.length()).joinToString("\n\n"){markdownCell(statisticsDetailText(details.getJSONObject(it),translate))})
     }
     report.optJSONArray("assumptions")?.takeIf {it.length()>0}?.let {assumptions->
         blocks.add("### "+translate("Assumptions")+"\n\n"+(0 until assumptions.length()).joinToString("\n\n"){markdownCell(translate(assumptions.getString(it)))})

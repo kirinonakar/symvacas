@@ -135,7 +135,7 @@ Symbolic operations depend on SymPy's algorithms and computation budgets; some r
 
 `variance`, `stdev`, and `covariance` default to **sample** values (divide by n−1; ddof=1). Pass a final `0` for **population** values (divide by n): `variance([1,2,3],0)`, `stdev([1,2,3],0)`, or `covariance([1,2,3],[2,4,6],0)`. Sample values require at least two observations; `stats(list)` shows both conventions.
 
-Expensive calculations and scripts can be stopped, with a 60-second service/Worker deadline. Graphs use finite sampling and may miss very narrow features. Matrix entry grids support up to 9 × 9 values and vectors up to 9 components; larger exact operations may reach computation limits.
+Expensive calculations and scripts can be stopped, with a default 60-second service/Worker deadline. Enable **Remove computation limit** in the options to disable this deadline on Android and Web; manual cancellation remains available. Graphs use finite sampling and may miss very narrow features. Matrix entry grids support up to 9 × 9 values and vectors up to 9 components.
 
 For other details, refer to the catalog help.
 

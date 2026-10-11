@@ -38,8 +38,8 @@ def dunn(engine, name, a):
 _ANALYSES = {
     'cronbach': (1, 2, survey),
     'efa': (1, 7, survey),
-    'cfa': (1, 7, sem),
-    'sem': (2, 8, sem),
+    'cfa': (1, 11, sem),
+    'sem': (2, 12, sem),
     'manova': (1, 4, multivariate),
     'mediation': (1, 3, social),
     'moderation': (1, 1, social),

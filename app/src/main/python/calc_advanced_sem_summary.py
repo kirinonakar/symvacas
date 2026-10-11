@@ -10,11 +10,14 @@ from calc_shared import require
 
 
 def measurement_markers(groups,cross):
-    """Use the first pure primary indicator without changing column order."""
+    """Prefer a pure marker, otherwise fix the first primary loading for scale.
+
+    Cross-loadings remain free on markers. Degrees of freedom and the fitted
+    information matrix determine identification, not indicator counts.
+    """
     complex_indicators={i for i,j in cross}
     pure=[[i for i in group if i not in complex_indicators] for group in groups]
-    require(all(pure),'Keep at least one indicator without cross-loadings per factor')
-    return [group[0] for group in pure]
+    return [(clean or group)[0] for clean,group in zip(pure,groups)]
 
 
 def augment(result, parameters, covariance, model, specs, paths):
@@ -31,7 +34,7 @@ def augment(result, parameters, covariance, model, specs, paths):
     estimates=standardized(parameters)
     # Nuisance means/thresholds have zero derivatives. Shared group indices
     # are differentiated once, against the full joint covariance matrix.
-    active=sorted({index for kind,i,j,index in specs if kind in ('loading','path','diagonal','covariance','error')})
+    active=sorted({index for kind,i,j,index in specs if kind in ('loading','path','diagonal','covariance','error','residual')})
     jac=mp.zeros(len(entries),len(active))
     for column,index in enumerate(active):
         step=1e-5*max(1.,abs(parameters[index]))

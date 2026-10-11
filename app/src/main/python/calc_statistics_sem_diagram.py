@@ -5,7 +5,7 @@ def diagrams(value,labels):
     for group in groups:
         selected=lambda key:[row for row in value.get(key,[]) if row.get('Group')==group.get('Group')]
         loadings=selected('Loadings'); paths=selected('Structural paths'); correlations=selected('Exogenous correlations')
-        latent=selected('Latent R²')
+        latent=selected('Latent R²'); residual=selected('Residual covariances')
         indicator_r2={int(row['Indicator']):float(row['R²']) for row in selected('Indicator R²')}
         if not latent or not loadings: continue
         # Each observed indicator has one rectangle even with cross-loadings.
@@ -41,6 +41,12 @@ def diagrams(value,labels):
                           'labelPosition':[.25*start[0]+.75*controlx,(start[1]+end[1])/2],
                           'estimate':float(row['Correlation'] if covariance else row['Standardized path']),
                           'interval':None if covariance else list(map(float,row['Standardized CI95']))})
+        for index,row in enumerate(residual):
+            source=lookup['x'+str(row['First indicator position'])]; target=lookup['x'+str(row['Second indicator position'])]
+            start=[ox+70,source['y']]; end=[ox+70,target['y']]; controlx=ox+160+index*50
+            edges.append({'kind':'covariance','source':source['id'],'target':target['id'],'start':start,'end':end,
+                          'controls':[[controlx,start[1]],[controlx,end[1]]],'labelPosition':[controlx,(start[1]+end[1])/2],
+                          'estimate':float(row['Correlation']),'interval':list(map(float,row['Standardized CI95']))})
         # Place captions on their own curves, away from nodes and other
         # captions. Different paths can have identical vertical midpoints.
         occupied=[(n['x']-74,n['y']-(41 if n['kind']=='latent' else 29),
@@ -53,7 +59,7 @@ def diagrams(value,labels):
                 box=(cx-63,cy-26,cx+63,cy+(20 if edge['interval'] else 6))
                 if not any(box[0]<right and box[2]>left and box[1]<bottom and box[3]>top for left,top,right,bottom in occupied):
                     edge['labelPosition']=[cx,cy];occupied.append(box);break
-        series.append({'label':group.get('Group','All observations'),'n':int(group['n']),'nodes':nodes,'edges':edges,'width':ox+130,'height':y})
+        series.append({'label':group.get('Group','All observations'),'n':int(group['n']),'nodes':nodes,'edges':edges,'width':ox+130+(130+50*len(residual) if residual else 0),'height':y})
     if not series: return []
     plot={'kind':'sem-diagram','title':'Structural equation diagram',**series[0]}
     if len(series)>1: plot['series']=series

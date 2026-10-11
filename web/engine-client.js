@@ -1,4 +1,4 @@
-const EXECUTION_TIMEOUT_MS = 60000;
+import {executionTimeoutMillis} from './execution-budget.js';
 const EXECUTION_TIMEOUT_ERROR = '계산 시간이 60초를 초과했습니다.';
 
 export class EngineClient extends EventTarget {
@@ -55,7 +55,7 @@ export class EngineClient extends EventTarget {
       pending.waitingInput=false;
       pending.inputController=null;
       pending.started=Date.now();
-      if(Number.isFinite(pending.remaining))pending.timer=setTimeout(()=>this.cancel(EXECUTION_TIMEOUT_ERROR),pending.remaining);
+      if(Number.isFinite(pending.remaining))pending.timer=setTimeout(()=>this.cancel(pending.timeoutError),pending.remaining);
       worker.postMessage({type:'input',id:data.id,inputId:data.inputId,value:String(value)});
     } catch(error) {
       if(this.pending===pending&&this.worker===worker)this.cancel(String(error));
@@ -74,8 +74,8 @@ export class EngineClient extends EventTarget {
     let resolve;
     const promise = new Promise(done => { resolve = done; });
     const id = ++this.counter;
-    const remaining=request.removeComputationLimit===true?Infinity:EXECUTION_TIMEOUT_MS;
-    this.pending = {id,resolve,promise,background,onInput,context,remaining,started:Date.now(),timer:Number.isFinite(remaining)?setTimeout(() => this.cancel(EXECUTION_TIMEOUT_ERROR),remaining):null};
+    const remaining=executionTimeoutMillis(request),timeoutError=remaining>60000?'계산 시간이 허용 시간을 초과했습니다.':EXECUTION_TIMEOUT_ERROR;
+    this.pending = {id,resolve,promise,background,onInput,context,remaining,timeoutError,started:Date.now(),timer:Number.isFinite(remaining)?setTimeout(() => this.cancel(timeoutError),remaining):null};
     this.emit('activity',true);
     if (!background) this.emit('busy',true);
     this.worker.postMessage({id,request});

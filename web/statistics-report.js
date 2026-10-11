@@ -4,6 +4,7 @@ import {t} from './i18n.js';
 import {resultDisplayTree,resultMathDisplay} from './result-display.js';
 import {renderStatisticsVisualizations} from './statistics-visualization.js';
 import {appendStatisticsModelWorkflow} from './statistics-model-workflow.js';
+import {statisticsDetailText} from './statistics-report-details.js';
 
 const basicAnalyses=new Set('mean median variance stdev sumdata quartiles stats covariance correlation ttest ttest2 ttestpaired ztest ztest2 chi2test chi2independence fisherexact anova welchanova tukey gameshowell shapiro wilcoxon mannwhitney kruskal tinterval zinterval'.split(' '));
 export function statisticsReportTarget(result,source='',requested=''){
@@ -48,7 +49,7 @@ export function renderStatisticsReport(container,report,{digits=10,onCopy,onClea
       for(const [index,value] of values.entries()){
         const td=element('td');
         if(value&&typeof value==='object')td.append(resultMathDisplay(resultDisplayTree(value,{decimal:true,mixed:false}),digits,true,options));
-        else td.textContent=['Metric','Check','Interpretation','Sample','Role','R²'].includes(section.columns[index])?t(String(value)):String(value);
+        else td.textContent=['Metric','Check','Interpretation','Sample','Role','R²','Kind','Effect'].includes(section.columns[index])?t(String(value)):String(value);
         row.append(td);
       }
       body.append(row);
@@ -58,6 +59,12 @@ export function renderStatisticsReport(container,report,{digits=10,onCopy,onClea
     panel.append(block);
   }
   if(!plotsShown)renderStatisticsVisualizations(panel,report.plots);
+  if(report.details?.length){
+    const block=element('details','','statistics-result-details');
+    block.append(element('summary',t('Model details')));
+    for(const detail of report.details)block.append(element('p',statisticsDetailText(detail),'statistics-interpretation'));
+    panel.append(block);
+  }
   if(report.assumptions?.length){
     const block=element('details','','statistics-assumptions statistics-result-details');
     block.append(element('summary',t('Assumptions')));

@@ -121,12 +121,16 @@ internal fun statisticsCellText(m:CalculatorModel,cell:JSONObject)=ResultDisplay
                 val row=rows.getJSONArray(rowIndex)
                 List(columns.length()){column->
                     row.optJSONObject(column)?.let {statisticsCellText(m,it)}
-                        ?: if(columns.optString(column) in listOf("Metric","Check","Interpretation","Sample","Role","R²"))tr(row.optString(column)) else row.optString(column)
+                        ?: if(columns.optString(column) in listOf("Metric","Check","Interpretation","Sample","Role","R²","Kind","Effect"))tr(row.optString(column)) else row.optString(column)
                 }
             })
             if(section.optInt("totalRows")>rows.length())Text("${rows.length()} / ${section.optInt("totalRows")} · ${tr("Copy result includes all rows.")}",fontSize=11.sp,color=c.muted)
         }
         if(!plotsShown)StatisticsVisualizations(report.optJSONArray("plots"))
+        report.optJSONArray("details")?.takeIf {it.length()>0}?.let {details->
+            val descriptions=(0 until details.length()).joinToString("\n\n") {statisticsDetailText(details.getJSONObject(it)){translateLabel(it,language)}}
+            StatisticsExplanation("Model details",descriptions,"statistics-result-details",report)
+        }
         report.optJSONArray("assumptions")?.takeIf {it.length()>0}?.let {assumptions->
             val descriptions=mutableListOf<String>()
             for(index in 0 until assumptions.length())descriptions+=tr(assumptions.getString(index))

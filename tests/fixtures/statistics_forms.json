@@ -2409,6 +2409,63 @@
     "expected": "sem([[1,2,3,4,5,6]],[1,1,1,2,2,2],[[1,2]],[[5,1]],complete,[],configural)"
   },
   {
+    "id": "efa",
+    "rows": [
+      [
+        "1",
+        "2",
+        "3"
+      ],
+      [
+        "4",
+        "5",
+        "6"
+      ]
+    ],
+    "settings": {
+      "extraction": "ml",
+      "rotation": "oblimin",
+      "factors": "1"
+    },
+    "expected": "efa([[1,2,3],[4,5,6]],1,oblimin,ml,0,0,0.95)"
+  },
+  {
+    "id": "cfa",
+    "rows": [
+      [
+        "1",
+        "2",
+        "3",
+        "4"
+      ]
+    ],
+    "settings": {
+      "factors": "1,1,2,2",
+      "residual": "2,3",
+      "modindices": "0"
+    },
+    "expected": "cfa([[1,2,3,4]],[1,1,2,2],[],complete,[],configural,ml,[[2,3]],0,0,0)"
+  },
+  {
+    "id": "sem",
+    "rows": [
+      [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+      ]
+    ],
+    "settings": {
+      "residual": "2,3;5,6",
+      "bootstrapSamples": "25",
+      "bootstrapSeed": "31"
+    },
+    "expected": "sem([[1,2,3,4,5,6]],[1,1,1,2,2,2],[[1,2]],[],complete,[],configural,ml,[[2,3],[5,6]],1,25,31)"
+  },
+  {
     "id": "manova",
     "rows": [
       [
@@ -2608,7 +2665,7 @@
       "factors": "1",
       "rotation": "none"
     },
-    "expected": "efa([[1,2,3],[4,5,6]],1,none)"
+    "expected": "efa([[1,2,3],[4,5,6]],1,none,pa,0,0,0.95)"
   },
   {
     "id": "cfa",

@@ -29,7 +29,7 @@ test('result buttons execute reviewed assignments and require explicit SEM paths
   const workflow=cases[0].workflow;
   appendStatisticsModelWorkflow(panel,workflow,plan=>sent=plan,{isBusy:()=>busy});
   const block=panel.children[0],field=block.children.find(node=>node.tag==='label').children[0],button=block.children.at(-1);
-  field.value='1,1,1,1,2,2';field.oninput();assert.equal(button.disabled,true);
+  field.value='1,1,1,1,1,1';field.oninput();assert.equal(button.disabled,true);
   field.value='2,1,2,1,2,1';field.oninput();assert.equal(button.disabled,false);
   busy=true;button.handlers.click();assert.equal(sent,null);
   busy=false;button.handlers.click();assert.deepEqual(parse(sent.expression).args[1].args.map(a=>Number(a.value)),[2,1,2,1,2,1]);
