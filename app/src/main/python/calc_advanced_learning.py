@@ -169,6 +169,7 @@ def calculate(engine,name,a):
         alpha,ratio=0.0,0.0
         if model in ('ridge','lasso','logistic'):
             alpha=number(a[5]) if len(a)>5 else .1; require(alpha>0,'Penalty alpha must be positive')
+            ratio=1.0 if model=='lasso' else 0.0
         elif model=='elasticnet':
             if len(a)>5:
                 require(isinstance(a[5],(list,tuple)) and len(a[5])==2,'Elastic net options are [alpha,l1 ratio]')
@@ -182,15 +183,19 @@ def calculate(engine,name,a):
             bounds=[f*n//k for f in range(k+1)]; folds=[list(range(bounds[f],bounds[f+1])) for f in range(k)]
         elif split=='stratified':
             assignment=[0]*n
+            offset=0
             for label in (0.0,1.0):
                 group=[i for i in range(n) if responses[i]==label]; generator.shuffle(group)
-                for position,i in enumerate(group): assignment[i]=position%k
+                require(len(group)>=k,'Stratified folds need at least one observation per class per fold; reduce the fold count')
+                for position,i in enumerate(group): assignment[i]=(offset+position)%k
+                offset=(offset+len(group))%k
             folds=[[i for i in range(n) if assignment[i]==f] for f in range(k)]
         else:
             order=list(range(n)); generator.shuffle(order); folds=[order[f::k] for f in range(k)]
         predictions=[0.0]*n; errors=[]
         for fold in range(k):
             test=folds[fold]; member=set(test); train=[i for i in range(n) if i not in member]
+            require(test,'Validation fold is empty; reduce the fold count')
             require(len(train)>p,'Each training fold needs more rows than predictors')
             if model=='linear':
                 x,y=regression_data([rows[i] for i in train]); X=mp.matrix(x); b=inverse(X.T*X)*X.T*mp.matrix(y)
@@ -205,12 +210,14 @@ def calculate(engine,name,a):
             result={'out-of-fold probabilities':predictions,'fold log loss':errors,'log loss':mean([-(math.log(clipped[i]) if responses[i] else math.log(1-clipped[i])) for i in range(n)]),'accuracy':mean([(v>=.5)==bool(responses[i]) for i,v in enumerate(predictions)]),'Brier score':mean([(responses[i]-predictions[i])**2 for i in range(n)]),'model':model,'split':split,'folds':k,'seed':seed}
             score=binary_auc(responses,predictions)
             if score is not None: result['AUC']=score
+            result['fold sizes']=[len(fold) for fold in folds]
             engine.note += ' Out-of-fold validation of an L2-penalized logistic regression; folds use training rows only. Reports accuracy, AUC, log loss and the Brier score.'
             return result
         residuals=[(rows[i][-1]-predictions[i])**2 for i in range(n)]
         center=mean(responses); total=sum((value-center)**2 for value in responses)
         result={'out-of-fold predictions':predictions,'fold MSE':errors,'MSE':mean(residuals),'RMSE':math.sqrt(mean(residuals)),'MAE':mean([abs(rows[i][-1]-predictions[i]) for i in range(n)]),'model':model,'split':split,'folds':k,'seed':seed}
         if total>0: result['R2']=1-sum(residuals)/total
+        result['fold sizes']=[len(fold) for fold in folds]
         engine.note += ' k-fold out-of-fold validation with training-only fits; blocked splits keep the row order. Grouped data still needs cluster-aware splits.'
         return result
     centers=[mean(c) for c in zip(*rows)]

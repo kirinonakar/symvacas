@@ -29,7 +29,7 @@ export function renderStatisticsReport(container,report,{digits=10,onCopy,onClea
   }
   if(report.notes?.length){const notes=element('details','','statistics-result-details');notes.append(element('summary',t('Interpretation & assumptions')));for(const note of report.notes)notes.append(element('p',t(note),'statistics-interpretation'));panel.append(notes);}
   const primary=['Summary','ANOVA','Overall model','Overall ANOVA','Overall Welch ANOVA',report.title];
-  const prominent=section=>primary.includes(section.title)||['Indicator R²','Explained variance','Latent R²','Summary','Sample summaries','Assumption checks','Effect size','Mean confidence interval (95%, two-sided)','Overall ANOVA','Expected-count diagnostics'].includes(section.title);
+  const prominent=section=>primary.includes(section.title)||['Model diagnostics','Indicator R²','Explained variance','Latent R²','Summary','Sample summaries','Assumption checks','Effect size','Mean confidence interval (95%, two-sided)','Overall ANOVA','Expected-count diagnostics'].includes(section.title);
   const sections=[...report.sections.filter(prominent).sort((a,b)=>Number(!primary.includes(a.title))-Number(!primary.includes(b.title))),...report.sections.filter(section=>!prominent(section))];
   let plotsShown=false;
   for(const section of sections){

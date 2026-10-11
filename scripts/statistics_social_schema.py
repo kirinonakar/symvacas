@@ -38,6 +38,9 @@ REPORT_HELP={
         ' 완전 표준화 요인적재량·경로계수와 델타 방법의 95% Wald 신뢰구간을 제공하며 고정 첫 적재량의 표준화 불확실성도 반영합니다. 도표는 잠재변수(타원)·관측지표(사각형)·표준화 계수와 신뢰구간을 표시합니다. 내생 잠재변수 R² = 1 − 교란분산 / 전체 잠재분산을 결과와 도표에 표시하며 외생변수에는 해당하지 않습니다. 다집단 도표는 집단을 선택해 볼 수 있고 WLSMV 적재량은 기저 probit 반응 척도입니다. 화면에 맞추기는 전체 도표를 표시 영역의 가로·세로 크기에 맞게 축소하며 원래 크기로 스크롤 보기를 복원합니다.')
 }
 REPORT_HELP['sem']=REPORT_HELP['cfa']
+for model in ('cfa','sem'):
+    REPORT_HELP[model]=(REPORT_HELP[model][0]+' Model diagnostics show convergence, maximum absolute gradient, local identification and the minimum residual variance ratio. Numerical checks do not establish model validity; review fit indices, residuals, intervals and study design together. Fit assessment is unavailable with zero model degrees of freedom.',
+                        REPORT_HELP[model][1]+' 모형 진단은 수렴·기울기 절댓값 최댓값·국소 모수 식별·최소 잔차 분산 비율을 표시합니다. 수치 검사로 모형 타당성을 입증할 수 없으며 적합도 지수·잔차·신뢰구간·연구 설계를 함께 확인하세요. 모형 자유도가 0이면 적합도 평가가 불가합니다.')
 REPORT_HELP['efa']=(REPORT_HELP['efa'][0]+' Run CFA transfers the analyzed data and column order, assigning each indicator to its largest absolute rotated loading. Review/edit memberships; model df and the fitted information matrix determine identification.',
                     REPORT_HELP['efa'][1]+' CFA 실행은 분석 당시의 데이터·컬럼 순서를 유지하고 절댓값이 가장 큰 회전 적재량으로 컬럼 소속을 배정합니다. 소속을 확인·수정할 수 있으며 모형 자유도·추정 정보행렬로 식별 가능성을 확인합니다.')
 REPORT_HELP['efa']=(REPORT_HELP['efa'][0]+' Cross-loading detection uses secondary absolute rotated pattern loadings ≥ 0.30 by default. Change the cutoff, disable automatic inclusion or uncheck individual candidates before CFA. This is a screening rule, not a significance test.',

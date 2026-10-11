@@ -82,7 +82,9 @@ def display_tree(x):
     return t("text",readable(x))
 
 def dms_tree(value):
-    return {"kind":"dms","args":[display_tree(part) for part in dms_parts(value)]}
+    parts=dms_parts(value)
+    tree={"kind":"dms","args":[display_tree(s.Abs(part)) for part in parts]}
+    return {"kind":"unary","value":"-","args":[tree]} if value<0 else tree
 
 def readable(x):
     if isinstance(x,Quantity): return readable(x.base)+" "+x.unit_text()

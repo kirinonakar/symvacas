@@ -195,7 +195,7 @@ def statistics_report(name, value, precision, labels=None):
                 if title in ('confidence interval','credible interval','difference credible interval','effect credible interval','quartiles (inclusive)','Quartiles'):
                     labels = ['Lower','Upper'] if len(v)==2 else ['Q1','Median','Q3']
                     if len(labels)==len(v): add(title, labels, [list(v)]); return
-                add(title, ['Observation','Value'], [[i+1,item] for i,item in enumerate(v)])
+                add(title, ['Fold' if title in ('fold MSE','fold log loss','fold sizes') else 'Observation','Value'], [[i+1,item] for i,item in enumerate(v)])
             else:
                 for i,item in enumerate(v): visit(title+' '+str(i+1), item)
         elif explanatory(title, v): describe(title, title, v)
@@ -229,7 +229,8 @@ def statistics_report(name, value, precision, labels=None):
     if name=='mcnemar' and isinstance(value,dict):
         priority=['discordant pairs','p']
         report_title={'asymptotic':'McNemar','exact':'Exact McNemar','corrected':'McNemar (continuity correction)'}.get(value.get('method'),report_title)
-    highlights=[{'label':'p value' if name=='mcnemar' and key=='p' else key,'value':cell(value[key])} for key in priority if isinstance(value,dict) and key in value and finite(value[key]) is not None][:4]
+    if name in ('cfa','sem'): priority=['CFI','RMSEA','SRMR','p']
+    highlights=[{'label':('χ² p' if name in ('cfa','sem') else 'p value') if key=='p' and name in ('cfa','sem','mcnemar') else key,'value':cell(value[key])} for key in priority if isinstance(value,dict) and key in value and finite(value[key]) is not None][:4]
     report = {'analysis': name, 'title': report_title, 'sections': sections,'highlights':highlights,'plots':plots}
     if assumptions: report['assumptions'] = assumptions
     if details: report['details'] = details

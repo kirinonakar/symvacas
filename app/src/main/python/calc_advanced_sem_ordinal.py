@@ -285,10 +285,11 @@ def calculate(engine,name,a,fast=False):
             'RMSEA':math.sqrt(max(statistic-df,0)*len(labels)/(df*(n-len(labels)))) if df else None,'Iterations':iterations,
             'Fit index convention':'Scaled-shifted model and independence tests; N−G RMSEA denominator with multiplier G.',
             'Assumptions':'Complete ordinal numeric category codes ordered numerically; underlying bivariate-normal responses. Two-stage marginal thresholds/polychoric ML; full casewise influence covariance for sandwich Wald SEs and mean/variance-adjusted T3. Theta parameterization: residual variances fixed at 1 in each configural/metric group and the reference scalar group. Scalar shares loadings/response thresholds and frees other-group latent means and response residual variances; strict fixes residual variances at 1 in all groups. Multi-group scalar/strict requires at least three identical observed categories per indicator. The first pure indicator (otherwise the first primary indicator) per factor is the marker with primary loading fixed at 1. Cross-loadings may include markers; model df and the fitted moment Jacobian determine identification, without a fixed indicator count; acyclic latent paths and independent response errors. Adjusted χ² values cannot be subtracted for a nested-model difference test.'}
-    locals=[]; discrepancy=0.
+    locals=[]; discrepancy=0.; residual_ratios=[]
     for g in prepared:
         values,load,latent,path,errors,means,thresholds,sigma=model(estimates,g)
         require(all(errors[i]/float(sigma[i,i])>1e-6 for i in range(p)),'Heywood / boundary response residual variance; revise the ordinal factor model')
+        residual_ratios.extend(errors[i]/float(sigma[i,i]) for i in range(p))
         loading_rows=[]; path_rows=[]
         for kind,i,j,index in g['local']:
             if kind in ('loading','path'):
@@ -324,4 +325,6 @@ def calculate(engine,name,a,fast=False):
         result['Modification indices']=ordinal_mi(estimates,prepared,model,labels,p,k,assignment,markers,cross,paths,residual,jac,w,gamma,sample,implied,n)
         result['MI method']='Single-parameter robust DWLS efficient score tests with full casewise moment covariance; EPC in underlying probit units. These indices are not differences of scaled-shifted T3 fit statistics. Each row frees one parameter in one group; review substantive theory before changing the model.'
     result['Assumptions']+=' Selected response residual covariance pairs are free; strict invariance shares these covariances. Effects sum products over specified acyclic latent paths with sandwich delta-method Wald intervals.'
+    from calc_advanced_sem_summary import fit_diagnostics
+    fit_diagnostics(result,iterations,objective(estimates)[1],residual_ratios)
     return result

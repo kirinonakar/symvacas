@@ -71,7 +71,7 @@ USES = {
  'anova':('Compare means across independent groups; review normal errors and equal variances.','독립 그룹들의 평균을 비교합니다. 오차의 정규성·등분산을 확인합니다.'),
  'tukey':('Identify which group means differ after ANOVA, with familywise multiplicity correction.','ANOVA 이후 어느 그룹 평균이 다른지 다중비교 보정과 함께 확인합니다.'),
  'shapiro':('Check evidence against normality; interpret with Q–Q plots, not as a pass/fail gate.','정규성에 반하는 근거를 점검합니다. 통과·실패 판정이 아니라 Q–Q plot과 함께 해석합니다.'),
- 'chi2test':('Compare observed category frequencies with specified expected frequencies.','관측 범주 빈도가 지정한 기대빈도와 맞는지 비교합니다.'),
+ 'chi2test':('Compare nonnegative integer observed counts with positive expected frequencies having the same total. Review small expected counts.','0 이상의 정수 관측빈도와 총합이 같은 양수 기대빈도를 비교합니다. 작은 기대빈도를 함께 확인하세요.'),
  'chi2independence':('Test association between two independent categorical variables.','독립된 관측에서 두 범주형 변수의 연관성을 검정합니다.'),
  'fisherexact':('Test association in a 2×2 table, especially with small expected counts.','2×2 표의 연관성을 검정하며 기대빈도가 작을 때 특히 적절합니다.'),
  'wilcoxon':('Compare paired differences using ranks when a symmetric location-shift model is appropriate.','대응 차이값의 대칭적인 위치 차이 모형이 적절할 때 순위로 비교합니다.'),

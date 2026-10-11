@@ -17,6 +17,11 @@ class SEMEstimationTests(unittest.TestCase):
         for case in self.cases:
             with self.subTest(function=case['function'],options=case['arguments'][1:]):
                 result=run(case['function'],*case['arguments'])
+                diagnostics=result['diagnostics']
+                self.assertEqual(diagnostics['Optimization convergence'],'Passed')
+                self.assertEqual(diagnostics['Parameter identification'],'Passed')
+                self.assertLess(float(diagnostics['Maximum absolute gradient']),2e-7)
+                self.assertGreater(float(diagnostics['Minimum residual variance ratio']),1e-6)
                 for path,expected in case['expected']:
                     actual=result
                     for key in path: actual=actual[key]

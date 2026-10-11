@@ -12,7 +12,7 @@ from calc_shared import (CONSTANTS, UNITS, MathError, canonical_function_name,
                          coordinates, discrete_fourier, dms_parts, flatten,
                          initial_conditions, inverse_mellin_transform,
                          inverse_z_transform, matrix, mellin_transform,
-                         numeric_derivative, numeric_integral, ode_equation, require, z_transform)
+                         numeric_derivative, numeric_integral, ode_equation, require, sexagesimal_value, z_transform)
 from calc_statistics import distribution_value, fit_custom_regression, fit_regression, pearson_correlation, statistical_test
 from calc_advanced_statistics import FUNCTIONS as ADVANCED_STATISTICS, advanced
 from calc_finance import finance_value
@@ -243,7 +243,7 @@ class Engine:
             require(len(args) == 3, "DMS input requires degrees, minutes and seconds")
             values=[build(a) for a in args]
             require(all(getattr(item,"is_number",False) and not item.has(s.I) for item in values), "DMS fields must be real numbers")
-            return values[0]+values[1]/60+values[2]/3600
+            return sexagesimal_value(values)
         if kind in ("binary", "relation"):
             require(value != ":=", "Use STO for variables or the Variables editor for functions")
             a, b = map(build, args)
@@ -363,7 +363,7 @@ class Engine:
             return s.Integer(random.randint(int(a[0]),int(a[1])))
         if name=="sexagesimal":
             require(len(a) == 3, "DMS input requires degrees, minutes and seconds")
-            return a[0]+a[1]/60+a[2]/3600
+            return sexagesimal_value(a)
         if name=="dms":
             if len(a)==3:return self.call("sexagesimal",a,nodes)
             return dms_parts(a[0])
@@ -714,7 +714,9 @@ class Engine:
             return s.N(result,self.precision)
         if name=="nderivative":
             require(len(a) in (3,4), "nderivative expects an expression, variable and point")
-            return numeric_derivative(a[0],a[1],a[2],self.precision,a[3] if len(a)==4 else None)
+            result=numeric_derivative(a[0],a[1],a[2],self.precision,a[3] if len(a)==4 else None)
+            self.note += ' Numerical derivative approximation; agreement of sampled left/right differences is not proof of differentiability.'
+            return result
         if name in ("nintegrate", "minimum", "maximum"):
             if name in ("minimum", "maximum"):
                 return (s.minimum if name=="minimum" else s.maximum)(a[0],a[1],s.Interval(a[2],a[3]))
@@ -768,7 +770,7 @@ class Engine:
                       "cholesky": lambda m: m.cholesky(hermitian=False), "nullspace": lambda m: list(m.nullspace()),
                       "cofactor": lambda m: m.cofactor_matrix(), "adjugate": lambda m: m.adjugate(),
                       "rowspace": lambda m: list(m.rowspace()), "singularvalues": lambda m: list(m.singular_values()),
-                      "frob": lambda m: s.sqrt(sum(item*item for item in m)),
+                      "frob": lambda m: s.sqrt(sum(s.Abs(item)**2 for item in m)),
                       "jordan": lambda m: list(m.jordan_form()), "dim": lambda m: [m.rows,m.cols],
                       "pinv": lambda m: m.pinv(), "ctranspose": lambda m: m.H,
                       "svd": lambda m: list(m.singular_value_decomposition())}

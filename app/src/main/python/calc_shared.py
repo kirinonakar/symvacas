@@ -96,12 +96,25 @@ def flatten(a):
 
 def dms_parts(value):
     """Return normalized [degrees, minutes, seconds] for a real numeric value."""
-    require(getattr(value, "is_number", False) and not value.has(s.I), "DMS conversion requires a real numeric value")
+    require(getattr(value, "is_number", False) and value.is_real is True and value.is_finite is True, "DMS conversion requires a finite real numeric value")
     magnitude=s.Abs(value)
     whole=s.floor(magnitude)
     minutes=s.floor((magnitude-whole)*60)
     seconds=s.simplify((magnitude-whole-minutes/60)*3600)
-    return [s.sign(value)*whole,minutes,seconds]
+    parts=[whole,minutes,seconds]
+    for index,part in enumerate(parts):
+        if part != 0:
+            parts[index] *= s.sign(value)
+            break
+    return parts
+
+
+def sexagesimal_value(parts):
+    """The first nonzero field carries the sign of the whole angle."""
+    require(len(parts)==3 and all(getattr(v,'is_number',False) and v.is_real is True and v.is_finite is True for v in parts),
+            'DMS fields must be finite real numbers')
+    sign=next((s.sign(v) for v in parts if v!=0),s.Integer(1))
+    return sign*(s.Abs(parts[0])+s.Abs(parts[1])/60+s.Abs(parts[2])/3600)
 
 def coordinates(value):
     require(isinstance(value, (list, tuple)) and value and all(isinstance(item, s.Symbol) for item in value),
@@ -133,10 +146,34 @@ def numeric_derivative(expression, variable, point, precision, step=None):
     """
     require(getattr(point, "is_number", False) and not point.has(s.I),
             "nderivative requires a real numeric point")
-    if step is None:
+    automatic_step=step is None
+    if automatic_step:
         step=s.Rational(10)**(-max(8, min(80, (precision+5)//3)))
     else:
         require(getattr(step, "is_number", False) and step>0, "Derivative step must be positive")
+    # Check sided estimates at a small independent scale, even when the caller
+    # requests a coarse difference step. This detects corners and jumps, but
+    # finite numerical sampling cannot prove differentiability.
+    check_step=min(step,s.Rational(10)**(-max(8,min(80,(precision+5)//3))))
+    center=s.N(expression.subs(variable,point),precision+20)
+    require(center.is_finite is True,'Derivative undefined: function is not finite at this point')
+    def sided(h,direction):
+        first=s.N(expression.subs(variable,point+direction*h),precision+20)
+        second=s.N(expression.subs(variable,point+direction*2*h),precision+20)
+        return direction*(-3*center+4*first-second)/(2*h)
+    for attempt in range(10):
+        left=sided(check_step/4,-1); right=sided(check_step/4,1)
+        left_fine=sided(check_step/8,-1); right_fine=sided(check_step/8,1)
+        require(all(v.is_finite is True for v in (left,right,left_fine,right_fine)),
+                'Derivative undefined: sided differences are not finite')
+        scale=max(s.Integer(1),s.Abs(left_fine),s.Abs(right_fine))
+        tolerance=s.Rational(10)**(-min(8,max(4,precision//2)))*scale
+        if (s.Abs(left_fine-right_fine)<=tolerance and
+                max(s.Abs(left_fine-left),s.Abs(right_fine-right))<=tolerance): break
+        check_step/=16
+    else:
+        raise MathError('Derivative undefined: left and right differences disagree or do not converge')
+    if automatic_step: step=min(step,check_step)
     def central(h):
         return s.N((expression.subs(variable, point+h)-expression.subs(variable, point-h))/(2*h), precision+10)
     coarse=central(step)

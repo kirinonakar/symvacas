@@ -237,10 +237,11 @@ def calculate(engine,name,a,fast=False):
                 effect_rows.append(row)
         return {'Effects':effect_rows}
     cov=information(parameters,objective,totaln)
-    results=[]
+    results=[]; residual_ratios=[]
     for label,g in zip(labels,prepared):
         sigma,load,total,structural,theta,mu=model(parameters,g)
         require(all(theta[i]/float(sigma[i,i])>1e-6 for i in range(p)),'Heywood / boundary residual variance; revise the factor model')
+        residual_ratios.extend(theta[i]/float(sigma[i,i]) for i in range(p))
         loading_rows=[]; path_rows=[]
         for kind,i,j,index in g['local']:
             if kind=='loading':
@@ -296,4 +297,6 @@ def calculate(engine,name,a,fast=False):
         result['Modification indices']=normal_mi(parameters,prepared,model,labels,p,k,assignments,markers,cross,paths,residual,scales)
         result['MI method']='Single-parameter efficient score tests using expected normal information; EPC in original units. Each row frees one parameter in one group. Indices do not establish causality or justify automatic model changes.'
     result['Assumptions']+=' Selected indicator residual covariance pairs are free; strict invariance also shares these covariances. Effects are sums of products over specified acyclic latent paths, with full-covariance delta-method Wald intervals.'
+    from calc_advanced_sem_summary import fit_diagnostics
+    fit_diagnostics(result,iterations,objective(parameters)[1],residual_ratios)
     return result

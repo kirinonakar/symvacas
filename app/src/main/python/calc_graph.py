@@ -12,6 +12,103 @@ from calc_display import readable
 _graph_programs = OrderedDict()
 
 
+def interval_extrema(expression, variable, lower, upper, action, coordinates=()):
+    """Compare attained candidates with every one-sided domain boundary limit.
+
+    Unknown domains/stationary sets are rejected rather than declaring sampled
+    candidates to be global extrema. Piecewise branches are handled separately.
+    """
+    from sympy.calculus.util import continuous_domain
+    interval=s.Interval(s.Rational(lower),s.Rational(upper))
+    breaks={interval.start,interval.end}
+
+    def components(domain):
+        if domain is s.S.EmptySet: return []
+        if isinstance(domain,s.Union):
+            return [part for item in domain.args for part in components(item)]
+        require(isinstance(domain,(s.Interval,s.FiniteSet)),
+                'Could not verify the domain for global extrema; choose a simpler interval')
+        return [domain]
+
+    def domain_of(expr, region):
+        if isinstance(expr,s.Piecewise):
+            domains=[]
+            for branch,branch_region in expr.as_expr_set_pairs(domain=region):
+                domains.append(domain_of(branch,branch_region))
+                for part in components(branch_region):
+                    if isinstance(part,s.Interval): breaks.update((part.start,part.end))
+                    else: breaks.update(part)
+            return s.Union(*domains)
+        for piece in expr.atoms(s.Piecewise):
+            for _,branch_region in piece.as_expr_set_pairs(domain=region):
+                for part in components(branch_region):
+                    if isinstance(part,s.Interval): breaks.update((part.start,part.end))
+        return continuous_domain(expr,variable,region)
+
+    try:
+        domain=interval
+        for expr in (expression,*coordinates): domain=domain.intersect(domain_of(expr,interval))
+        for part in components(domain):
+            if isinstance(part,s.Interval): breaks.update((part.start,part.end))
+            else: breaks.update(part)
+        # Cusps can be attained extrema without a zero first derivative.
+        for absolute in expression.atoms(s.Abs):
+            zeroes=s.solveset(absolute.args[0],variable,domain=interval)
+            require(isinstance(zeroes,s.FiniteSet) or zeroes is s.S.EmptySet,
+                    'Could not isolate all cusp candidates for global extrema')
+            breaks.update(zeroes)
+        boundaries=sorted(breaks,key=lambda v:float(v))
+        candidates=set(boundaries); limits=[]
+        for left,right in zip(boundaries,boundaries[1:]):
+            middle=(left+right)/2
+            if domain.contains(middle) is not s.true: continue
+            branch=expression
+            # Select using an interior point so strict Piecewise inequalities
+            # do not make SymPy select the wrong branch at a boundary.
+            for _ in range(len(expression.atoms(s.Piecewise,s.Abs))+1):
+                selected={}
+                for piece in branch.atoms(s.Piecewise):
+                    for term,condition in piece.args:
+                        if condition.subs(variable,middle) is s.true:
+                            selected[piece]=term; break
+                # All Abs zeroes are interval boundaries. On the open segment,
+                # use its fixed sign so derivatives reduce to smooth branches
+                # and constant/flat segments need no isolated stationary set.
+                for absolute in branch.atoms(s.Abs):
+                    inside=absolute.args[0]
+                    sample=inside.subs(variable,middle)
+                    if sample.is_positive is True: selected[absolute]=inside
+                    elif sample.is_negative is True: selected[absolute]=-inside
+                if not selected: break
+                branch=branch.xreplace(selected)
+            derivative=s.diff(branch,variable)
+            if derivative!=0:
+                stationary=s.solveset(derivative,variable,domain=s.Interval.open(left,right))
+                require(isinstance(stationary,s.FiniteSet) or stationary is s.S.EmptySet,
+                        'Could not isolate all stationary candidates for global extrema; choose a simpler interval')
+                candidates.update(stationary)
+            limits.extend((s.limit(branch,variable,left,dir='+'),s.limit(branch,variable,right,dir='-')))
+        entries=[]
+        for at in candidates:
+            if domain.contains(at) is not s.true: continue
+            value=expression.subs(variable,at)
+            if value.is_real is True and value.is_finite is True: entries.append((at,value))
+        require(entries,'No attained finite extrema in this range')
+        pick=min if action=='minimum' else max
+        bound=pick((value for _,value in entries),key=lambda v:float(v))
+        for value in limits:
+            require(value.is_extended_real is True and not value.has(s.Limit),
+                    'Could not verify boundary limits for global extrema')
+            if value == (-s.oo if action=='minimum' else s.oo):
+                raise MathError('No '+action+' exists: function is unbounded in this range')
+            exceeds=value<bound if action=='minimum' else value>bound
+            require(exceeds is not s.true,'No '+action+' exists: boundary bound is not attained')
+        return sorted(float(at) for at,value in entries if s.simplify(value-bound)==0)
+    except (NotImplementedError,TypeError,ValueError) as exc:
+        if isinstance(exc,MathError): raise
+        raise MathError('Could not verify global extrema on this domain; choose a simpler interval') from exc
+
+
 def graph_expressions(engine, trees, axes):
     """Reuse symbolic programs across frames; all evaluation context is in the key."""
     context = {"trees": trees, "axes": axes, "precision": engine.precision,
@@ -1078,7 +1175,7 @@ def implicit_analysis(engine, request, curves, x, y, numeric, zeroes, tangent_po
 def graph_analysis(engine, request, _expressions=None, _derivative_primitive=None):
     bind_graph_parameters(engine,request)
     kind = request.get("graphKind","cartesian")
-    if request.get("analysis") in ("tangentangle","intersectionangle"):
+    if request.get("analysis") in ("tangentangle","intersectionangle","minimum","maximum"):
         # Plot coordinates are real; this also makes Abs derivatives evaluable.
         for name in (("x","y") if kind == "cartesian" else (request.get("variable","t"),)):
             if engine.symbol(name).is_real is not True:
@@ -1285,14 +1382,7 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
             except (TypeError,ValueError): pass
             positions.sort()
         else:
-            positions = [a,b]
-            try: positions += zeroes(numeric(s.diff(expression, x), x))
-            except (TypeError,ValueError): pass
-            entries = [(at,value(at)) for at in positions]
-            entries = [(at,y) for at,y in entries if y is not None]
-            require(entries, "No finite values in this range")
-            limit = (min if action == "minimum" else max)(y for _,y in entries)
-            positions = [at for at,y in entries if abs(y-limit) <= max(1e-8,abs(limit)*1e-8)]
+            positions = interval_extrema(expression,x,a,b,action)
         points = [[at,value(at)] for at in positions if value(at) is not None][:80]
         return {"analysis":action,"points":points,"count":len(points),"truncated":len(positions)>80}
     variable = engine.symbol(request.get("variable","t")); engine.bindings[str(variable)] = variable
@@ -1324,15 +1414,8 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
         points = [item for i,item in enumerate(points) if all(abs(item[1]-old[1])>1e-6 for old in points[:i])]
     elif action in ("minimum", "maximum"):
         target = radius if kind == "polar" else second
-        target_value = numeric(target, variable)
-        positions = [a,b]
-        try: positions += zeroes(numeric(s.diff(target, variable), variable))
-        except (TypeError,ValueError): pass
-        entries = [(at,target_value(at)) for at in positions]
-        entries = [(at,y) for at,y in entries if y is not None]
-        require(entries, "No finite values in this range")
-        limit = (min if action == "minimum" else max)(y for _,y in entries)
-        points = [point(at) for at,y in entries if abs(y-limit) <= max(1e-8,abs(limit)*1e-8)]
+        positions = interval_extrema(target,variable,a,b,action,(first,second))
+        points = [point(at) for at in positions]
     elif action == "inflection":
         curvature = dfirst*s.diff(dsecond, variable)-dsecond*s.diff(dfirst, variable)
         points = [point(at) for at in zeroes(numeric(curvature, variable))]

@@ -103,7 +103,7 @@ internal fun statisticsCellText(m:CalculatorModel,cell:JSONObject)=ResultDisplay
             }
         }
         val primary=setOf("Summary","ANOVA","Overall model","Overall ANOVA","Overall Welch ANOVA",report.getString("title"))
-        val prominent=primary+setOf("Indicator R²","Explained variance","Latent R²","Summary","Sample summaries","Assumption checks","Effect size","Mean confidence interval (95%, two-sided)","Overall ANOVA","Expected-count diagnostics")
+        val prominent=primary+setOf("Model diagnostics","Indicator R²","Explained variance","Latent R²","Summary","Sample summaries","Assumption checks","Effect size","Mean confidence interval (95%, two-sided)","Overall ANOVA","Expected-count diagnostics")
         val ordered=(0 until sections.length()).sortedBy {when(sections.getJSONObject(it).getString("title")){in primary->0;in prominent->1;else->2}}
         var plotsShown=false
         for(index in ordered) {

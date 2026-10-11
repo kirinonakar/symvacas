@@ -631,8 +631,13 @@ def statistical_test(engine, name, a, nodes):
         require(len(args) == 2, "chi2test takes observed and expected counts")
         observed, expected = flatten(args[0]), flatten(args[1])
         require(len(observed) == len(expected) and len(observed) >= 2, "chi2test needs two lists of equal length with at least two counts")
-        for value in observed + expected: _real_value(value, "Counts must be real numbers")
+        require(all(getattr(value,'is_real',False) is True and value.is_finite is True for value in observed+expected),
+                "Counts must be finite real numbers")
+        require(all(value >= 0 and (value-s.floor(value)).is_zero is True for value in observed), "Observed counts must be nonnegative integers")
         require(all(value > 0 for value in expected), "Expected counts must be positive")
+        observed_total, expected_total = sum(observed), sum(expected)
+        require(abs(observed_total-expected_total) <= s.Rational(1,10**10)*max(observed_total,expected_total),
+                "Observed and expected counts must have matching totals")
         statistic = s.Add(*[((o - e)**2)/e for o, e in zip(observed, expected)])
         df = len(observed) - 1
         with mp.workdps(digits + 10):

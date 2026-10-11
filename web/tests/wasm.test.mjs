@@ -17,6 +17,36 @@ import {statisticsModelWorkflowPlan,statisticsDetectedCrossLoadings} from '../st
 // scenario below explicitly loads its own interpreter to keep startup coverage.
 let sharedRuntime;
 
+test('source-review regressions execute through parser and packaged WASM engine',async()=>{
+  const run=await engine();
+  const evaluate=source=>run({tree:parse(source),precision:30,budget:30});
+  const norm=evaluate('frob([[1,i]])');
+  assert.equal(norm.ok,true,norm.error);assert.equal(norm.exact,'sqrt(2)');
+  for(const source of ['chi2test([-2,12],[5,5])','chi2test([2.5,7.5],[5,5])','chi2test([2,8],[4,5])','nderivative(abs(x),x,0)']){
+    const result=evaluate(source);assert.equal(result.ok,false,source);
+  }
+  for(const [source,wanted] of [['sexagesimal(-12,30,0)',-12.5],['sexagesimal(0,-30,0)',-.5],['-0°30′0″',-.5],['-12°30′0″',-12.5]]){
+    const result=evaluate(source);assert.equal(result.ok,true,result.error);assert.equal(Number(result.decimal),wanted);
+    const reused=run({tree:parse('Ans'),variables:{Ans:result.resultAst}});
+    assert.equal(reused.ok,true,reused.error);assert.equal(Number(reused.decimal),wanted);
+  }
+  const rows=JSON.stringify(Array.from({length:12},(_,i)=>[i,2+3*i]));
+  const lasso=evaluate(`crossvalidate(${rows},3,0,blocked,lasso,100)`);
+  assert.equal(lasso.ok,true,lasso.error);
+  const predictions=lasso.statisticsReport.sections.find(section=>section.title==='out-of-fold predictions').rows.map(row=>Number(row[1].decimal));
+  assert.deepEqual(predictions,[24.5,24.5,24.5,24.5,18.5,18.5,18.5,18.5,12.5,12.5,12.5,12.5]);
+  const short=evaluate('crossvalidate([[0,0],[1,1],[2,0],[3,1],[4,0],[5,1],[6,0],[7,1]],5,0,stratified,logistic,0.5)');
+  assert.equal(short.ok,false);assert.match(short.error,/reduce the fold count/);
+  for(const analysis of ['minimum','maximum']){
+    const result=run({action:'graphAnalysis',trees:[parse('1/x')],analysis,a:-1,b:1});
+    assert.equal(result.ok,false);assert.match(result.error,/unbounded/);
+  }
+  for(const [source,points] of [['abs(x)',[[0,0]]],['abs(x-2)',[[2,0]]],['abs(x-1)+abs(x+1)',[[-1,2],[1,2]]],['x^2-abs(x)',[[-.5,-.25],[.5,-.25]]]]){
+    const result=run({action:'graphAnalysis',trees:[parse(source)],analysis:'minimum',a:-2,b:4});
+    assert.equal(result.ok,true,`${source}: ${result.error}`);assert.deepEqual(result.points,points);
+  }
+});
+
 test('graph angles run through parser and packaged shared engine in real WASM',async()=>{
   const py=await runtime();
   const analyze=(sources,analysis,options={})=>{
@@ -170,7 +200,7 @@ test('SEM sample presets execute with separate group columns and ordinal indicat
   }
 });
 
-test('PCA defaults, scalar/strict ML and ordinal WLSMV execute in real WASM',async t=>{
+test('principal-axis defaults, explicit PCA, scalar/strict ML and ordinal WLSMV execute in real WASM',async t=>{
   setComputationLimitsRemoved(true);t.after(()=>setComputationLimitsRemoved(false));
   const py=await runtime(),cases=JSON.parse(readFileSync(new URL('../../tests/fixtures/sem_estimation_reference.json',import.meta.url),'utf8')).cases;
   for(const index of [0,2,3,4,6]){
@@ -190,11 +220,14 @@ test('PCA defaults, scalar/strict ML and ordinal WLSMV execute in real WASM',asy
     assert.ok(result.statisticsReport.sections.some(s=>s.title===(ordinal?'Thresholds':'Latent means')));
   }
   const efa=advancedStatisticsSchema.find(d=>d.id==='efa');
-  assert.equal(efa.controls.find(field=>field.key==='extraction').default,'pca');
+  assert.equal(efa.controls.find(field=>field.key==='extraction').default,'pa');
   assert.equal(efa.controls.find(field=>field.key==='rotation').default,'oblimin');
   py.globals.set('payload',JSON.stringify({tree:parse(guidedStatisticsCommand(efa,efa.exampleRows)),budget:60}));
   const result=JSON.parse(py.runPython('calc_engine.dispatch(payload)'));
-  assert.equal(result.ok,true,result.error);assert.match(result.exact,/Principal components/);
+  assert.equal(result.ok,true,result.error);assert.match(result.exact,/Principal axis/);
+  py.globals.set('payload',JSON.stringify({tree:parse(guidedStatisticsCommand(efa,efa.exampleRows,{extraction:'pca'})),budget:60}));
+  const explicit=JSON.parse(py.runPython('calc_engine.dispatch(payload)'));
+  assert.equal(explicit.ok,true,explicit.error);assert.match(explicit.exact,/Principal components/);
 });
 
 test('expanded statistical designs, oblique rotation and FIML run in real WASM',async()=>{

@@ -8,7 +8,7 @@ from calc_limits import computation_limits, limits_removed, within_limit
 import sympy as s
 from sympy.core.relational import Relational
 from quantities import Quantity
-from calc_shared import (Budget, CONSTANTS, MathError, dms_parts, matrix, require)
+from calc_shared import (Budget, CONSTANTS, MathError, dms_parts, matrix, require, sexagesimal_value)
 from calc_display import (approximate, display_rounded, display_tree, dms_tree,
                           is_dms_expression, readable, result_ast)
 from calc_evaluator import Engine
@@ -164,7 +164,9 @@ def _dispatch(payload, control=None):
                 mantissa=s.N(value/s.Integer(10)**exponent,engine.precision)
                 power={"kind":"power","args":[{"kind":"text","value":"10"},{"kind":"text","value":str(exponent)}]}
                 result["tree"]=result["decimalTree"]={"kind":"product","args":[display_tree(mantissa),power]}
-            if request["tree"].get("value")=="dms" and isinstance(value,list):result["tree"]=result["decimalTree"]={"kind":"dms","args":[display_tree(x) for x in display_value]}
+            if request["tree"].get("value")=="dms" and isinstance(value,list):
+                result["tree"]=dms_tree(sexagesimal_value(value))
+                result["decimalTree"]=dms_tree(sexagesimal_value(display_value))
             if request["tree"].get("kind")=="call" and request["tree"].get("value")=="regression":
                 rows=None
                 try:

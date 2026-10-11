@@ -19,6 +19,25 @@ circle = equation(binary("+", x2, y2), number(1))
 
 class ImplicitGraphTests(unittest.TestCase):
 
+    def test_absolute_extrema_use_real_coordinates_through_dispatch(self):
+        absolute=lambda arg:{"kind":"call","value":"abs","args":[arg]}
+        cases=[(absolute(x),-1,1,"minimum",[[0.,0.]]),
+               (absolute(x),-1,1,"maximum",[[-1.,1.],[1.,1.]]),
+               (absolute(x),1,3,"minimum",[[1.,1.]]),
+               (absolute(binary("-",x,number(2))),-1,4,"minimum",[[2.,0.]]),
+               (binary("+",absolute(binary("-",x,number(1))),absolute(binary("+",x,number(1)))),-2,2,"minimum",[[-1.,2.],[1.,2.]]),
+               (binary("-",x2,absolute(x)),-1,1,"minimum",[[-.5,-.25],[.5,-.25]])]
+        for expression,lower,upper,action,expected in cases:
+            with self.subTest(expression=expression,action=action):
+                result=self.analyze(expression,analysis=action,a=lower,b=upper)
+                self.assertTrue(result["ok"],result)
+                self.assertEqual(result["points"],expected)
+        t=symbol("t")
+        result=self.analyze({"kind":"list","args":[t,absolute(t)]},graphKind="parametric",analysis="minimum",a=-1,b=1)
+        self.assertTrue(result["ok"],result);self.assertEqual(result["points"],[[0.,0.]])
+        result=self.analyze(absolute(t),graphKind="polar",analysis="minimum",a=-1,b=1)
+        self.assertTrue(result["ok"],result);self.assertEqual(result["points"],[[0.,0.]])
+
     def test_tangent_angles_use_degrees_and_radians_for_selected_curves(self):
         for tree,expected in ((x,45),(binary("*",number(-1),x),135),(number(2),0)):
             result=self.analyze(tree,analysis="tangentangle",a=0,b=0,angle="DEG")

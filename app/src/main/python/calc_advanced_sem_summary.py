@@ -9,6 +9,19 @@ import mpmath as mp
 from calc_shared import require
 
 
+def fit_diagnostics(result,iterations,gradient,residual_ratios):
+    """Expose checks performed by the fitter without rating scientific validity."""
+    result['diagnostics']={
+        'Optimization convergence':'Passed',
+        'Maximum absolute gradient':max(map(abs,gradient)),
+        'Iterations':iterations,
+        'Parameter identification':'Passed',
+        'Residual variance boundary':'Passed',
+        'Minimum residual variance ratio':min(residual_ratios),
+        'Fit assessment':'Unavailable (zero degrees of freedom)' if result['df']==0 else 'Review fit indices and residuals',
+        'Interpretation':'Convergence, local identification and residual-variance checks passed. These numerical checks do not establish model validity, distribution assumptions or causality. Fit indices must be interpreted together with residuals, uncertainty, sample size and study design.'}
+
+
 def measurement_markers(groups,cross):
     """Prefer a pure marker, otherwise fix the first primary loading for scale.
 
