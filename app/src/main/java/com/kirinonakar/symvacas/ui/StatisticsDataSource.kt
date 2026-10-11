@@ -31,6 +31,13 @@ internal fun statisticsTableColumnLabels(csv:String,kind:String):List<String> {
     return names.mapIndexed {index,name->rows.first().getOrNull(index)?.trim()?.takeIf {it.isNotBlank()&&it!=name}?.let {"$it ($name)"} ?: name}
 }
 internal fun statisticsKindForColumns(count:Int):String = when(count) {1->"list";2->"xy";3->"xyz";else->"columns:${count.coerceIn(1,100)}"}
+internal fun nextStatisticsDatasetName(names:List<String>,currentName:String):String {
+    val existing=(names+currentName).toSet()
+    var index=1L
+    existing.forEach {name->Regex("D([0-9]+)").matchEntire(name)?.groupValues?.get(1)?.toLongOrNull()?.let {number->if(number>=index&&number<Long.MAX_VALUE)index=number+1}}
+    while("D$index" in existing)index++
+    return "D$index"
+}
 /** n-column selections with one, two, or three columns are handled as List, x,y, and x,y,z data. */
 internal fun statisticsEffectiveKind(selectedKind:String,columnCount:Int):String =
     if(selectedKind.startsWith("columns:"))statisticsKindForColumns(columnCount) else selectedKind

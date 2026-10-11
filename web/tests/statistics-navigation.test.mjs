@@ -5,6 +5,14 @@ import {advancedStatisticsSchema as schema} from '../advanced-statistics-schema.
 import {statisticsReportTarget} from '../statistics-report.js';
 import {statisticsPlotModel} from '../statistics-visualization.js';
 import {parseCatalogHelp} from '../catalog-help.js';
+import {nextStatisticsDatasetName} from '../statistics-workspace.js';
+
+test('import draft names advance past saved datasets and the current unsaved draft',()=>{
+  assert.equal(nextStatisticsDatasetName([],''),'D1');
+  assert.equal(nextStatisticsDatasetName(['D1'],'D1'),'D2');
+  assert.equal(nextStatisticsDatasetName(['D1','D3','Study'],'D2'),'D4');
+  assert.equal(nextStatisticsDatasetName(['Study'],'D2'),'D3');
+});
 
 test('all shared analyses have one menu, grouped order, guided forms and local report routing',()=>{
   const android=JSON.parse(readFileSync(new URL('../../app/src/main/assets/advanced_statistics.json',import.meta.url),'utf8'));

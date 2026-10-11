@@ -22,6 +22,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StatisticsDataSourceTest {
+    @Test fun importDraftNamesAdvancePastSavedDatasetsAndTheCurrentUnsavedDraft() {
+        fun name(names:List<String>,current:String)=com.kirinonakar.symvacas.ui.nextStatisticsDatasetName(names,current)
+        assertEquals("D1",name(emptyList(),""))
+        assertEquals("D2",name(listOf("D1"),"D1"))
+        assertEquals("D4",name(listOf("D1","D3","Study"),"D2"))
+        assertEquals("D3",name(listOf("Study"),"D2"))
+        val source="A,B,C,D,E\n1,2,3,4,5\n6,7"
+        val preview=previewStatisticsCsv(source)
+        assertEquals("A,B,C,D,E\n1,2,3,4,5\n6,7,,,",importStatisticsCsv(preview,(0 until preview.columnCount).toList(),true))
+    }
+
     @Test fun statisticsSourcesDetectColumnsAndHeadersWithoutLosingValues() {
         run { // automaticColumnsCountHeadersRaggedRowsQuotedCellsAndTsv
             fun count(source:String)=com.kirinonakar.symvacas.ui.statisticsDetectedColumns(source)

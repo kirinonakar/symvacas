@@ -6,6 +6,24 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class WorkspaceStatesTest {
+    @Test fun importedStatisticsDraftPersistsWithoutOverwritingSavedDatasets() {
+        val prefs=MemoryPreferences()
+        val state=com.kirinonakar.symvacas.calculator.StatisticsState(prefs)
+        state.saveDataSet("D1","1,2","xy")
+        prefs.edit().also {state.writeTo(it);it.apply()}
+        state.statisticsName="D2";state.statisticsData="1,2,3,4,5"
+        state.statisticsKind="columns:5";state.statisticsSelected="";state.statisticsIsNew=true
+        state.saveSelection()
+        val restored=com.kirinonakar.symvacas.calculator.StatisticsState(prefs)
+        assertEquals("1,2",restored.dataSets.getJSONObject("D1").getString("csv"))
+        assertFalse(restored.dataSets.has("D2"))
+        assertEquals("D2",restored.statisticsName);assertEquals("1,2,3,4,5",restored.statisticsData)
+        assertEquals("",restored.statisticsSelected);assertTrue(restored.statisticsIsNew)
+        restored.saveDataSet("Study",restored.statisticsData,restored.statisticsKind)
+        assertEquals("1,2",restored.dataSets.getJSONObject("D1").getString("csv"))
+        assertEquals("1,2,3,4,5",restored.dataSets.getJSONObject("Study").getString("csv"))
+    }
+
     @Test fun statisticsSectionsDefaultToSummaryAndPersistIncludingHiddenChildren() {
         val prefs=MemoryPreferences()
         val sections=listOf("summary","visualize","regression","analysis","preparation","models","tests","advanced")

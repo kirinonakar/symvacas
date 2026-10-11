@@ -220,8 +220,8 @@ internal val LocalStatisticsCollapseRequest=staticCompositionLocalOf {0}
         m.clearRegression();data=importStatisticsCsv(preview,columns,skipHeader)
         selectedDataKind=statisticsKindForColumns(columns.size);columnCount=columns.size.toString()
         plotType=if(selectedDataKind=="xy")"Scatter" else "Histogram"
-        datasetName=datasetName.ifBlank {activeName.ifBlank {"D1"}}
-        m.saveDataSet(datasetName,data,dataKind);selected=datasetName;isNew=false
+        datasetName=nextStatisticsDatasetName(names,datasetName)
+        selected="";isNew=true
         importPreview=null
     }}
     val exportCsv=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) {uri->
@@ -636,7 +636,9 @@ internal val LocalStatisticsCollapseRequest=staticCompositionLocalOf {0}
     var skipHeader by remember(preview) {mutableStateOf(preview.hasHeader)}
     var columnCount by remember(preview) {mutableIntStateOf(minOf(2,maxColumns))}
     var columnText by remember(preview) {mutableStateOf(minOf(2,maxColumns).toString())}
+    var autoColumns by remember(preview) {mutableStateOf(true)}
     var columns by remember(preview) {mutableStateOf((0 until maxColumns).toList())}
+    val selectedColumns=if(autoColumns)(0 until maxColumns).toList() else columns.take(columnCount)
     val names=List(maxColumns){listOf("x","y","z").getOrNull(it) ?: "x${it+1}"}
     AlertDialog(onDismissRequest=onDismiss,title={Text(tr("Import CSV/XLSX"))},text={
         Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -646,28 +648,34 @@ internal val LocalStatisticsCollapseRequest=staticCompositionLocalOf {0}
             }
             Text(if(preview.hasHeader)tr("Header detected automatically") else tr("No header detected"),style=MaterialTheme.typography.bodySmall)
             Text(tr("Import as"),style=MaterialTheme.typography.titleSmall)
-            Field(columnText,"Column count (1–100)",Modifier.fillMaxWidth()){text->
-                val digits=text.filter(Char::isDigit).take(3)
-                val count=digits.toIntOrNull()?.coerceIn(1,maxColumns)
-                columnText=count?.toString() ?: digits
-                if(count!=null)columnCount=count
+            Row(verticalAlignment=Alignment.CenterVertically) {
+                Field(if(autoColumns)maxColumns.toString() else columnText,"Column count (1–100)",Modifier.weight(1f),enabled=!autoColumns){text->
+                    val digits=text.filter(Char::isDigit).take(3)
+                    val count=digits.toIntOrNull()?.coerceIn(1,maxColumns)
+                    columnText=count?.toString() ?: digits
+                    if(count!=null)columnCount=count
+                }
+                Checkbox(autoColumns,{autoColumns=it})
+                Text(tr("Auto"))
             }
-            Text(tr("Choose a column for each variable"),style=MaterialTheme.typography.bodySmall)
-            Column(verticalArrangement=Arrangement.spacedBy(2.dp)) {
-                repeat(columnCount) {index->
-                    var expanded by remember(preview,index) {mutableStateOf(false)}
-                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                        Text(names[index],Modifier.width(20.dp),fontWeight=FontWeight.SemiBold)
-                        Box {
-                            OutlinedButton(onClick={expanded=true}) {Text(preview.labels[columns[index]])}
-                            DropdownMenu(expanded=expanded,onDismissRequest={expanded=false}) {
-                                preview.labels.forEachIndexed {source,label->
-                                    DropdownMenuItem(text={Text(label)},onClick={
-                                        val next=columns.toMutableList()
-                                        val duplicate=next.indexOf(source)
-                                        if(duplicate>=0&&duplicate!=index)next[duplicate]=next[index]
-                                        next[index]=source;columns=next;expanded=false
-                                    })
+            if(!autoColumns) {
+                Text(tr("Choose a column for each variable"),style=MaterialTheme.typography.bodySmall)
+                Column(verticalArrangement=Arrangement.spacedBy(2.dp)) {
+                    repeat(columnCount) {index->
+                        var expanded by remember(preview,index) {mutableStateOf(false)}
+                        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                            Text(names[index],Modifier.width(20.dp),fontWeight=FontWeight.SemiBold)
+                            Box {
+                                OutlinedButton(onClick={expanded=true}) {Text(preview.labels[columns[index]])}
+                                DropdownMenu(expanded=expanded,onDismissRequest={expanded=false}) {
+                                    preview.labels.forEachIndexed {source,label->
+                                        DropdownMenuItem(text={Text(label)},onClick={
+                                            val next=columns.toMutableList()
+                                            val duplicate=next.indexOf(source)
+                                            if(duplicate>=0&&duplicate!=index)next[duplicate]=next[index]
+                                            next[index]=source;columns=next;expanded=false
+                                        })
+                                    }
                                 }
                             }
                         }
@@ -676,10 +684,10 @@ internal val LocalStatisticsCollapseRequest=staticCompositionLocalOf {0}
             }
             Text(tr("Preview"),style=MaterialTheme.typography.titleSmall)
             preview.rows.drop(if(skipHeader)1 else 0).take(3).forEach {row->
-                Text(columns.take(columnCount).joinToString("  |  ") {row.getOrNull(it).orEmpty()},fontFamily=FontFamily.Monospace,style=MaterialTheme.typography.bodySmall)
+                Text(selectedColumns.joinToString("  |  ") {row.getOrNull(it).orEmpty()},fontFamily=FontFamily.Monospace,style=MaterialTheme.typography.bodySmall)
             }
         }
-    },confirmButton={TextButton(onClick={onImport(columns.take(columnCount),skipHeader)},enabled=preview.rows.size>(if(skipHeader)1 else 0)){Text(tr("Import"))}},dismissButton={TextButton(onClick=onDismiss){Text(tr("Cancel"))}})
+    },confirmButton={TextButton(onClick={onImport(selectedColumns,skipHeader)},enabled=preview.rows.size>(if(skipHeader)1 else 0)){Text(tr("Import"))}},dismissButton={TextButton(onClick=onDismiss){Text(tr("Cancel"))}})
 }
 
 @Composable private fun StatisticsXlsxSheetDialog(sheets:List<StatisticsXlsxSheet>,onDismiss:()->Unit,onSelect:(StatisticsCsvImport)->Unit) {

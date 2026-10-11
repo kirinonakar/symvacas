@@ -22,6 +22,14 @@ export function regressionGraphSource(source,digits=10,variable='x') {
   return astSource(rounded(parse(latexInput(source))));
 }
 
+export function nextStatisticsDatasetName(names,currentName='') {
+  const existing=new Set([...names,currentName]);
+  let index=1;
+  for(const name of existing){const match=/^D([0-9]+)$/.exec(name),number=match?Number(match[1]):0;if(Number.isSafeInteger(number)&&number>=index)index=number+1;}
+  while(existing.has(`D${index}`))index++;
+  return `D${index}`;
+}
+
 export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorkspaceMath,storeExpression,error,changeMode,replaceInput,graphs,clearResult,onSummary}) {
   const {toast,pickFile,openDialog}=ui;
   let statisticsGraph=null;
@@ -105,23 +113,28 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
     if(isXlsx&&file.size>64*1024*1024)throw new Error('XLSX file is too large');
     function showPreview(rows){
       if(!rows.length)throw new Error('The selected sheet is empty');
-      const content=element('div'),columns=[],header=element('input'),preview=element('pre','','csv-preview');
-      const selectedColumns=()=>columns.map((input,i)=>input.checked?i:null).filter(i=>i!==null);
-      function updatePreview(){const selected=selectedColumns();preview.textContent=selected.length?rows.slice(header.checked?1:0).slice(0,3).map(row=>selected.map(i=>row[i]).join('  |  ')).join('\n'):'';}
+      const maxColumns=rows.reduce((count,row)=>Math.max(count,row.length),0);
+      const content=element('div'),columns=[],header=element('input'),preview=element('pre','','csv-preview'),auto=element('input'),count=element('input');
+      const selectedColumns=()=>columns.map((input,i)=>auto.checked||input.checked?i:null).filter(i=>i!==null);
+      function updatePreview(){const selected=selectedColumns();count.value=String(selected.length);count.disabled=auto.checked;for(const input of columns)input.disabled=auto.checked;preview.textContent=selected.length?rows.slice(header.checked?1:0).slice(0,3).map(row=>selected.map(i=>row[i]||'').join('  |  ')).join('\n'):'';}
       preview.setAttribute('aria-live','polite');
       header.type='checkbox';header.checked=statisticsCsvHasHeader(rows);
       header.onchange=updatePreview;
       const headerLabel=element('label','Skip header row','check');headerLabel.append(header);content.append(headerLabel);
-      for(let index=0;index<rows[0].length;index++){
-        const input=element('input');input.type='checkbox';input.checked=index<3;input.onchange=updatePreview;columns.push(input);
-        const label=element('label',statisticsCsvHasHeader(rows)?`${rows[0][index]} (${statisticsColumnNames(rows[0].length)[index]})`:statisticsColumnNames(rows[0].length)[index],'check');label.append(input);content.append(label);
+      count.type='number';count.min='1';count.max=String(maxColumns);
+      count.onchange=()=>{const size=Number(count.value);if(Number.isInteger(size)&&size>=1&&size<=maxColumns)columns.forEach((input,i)=>{input.checked=i<size;});updatePreview();};
+      auto.type='checkbox';auto.checked=true;auto.onchange=()=>{if(auto.checked)columns.forEach(input=>{input.checked=true;});updatePreview();};
+      const countLabel=element('label','Column count (1–100)'),autoLabel=element('label','Auto','check');countLabel.append(count);autoLabel.append(auto);content.append(countLabel,autoLabel);
+      for(let index=0;index<maxColumns;index++){
+        const input=element('input');input.type='checkbox';input.checked=true;input.onchange=updatePreview;columns.push(input);
+        const alias=statisticsColumnNames(maxColumns)[index],label=element('label',statisticsCsvHasHeader(rows)&&rows[0][index]?`${rows[0][index]} (${alias})`:alias,'check');label.append(input);content.append(label);
       }
       content.append(element('h3','Preview'),preview);updatePreview();
       content.append(control('Import CSV/XLSX',()=>{
         const selected=selectedColumns();if(!selected.length){toast(t('Select at least one column'));return;}
         const body=rows.slice(header.checked?1:0),imported=header.checked?[rows[0],...body]:body;
-        $('statistics-data').value=imported.map(row=>selected.map(i=>/[",\r\n\t]/.test(row[i])?'"'+row[i].replace(/"/g,'""')+'"':row[i]).join(',')).join('\n');
-        $('dataset-name').value=file.name.replace(/\.(csv|tsv|xlsx)$/i,'');setDataKind(statisticsKindForColumns(selected.length));dataKindChange();persist();$('dialog').close();
+        $('statistics-data').value=imported.map(row=>selected.map(i=>{const cell=row[i]||'';return /[",\r\n\t]/.test(cell)?'"'+cell.replace(/"/g,'""')+'"':cell;}).join(',')).join('\n');
+        $('dataset-name').value=nextStatisticsDatasetName(Object.keys(state.datasets),value('dataset-name'));$('dataset-list').value='';setDataKind(statisticsKindForColumns(selected.length));dataKindChange();persist();$('dialog').close();
       }));openDialog('Import CSV/XLSX',content);
     }
     if(!isXlsx){showPreview(csvRows((await file.text()).replace(/^\uFEFF/,''),{maxColumns:100,skipHeader:false}));return;}
