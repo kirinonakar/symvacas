@@ -17,6 +17,7 @@ class StatisticsModelWorkflowTests(unittest.TestCase):
         self.assertEqual(plan['data'],[['1.0','2.0','3.0'],['4.0','5.0','6.0']]);self.assertEqual(plan['termLabels'],labels)
         self.assertEqual(plan['cross'],[[1,1],[2,2]])
         self.assertEqual(plan['crossThreshold'],.3)
+        self.assertEqual(plan['modindices'],0)
         self.assertEqual(plan['efaLoadings'],value['loadings'])
 
     def test_cfa_preserves_crossloadings_missingness_and_all_options(self):
@@ -26,6 +27,7 @@ class StatisticsModelWorkflowTests(unittest.TestCase):
         self.assertEqual((plan['missing'],plan['groups'],plan['invariance'],plan['estimator']),('fiml',['2.0','5.0'],'scalar','ml'))
         self.assertEqual(plan['termLabels']['group:5'],'Treatment')
         self.assertNotIn('paths',plan)
+        self.assertEqual(plan['modindices'],0)
 
     def test_public_efa_and_cfa_preserve_reordered_columns_and_fitted_data(self):
         with (ROOT/'tests/fixtures/efa_study_habits_sample.csv').open(encoding='utf-8-sig',newline='') as file: csv_rows=list(csv.reader(file))

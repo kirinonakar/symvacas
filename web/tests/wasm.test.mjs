@@ -17,6 +17,22 @@ import {statisticsModelWorkflowPlan,statisticsDetectedCrossLoadings} from '../st
 // scenario below explicitly loads its own interpreter to keep startup coverage.
 let sharedRuntime;
 
+test('modification indices default off and explicit On runs ML and WLSMV diagnostics in real WASM',async()=>{
+  const py=await runtime();
+  const continuous=JSON.parse(readFileSync(new URL('../../tests/fixtures/sem_extras_reference.json',import.meta.url),'utf8')).cfa.rows;
+  const ordinal=JSON.parse(readFileSync(new URL('../../tests/fixtures/sem_estimation_reference.json',import.meta.url),'utf8')).cases[0].arguments[0].slice(0,80);
+  for(const [rows,estimator] of [[continuous,'ml'],[ordinal,'wlsmv']]){
+    for(const [suffix,enabled] of [['',false],[',[],0',false],[',[],1',true]]){
+      py.globals.set('payload',JSON.stringify({tree:parse(`cfa(${JSON.stringify(rows)},[1,1,1,1],[],complete,[],configural,${estimator}${suffix})`),precision:15}));
+      const result=JSON.parse(py.runPython('calc_engine.dispatch(payload)'));assert.equal(result.ok,true,result.error);
+      const report=result.statisticsReport;
+      assert.equal(report.sections.some(section=>section.title==='Modification indices'),enabled);
+      assert.equal(report.details?.some(detail=>detail.label==='MI method')||false,enabled);
+      assert.equal(report.modelWorkflow.modindices,enabled?1:0);
+    }
+  }
+});
+
 test('common-factor ML, residual scores, sparse factors and refit bootstrap run in real WASM',async context=>{
   setComputationLimitsRemoved(true);context.after(()=>setComputationLimitsRemoved(false));
   const py=await runtime(),reference=JSON.parse(readFileSync(new URL('../../tests/fixtures/sem_extras_reference.json',import.meta.url),'utf8'));
@@ -30,7 +46,7 @@ test('common-factor ML, residual scores, sparse factors and refit bootstrap run 
   assert.ok(ml.details.some(detail=>detail.label==='Extraction'&&detail.text.includes('Maximum likelihood')));
   const sparse=reference.sem.rows.map(row=>[row[0],row[1],row[3],row[4]]);
   assert.equal(calculate(`cfa(${JSON.stringify(sparse)},[1,1,2,2])`).sections.find(section=>section.title==='Loadings').rows.length,4);
-  const cfa=calculate(`cfa(${JSON.stringify(reference.cfa.rows)},[1,1,1,1],[],complete,[],configural,ml,[[2,3]])`);
+  const cfa=calculate(`cfa(${JSON.stringify(reference.cfa.rows)},[1,1,1,1],[],complete,[],configural,ml,[[2,3]],1)`);
   assert.ok(cfa.sections.some(section=>section.title==='Modification indices'));
   assert.equal(cfa.sections.find(section=>section.title==='Residual covariances').rows.length,1);
   assert.deepEqual(cfa.modelWorkflow.residual,[[2,3]]);

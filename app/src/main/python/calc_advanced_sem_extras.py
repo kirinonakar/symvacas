@@ -16,7 +16,7 @@ def options(name,args,p):
         require(i!=j,'Residual covariance needs two different indicators')
         pairs.append(tuple(sorted((i,j))))
     require(len(set(pairs))==len(pairs),'Residual covariance pairs must be distinct')
-    mi=integer(args[at+1],0,1) if len(args)>at+1 else 1
+    mi=integer(args[at+1],0,1) if len(args)>at+1 else 0
     samples=integer(args[at+2],0,10000,capacity=True) if len(args)>at+2 else 0
     require(samples==0 or samples>=20,'Use at least 20 SEM bootstrap samples')
     seed=integer(args[at+3],0,2147483647) if len(args)>at+3 else 0

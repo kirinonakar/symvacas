@@ -48,14 +48,14 @@ export function socialStatisticsPlan(id,rows,opts,columnLabels=[]){
       if(residual.some(pair=>pair.length!==2||pair.some(value=>!/^\d+$/.test(value)||Number(value)<1)))throw new Error('Use residual covariance pairs like 2,3;5,6 in selected indicator order');
       const samples=Number(opts.bootstrapSamples??0),seed=Number(opts.bootstrapSeed??0);
       if(!Number.isInteger(samples)||(samples!==0&&samples<20)||!Number.isInteger(seed)||seed<0||seed>2147483647)throw new Error('Use 0 or at least 20 bootstrap samples and a nonnegative integer seed');
-      const extended=residual.length||String(opts.modindices??'1')!=='1'||samples!==0||seed!==0;
+      const extended=residual.length||String(opts.modindices??'0')!=='0'||samples!==0||seed!==0;
       let extra='';
       if(cross.length||missing==='fiml'||multigroup||opts.estimator==='wlsmv'||extended){
         let ids=[];
         if(multigroup){const groupRows=complete([group]),groups=[...new Set(groupRows.map(row=>row[0]))];ids=groupRows.map(row=>groups.indexOf(row[0])+1);groups.forEach((name,i)=>{labels[`group:${i+1}`]=name;});}
         extra=`,${table(cross)},${missing},${list(ids)},${opts.invariance||'configural'}`;
         if(opts.estimator==='wlsmv'||extended)extra+=','+(opts.estimator||'ml');
-        if(extended)extra+=`,${table(residual)},${opts.modindices??'1'},${opts.bootstrapSamples||'0'},${opts.bootstrapSeed||'0'}`;
+        if(extended)extra+=`,${table(residual)},${opts.modindices??'0'},${opts.bootstrapSamples||'0'},${opts.bootstrapSeed||'0'}`;
       }
       expression=`${id}(${table(selected)},${list(factors)}${id==='sem'?','+table(paths):''}${extra})`;
     }

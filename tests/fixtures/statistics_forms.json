@@ -2447,6 +2447,22 @@
     "expected": "cfa([[1,2,3,4]],[1,1,2,2],[],complete,[],configural,ml,[[2,3]],0,0,0)"
   },
   {
+    "id": "cfa",
+    "rows": [
+      [
+        "1",
+        "2",
+        "3",
+        "4"
+      ]
+    ],
+    "settings": {
+      "factors": "1,1,2,2",
+      "modindices": "1"
+    },
+    "expected": "cfa([[1,2,3,4]],[1,1,2,2],[],complete,[],configural,ml,[],1,0,0)"
+  },
+  {
     "id": "sem",
     "rows": [
       [
@@ -2463,7 +2479,7 @@
       "bootstrapSamples": "25",
       "bootstrapSeed": "31"
     },
-    "expected": "sem([[1,2,3,4,5,6]],[1,1,1,2,2,2],[[1,2]],[],complete,[],configural,ml,[[2,3],[5,6]],1,25,31)"
+    "expected": "sem([[1,2,3,4,5,6]],[1,1,1,2,2,2],[[1,2]],[],complete,[],configural,ml,[[2,3],[5,6]],0,25,31)"
   },
   {
     "id": "manova",

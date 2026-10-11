@@ -50,7 +50,7 @@ internal fun socialStatisticsPlan(id:String,rows:List<List<String>>,opts:Map<Str
                 require(residual.all {pair->pair.size==2&&pair.all {it.matches(Regex("\\d+"))&&(it.toIntOrNull() ?: 0)>0}}){"Use residual covariance pairs like 2,3;5,6 in selected indicator order"}
                 val bootstrapSamples=(opts["bootstrapSamples"] ?: "0").toIntOrNull();val bootstrapSeed=(opts["bootstrapSeed"] ?: "0").toIntOrNull()
                 require(bootstrapSamples!=null&&(bootstrapSamples==0||bootstrapSamples>=20)&&bootstrapSeed!=null&&bootstrapSeed>=0){"Use 0 or at least 20 bootstrap samples and a nonnegative integer seed"}
-                val extended=residual.isNotEmpty()||(opts["modindices"] ?: "1")!="1"||bootstrapSamples!=0||bootstrapSeed!=0
+                val extended=residual.isNotEmpty()||(opts["modindices"] ?: "0")!="0"||bootstrapSamples!=0||bootstrapSeed!=0
                 val extra=if(cross.isNotEmpty()||missing=="fiml"||multigroup||opts["estimator"]=="wlsmv"||extended) {
                     val ids=if(multigroup) {
                         val groupRows=complete(listOf(group));val groups=groupRows.map {it[0]}.distinct()
@@ -59,7 +59,7 @@ internal fun socialStatisticsPlan(id:String,rows:List<List<String>>,opts:Map<Str
                     } else emptyList()
                     ",${table(cross)},$missing,${vector(ids)},${opts["invariance"] ?: "configural"}"+
                         (if(opts["estimator"]=="wlsmv"||extended)",${opts["estimator"] ?: "ml"}" else "")+
-                        (if(extended)",${table(residual)},${opts["modindices"] ?: "1"},${opts["bootstrapSamples"] ?: "0"},${opts["bootstrapSeed"] ?: "0"}" else "")
+                        (if(extended)",${table(residual)},${opts["modindices"] ?: "0"},${opts["bootstrapSamples"] ?: "0"},${opts["bootstrapSeed"] ?: "0"}" else "")
                 } else ""
                 "$id(${table(selected)},${vector(factors)}${if(id=="sem")","+table(paths) else ""}$extra)"
             }

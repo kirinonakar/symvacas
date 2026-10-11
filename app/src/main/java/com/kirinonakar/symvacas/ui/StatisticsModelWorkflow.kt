@@ -56,9 +56,9 @@ internal fun statisticsModelWorkflowPlan(workflow:JSONObject,factors:String,path
     val residual=workflow.optJSONArray("residual") ?: JSONArray()
     val residualPairs=List(residual.length()){i->val pair=residual.getJSONArray(i);List(pair.length()){pair.getInt(it)}}
     require(residualPairs.all {it.size==2&&it.all {id->id in 1..assignment.size}&&it[0]!=it[1]}&&residualPairs.map {it.sorted()}.distinct().size==residualPairs.size){"Use distinct residual covariance pairs between selected indicators"}
-    val mi=workflow.optInt("modindices",1);val samples=bootstrapSamples.toIntOrNull();val seed=bootstrapSeed.toIntOrNull()
+    val mi=workflow.optInt("modindices",0);val samples=bootstrapSamples.toIntOrNull();val seed=bootstrapSeed.toIntOrNull()
     require(mi in 0..1&&samples!=null&&(samples==0||samples>=20)&&seed!=null&&seed>=0){"Use 0 or at least 20 bootstrap samples and a nonnegative integer seed"}
-    val extra=if(residualPairs.isNotEmpty()||mi!=1||samples!=0||seed!=0)",${table(residualPairs.map {it.map(Int::toString)})},$mi,$samples,$seed" else ""
+    val extra=if(residualPairs.isNotEmpty()||mi!=0||samples!=0||seed!=0)",${table(residualPairs.map {it.map(Int::toString)})},$mi,$samples,$seed" else ""
     val expression="$target(${table(rows)},${vector(assignment.map(Int::toString))}${if(target=="sem")","+table(pairs.map {it.map(Int::toString)}) else ""},${table(crossRows)},$missing,${vector(groupIds)},$invariance,$estimator$extra)"
     val labels=workflow.getJSONObject("termLabels")
     return StatisticsModelWorkflowPlan(target,expression,labels.keys().asSequence().associateWith {labels.getString(it)})

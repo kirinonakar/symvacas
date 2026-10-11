@@ -41,10 +41,10 @@ export function statisticsModelWorkflowPlan(workflow,{factors=workflow.factors.j
   const token=value=>{const text=String(value);if(text!=='NA'&&!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(text))throw new Error('Invalid measurement model transfer');return text;};
   if(data.some(row=>row.length!==assignment.length))throw new Error('Invalid measurement model transfer');
   if(!['complete','fiml'].includes(workflow.missing)||!['configural','metric','scalar','strict'].includes(workflow.invariance)||!['ml','wlsmv'].includes(workflow.estimator))throw new Error('Invalid measurement model transfer');
-  const residual=workflow.residual||[],mi=Number(workflow.modindices??1),samples=Number(bootstrapSamples),seed=Number(bootstrapSeed);
+  const residual=workflow.residual||[],mi=Number(workflow.modindices??0),samples=Number(bootstrapSamples),seed=Number(bootstrapSeed);
   if(residual.some(pair=>pair.length!==2||pair.some(id=>!Number.isInteger(id)||id<1||id>assignment.length)||pair[0]===pair[1])||new Set(residual.map(pair=>pair.slice().sort((a,b)=>a-b).join(','))).size!==residual.length)throw new Error('Use distinct residual covariance pairs between selected indicators');
   if(![0,1].includes(mi)||!Number.isInteger(samples)||samples<0||(samples>0&&samples<20)||!Number.isInteger(seed)||seed<0||seed>2147483647)throw new Error('Use 0 or at least 20 bootstrap samples and a nonnegative integer seed');
-  const extra=residual.length||mi!==1||samples||seed?`,${table(residual)},${mi},${samples},${seed}`:'';
+  const extra=residual.length||mi!==0||samples||seed?`,${table(residual)},${mi},${samples},${seed}`:'';
   const expression=`${workflow.target}(${table(data.map(row=>row.map(token)))},[${assignment}]${workflow.target==='sem'?','+table(pairs):''},${table(crossPairs)},${workflow.missing},[${workflow.groups.map(token)}],${workflow.invariance},${workflow.estimator}${extra})`;
   return {target:workflow.target,expression,termLabels:{...workflow.termLabels}};
 }

@@ -3,6 +3,7 @@ import csv
 import json
 import math
 import unittest
+from unittest.mock import patch
 from test_advanced_statistics import ROOT,run,evaluate
 from calc_statistics_report import statistics_report
 from calc_shared import MathError
@@ -30,7 +31,7 @@ class SEMExtrasTests(unittest.TestCase):
 
     def test_modification_score_epc_and_freed_covariance_match_independent_calculation(self):
         case=self.reference['cfa'];rows=case['rows'];expected=case['expected']
-        fit=run('cfa',rows,[1]*4)
+        fit=run('cfa',rows,[1]*4,[],'complete',[],'configural','ml',[],1)
         row=next(row for row in fit['Modification indices'] if row.get('First indicator')=='feature:2' and row.get('Second indicator')=='feature:3')
         self.assertAlmostEqual(float(row['MI']),expected['MI'],places=4)
         self.assertAlmostEqual(float(row['Expected parameter change']),expected['EPC'],places=5)
@@ -42,6 +43,14 @@ class SEMExtrasTests(unittest.TestCase):
         response=evaluate('cfa('+str(rows)+',[1,1,1,1],[],complete,[],configural,ml,[[2,3]],1)')
         edge=next(edge for edge in response['statisticsReport']['plots'][0]['edges'] if edge['source'].startswith('x'))
         self.assertEqual(edge['kind'],'covariance');self.assertEqual(len(edge['interval']),2)
+
+    def test_modification_indices_default_and_explicit_off_skip_computation(self):
+        rows=self.reference['cfa']['rows']
+        ordinal=json.loads((ROOT/'tests/fixtures/sem_estimation_reference.json').read_text())['cases'][0]['arguments']
+        with patch('calc_advanced_sem_extras.normal_mi',side_effect=AssertionError('MI must stay off')),patch('calc_advanced_sem_extras.ordinal_mi',side_effect=AssertionError('MI must stay off')):
+            for args in ([rows,[1]*4],[rows,[1]*4,[],'complete',[],'configural','ml',[],0],ordinal):
+                fit=run('cfa',*args)
+                self.assertNotIn('Modification indices',fit);self.assertNotIn('MI method',fit)
 
     def test_indirect_effects_and_bootstrap_match_independent_complete_model_refits(self):
         case=self.reference['sem'];args=[case['rows'],[1,1,1,2,2,2,3,3,3],[[1,2],[2,3],[1,3]],[],'complete',[],'configural','ml',[],0,case['samples'],case['seed']]
