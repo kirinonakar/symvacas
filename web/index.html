@@ -29,6 +29,7 @@
 cos(x)</textarea></div>
       <details id="graph-help"><summary>Graph input help</summary>
         <p class="hint">Expressions · one per line</p>
+        <p class="hint">Angle analysis: choose a point for Tangent angle, or two Cartesian curves and an a–b interval for Intersection angle. Results show degrees and radians.</p>
         <p class="hint">One [x(t),y(t)] pair per line</p>
         <p class="hint">r(t) · radians · one curve per line</p>
         <p class="hint">u(n) · use u(n−1) for recurrences</p>
@@ -78,7 +79,7 @@ y=2*x {x&gt;2}</pre>
         </div>
       </div>
       </div></details>
-      <details id="graph-analysis" class="graph-section"><summary>Analyze</summary><div class="form-row"><label>Analysis<select id="graph-analysis-action"><option value="root">Root</option><option value="yintercept">Y-intercept</option><option value="intersection">Intersection</option><option value="minimum">Minimum</option><option value="maximum">Maximum</option><option value="inflection">Inflection</option><option value="derivative">Derivative</option><option value="tangent">Tangent</option><option value="integral">Integral</option><option value="arclength">Arc length</option></select></label><label>Other curve<select id="graph-other"></select></label><label>a / point<input id="graph-analysis-a" value="-10"></label><label>b<input id="graph-analysis-b" value="10"></label><button id="graph-analysis-visible-range">Use visible x range</button><button id="graph-analysis-run">Analyze</button><button id="graph-analysis-clear">Clear analysis</button></div><label id="graph-tangent-position" hidden="">Tangent position<input id="graph-tangent-slider" type="range" min="-10" max="10" value="0" step="any"></label><div id="graph-analysis-result" class="formula-preview" aria-live="polite"></div></details>
+      <details id="graph-analysis" class="graph-section"><summary>Analyze</summary><div class="form-row"><label>Analysis<select id="graph-analysis-action"><option value="root">Root</option><option value="yintercept">Y-intercept</option><option value="intersection">Intersection</option><option value="intersectionangle">Intersection angle</option><option value="minimum">Minimum</option><option value="maximum">Maximum</option><option value="inflection">Inflection</option><option value="derivative">Derivative</option><option value="tangent">Tangent</option><option value="tangentangle">Tangent angle</option><option value="integral">Integral</option><option value="arclength">Arc length</option></select></label><label>Other curve<select id="graph-other"></select></label><label>a / point<input id="graph-analysis-a" value="-10"></label><label>b<input id="graph-analysis-b" value="10"></label><button id="graph-analysis-visible-range">Use visible x range</button><button id="graph-analysis-run">Analyze</button><button id="graph-analysis-clear">Clear analysis</button></div><label id="graph-tangent-position" hidden="">Tangent position<input id="graph-tangent-slider" type="range" min="-10" max="10" value="0" step="any"></label><div id="graph-analysis-result" class="formula-preview" aria-live="polite"></div></details>
       <details id="graph-coordinates" class="graph-section"><summary>Coordinate table</summary><div id="graph-table" class="scroll-table"></div></details>
     </section>
     <section class="workspace" data-mode="python" hidden="">

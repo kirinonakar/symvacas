@@ -261,6 +261,8 @@ Example: maximum(x^2,x,-1,2)
 Example: piecewise([1,x>0],[0,true])
 
 Graphs also accept Desmos-style `{condition:value,condition:value,default}`. The first matching branch wins; omit the default to leave unmatched values undefined. Example: `f(x)={x<0:x^2,x>=0:2*x}`. Append `{condition}` to restrict the whole preceding expression, with or without spaces or outer parentheses: `y=x^2 {0<=x<=2}` and `y=2*x {x>2}`. Chained inequalities are supported; excluded intervals are omitted and explicit polynomial branch boundaries are sampled separately to avoid connecting jumps.
+Graph angle analysis: select a curve (including f′ or f″) and choose **Tangent angle** at an x coordinate, or at t for parametric/polar curves. It reports the inclination from the positive x axis, 0° ≤ θ < 180°. Choose **Intersection angle**, a second Cartesian curve, and an a–b x interval to report the smaller angle between the two tangents at each isolated intersection, 0°–90°. Results include degrees and radians; vertical tangents are supported. For multi-branch curves, tap a point to choose the tangent branch. Corners and singular points with no defined tangent are marked undefined. Intersection search is numerical and may miss points.
+
 `apart(expr,x)` — Partial-fraction decomposition in x.
 Example: apart(1/(x*(x+1)),x)
 `partfrac(expr,x)` — Partial fractions; alias of apart.

@@ -19,6 +19,71 @@ circle = equation(binary("+", x2, y2), number(1))
 
 class ImplicitGraphTests(unittest.TestCase):
 
+    def test_tangent_angles_use_degrees_and_radians_for_selected_curves(self):
+        for tree,expected in ((x,45),(binary("*",number(-1),x),135),(number(2),0)):
+            result=self.analyze(tree,analysis="tangentangle",a=0,b=0,angle="DEG")
+            self.assertTrue(result["ok"],result)
+            self.assertAlmostEqual(expected,result["value"])
+            self.assertAlmostEqual(math.radians(expected),result["radians"])
+            self.assertEqual("deg",result["unit"])
+            self.assertEqual(2,len(result["line"]))
+        result=self.analyze(binary("^",x,number(3)),analysis="tangentangle",a=0,selectedDerivativeOrder=2)
+        self.assertTrue(result["ok"],result);self.assertAlmostEqual(math.degrees(math.atan(6)),result["value"])
+        result=self.analyze(circle,analysis="tangentangle",a=1)
+        self.assertTrue(result["ok"],result);self.assertAlmostEqual(90,result["value"])
+        result=self.analyze(circle,analysis="tangentangle",a=0,tracePoint=[0,-1])
+        self.assertTrue(result["ok"],result);self.assertAlmostEqual(0,result["value"])
+        derived=self.analyze(circle,analysis="tangentangle",a=0,selectedDerivativeOrder=1,tracePoint=[.25,-.25/math.sqrt(1-.25**2)])
+        self.assertTrue(derived["ok"],derived);self.assertAlmostEqual(135,derived["value"])
+        ambiguous=self.analyze(circle,analysis="tangentangle",a=0)
+        self.assertFalse(ambiguous["ok"]);self.assertIn("choose a branch",ambiguous["error"])
+        parameterized=self.analyze(binary("*",symbol("k"),x),analysis="tangentangle",a=1,parameters={"k":2},variables={"k":number(999)})
+        self.assertTrue(parameterized["ok"],parameterized);self.assertAlmostEqual(math.degrees(math.atan(2)),parameterized["value"])
+
+    def test_intersection_angles_include_every_point_vertical_lines_and_derivatives(self):
+        for trees,expected in (((x,binary("*",number(-1),x)),90),((equation(x,number(0)),x),45),((x2,number(1)),math.degrees(math.atan(2))),((circle,equation(x,number(0))),90),((x2,number(0)),0)):
+            result=self.analyze(*trees,analysis="intersectionangle")
+            self.assertTrue(result["ok"],result);self.assertTrue(result["points"])
+            self.assertEqual(len(result["points"]),len(result["angles"]))
+            for angle in result["angles"]:
+                self.assertAlmostEqual(expected,angle["value"],delta=1e-6)
+                self.assertAlmostEqual(math.radians(expected),angle["radians"],delta=1e-7)
+        for first,second in ((0,1),(1,0)):
+            result=self.analyze(x2,analysis="intersectionangle",selected=0,other=0,selectedDerivativeOrder=first,otherDerivativeOrder=second,a=-1,b=3)
+            self.assertTrue(result["ok"],result);self.assertEqual(2,len(result["angles"]))
+            for angle,expected in zip(result["angles"],(math.atan(2),math.atan(4)-math.atan(2))):
+                self.assertAlmostEqual(expected,angle["radians"],delta=1e-7)
+        no_points=self.analyze(x,x2,analysis="intersectionangle",a=2,b=3)
+        self.assertTrue(no_points["ok"],no_points);self.assertEqual([],no_points["angles"])
+        coincident=self.analyze(x,x,analysis="intersectionangle")
+        self.assertFalse(coincident["ok"]);self.assertIn("not isolated",coincident["error"])
+
+    def test_angle_analysis_rejects_corners_singular_points_and_undefined_coordinates(self):
+        absolute={"kind":"call","value":"abs","args":[x]}
+        for tree in (absolute,binary("/",number(1),x)):
+            result=self.analyze(tree,analysis="tangentangle",a=0)
+            self.assertFalse(result["ok"],result);self.assertIn("undefined",result["error"])
+        result=self.analyze(absolute,number(0),analysis="intersectionangle")
+        self.assertTrue(result["ok"],result);self.assertEqual([[0.0,0.0]],result["points"])
+        self.assertIsNone(result["angles"][0]["value"])
+        singular=equation(y2,x2)
+        result=self.analyze(singular,equation(x,number(0)),analysis="intersectionangle")
+        self.assertTrue(result["ok"],result);self.assertIsNone(result["angles"][0]["value"])
+        vertical=self.analyze({"kind":"call","value":"sqrt","args":[x]},analysis="tangentangle",a=0)
+        self.assertTrue(vertical["ok"],vertical);self.assertAlmostEqual(90,vertical["value"])
+
+    def test_parametric_and_polar_tangent_angles_require_a_nonzero_direction(self):
+        t=symbol("t")
+        pair={"kind":"list","args":[number(0),t]}
+        vertical=self.analyze(pair,graphKind="parametric",analysis="tangentangle",a=0)
+        self.assertTrue(vertical["ok"],vertical);self.assertAlmostEqual(90,vertical["value"])
+        polar=self.analyze(number(1),graphKind="polar",analysis="tangentangle",a=math.pi/2)
+        self.assertTrue(polar["ok"],polar);self.assertAlmostEqual(0,polar["value"],delta=1e-7)
+        stationary=self.analyze({"kind":"list","args":[number(0),number(0)]},graphKind="parametric",analysis="tangentangle",a=0)
+        self.assertFalse(stationary["ok"]);self.assertIn("undefined",stationary["error"])
+        unsupported=self.analyze(pair,pair,graphKind="parametric",analysis="intersectionangle")
+        self.assertFalse(unsupported["ok"])
+
     def test_derivative_analysis_uses_the_selected_order_for_every_action(self):
         cubic=binary("-",binary("^",x,number(3)),binary("*",number(3),x))
         def analyze(action,order=1,**options):

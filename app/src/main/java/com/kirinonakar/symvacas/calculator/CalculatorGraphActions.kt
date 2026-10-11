@@ -253,13 +253,13 @@ internal object CalculatorGraphActions {
     fun CalculatorModel.performAnalyzeGraph(action:String,first:String,second:String,selected:Int,other:Int) {
         if(graphKind !in listOf("cartesian","parametric","polar")) {error="Analysis requires a Cartesian, parametric or polar graph";return}
         val fixedIntercept=action=="yintercept" && graphKind=="cartesian"
-        val singled=action in listOf("derivative","tangent") || fixedIntercept
+        val singled=action in listOf("derivative","tangent","tangentangle") || fixedIntercept
         val a=if(fixedIntercept)0.0 else first.toDoubleOrNull();val b=if(singled)a else second.toDoubleOrNull()
         if(a==null || !a.isFinite() || b==null || !b.isFinite() || (!singled && a>=b)) {error="Enter finite values with a < b";return}
         val sources=graphSource.lines().filter {it.isNotBlank()}.take(24).filter {graphKind!="cartesian" || !isGraphShading(it)}.take(20)
         val selectedTarget=graphAnalysisTarget(selected,graphDerivativeSelected,graphSecondDerivativeSelected)
         val otherTarget=graphAnalysisTarget(other,graphDerivativeSelected,graphSecondDerivativeSelected)
-        if(selectedTarget==null || selectedTarget.source !in sources.indices || action=="intersection" && (otherTarget==null || otherTarget.source !in sources.indices || otherTarget==selectedTarget)) {error="Select two different functions";return}
+        if(selectedTarget==null || selectedTarget.source !in sources.indices || action in listOf("intersection","intersectionangle") && (otherTarget==null || otherTarget.source !in sources.indices || otherTarget==selectedTarget)) {error="Select two different functions";return}
         val trees=try {JSONArray(sources.map {JSONObject(graphInputTree(it,graphKind,removeComputationLimit).json())})} catch(e:Exception) {error=e.message ?: "Syntax ERROR";return}
         analysisJob?.cancel()
         val source=graphSource

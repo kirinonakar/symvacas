@@ -930,6 +930,46 @@ def polynomial_real_roots(expression, variable):
         return [float((low+high)/2) for (low,high),_ in polynomial.to_exact().intervals(eps=s.Rational(1,10**20))]
     except (s.PolynomialError, s.polys.polyerrors.DomainError, NotImplementedError): return None
 
+def _graph_direction(dx, dy):
+    if dx is None or dy is None: return None
+    length = math.hypot(dx, dy)
+    return (dx/length, dy/length) if math.isfinite(length) and length > 0 else None
+
+
+def _cartesian_tangent_direction(curve, x, y, px, py, precision):
+    function, residual = curve
+    def finite(expression):
+        try: return _finite_real(expression.evalf(precision))
+        except (TypeError, ValueError, OverflowError): return None
+    if function is not None:
+        derivative = s.diff(function, x)
+        slope = finite(derivative.subs(x, px))
+        if slope is not None and not function.has(s.Abs, s.Piecewise):
+            return _graph_direction(1.0, slope)
+        # Check both one-sided tangents at corners and vertical endpoints.
+        directions = []
+        approach = s.Dummy('approach',positive=True)
+        for side in ('-', '+'):
+            try:
+                at = s.Rational(str(px))
+                nearby = at+approach if side == '+' else at-approach
+                # Substituting a positive offset resolves Piecewise conditions
+                # before SymPy's limit routine selects a boundary branch.
+                ordinate = finite(s.limit(function.subs(x,nearby),approach,0,dir='+'))
+                if ordinate is None: continue
+                if abs(ordinate-py) > 1e-7*max(1,abs(py)): return None
+                limit = s.limit(derivative.subs(x,nearby),approach,0,dir='+')
+                direction = (0.0,1.0) if limit in (s.oo,-s.oo) else _graph_direction(1.0,finite(limit))
+                if direction is not None: directions.append(direction)
+            except (NotImplementedError, ValueError, TypeError): continue
+        if not directions: return None
+        if any(abs(directions[0][0]*dy-directions[0][1]*dx)>1e-7 for dx,dy in directions[1:]): return None
+        return directions[0]
+    residual = _square_free_graph(residual,x,y)
+    substitutions = {x:px,y:py}
+    return _graph_direction(finite(s.diff(residual,y).subs(substitutions)), finite(-s.diff(residual,x).subs(substitutions)))
+
+
 def implicit_analysis(engine, request, curves, x, y, numeric, zeroes, tangent_point):
     """Analyze all branches for searches; use the traced point for a local branch."""
     selected, other = int(request.get("selected", 0)), int(request.get("other", 1))
@@ -997,7 +1037,7 @@ def implicit_analysis(engine, request, curves, x, y, numeric, zeroes, tangent_po
                 response = graph_analysis(engine, {**request,"selected":0,"other":1}, (left,right))
                 points.extend(point for point in response["points"] if valid(*point,(residual,target)))
         return collect(points)
-    if action in ("derivative", "tangent"):
+    if action in ("derivative", "tangent", "tangentangle"):
         ordinates = [value for value in (finite(root) for root in solutions(residual.subs(x,s.Float(a)), y)) if value is not None and valid(a,value)]
         require(ordinates, "Curve is undefined at this x coordinate")
         hint = request.get("tracePoint")
@@ -1006,7 +1046,7 @@ def implicit_analysis(engine, request, curves, x, y, numeric, zeroes, tangent_po
         horizontal, vertical = finite(s.diff(residual,x).subs({x:a,y:py})), finite(s.diff(residual,y).subs({x:a,y:py}))
         require(horizontal is not None and vertical is not None and math.hypot(horizontal,vertical)>1e-12, "Tangent is undefined at this point")
         slope = -horizontal/vertical if abs(vertical)>1e-12 else None
-        if action == "tangent": return {**tangent_point(a,py,slope,(vertical,-horizontal)),"implicit":True}
+        if action in ("tangent", "tangentangle"): return {**tangent_point(a,py,slope,(vertical,-horizontal)),"implicit":True}
         payload = {"analysis":action,"points":[[a,py]],"implicit":True}
         if slope is None: payload["vertical"]=True
         else: payload["value"]=slope
@@ -1038,15 +1078,21 @@ def implicit_analysis(engine, request, curves, x, y, numeric, zeroes, tangent_po
 def graph_analysis(engine, request, _expressions=None, _derivative_primitive=None):
     bind_graph_parameters(engine,request)
     kind = request.get("graphKind","cartesian")
+    if request.get("analysis") in ("tangentangle","intersectionangle"):
+        # Plot coordinates are real; this also makes Abs derivatives evaluable.
+        for name in (("x","y") if kind == "cartesian" else (request.get("variable","t"),)):
+            if engine.symbol(name).is_real is not True:
+                engine.symbols[name] = s.Symbol(name,real=True)
     trees = request.get("trees",[])
     selected_order = request.get("selectedDerivativeOrder", 0)
-    other_order = request.get("otherDerivativeOrder", 0) if request.get("analysis") == "intersection" else 0
+    pair_analysis = request.get("analysis") in ("intersection", "intersectionangle")
+    other_order = request.get("otherDerivativeOrder", 0) if pair_analysis else 0
     require(isinstance(selected_order,int) and selected_order in (0,1,2) and isinstance(other_order,int) and other_order in (0,1,2), "Invalid derivative order")
     if _expressions is None and (selected_order or other_order):
         require(kind == "cartesian", "Derivative analysis requires Cartesian curves")
         selected, other = int(request.get("selected",0)), int(request.get("other",1))
         require(0 <= selected < len(trees), "Select a function")
-        if request.get("analysis") == "intersection": require(0 <= other < len(trees), "Select two different functions")
+        if pair_analysis: require(0 <= other < len(trees), "Select two different functions")
         x, y = engine.symbol("x"), engine.symbol("y")
         engine.bindings.update({"x":x,"y":y})
         raw = list(graph_expressions(engine,trees,("x","y")))
@@ -1061,7 +1107,7 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
                 require(branches, "Derivative graph requires branches expressible as y=f(x)")
                 derivative_primitives = {s.diff(branch,x,order):s.diff(branch,x,order-1) for branch in branches}
                 derivatives = tuple(derivative_primitives)
-                if index == selected and order == selected_order and len(derivatives)>1 and request.get("analysis") in ("derivative","tangent","integral","arclength"):
+                if index == selected and order == selected_order and len(derivatives)>1 and request.get("analysis") in ("derivative","tangent","tangentangle","integral","arclength"):
                     hint = request.get("tracePoint")
                     require(isinstance(hint,(list,tuple)) and len(hint)==2, "Tap a point on the curve to choose a branch")
                     hint_x,hint_y = map(float,hint)
@@ -1084,22 +1130,22 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
             return targets[key]
         resolved = {key:value for key,value in request.items() if key not in ("selectedDerivativeOrder","otherDerivativeOrder")}
         resolved["selected"] = target(selected,selected_order)
-        if request.get("analysis") == "intersection": resolved["other"] = target(other,other_order)
+        if pair_analysis: resolved["other"] = target(other,other_order)
         response = graph_analysis(engine,resolved,tuple(raw),primitives.get(resolved["selected"]))
         response.update(selected=selected,selectedDerivativeOrder=selected_order)
-        if request.get("analysis") == "intersection": response.update(other=other,otherDerivativeOrder=other_order)
+        if pair_analysis: response.update(other=other,otherDerivativeOrder=other_order)
         return response
     require(kind in ("cartesian","parametric","polar"), "Analysis supports Cartesian, parametric and polar curves")
     selected = int(request.get("selected", 0)); other = int(request.get("other", 1))
     size = len(trees) if _expressions is None else len(_expressions)
     require(0 <= selected < size, "Select a function")
     action = request.get("analysis", "root")
-    require(action in ("root","yintercept","intersection","minimum","maximum","inflection","derivative","tangent","integral","arclength"), "Unknown graph analysis")
-    require(action != "intersection" or kind == "cartesian", "Intersections need two Cartesian functions")
-    if action == "intersection": require(0 <= other < size and other != selected, "Select two different functions")
+    require(action in ("root","yintercept","intersection","intersectionangle","minimum","maximum","inflection","derivative","tangent","tangentangle","integral","arclength"), "Unknown graph analysis")
+    require(not pair_analysis or kind == "cartesian", "Intersections need two Cartesian functions")
+    if pair_analysis: require(0 <= other < size and other != selected, "Select two different functions")
     fixed_intercept = action == "yintercept" and kind == "cartesian"
     a = 0.0 if fixed_intercept else float(request.get("a", -10)); b = a if fixed_intercept else float(request.get("b", 10))
-    singled = action in ("derivative", "tangent") or fixed_intercept
+    singled = action in ("derivative", "tangent", "tangentangle") or fixed_intercept
     require(math.isfinite(a) and math.isfinite(b) and (singled or a < b) and within_limit(abs(b-a),1e9), "Invalid analysis range")
     def numeric(expr, variable):
         raw = s.lambdify(variable, expr, modules="math", cse=True, docstring_limit=0)
@@ -1136,8 +1182,13 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
         ymin=float(request.get("yMin",-10)); ymax=float(request.get("yMax",10))
         if not all(math.isfinite(value) for value in (xmin,xmax,ymin,ymax)) or xmax <= xmin or ymax <= ymin: xmin,xmax,ymin,ymax = -10,10,-10,10
         payload = {"analysis":action,"points":[[px,py]]}
+        if action == "tangentangle":
+            direction = _graph_direction(*(direction if direction is not None else (1.0,slope)))
+            require(direction is not None, "Tangent is undefined at this point")
+            radians = math.atan2(direction[1],direction[0]) % math.pi
+            payload.update(value=math.degrees(radians),radians=radians,unit="deg")
         if slope is None: payload["vertical"]=True
-        else: payload["value"]=slope
+        elif action != "tangentangle": payload["value"]=slope
         if direction is not None:
             dx,dy = direction
             speed = math.hypot(dx,dy)
@@ -1155,6 +1206,20 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
         raw = graph_expressions(engine, trees, ("x","y")) if _expressions is None else _expressions
         sliders = {symbol:value for symbol,value in resolved_parameters(engine,request,raw,{"x","y"}).items() if symbol not in (x,y)}
         curves = [cartesian_curve(substitute_parameters(expression,sliders),x,y) for expression in raw]
+        if action == "intersectionangle":
+            response = graph_analysis(engine,{**request,"analysis":"intersection"},tuple(substitute_parameters(expression,sliders) for expression in raw))
+            angles = []
+            for px,py in response["points"]:
+                first = _cartesian_tangent_direction(curves[selected],x,y,px,py,engine.precision)
+                second = _cartesian_tangent_direction(curves[other],x,y,px,py,engine.precision)
+                if first is None or second is None:
+                    angles.append({"value":None,"radians":None,"error":"Tangent is undefined at this point"})
+                else:
+                    cross = abs(first[0]*second[1]-first[1]*second[0])
+                    dot = abs(first[0]*second[0]+first[1]*second[1])
+                    radians = math.atan2(cross,dot)
+                    angles.append({"value":math.degrees(radians),"radians":radians})
+            return {**response,"analysis":action,"angles":angles,"unit":"deg"}
         if curves[selected][0] is None or action=="intersection" and curves[other][0] is None:
             return implicit_analysis(engine,request,curves,x,y,numeric,zeroes,tangent_point)
         expressions = [function for function,_ in curves]
@@ -1171,9 +1236,11 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
             derivative = numeric(s.diff(expression, x), x)(a)
             require(derivative is not None and value(a) is not None, "Derivative is undefined at this point")
             return {"analysis":action,"points":[[a,value(a)]],"value":derivative}
-        if action == "tangent":
+        if action in ("tangent", "tangentangle"):
             require(value(a) is not None, "Tangent is undefined at this point")
-            return tangent_point(a, value(a), numeric(s.diff(expression, x), x)(a))
+            direction = _cartesian_tangent_direction(curves[selected],x,y,a,value(a),engine.precision) if action == "tangentangle" else None
+            if action == "tangentangle": require(direction is not None, "Tangent is undefined at this point")
+            return tangent_point(a, value(a), numeric(s.diff(expression, x), x)(a),direction)
         if action == "inflection":
             second = numeric(s.diff(expression, x, 2), x)
             step = max(1e-7,(b-a)*1e-4)
@@ -1269,7 +1336,7 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
     elif action == "inflection":
         curvature = dfirst*s.diff(dsecond, variable)-dsecond*s.diff(dfirst, variable)
         points = [point(at) for at in zeroes(numeric(curvature, variable))]
-    elif action in ("derivative", "tangent"):
+    elif action in ("derivative", "tangent", "tangentangle"):
         current = point(a)
         require(current is not None, "Curve is undefined at this parameter")
         horizontal, vertical = dxvalue(a), dyvalue(a)

@@ -108,6 +108,7 @@ import kotlin.math.*
     var first by rememberSaveable { mutableStateOf(m.xMin.toString()) }; var second by rememberSaveable { mutableStateOf(m.xMax.toString()) }
     var pointAt by rememberSaveable { mutableStateOf(((m.xMin+m.xMax)/2).toString()) }
     var tangentPositionOpen by rememberSaveable { mutableStateOf(false) }
+    var tangentAction by rememberSaveable { mutableStateOf("tangent") }
     var scrollToSection by remember { mutableStateOf<String?>(null) }
     val graphScrollState=rememberScrollState()
     val tableRequester=remember {BringIntoViewRequester()}
@@ -165,6 +166,7 @@ import kotlin.math.*
             Text(tr("r(t) · radians · one curve per line"),fontSize=12.sp,color=c.muted)
             Text(tr("u(n) · use u(n−1) for recurrences"),fontSize=12.sp,color=c.muted)
             Text(tr("Tap to trace · drag to pan · pinch or scroll to zoom"),fontSize=12.sp,color=c.muted)
+            Text(tr("Angle analysis: choose a point for Tangent angle, or two Cartesian curves and an a–b interval for Intersection angle. Results show degrees and radians."),fontSize=12.sp,color=c.muted)
             Text(tr("Drag to rotate freely · Pinch to zoom"),fontSize=12.sp,color=c.muted)
             Text(tr("Function / y=f(x) · Implicit / F(x,y)=0 · e.g. x+1, y=x+1, y^2+x^2=1"),fontSize=12.sp,color=c.muted)
             Text(tr("Piecewise functions / domain restrictions"),fontSize=12.sp,color=c.ink,fontWeight=FontWeight.SemiBold)
@@ -381,13 +383,13 @@ import kotlin.math.*
             val targetY=m.yMax-(m.yMax-m.yMin)*p.y/size.height
             val xSpan=m.xMax-m.xMin;val ySpan=m.yMax-m.yMin
             if(xSpan<=0.0 || ySpan<=0.0)return@detectTapGestures
-            if(selectedDerivativeOrder!=0 && m.graphAnalysis?.optString("analysis")=="tangent" && m.graphAnalysis?.optJSONArray("line")!=null) {
+            if(selectedDerivativeOrder!=0 && m.graphAnalysis?.optString("analysis") in listOf("tangent","tangentangle") && m.graphAnalysis?.optJSONArray("line")!=null) {
                 val point=latestTraceCurve?.let {graphTracePointAtX(it,target,targetY)}
                 m.trace=point
-                if(point!=null){pointAt=target.toString();m.analyzeGraph("tangent",pointAt,pointAt,analysisCurveKey,other)}
+                if(point!=null){pointAt=target.toString();m.analyzeGraph(tangentAction,pointAt,pointAt,analysisCurveKey,other)}
                 return@detectTapGestures
             }
-            if(selectedDerivativeOrder==0 && m.graphAnalysis?.optString("analysis")=="tangent" && m.graphAnalysis?.optJSONArray("line")!=null) {
+            if(selectedDerivativeOrder==0 && m.graphAnalysis?.optString("analysis") in listOf("tangent","tangentangle") && m.graphAnalysis?.optJSONArray("line")!=null) {
                 var nearestCurve=-1;var nearestIndex=-1;var nearestDistance=Double.POSITIVE_INFINITY
                 var nearestPoint:Pair<Double,Double>?=null
                 fun considerPoint(curveIndex:Int,pointIndex:Int,point:Pair<Double,Double>) {
@@ -407,7 +409,7 @@ import kotlin.math.*
                         selected=nearestCurve
                         if(other==selected)other=(selected+1)%latestCurves.size
                         pointAt=at.toString();m.trace=point
-                        m.analyzeGraph("tangent",pointAt,pointAt,nearestCurve,other)
+                        m.analyzeGraph(tangentAction,pointAt,pointAt,nearestCurve,other)
                         return@detectTapGestures
                     }
                 }
@@ -415,7 +417,7 @@ import kotlin.math.*
             val curve=latestTraceCurve
             m.trace=if(m.graphKind=="cartesian")curve?.let {graphTracePointAtX(it,target,targetY)}
                 else curve?.filterNotNull()?.minByOrNull { ((it.first-target)/xSpan).pow(2)+((it.second-targetY)/ySpan).pow(2) }
-        } }.semantics { contentDescription="Graph with ${curves.size} curves. Pinch to zoom, drag to pan, tap to trace${if(m.graphAnalysis?.optString("analysis")=="tangent")" or move the tangent" else ""}. Use Range and Analyze for accessible controls." },c.display,exports) {
+        } }.semantics { contentDescription="Graph with ${curves.size} curves. Pinch to zoom, drag to pan, tap to trace${if(m.graphAnalysis?.optString("analysis") in listOf("tangent","tangentangle"))" or move the tangent" else ""}. Use Range and Analyze for accessible controls." },c.display,exports) {
             val xlo=m.xMin;val xhi=m.xMax
             fun px(x:Double)=((x-xlo)/(xhi-xlo)*size.width).toFloat()
             fun py(y:Double)=(size.height-(y-m.yMin)/(m.yMax-m.yMin)*size.height).toFloat()
@@ -557,7 +559,7 @@ import kotlin.math.*
             }
             if(m.graphKind=="cartesian"&&analysisCurveLabels.size>1) {
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                    Text("Intersection: selected ${analysisCurveLabels[analysisCurveKey]} with",fontSize=12.sp,color=c.muted)
+                    Text(if(isKorean())"교점 / 교점 각도: ${analysisCurveLabels[analysisCurveKey]}와" else "Intersection / angle: ${analysisCurveLabels[analysisCurveKey]} with",fontSize=12.sp,color=c.muted)
                     Spacer(Modifier.width(6.dp))
                     Row(Modifier.weight(1f).horizontalScroll(rememberScrollState())) {
                         analysisCurveLabels.filterKeys {it!=analysisCurveKey}.forEach {(key,label)->SmallAction(label,key==other) {m.clearGraphTangent();tangentPositionOpen=false;other=key}}
@@ -565,17 +567,18 @@ import kotlin.math.*
                 }
             }
             Row(Modifier.horizontalScroll(rememberScrollState())) {
-                val actions=if(m.graphKind=="cartesian")listOf("Root","Y-intercept","Intersection","Minimum","Maximum","Inflection","Derivative","Tangent","Integral","Arc length") else listOf("Root","Y-intercept","Minimum","Maximum","Inflection","Derivative","Tangent","Integral","Arc length")
+                val actions=if(m.graphKind=="cartesian")listOf("Root","Y-intercept","Intersection","Intersection angle","Minimum","Maximum","Inflection","Derivative","Tangent","Tangent angle","Integral","Arc length") else listOf("Root","Y-intercept","Minimum","Maximum","Inflection","Derivative","Tangent","Tangent angle","Integral","Arc length")
                 actions.forEach { action->
                     val key=action.lowercase().replace(" ","").replace("-","")
-                    val isTangent=key=="tangent"
-                    SmallAction(action,active=if(isTangent&&tangentPositionOpen)true else null,shaded=isTangent&&tangentPositionOpen) {
+                    val isTangent=key in listOf("tangent","tangentangle")
+                    SmallAction(action,active=if(isTangent&&tangentPositionOpen&&tangentAction==key)true else null,shaded=isTangent&&tangentPositionOpen&&tangentAction==key) {
                         focusManager.clearFocus()
-                        if(isTangent&&tangentPositionOpen) {
+                        if(isTangent&&tangentPositionOpen&&tangentAction==key) {
                             tangentPositionOpen=false
                             m.clearGraphTangent()
                         } else {
                             tangentPositionOpen=isTangent
+                            if(isTangent)tangentAction=key
                             m.analyzeGraph(key,if(isTangent)pointAt else first,second,analysisCurveKey,other)
                         }
                     }
@@ -587,7 +590,7 @@ import kotlin.math.*
                 if(sliderMin.isFinite() && sliderMax.isFinite() && sliderSpan.isFinite() && sliderSpan>0.0) {
                     val position=((pointAt.toDoubleOrNull()?.takeIf(Double::isFinite) ?: sliderMin)-sliderMin).div(sliderSpan).coerceIn(0.0,1.0).toFloat()
                     CompactSlider(position,{pointAt=(sliderMin+it*sliderSpan).toString()},Modifier.fillMaxWidth(),onValueChangeFinished={
-                        m.analyzeGraph("tangent",pointAt,pointAt,analysisCurveKey,other)
+                        m.analyzeGraph(tangentAction,pointAt,pointAt,analysisCurveKey,other)
                     })
                 }
             }
@@ -597,11 +600,16 @@ import kotlin.math.*
             }
             if(m.graphAnalysisBusy)Text(if(isKorean())"분석 중…" else "Analyzing…",fontSize=12.sp,color=c.muted)
             m.graphAnalysis?.let {result->
-                val name=when(result.optString("analysis")){"yintercept"->tr("Y-intercept");"arclength"->"Arc length";"inflection"->"Inflection";"tangent"->"Tangent slope";"intersection"->"Intersection";"minimum"->"Minimum";"maximum"->"Maximum";"integral"->"Integral";else->result.optString("analysis").replaceFirstChar {it.uppercase()}}
-                if(result.has("value"))Text("$name = ${graphDisplayNumber(result.optDouble("value"),m.displayDigits)}",fontSize=16.sp)
+                val name=when(result.optString("analysis")){"tangentangle"->tr("Tangent angle");"intersectionangle"->tr("Intersection angle");"yintercept"->tr("Y-intercept");"arclength"->"Arc length";"inflection"->"Inflection";"tangent"->"Tangent slope";"intersection"->"Intersection";"minimum"->"Minimum";"maximum"->"Maximum";"integral"->"Integral";else->result.optString("analysis").replaceFirstChar {it.uppercase()}}
+                val angleResult=result.optString("unit")=="deg"
+                if(angleResult)Text(tr(if(result.optString("analysis")=="tangentangle")"Tangent angle: inclination from the positive x axis (0° ≤ θ < 180°)." else "Intersection angle: smaller angle between tangents (0°–90°)."),fontSize=12.sp,color=c.muted)
+                if(result.has("value"))Text("$name = ${graphDisplayNumber(result.optDouble("value"),m.displayDigits)}"+if(angleResult)"° (${graphDisplayNumber(result.optDouble("radians"),m.displayDigits)} rad)" else "",fontSize=16.sp)
                 else if(result.optBoolean("vertical"))Text("$name · vertical tangent",fontSize=13.sp)
                 else Text("$name · ${result.optInt("count")} point(s)${if(result.optBoolean("truncated"))" · first 80 shown" else ""}",fontSize=13.sp)
-                markers.forEachIndexed {i,p->SmallAction("${i+1}. (${graphDisplayNumber(p.first,m.displayDigits)}, ${graphDisplayNumber(p.second,m.displayDigits)})") {
+                markers.forEachIndexed {i,p->
+                    val angle=result.optJSONArray("angles")?.optJSONObject(i)
+                    val angleText=if(angle==null)"" else if(angle.isNull("value"))" · ${tr("Tangent is undefined at this point")}" else " · ${graphDisplayNumber(angle.optDouble("value"),m.displayDigits)}° (${graphDisplayNumber(angle.optDouble("radians"),m.displayDigits)} rad)"
+                    SmallAction("${i+1}. (${graphDisplayNumber(p.first,m.displayDigits)}, ${graphDisplayNumber(p.second,m.displayDigits)})$angleText") {
                     m.trace=p
                     if(p.first !in m.xMin..m.xMax) {val half=(m.xMax-m.xMin)/2;m.xMin=p.first-half;m.xMax=p.first+half}
                     if(p.second !in m.yMin..m.yMax) {val half=(m.yMax-m.yMin)/2;m.yMin=p.second-half;m.yMax=p.second+half}

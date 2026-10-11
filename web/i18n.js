@@ -105,6 +105,7 @@ Object.assign(korean,nativeKorean,{
   "Enter a finite value between -1e9 and 1e9": "-1e9부터 1e9 사이의 유한한 값을 입력하세요.",
   "Slider maximum": "슬라이더 최댓값",
   "Vertical tangent": "수직 접선",
+  "First 80 points shown": "처음 80개 점만 표시합니다",
   "No points found in this interval": "이 구간에서 찾은 점이 없습니다.",
   "Tap to trace · drag to pan · pinch or scroll to zoom": "눌러 추적 · 드래그하여 이동 · 두 손가락 또는 휠로 확대/축소",
   "x: decimal": "x: 소수",

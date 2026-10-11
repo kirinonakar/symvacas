@@ -17,6 +17,29 @@ import {statisticsModelWorkflowPlan,statisticsDetectedCrossLoadings} from '../st
 // scenario below explicitly loads its own interpreter to keep startup coverage.
 let sharedRuntime;
 
+test('graph angles run through parser and packaged shared engine in real WASM',async()=>{
+  const py=await runtime();
+  const analyze=(sources,analysis,options={})=>{
+    py.globals.set('payload',JSON.stringify({action:'graphAnalysis',graphKind:'cartesian',trees:sources.map(source=>graphInputTree(source)),analysis,selected:0,other:1,a:-2,b:2,...options}));
+    return JSON.parse(py.runPython('calc_engine.dispatch(payload)'));
+  };
+  const inclination=analyze(['-x'],'tangentangle',{a:0});
+  assert.equal(inclination.ok,true,inclination.error);assert.equal(inclination.value,135);assert.ok(Math.abs(inclination.radians-3*Math.PI/4)<1e-8);
+  const vertical=analyze(['x^2+y^2=1'],'tangentangle',{a:1});
+  assert.equal(vertical.ok,true,vertical.error);assert.equal(vertical.value,90);
+  const angles=analyze(['x^2'],'intersectionangle',{selected:0,other:0,otherDerivativeOrder:1,a:-1,b:3});
+  assert.equal(angles.ok,true,angles.error);assert.equal(angles.points.length,2);
+  assert.ok(Math.abs(angles.angles[0].value-Math.atan(2)*180/Math.PI)<1e-7);
+  const circle=analyze(['x^2+y^2=1','x=0'],'intersectionangle');
+  assert.equal(circle.ok,true,circle.error);assert.equal(circle.angles.length,2);assert.ok(circle.angles.every(angle=>angle.value===90));
+  const corner=analyze(['abs(x)','0'],'intersectionangle');
+  assert.equal(corner.ok,true,corner.error);assert.equal(corner.angles[0].value,null);
+  for(const source of ['{x<0:-x,x>=0:x}','{x<0:x,x>=0:2*x}','{x<0:x,x>=0:x+1}']){
+    const result=analyze([source],'tangentangle',{a:0});
+    assert.equal(result.ok,false,source);assert.match(result.error,/undefined/);
+  }
+});
+
 test('modification indices default off and explicit On runs ML and WLSMV diagnostics in real WASM',async()=>{
   const py=await runtime();
   const continuous=JSON.parse(readFileSync(new URL('../../tests/fixtures/sem_extras_reference.json',import.meta.url),'utf8')).cfa.rows;

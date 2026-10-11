@@ -449,25 +449,30 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
   }
   function renderAnalysis(){
     const container=$('graph-analysis-result');container.replaceChildren();if(!analysis)return;
-    const title=document.createElement('div');title.textContent=`${t($('graph-analysis-action').selectedOptions[0]?.textContent||'Analyze')} · ${analysisCurveLabel(analysisCurveKey())}`+(analysis.analysis==='intersection'?` × ${analysisCurveLabel(Number(value('graph-other')))}`:'');container.append(title);
-    if(analysis.value!==undefined)container.append(mathDisplay({kind:'number',value:String(analysis.value)},options().displayDigits,true));
+    const title=document.createElement('div');title.textContent=`${t($('graph-analysis-action').selectedOptions[0]?.textContent||'Analyze')} · ${analysisCurveLabel(analysisCurveKey())}`+(['intersection','intersectionangle'].includes(analysis.analysis)?` × ${analysisCurveLabel(Number(value('graph-other')))}`:'');container.append(title);
+    const angleText=angle=>`${displayNumber(angle.value,options().displayDigits)}° (${displayNumber(angle.radians,options().displayDigits)} rad)`;
+    if(analysis.unit==='deg'){
+      const note=document.createElement('div');note.textContent=t(analysis.analysis==='tangentangle'?'Tangent angle: inclination from the positive x axis (0° ≤ θ < 180°).':'Intersection angle: smaller angle between tangents (0°–90°).');container.append(note);
+    }
+    if(analysis.value!==undefined){if(analysis.unit==='deg'){const value=document.createElement('div');value.textContent=angleText(analysis);container.append(value);}else container.append(mathDisplay({kind:'number',value:String(analysis.value)},options().displayDigits,true));}
     if(analysis.vertical){const note=document.createElement('div');note.textContent=t('Vertical tangent');container.append(note);}
-    for(const point of analysis.points||[]){const button=document.createElement('button');button.className='analysis-point';button.append(mathDisplay({kind:'tuple',args:point.map(n=>({kind:'number',value:String(n)}))},options().displayDigits,true));button.onclick=()=>{if(kind()==='cartesian')selectTrace(point);else{trace=point;render();}};container.append(button);}
+    for(const [index,point] of (analysis.points||[]).entries()){const button=document.createElement('button');button.className='analysis-point';button.append(mathDisplay({kind:'tuple',args:point.map(n=>({kind:'number',value:String(n)}))},options().displayDigits,true));const angle=analysis.angles?.[index];if(angle)button.append(document.createTextNode(` · ${angle.value===null?t('Tangent is undefined at this point'):angleText(angle)}`));button.onclick=()=>{if(kind()==='cartesian')selectTrace(point);else{trace=point;render();}};container.append(button);}
+    if(analysis.truncated){const note=document.createElement('div');note.textContent=t('First 80 points shown');container.append(note);}
     if(!analysis.points?.length&&analysis.value===undefined&&!analysis.vertical){const note=document.createElement('div');note.textContent=t('No points found in this interval');container.append(note);}
   }
   async function analyze(action=value('graph-analysis-action'),point=null){
     if(running||isBusy()||!isReady()){pendingAnalysis={action,point};return;}
-    if(pending&&kind()==='cartesian'&&['derivative','tangent'].includes(action)){pendingAnalysis={action,point};return run();}
+    if(pending&&kind()==='cartesian'&&['derivative','tangent','tangentangle'].includes(action)){pendingAnalysis={action,point};return run();}
     pendingAnalysis=null;clearTimeout(timer);timer=null;
     const token=++analysisRevision;
     try{
       const fixedIntercept=action==='yintercept'&&kind()==='cartesian';
-      const trees=expressions().map(s=>graphInputTree(s,kind())),a=fixedIntercept?0:point??numeric('graph-analysis-a'),b=fixedIntercept||['derivative','tangent'].includes(action)?a:numeric('graph-analysis-b'),view=bounds||currentBounds(),source=value('graph-source'),graphKind=kind();
-      if(!Number.isFinite(a)||!Number.isFinite(b)||!fixedIntercept&&!['derivative','tangent'].includes(action)&&a>=b)throw new Error('Enter finite values with a < b');
+      const trees=expressions().map(s=>graphInputTree(s,kind())),a=fixedIntercept?0:point??numeric('graph-analysis-a'),b=fixedIntercept||['derivative','tangent','tangentangle'].includes(action)?a:numeric('graph-analysis-b'),view=bounds||currentBounds(),source=value('graph-source'),graphKind=kind();
+      if(!Number.isFinite(a)||!Number.isFinite(b)||!fixedIntercept&&!['derivative','tangent','tangentangle'].includes(action)&&a>=b)throw new Error('Enter finite values with a < b');
       const currentParameters={...parameters};
       const target=analysisTarget(),other=otherTarget();
-      if(!target||target.source>=trees.length||action==='intersection'&&(!other||other.source>=trees.length||JSON.stringify(target)===JSON.stringify(other)))throw new Error('Select two different functions');
-      const tracePoint=trace||(graphKind==='cartesian'&&['derivative','tangent'].includes(action)&&(selectedDerivativeOrder!==0||result?.implicitCurves?.[selectedPlotIndex()])?curvePointAtX(result?.curves?.[selectedPlotIndex()]||[],a):null);
+      if(!target||target.source>=trees.length||['intersection','intersectionangle'].includes(action)&&(!other||other.source>=trees.length||JSON.stringify(target)===JSON.stringify(other)))throw new Error('Select two different functions');
+      const tracePoint=trace||(graphKind==='cartesian'&&['derivative','tangent','tangentangle'].includes(action)&&(selectedDerivativeOrder!==0||result?.implicitCurves?.[selectedPlotIndex()])?curvePointAtX(result?.curves?.[selectedPlotIndex()]||[],a):null);
       const response=await execute({...options(),angle:'RAD',action:'graphAnalysis',graphKind,trees,analysis:action,a,b,selected:target.source,selectedDerivativeOrder:target.order,other:other?.source??0,otherDerivativeOrder:other?.order??0,variable:graphKind==='cartesian'?'x':'t',parameters:currentParameters,tracePoint,xMin:view.xmin,xMax:view.xmax,yMin:view.ymin,yMax:view.ymax});
       if(token!==analysisRevision||source!==value('graph-source')||graphKind!==kind()||JSON.stringify(currentParameters)!==JSON.stringify(parameters))return;if(!response.ok){onError(response.error);return;}
       analysis=response;$('graph-status').textContent='';integral=action==='integral'&&graphKind==='cartesian'?[a,b]:null;trace=response.points?.[0]||trace;$('graph-analysis-action').value=action;analysisControls();render();
@@ -485,9 +490,9 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
   function selectTrace(point,parameter=point[0]){
     trace=point;
     const action=value('graph-analysis-action');
-    if(['derivative','tangent'].includes(action)){showNumber('graph-analysis-a',parameter);$('graph-tangent-slider').value=String(parameter);}
+    if(['derivative','tangent','tangentangle'].includes(action)){showNumber('graph-analysis-a',parameter);$('graph-tangent-slider').value=String(parameter);}
     render();
-    if(action==='tangent')analyze('tangent',parameter);
+    if(['tangent','tangentangle'].includes(action))analyze(action,parameter);
   }
   const disposeGestures=bindGraphGestures($('graph-plot'),{getBounds:()=>bounds,onView:changeView,onTrace:position=>{
     if(['cartesian','implicit'].includes(kind())){
@@ -533,15 +538,15 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
   };
   function analysisControls(){
     otherChoices();
-    const action=value('graph-analysis-action'),fixedIntercept=action==='yintercept'&&kind()==='cartesian',point=['derivative','tangent'].includes(action),tangent=action==='tangent';
-    $('graph-other').closest('label').hidden=action!=='intersection';$('graph-analysis-b').closest('label').hidden=point||fixedIntercept;
+    const action=value('graph-analysis-action'),fixedIntercept=action==='yintercept'&&kind()==='cartesian',point=['derivative','tangent','tangentangle'].includes(action),tangent=['tangent','tangentangle'].includes(action);
+    $('graph-other').closest('label').hidden=!['intersection','intersectionangle'].includes(action);$('graph-analysis-b').closest('label').hidden=point||fixedIntercept;
     $('graph-analysis-a').closest('label').hidden=fixedIntercept;$('graph-analysis-visible-range').hidden=fixedIntercept;
     $('graph-tangent-position').hidden=!tangent;$('graph-analysis-a-slider').hidden=tangent||fixedIntercept;$('graph-analysis-b-slider').hidden=point||fixedIntercept;
     const pair=pairedSliders.get('graph-analysis-a');if(pair){pair.track.hidden=tangent||fixedIntercept;syncRangePair(pair);}
     const [low,high]=analysisRange(),position=numeric('graph-analysis-a');
     if(Number.isFinite(high-low)&&high>low){$('graph-tangent-slider').min=String(low);$('graph-tangent-slider').max=String(high);if(Number.isFinite(position))$('graph-tangent-slider').value=String(Math.max(low,Math.min(high,position)));}
   }
-  $('graph-analysis-action').onchange=analysisControls;$('graph-tangent-slider').oninput=()=>{showNumber('graph-analysis-a',Number(value('graph-tangent-slider')));};$('graph-tangent-slider').onchange=()=>analyze('tangent');
+  $('graph-analysis-action').onchange=()=>{pendingAnalysis=null;analysisRevision++;analysis=null;integral=null;analysisControls();render();};$('graph-tangent-slider').oninput=()=>{showNumber('graph-analysis-a',Number(value('graph-tangent-slider')));};$('graph-tangent-slider').onchange=()=>analyze(value('graph-analysis-action'));
   $('graph-other').onchange=()=>{pendingAnalysis=null;analysisRevision++;analysis=null;trace=null;integral=null;render();persist();};
   function bindRangeTrackClick(track){
     track.addEventListener('click',event=>{
@@ -590,7 +595,7 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
     state.frame=requestFrame(animateFrame);
   }
   $('graph-animate').onclick=()=>{if(animation){stopAnimation();return;}clearTimeout(timer);timer=null;analysis=null;trace=null;integral=null;render();animation={frame:null,previous:null,updated:-Infinity,phase:0,phases:Object.fromEntries(Object.keys(parameters).map(name=>[name,parameterPhase(name)]))};setText($('graph-animate'),'Stop');updateButtons();animation.frame=requestFrame(animateFrame);};
-  function typeControls(){$('graph-reset-ranges').hidden=kind()!=='surface';$('graph-viewport-ranges').hidden=['cartesian','implicit','surface'].includes(kind());$('graph-surface-controls').hidden=!['surface','space'].includes(kind());$('graph-surface-samples').closest('.graph-surface-density').hidden=kind()==='space';$('graph-surface-render').closest('label').hidden=kind()==='space';setText($('graph-fit'),['surface','space'].includes(kind())?'Fit Z':'Fit Y');setText($('graph-analysis-visible-range'),kind()==='cartesian'?'Use visible x range':'Use visible t range');$('graph-analysis').hidden=!['cartesian','parametric','polar'].includes(kind());for(const id of ['graph-derivative','graph-second-derivative'])$(id).closest('label').hidden=kind()!=='cartesian';$('graph-initial').closest('label').hidden=!['sequence','differential'].includes(kind());$('graph-t0').closest('label').hidden=kind()!=='differential';$('graph-analysis-action').querySelector('[value="intersection"]').disabled=kind()!=='cartesian';analysisControls();}
+  function typeControls(){$('graph-reset-ranges').hidden=kind()!=='surface';$('graph-viewport-ranges').hidden=['cartesian','implicit','surface'].includes(kind());$('graph-surface-controls').hidden=!['surface','space'].includes(kind());$('graph-surface-samples').closest('.graph-surface-density').hidden=kind()==='space';$('graph-surface-render').closest('label').hidden=kind()==='space';setText($('graph-fit'),['surface','space'].includes(kind())?'Fit Z':'Fit Y');setText($('graph-analysis-visible-range'),kind()==='cartesian'?'Use visible x range':'Use visible t range');$('graph-analysis').hidden=!['cartesian','parametric','polar'].includes(kind());for(const id of ['graph-derivative','graph-second-derivative'])$(id).closest('label').hidden=kind()!=='cartesian';$('graph-initial').closest('label').hidden=!['sequence','differential'].includes(kind());$('graph-t0').closest('label').hidden=kind()!=='differential';for(const action of ['intersection','intersectionangle'])$('graph-analysis-action').querySelector(`[value="${action}"]`).disabled=kind()!=='cartesian';analysisControls();}
   $('graph-kind').onchange=()=>{
     pendingAnalysis=null;
     sourceDrafts[sourceKind]=value('graph-source');sourceKind=kind();$('graph-source').value=sourceDrafts[sourceKind];inputLineControls();
