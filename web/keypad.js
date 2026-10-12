@@ -44,6 +44,12 @@ export function bindKeyPress(button,press,longPress,{delay=500,schedule=setTimeo
 
 export function renderKeypad(container,{second=false,shift=false,alpha=false,hyperbolic=false,press,longPress}) {
   container.setAttribute('translate','no');
+  const exchangeArrow=()=>{
+    const ns='http://www.w3.org/2000/svg',icon=document.createElementNS(ns,'svg'),path=document.createElementNS(ns,'path');
+    icon.setAttribute('viewBox','0 0 100 50');icon.setAttribute('preserveAspectRatio','none');icon.setAttribute('aria-hidden','true');icon.setAttribute('focusable','false');icon.classList.add('key-exchange-arrow');
+    icon.setAttribute('fill','none');icon.setAttribute('stroke','currentColor');icon.setAttribute('stroke-width','7');icon.setAttribute('stroke-linejoin','round');
+    path.setAttribute('d','M6 25L30 4V16H70V4L94 25L70 46V34H30V46Z');icon.append(path);return icon;
+  };
   const create=k=>{
     const button=document.createElement('button');button.type='button';button.className=`key ${k.type}`;button.dataset.input=k.input;
     button.keySpec=k;
@@ -51,8 +57,13 @@ export function renderKeypad(container,{second=false,shift=false,alpha=false,hyp
     const symbol=shift&&!alpha?shiftedSymbols[k.alternate]:null;
     button.setAttribute('aria-label',alpha&&k.alpha?k.alpha:shift&&k.alternate?symbol||k.alternate:k.title);
     if(['SHIFT','ALPHA','SECOND','HYP'].includes(k.input)){const active=k.input==='SHIFT'?shift:k.input==='ALPHA'?alpha:k.input==='SECOND'?second:hyperbolic;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));}
-    const legends=document.createElement('small');legends.className='key-hints';legends.append(document.createTextNode(k.secondary));
-    if(k.alpha){const letter=document.createElement('span');letter.className='alpha-legend';letter.textContent=k.alpha;legends.append(document.createTextNode('  '),letter);}
+    const legends=document.createElement('small');legends.className='key-hints';
+    if(k.input==='S⇔D'){
+      const mixed=document.createElement('span');mixed.className='key-mixed-legend';
+      for(const text of ['a','b/c','⇔','d/c']){const part=text==='⇔'?exchangeArrow():document.createElement('span');if(text!=='⇔')part.textContent=text;mixed.append(part);}
+      legends.append(mixed);
+    }else legends.append(document.createTextNode(k.secondary));
+    if(k.alpha){const letter=document.createElement('span');letter.className='alpha-legend';letter.textContent=k.alpha;if(k.input!=='S⇔D')legends.append(document.createTextNode('  '));legends.append(letter);}
     const face=document.createElement('span');face.className='key-face';
     if(k.input==='()/()'){
       const fraction=document.createElement('span');fraction.className='key-fraction';fraction.setAttribute('aria-hidden','true');
@@ -69,6 +80,8 @@ export function renderKeypad(container,{second=false,shift=false,alpha=false,hyp
       icon.setAttribute('viewBox','0 0 24 18');icon.setAttribute('aria-hidden','true');icon.setAttribute('focusable','false');icon.classList.add('key-backspace');
       icon.setAttribute('fill','none');icon.setAttribute('stroke','currentColor');icon.setAttribute('stroke-width','1.8');icon.setAttribute('stroke-linecap','round');icon.setAttribute('stroke-linejoin','round');
       shape.setAttribute('d','M6.1 1.4H20.2C21.2 1.4 22 2.2 22 3.2V14.8C22 15.8 21.2 16.6 20.2 16.6H6.1C5.5 16.6 5.1 16.4 4.8 15.9L1.8 9.8C1.5 9.3 1.5 8.7 1.8 8.2L4.8 2.1C5.1 1.6 5.5 1.4 6.1 1.4Z');cross.setAttribute('d','M9.9 5.8L16.3 12.2M16.3 5.8L9.9 12.2');cross.setAttribute('stroke-width','2.2');icon.append(shape,cross);face.append(icon);
+    }else if(k.input==='S⇔D'){
+      for(const text of ['S','⇔','D']){const part=text==='⇔'?exchangeArrow():document.createElement('span');if(text!=='⇔')part.textContent=text;face.append(part);}
     }else face.textContent=k.title;
     button.append(legends,face);bindKeyPress(button,()=>press(k),()=>longPress(k));return button;
   };

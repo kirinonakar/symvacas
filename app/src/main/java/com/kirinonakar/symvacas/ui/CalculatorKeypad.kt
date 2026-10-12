@@ -201,6 +201,22 @@ internal fun performKeypadInput(m:CalculatorModel,requestedValue:String,open:(St
     val pressed by interaction.collectIsPressedAsState()
     Box(modifier.clip(RoundedCornerShape(35)).background(Brush.verticalGradient(listOf(c.numeric,c.scientific))).background(if(pressed)pressedShade(c.numeric) else Color.Transparent).border(1.dp,c.muted.copy(alpha=.3f),RoundedCornerShape(35)).clickable(interactionSource=interaction,indication=LocalIndication.current,onClick=onClick).semantics{contentDescription=description},contentAlignment=Alignment.Center){Text(label,fontSize=12.sp,color=c.ink)}
 }
+@Composable private fun KeypadExchangeArrow(color:Color,fontSize:TextUnit) {
+    val keySize=with(LocalDensity.current){fontSize.toDp()}
+    Canvas(Modifier.size(width=keySize*.7f,height=keySize*.5f)) {
+        val arrow=Path().apply {
+            moveTo(size.width*.06f,size.height*.5f)
+            lineTo(size.width*.3f,size.height*.08f);lineTo(size.width*.3f,size.height*.32f)
+            lineTo(size.width*.7f,size.height*.32f);lineTo(size.width*.7f,size.height*.08f)
+            lineTo(size.width*.94f,size.height*.5f)
+            lineTo(size.width*.7f,size.height*.92f);lineTo(size.width*.7f,size.height*.68f)
+            lineTo(size.width*.3f,size.height*.68f);lineTo(size.width*.3f,size.height*.92f)
+            close()
+        }
+        drawPath(arrow,color,style=Stroke(width=size.width*.07f,join=StrokeJoin.Round))
+    }
+}
+
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable private fun Keycap(key:KeySpec,modifier:Modifier,active:Boolean=false,shifted:Boolean=false,onClick:()->Unit,onLongClick:(()->Unit)?=null) {
     val c=LocalInstrument.current
@@ -221,12 +237,22 @@ internal fun performKeypadInput(m:CalculatorModel,requestedValue:String,open:(St
     BoxWithConstraints(modifier.combinedClickable(interactionSource=interaction,indication=null,onClick=onClick,onLongClick=onLongClick).semantics(mergeDescendants=true){contentDescription=when(key.input){"TO_GRAPH"->"Graph current expression";"MATRIX_INPUT"->if(shifted)"Insert matrix, choose size" else "Insert 2 by 2 matrix";else->shiftedSymbol ?: if(shifted&&key.alternate.isNotBlank())if(key.alternate=="RELATION")"Insert equals" else key.alternate else key.title};stateDescription=if(active)"Active" else listOf(key.secondary,key.alpha).filter{it.isNotBlank()}.joinToString()}) {
         val labelHeight=(maxHeight*.25f).coerceAtMost(15.dp)
         val keyFont=(maxHeight.value*(when(key.type){"numeric","danger"->.44f;"action"->.24f;else->.32f})).coerceIn(10f,24f).sp
-        val smallFont=(labelHeight.value*.66f+1f).coerceIn(7f,if(key.secondary.length+key.alpha.length>10)8.5f else 11f).sp
+        val smallFont=(labelHeight.value*.66f+2f).coerceIn(8f,if(key.secondary.length+key.alpha.length>10)9.5f else 12f).sp
         Column(Modifier.fillMaxSize(),horizontalAlignment=Alignment.CenterHorizontally) {
             Row(Modifier.fillMaxWidth().height(labelHeight),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
-                Text(if(key.type=="round")key.title else key.secondary,color=if(key.title=="ALPHA")c.alpha else c.shift,fontSize=smallFont,lineHeight=smallFont,maxLines=1)
-                if(key.alpha.isNotBlank())Text("  "+when(key.alpha){"i"->"𝑖";"e"->"𝑒";else->key.alpha},color=c.alpha,fontSize=smallFont,lineHeight=smallFont,maxLines=1)
-                if(key.type=="round"&&key.secondary.isNotBlank())Text(" "+key.secondary,color=c.shift,fontSize=8.sp,lineHeight=8.sp)
+                if(key.title=="S⇔D") {
+                    Row(Modifier.weight(1f),horizontalArrangement=Arrangement.spacedBy(1.dp,Alignment.CenterHorizontally),verticalAlignment=Alignment.CenterVertically) {
+                        Text("a",color=c.shift,fontSize=smallFont,lineHeight=smallFont,maxLines=1)
+                        Text("b/c",color=c.shift,fontSize=smallFont,lineHeight=smallFont,maxLines=1)
+                        KeypadExchangeArrow(c.shift,smallFont)
+                        Text("d/c",color=c.shift,fontSize=smallFont,lineHeight=smallFont,maxLines=1)
+                    }
+                    Text(key.alpha,Modifier.padding(end=1.dp),color=c.alpha,fontSize=smallFont,lineHeight=smallFont,maxLines=1)
+                } else {
+                    Text(if(key.type=="round")key.title else key.secondary,color=if(key.title=="ALPHA")c.alpha else c.shift,fontSize=smallFont,lineHeight=smallFont,maxLines=1)
+                    if(key.alpha.isNotBlank())Text("  "+when(key.alpha){"i"->"𝑖";"e"->"𝑒";else->key.alpha},color=c.alpha,fontSize=smallFont,lineHeight=smallFont,maxLines=1)
+                }
+                if(key.type=="round"&&key.secondary.isNotBlank())Text(" "+key.secondary,color=c.shift,fontSize=9.sp,lineHeight=9.sp)
             }
             val shape=if(key.type=="round")CircleShape else RoundedCornerShape(topStart=7.dp,topEnd=7.dp,bottomStart=4.dp,bottomEnd=4.dp)
             Box(Modifier.then(if(key.type=="round")Modifier.aspectRatio(1f).weight(1f,false) else Modifier.fillMaxWidth().weight(1f)).clip(shape).background(Brush.verticalGradient(listOf(bg,bg.copy(alpha=.85f)))).background(if(pressed)pressedShade(bg) else Color.Transparent).border(if(active)2.dp else 1.dp,if(active)c.accent else c.muted.copy(alpha=.26f),shape),contentAlignment=Alignment.Center){
@@ -239,6 +265,11 @@ internal fun performKeypadInput(m:CalculatorModel,requestedValue:String,open:(St
                             drawPath(backspaceCross,ink,style=Stroke(width=2.2f,cap=StrokeCap.Round))
                         }
                     }
+                }
+                else if(key.title=="S⇔D")Row(horizontalArrangement=Arrangement.spacedBy(1.dp),verticalAlignment=Alignment.CenterVertically) {
+                    Text("S",color=ink,fontSize=keyFont,fontWeight=FontWeight.Medium,maxLines=1)
+                    KeypadExchangeArrow(ink,keyFont)
+                    Text("D",color=ink,fontSize=keyFont,fontWeight=FontWeight.Medium,maxLines=1)
                 }
                 else if(key.title=="x□")Text(buildAnnotatedString{append("x");withStyle(SpanStyle(baselineShift=BaselineShift.Superscript,fontSize=(keyFont.value*.65f).sp)){append("□")}},color=ink,fontSize=keyFont)
                 else if(key.title=="∫"){
