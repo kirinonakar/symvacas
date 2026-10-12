@@ -1,0 +1,8 @@
+{
+  "format": "symvacas.data",
+  "version": 1,
+  "variables": {"Ans":{"kind":"number","value":"9"},"a":{"kind":"number","value":"1"}},
+  "functions": {"f":{"parameters":["x"],"source":"x","body":{"kind":"restricted","args":[{"kind":"snapshot_symbol","value":"x"},{"kind":"relation","value":"!=","args":[{"kind":"symbol","value":"x"},{"kind":"number","value":"0"}]}]},"answerSource":{"kind":"number","value":"9"}}},
+  "datasets": {"D1":{"csv":"점수,그룹\n1,A\n2,B","kind":"columns:2"}},
+  "assumptions": {"a":["positive"]}
+}

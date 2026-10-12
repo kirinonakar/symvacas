@@ -1,0 +1,270 @@
+﻿<!DOCTYPE html><html lang="en" data-workspace="scientific" data-engine="loading" data-busy="false" data-typing="false"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#e9eeea">
+  <meta name="description" content="SymvaCAS WebAssembly scientific, CAS, graphing, and Python calculator">
+  <title>SymvaCAS</title>
+  <link rel="icon" href="app-icon.png" type="image/png">
+  <link rel="preload" href="fonts/STIXTwoMath-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="calculator.css">
+  <script type="module" src="bootstrap.js"></script>
+</head>
+<body>
+<div class="instrument">
+  <header><h1><button id="about-button" class="title-button" aria-label="About SymvaCAS"><img class="title-icon" src="app-icon.png" alt="" width="24" height="24">SymvaCAS</button></h1><div class="header-actions"><button id="history-button">History</button><button id="catalog-button">Catalog</button><button id="settings-button">Setup</button></div></header>
+  <div class="mode-bar"><label class="sr-only" for="mode-status">Workspace</label><span class="mode-picker"><button id="mode-status" type="button" aria-haspopup="dialog" aria-controls="dialog" aria-label="Choose calculation mode, long press for Scientific/CAS mode" title="Choose calculation mode, long press for Scientific/CAS mode">SCIENTIFIC / CAS</button><select id="mode" hidden="">
+    <option value="scientific">SCIENTIFIC / CAS</option><option value="graph">Graph</option><option value="python">Python</option><option value="equation">Equations</option><option value="matrix">Matrix</option><option value="vector">Vector</option><option value="statistics">Data &amp; Statistics</option><option value="probability">Probability</option><option value="programmer">Programmer</option><option value="units">Units</option><option value="constants">Constants</option><option value="tip">Tip</option><option value="currency">Currency</option><option value="functions">Functions</option>
+  </select></span><span id="key-modifier"></span><button id="insert-mode" aria-label="Insert mode" data-i18narialabel="Insert mode">INS</button><label class="sr-only" for="angle">Angle unit</label><select id="angle"><option>DEG</option><option>RAD</option><option>GRAD</option></select><button id="digits-indicator" aria-label="Cycle display decimal places" data-i18narialabel="Cycle display decimal places">≤ 10 digits</button></div>
+  <div class="runtime-bar"><span id="status" role="status">Loading WebAssembly runtime…</span><button id="retry" hidden="">Reload engine</button></div>
+  <main>
+    <section id="calculator-display" class="calculation-display" data-mode="scientific"><div class="edit-actions"><span id="commit-indicator"></span><button id="undo">Undo</button><button id="cut">Cut</button><button id="copy">Copy</button><button id="paste">Paste</button><button id="typing-toggle">Keyboard</button><button id="clear" hidden="">AC</button></div><div id="calculation-tape" class="calculation-tape" tabindex="0" role="region" aria-label="Calculation history, scroll vertically"><div id="tape-history" class="tape-history"></div><div id="tape-active" class="tape-active"><section class="workspace" data-mode="scientific">
+
+      <label class="sr-only" for="expression">Expression</label><textarea id="expression" rows="2" wrap="off" spellcheck="false" placeholder="Enter an expression · 1/3 + 1/6" autocomplete="off" data-i18nplaceholder="수식을 입력하세요 · 1/3 + 1/6"></textarea>
+      <div class="expression-preview" id="expression-preview" role="textbox" tabindex="0" aria-label="Expression"></div>
+    </section><section class="answer-panel" aria-label="Calculation result" data-i18narialabel="계산 결과"><div id="result-source" class="formula-preview" hidden=""></div><div id="answer" aria-live="polite"><span class="empty">Your result will appear here.</span></div><p id="note" class="hint"></p><div id="result-guidance"></div><details id="result-steps" class="equation-steps" hidden><summary>Step-by-step solution</summary><div id="result-steps-body"></div></details></section></div></div><div class="answer-toolbar"><button id="shortcut-settings" aria-label="Customize display buttons">⚙</button><button id="exact-toggle">Exact</button><button id="stop" disabled="" hidden="">Stop</button><button id="engineering-toggle">ENG</button><button id="grouping-toggle">,</button><button id="screen-toggle">scr</button><button data-shortcut="integrate(,x)">∫</button><button data-shortcut="integrate(,x,0,1)">∫ₐᵇ</button><button data-shortcut="diff(,x)">d/dx</button><button id="answer-copy">Copy result</button><button id="answer-clear" hidden disabled>Clear</button><button id="answer-insert">Insert Ans</button></div></section>
+    <section class="workspace" data-mode="graph" hidden="">
+      <div class="form-row"><label>Type<select id="graph-kind"><option value="cartesian">Cartesian</option><option value="parametric">Parametric (x(t), y(t))</option><option value="space">3D curve</option><option value="polar">Polar r = f(t)</option><option value="sequence">Sequence u(n)</option><option value="surface">3D surface</option><option value="differential">Differential equation dy/dt</option></select></label></div>
+      <label class="sr-only" for="graph-source">Graph expression</label><div class="graph-source-editor"><div class="graph-line-gutter"><div id="graph-line-numbers"></div></div><textarea id="graph-source" class="code" rows="3" wrap="off" spellcheck="false">sin(x)
+cos(x)</textarea></div>
+      <details id="graph-help"><summary>Graph input help</summary>
+        <p class="hint">Expressions · one per line</p>
+        <p class="hint">Angle analysis: choose a point for Tangent angle, or two Cartesian curves and an a–b interval for Intersection angle. Results show degrees and radians.</p>
+        <p class="hint">One [x(t),y(t)] pair per line</p>
+        <p class="hint">r(t) · radians · one curve per line</p>
+        <p class="hint">u(n) · use u(n−1) for recurrences</p>
+        <p id="graph-cartesian-help" class="hint">Function / y=f(x) · Implicit / F(x,y)=0 · e.g. x+1, y=x+1, y^2+x^2=1</p>
+        <p><strong>Piecewise functions / domain restrictions</strong></p>
+        <p class="hint">Use {condition:value,condition:value,default}. The first matching condition wins; without a default, unmatched values are undefined.</p>
+        <code>f(x)={x&lt;0:x^2,x&gt;=0:2*x}</code>
+        <p class="hint">Append {condition} to restrict the whole preceding expression. Spaces and outer parentheses are optional; chained inequalities are supported.</p>
+        <pre>y=x^2 {0&lt;=x&lt;=2}
+y=2*x {x&gt;2}</pre>
+        <p class="hint">One curve per line · [shade] / [s] -1&lt;x&lt;1 ,-1&lt;y&lt;x · between functions: [s] f, g</p>
+        <p><strong>Other graph types</strong></p>
+        <p class="hint">Parametric: [cos(t),sin(t)] · Polar: 1+cos(t) (radians) · Sequence: u(n-1)+1 (enter initial values) · 3D surface: z=sin(x)*cos(y) · Differential equation: -y (dy/dt; enter t₀ and initial y values)</p>
+        <p class="hint">3D: z=f(x,y) or F(x,y,z)=0 · x^2+y^2+z^2+sin(4*x)+sin(4*y)+sin(4*z)=a</p>
+        <p class="hint">3D graphs · up to 5 · one per line</p>
+        <p class="hint">3D curve: C(t)=4*(sin(t),cos(t),0.6*sin(2*t)) · [x(t),y(t),z(t)]</p>
+        <p class="hint">3D implicit surfaces use the x, y and z ranges. Auto z uses the y range; other letters become sliders.</p>
+        <p class="hint">Tap to trace · drag to pan · pinch or scroll to zoom</p>
+        <p class="hint">Drag to rotate freely · Pinch to zoom</p>
+      </details>
+      <div class="form-row"><label>Sequence seeds / differential y₀<input id="graph-initial" value="1" placeholder="1, 1"></label><label>t₀<input id="graph-t0" type="number" value="0" step="any"></label></div>
+      <div class="graph-toolbar"><button id="graph-zoom-in" aria-label="Zoom in">+</button><button id="graph-zoom-out" aria-label="Zoom out">−</button><button id="graph-left" aria-label="Pan left">◀</button><button id="graph-right" aria-label="Pan right">▶</button><button id="graph-up" aria-label="Pan up">▲</button><button id="graph-down" aria-label="Pan down">▼</button><button id="graph-fit">Fit Y</button><button id="graph-undo" disabled>Undo</button><button id="graph-reset">Reset</button><button id="graph-axis">x: decimal</button><label class="graph-curve-picker" hidden><span>Selected curve</span><select id="graph-selected"></select></label><div id="graph-derivative-controls" class="graph-derivative-controls"><label class="check"><input id="graph-derivative" type="checkbox"><span id="graph-derivative-label">f1′</span></label><label class="check"><input id="graph-second-derivative" type="checkbox"><span id="graph-second-derivative-label">f1″</span></label></div></div>
+      <div class="graph-toolbar"><button id="graph-save-svg" disabled>Save SVG</button><button id="graph-save-png" disabled>Save PNG</button></div>
+      <div class="graph-toolbar" id="graph-parameter-actions" hidden=""><button id="graph-parameters-toggle" aria-expanded="true" aria-controls="graph-parameters">Parameters</button><button id="graph-animate" aria-label="Animate" title="Animate" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true" focusable="false"><path class="graph-play-icon" d="M6 4 20 12 6 20Z"/><path class="graph-stop-icon" d="M4 4H20V20H4Z"/></svg></button><button id="graph-reset-parameters">Reset sliders</button></div><div id="graph-parameters" class="form-row" hidden=""></div>
+      <div class="graph-plot-frame"><div id="graph-plot" class="plot interactive-plot" tabindex="0" aria-label="Calculated function graph" data-i18narialabel="계산된 함수 그래프"></div><button id="graph-height-toggle" aria-controls="graph-plot" aria-label="Half height" aria-pressed="false" title="Half height">½</button></div>
+      <div id="graph-formulas" class="formula-preview" role="group" aria-label="Selected curve"></div>
+      <div id="graph-status" role="status" class="hint"></div><div id="graph-trace" class="formula-preview" aria-live="polite"></div>
+      <details id="graph-ranges" class="graph-section" open aria-label="Range"><summary id="graph-ranges-toggle">Range</summary>
+      <div id="graph-range-controls">
+      <div class="graph-range-actions"><button id="graph-reset-ranges" hidden>Reset ranges</button></div>
+      <div class="form-row ranges"><label>x / t / n min<input id="graph-min" type="number" value="-10" step="any"></label><label>max<input id="graph-max" type="number" value="10" step="any"></label><label>y min<input id="graph-ymin" type="number" value="-5" step="any"></label><label>max<input id="graph-ymax" type="number" value="5" step="any"></label></div>
+      <div id="graph-viewport-ranges" class="form-row"><label>View x min<input id="graph-xmin" type="number" value="-10" step="any"></label><label>View x max<input id="graph-xmax" type="number" value="10" step="any"></label></div>
+      <div id="graph-surface-controls" class="graph-surface-panel" hidden="">
+        <div class="graph-surface-appearance">
+          <label><span>Rendering</span><select id="graph-surface-render"><option value="wireframe">Wireframe</option><option value="surface" selected>Surface</option><option value="surface-wireframe">Surface + mesh</option></select></label>
+          <label><span>Surface color</span><input id="graph-surface-color" type="color" value="#007b68"></label>
+          <div class="graph-surface-density"><div class="graph-surface-density-heading"><label for="graph-surface-samples">Mesh density</label><label class="check"><input id="graph-auto-density" type="checkbox" checked>Auto</label></div><span class="graph-surface-slider"><input id="graph-surface-samples" type="range" min="12" max="96" step="1" value="26"><output id="graph-surface-samples-value">26 × 26</output></span></div>
+        </div>
+        <div class="graph-surface-camera">
+          <label><span>Rotate</span><span class="graph-surface-slider"><input id="graph-rotation" type="range" min="0" max="360" step="any" value="35"><output id="graph-rotation-value">35°</output></span></label>
+          <label><span>Elevation</span><span class="graph-surface-slider"><input id="graph-elevation" type="range" min="-90" max="90" step="any" value="32"><output id="graph-elevation-value">32°</output></span></label>
+          <label><span>Zoom</span><span class="graph-surface-slider"><input id="graph-surface-zoom" type="range" min="0.4" max="3" step="0.01" value="1"><output id="graph-surface-zoom-value">100%</output></span></label>
+        </div>
+        <div class="graph-surface-z-range">
+          <label class="check"><input id="graph-auto-z" type="checkbox" checked>Automatic z range</label>
+          <div class="form-row"><label>z min<input id="graph-zmin" type="number" step="any" value="-1"></label><label>z max<input id="graph-zmax" type="number" step="any" value="1"></label></div>
+        </div>
+      </div>
+      </div></details>
+      <details id="graph-analysis" class="graph-section"><summary>Analyze</summary><div class="form-row"><label>Analysis<select id="graph-analysis-action"><option value="root">Root</option><option value="yintercept">Y-intercept</option><option value="intersection">Intersection</option><option value="intersectionangle">Intersection angle</option><option value="minimum">Minimum</option><option value="maximum">Maximum</option><option value="inflection">Inflection</option><option value="derivative">Derivative</option><option value="tangent">Tangent</option><option value="tangentangle">Tangent angle</option><option value="integral">Integral</option><option value="arclength">Arc length</option></select></label><label>Other curve<select id="graph-other"></select></label><label>a / point<input id="graph-analysis-a" value="-10"></label><label>b<input id="graph-analysis-b" value="10"></label><button id="graph-analysis-visible-range">Use visible x range</button><button id="graph-analysis-run">Analyze</button><button id="graph-analysis-clear">Clear analysis</button></div><label id="graph-tangent-position" hidden="">Tangent position<input id="graph-tangent-slider" type="range" min="-10" max="10" value="0" step="any"></label><div id="graph-analysis-result" class="formula-preview" aria-live="polite"></div></details>
+      <details id="graph-coordinates" class="graph-section"><summary>Coordinate table</summary><div id="graph-table" class="scroll-table"></div></details>
+    </section>
+    <section class="workspace" data-mode="python" hidden="">
+      <div class="form-row"><button id="python-new">New</button><button id="python-open">Open .py</button><button id="python-save">Save .py</button><button data-run="python">Run</button></div>
+      <label>Python code<textarea id="python-source" class="code" rows="12" spellcheck="false">import symvacas_catalog as calc
+from symvacas_catalog import x, pi
+
+print(calc.factor(x**4 - 1))
+print(calc.integrate(x**2, x, 0, 1))</textarea></label>
+      <label>Optional input() values · one per line<textarea id="python-input" rows="2" placeholder="Enter values in the order the script will request them" data-i18nplaceholder="스크립트가 요청할 순서대로 입력"></textarea></label><p class="hint">Missing values will be requested while the script runs.</p><p class="hint">Use the CPython standard library, sympy, mpmath, and symvacas_catalog. Execution is limited to 60 seconds.</p><pre id="python-output" aria-live="polite"></pre>
+    </section>
+    <section class="workspace" data-mode="equation" hidden="">
+      <div class="form-row"><label>Method<select id="equation-kind"><option value="solve">Exact solutions / systems</option><option value="nsolve">Numerical solution</option><option value="dsolve">Ordinary differential equation</option><option value="pdsolve">Partial differential equation</option></select></label><button data-run="equation">Solve</button></div>
+      <div class="form-row"><label>Equation type<select id="equation-form"><option value="general">General / system</option><option value="1">Linear</option><option value="2">Quadratic</option><option value="3">Cubic</option></select></label><div id="equation-coefficients" class="form-row" hidden=""><label>a<input id="equation-a" value="1"></label><label>b<input id="equation-b" value="-5"></label><label>c<input id="equation-c" value="6"></label><label>d<input id="equation-d" value="0"></label></div></div>
+      <label>Equations · one per line for systems<textarea id="equation-source" rows="3">x^2-5x+6=0</textarea></label><div class="form-row"><label>Variables / unknown function<input id="equation-variable" value="x" placeholder="x,y or y(t)" data-i18nplaceholder="x,y 또는 y(t)"></label><label>Initial bracket / differentiation variable<input id="equation-extra" value="0,1" placeholder="0,1 or t" data-i18nplaceholder="0,1 또는 t"></label><label>Initial conditions (optional)<input id="equation-initial" placeholder="y(0)=1"></label><label>Hint (optional)<input id="equation-hint"></label></div>
+      <details id="equation-steps" class="equation-steps" hidden><summary>Step-by-step solution</summary><div id="equation-steps-body"></div></details>
+    </section>
+    <section class="workspace" data-mode="matrix vector" hidden="">
+      <div class="form-row"><label>Rows / components<select id="matrix-rows"></select></label><label id="matrix-cols-label">Column<select id="matrix-cols"></select></label><label>Operation<select id="matrix-op"></select></label><button data-run="matrix">Calculate</button></div><div class="form-row"><label>Variable name<select id="matrix-name"></select></label><label id="matrix-new-name-label" hidden>New variable name<input id="matrix-new-name" value="A"></label><button id="matrix-store">Store grid</button><button id="matrix-load">Load variable</button><button id="matrix-clear">Clear grid</button><button id="matrix-insert">Insert into calculator</button></div><div id="matrix-grid" class="matrix-grid"></div><label id="vector-other-label"><span id="matrix-other-title">Second matrix / vector (B)</span><select id="matrix-other-name" aria-label="Second operand variable"></select><input id="vector-other" value="B"><div id="vector-other-math" class="formula-preview"></div></label><p id="matrix-operation-hint" class="hint"></p><p class="hint">Enter fractions, symbols, or expressions in each cell. More matrix operations are available in Catalog.</p>
+      <details open><summary>Saved matrices / vectors</summary><div id="matrix-saved-list" class="scroll-table"></div></details>
+    </section>
+    <section class="workspace probability-workspace" data-mode="probability" hidden="">
+      <h2>Probability</h2>
+      <div id="probability-examples" class="probability-examples" aria-label="Probability examples"></div>
+      <div class="form-row">
+        <label>Calculation<select id="probability-category"></select></label>
+        <label id="probability-distribution-label">Distribution<select id="probability-distribution"></select></label>
+      </div>
+      <div id="probability-operations" class="probability-operations" role="group" aria-label="Probability operation"></div>
+      <select id="probability-operation" hidden aria-label="Probability operation"></select>
+      <div id="probability-fields" class="probability-fields"></div>
+      <label id="probability-independent-label" class="probability-independent" hidden><input id="probability-independent" type="checkbox">Independent events</label>
+      <p id="probability-hint" class="hint"></p>
+      <div class="probability-actions"><button data-run="probability">Calculate probability</button><button id="probability-reset">Reset inputs</button><span id="probability-number-hint" class="hint">0.5 · 1/2 · 50%</span></div>
+      <div id="probability-error" class="error" role="alert" hidden></div>
+      <div id="probability-result" class="probability-result" aria-live="polite" hidden></div>
+      <div id="probability-plot" class="probability-plot" hidden></div>
+    </section>
+    <section class="workspace" data-mode="statistics" hidden="">
+      <div class="form-row"><label>Saved datasets<select id="dataset-list"><option value="">New dataset</option></select></label><input id="dataset-name" placeholder="Dataset name" aria-label="Dataset name" data-i18nplaceholder="데이터 이름" data-i18narialabel="데이터 이름"><button id="dataset-save">Save</button><button id="dataset-delete">Delete</button><button id="csv-open">Import CSV/XLSX</button><button id="csv-save">Export CSV</button></div>
+      <div class="form-row"><label>Data type<select id="statistics-kind"><option value="list">List</option><option value="xy" selected>x,y data</option><option value="xyz">x,y,z data</option><option value="columns">n columns</option></select></label><label id="statistics-columns-label" hidden>Column count (1–100)<input id="statistics-columns" type="number" min="1" max="100" step="1" value="4"></label><label id="statistics-columns-auto-label" class="check" hidden><input id="statistics-columns-auto" type="checkbox">Auto columns</label></div>
+      <div id="statistics-data-actions" class="form-row"><button id="statistics-new">New</button><button id="statistics-collapse-all">Collapse all</button><button id="statistics-table-toggle" aria-controls="statistics-editor" aria-pressed="false">Table editor</button><button id="statistics-add-row">Add row</button><button id="statistics-add-column">Add column</button><button id="statistics-editor-expand" aria-controls="statistics-editor" aria-pressed="false">Expand</button><button id="statistics-store">Store dataset as variable</button></div>
+      <div id="statistics-editor"><div class="statistics-direct-input"><label for="statistics-data"><span id="statistics-data-label">x, y values</span></label><div class="line-numbered"><div class="line-numbers"><span id="statistics-line-numbers">1
+2
+3
+4</span></div><textarea id="statistics-data" class="code" rows="6" wrap="off">1,2
+2,4
+3,6
+4,8</textarea></div></div><div id="statistics-grid" class="scroll-table" hidden=""></div></div>
+      <details id="statistics-summary" class="statistics-section" open><summary>Summary & preperation</summary>
+        <div class="form-row"><label>Column<select id="statistics-summary-column"><option value="0">x</option></select></label><button data-run="statistics-summary">Summarize</button><button id="statistics-summary-correlation" data-quick-summary>Correlation</button></div>
+        <div id="statistics-summary-result" class="statistics-analysis-result" aria-live="polite" hidden></div>
+      <details id="statistics-preparation" class="statistics-section"><summary>Data preparation</summary>
+        <details id="statistics-group-column-panel" class="statistics-section"><summary>Add group column</summary>
+          <div class="form-row"><label>Source column<select id="statistics-group-column-source"><option value="0">x</option></select></label><label>Numeric cut points<input id="statistics-group-column-cuts" type="text" placeholder="10, 20"></label><label>Group values (comma-separated)<input id="statistics-group-column-values" type="text" value="0,1"></label><label>New column header<input id="statistics-group-column-header" type="text" value="group"></label></div>
+          <p class="hint">Separate cut points with commas in increasing order. Groups use &lt; and ≥; boundary values belong to the upper group. Missing or nonnumeric values remain blank.</p>
+          <div id="statistics-group-column-preview" class="hint" aria-live="polite"></div>
+          <button id="statistics-group-column-add" disabled>Add group column</button>
+        </details>
+        <div id="statistics-preparation-tools"></div>
+        <details id="statistics-preparation-impute" class="statistics-section"><summary>Missing-value imputation</summary>
+          <select id="statistics-preparation-kind" hidden></select>
+          <div class="form-row"><button id="statistics-preparation-example">Example</button><button id="statistics-preparation-data">Use current data</button></div>
+          <details id="statistics-preparation-help-details" class="statistics-model-help"><summary>Model details</summary><p id="statistics-preparation-help" class="hint"></p></details>
+          <label>Input source<select id="statistics-preparation-input"><option value="current">Current data</option><option value="example">Example</option><option value="expression">Expression</option></select></label>
+          <div id="statistics-preparation-controls" class="form-row"></div>
+          <details id="statistics-preparation-example-preview" hidden><summary>Show example data</summary><pre id="statistics-preparation-example-data" class="hint"></pre></details>
+          <details id="statistics-preparation-preview" hidden><summary>Show analysis expression</summary><pre id="statistics-preparation-preview-source" class="hint"></pre></details>
+          <p id="statistics-preparation-status" class="hint" role="status" aria-live="polite"></p>
+          <label id="statistics-preparation-expression">Analysis expression<textarea id="statistics-preparation-source" rows="3" spellcheck="false"></textarea></label>
+          <button data-run="statistics-preparation">Analyze</button>
+          <button id="statistics-preparation-apply" data-imputation-apply hidden disabled>Apply to current data</button>
+          <div id="statistics-preparation-result" class="statistics-analysis-result" aria-live="polite" hidden></div>
+        </details>
+      </details>
+      </details>
+      <details id="statistics-visualize" class="statistics-section"><summary>Visualize</summary>
+      <div class="form-row"><label>Plot type<select id="statistics-plot-type"><option value="scatter">Scatter</option><option value="bar">Bar</option><option value="histogram">Histogram</option><option value="box">Box plot</option><option value="violin">Violin + points</option><option value="heatmap">Heat map</option></select></label><label id="statistics-plot-grouping-label" hidden>Plot grouping<select id="statistics-plot-grouping"><option value="columns">Columns</option></select></label><label id="statistics-plot-orientation-label" hidden>Orientation<select id="statistics-plot-orientation"><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option></select></label><label id="statistics-histogram-kde-label" class="check" hidden><input id="statistics-histogram-kde" type="checkbox">KDE (kernel density)</label><button id="statistics-plot-run">Plot data</button></div>
+      <div id="statistics-scatter-axes" class="form-row" hidden><label>X column<select id="statistics-scatter-x"><option value="0">x</option></select></label><label>Y column<select id="statistics-scatter-y"><option value="1">y</option></select></label></div>
+      <div id="statistics-heatmap-options" class="form-row" hidden>
+        <label>Heat map data<select id="statistics-heatmap-mode"><option value="raw">Raw values</option><option value="zrow">Z-score by row</option><option value="zcolumn">Z-score by column</option><option value="correlation">Correlation</option></select></label>
+        <label class="check"><input id="statistics-heatmap-clustering" type="checkbox">Hierarchical clustering</label>
+        <label id="statistics-heatmap-linkage-label" hidden>Cluster linkage<select id="statistics-heatmap-linkage"><option value="single">Single</option><option value="average" selected>Average</option><option value="complete">Complete</option><option value="ward">Ward</option></select></label>
+        <label id="statistics-heatmap-metric-label" hidden>Distance metric<select id="statistics-heatmap-metric"><option value="euclidean" selected>Euclidean</option><option value="manhattan">Manhattan</option><option value="correlation">Correlation (1 − r)</option></select></label>
+        <label class="check"><input id="statistics-heatmap-fit" type="checkbox">Fit to screen</label>
+        <label id="statistics-heatmap-correlation-label" hidden>Correlation method<select id="statistics-heatmap-correlation"><option value="pearson">Pearson (p)</option><option value="spearman">Spearman (s)</option><option value="kendall">Kendall (k)</option></select></label>
+        <div id="statistics-heatmap-axes" class="statistics-heatmap-axes" hidden>
+          <div class="statistics-heatmap-axis"><strong>X axis variables</strong><div id="statistics-heatmap-x-axis" class="statistics-heatmap-variable-options"></div></div>
+          <div class="statistics-heatmap-axis"><strong>Y axis variables</strong><div id="statistics-heatmap-y-axis" class="statistics-heatmap-variable-options"></div></div>
+        </div>
+      </div>
+      <div id="statistics-plot" class="plot" hidden=""></div>
+      </details>
+      <details id="statistics-regression" class="statistics-section"><summary>Regression &amp; models</summary>
+      <section id="regression-section" class="regression-section"><h2>Regression</h2><div class="form-row"><label>Regression model<select id="regression-kind"><option value="linear">linear</option><option value="quadratic">quadratic</option><option value="polynomial">polynomial</option><option value="multiple">multiple</option><option value="logistic">logistic</option><option value="bayeslinear">Bayesian linear regression</option><option value="bayeslogistic">Bayesian logistic regression</option><option value="randomforest">Random Forest</option><option value="logarithmic">logarithmic</option><option value="exponential">exponential</option><option value="power">power</option><option value="custom">custom</option></select></label><label id="regression-penalty-label" hidden>Regularization<select id="regression-penalty"><option value="none">None</option><option value="ridge">Ridge</option><option value="lasso">LASSO</option><option value="elasticnet">Elastic Net</option></select></label><label id="regression-firth-label" hidden>Firth<select id="regression-firth"><option value="auto">Auto (separation only)</option><option value="firth">Always (profile intervals)</option></select></label><label hidden>Dependent variable<select id="regression-response"><option value="0">x</option><option value="1" selected>y</option><option value="2">z</option></select></label><label hidden>Polynomial degree (1–10)<input id="regression-degree" type="number" min="1" max="10" step="1" value="3"></label><button data-run="regression">Analyze</button><!-- Compatibility with cached modules; this placeholder never displays a message. --><span id="regression-progress" hidden="" style="display:none" aria-hidden="true"></span><button id="regression-compare" hidden>Nested model comparison</button><button id="regression-transfer" hidden="">Graph fitted expression</button></div>
+      <div id="regression-lasso" class="form-row" hidden><label>Regularization α<input id="regression-alpha" type="number" min="0" step="any" value="0.1"></label><label id="regression-ratio-label" hidden>L1 ratio (0–1)<input id="regression-ratio" type="number" min="0" max="1" step="any" value="0.5"></label><label class="check"><input id="regression-alpha-cv" type="checkbox">Cross-validate α (5 folds)</label><details class="statistics-model-help"><summary>Model details</summary><span>Predictors standardized; coefficients in original units.</span></details></div>
+      <div id="regression-forest" class="form-row" hidden><label>Forest task<select id="regression-forest-task"><option value="auto">Auto (0/1 → classification)</option><option value="regression">Regression</option><option value="classification">Binary classification</option></select></label><label>Trees (1–200)<input id="regression-trees" type="number" min="1" max="200" step="1" value="100"></label><label>Max depth (1–20)<input id="regression-depth" type="number" min="1" max="20" step="1" value="10"></label><label>Random seed<input id="regression-seed" type="number" min="0" max="2147483647" step="1" value="0"></label></div>
+      <div id="regression-bayesian" class="form-row" hidden><label>Inference method<select id="regression-bayesian-method"><option value="analytic">Analytic posterior</option><option value="nuts">NUTS</option></select></label><label>Prior SD<input id="regression-prior-sd" type="number" min="0.000001" max="1000000" step="any" value="2.5"></label><label>Credible level (0–1)<input id="regression-credible-level" type="number" min="0" max="1" step="any" value="0.95"></label><label>Variance prior shape<input id="regression-variance-shape" type="number" min="0" step="any" value="2"></label><label>Variance prior scale<input id="regression-variance-scale" type="number" min="0" step="any" value="1"></label><details class="statistics-model-help"><summary>Model details</summary><span>Zero-mean priors include the intercept on standardized predictors; coefficients in original units.</span></details></div>
+      <div id="regression-nuts" class="form-row" hidden><label>Samples per chain (100–5000)<input id="regression-nuts-samples" type="number" min="100" max="5000" step="1" value="500"></label><label>Warmup (50–5000)<input id="regression-nuts-warmup" type="number" min="50" max="5000" step="1" value="500"></label><label>Max tree depth (1–10)<input id="regression-nuts-max-depth" type="number" min="1" max="10" step="1" value="8"></label><label>Chains (2–4)<input id="regression-nuts-chains" type="number" min="2" max="4" step="1" value="2"></label><label>Random seed<input id="regression-nuts-seed" type="number" min="0" max="2147483647" step="1" value="0"></label><details class="statistics-model-help"><summary>Model details</summary><span>NUTS adapts trajectory length; step size adapts during warmup. Check split R-hat, ESS and divergences.</span></details></div>
+      <div id="regression-custom" class="form-row" hidden=""><label>Model y =<input id="regression-formula" value="A*exp(-k*x)+C"></label><label>Independent variable<input id="regression-variable" value="x"></label><label>Initial values and bounds (optional)<input id="regression-initials" placeholder="[[A,1],[k,1,0],[C,0]]"></label></div>
+      <details id="regression-data-details" class="statistics-model-help" hidden><summary>Model details</summary><p id="regression-data-help">Last column is response; previous columns are predictors. Logistic response: 0 or 1.</p></details><div id="regression-caption" class="formula-preview"></div><div id="regression-inference"></div><button id="regression-export" hidden>Export residual CSV</button></section>
+      <details id="statistics-models" class="statistics-section"><summary>Models</summary>
+        <div class="form-row"><label>Analyze<select id="statistics-models-kind"></select></label><button id="statistics-models-example">Example</button><button id="statistics-models-data">Use current data</button></div>
+        <details id="statistics-models-help-details" class="statistics-model-help"><summary>Model details</summary><p id="statistics-models-help" class="hint"></p></details>
+        <label>Input source<select id="statistics-models-input"><option value="current">Current data</option><option value="example">Example</option><option value="expression">Expression</option></select></label>
+        <div id="statistics-models-controls" class="form-row"></div>
+        <details id="statistics-models-example-preview" hidden><summary>Show example data</summary><pre id="statistics-models-example-data" class="hint"></pre></details>
+        <details id="statistics-models-preview" hidden><summary>Show analysis expression</summary><pre id="statistics-models-preview-source" class="hint"></pre></details>
+        <p id="statistics-models-status" class="hint" role="status" aria-live="polite"></p>
+        <label id="statistics-models-expression">Analysis expression<textarea id="statistics-models-source" rows="3" spellcheck="false"></textarea></label>
+        <button data-run="statistics-models">Analyze</button>
+        <div id="statistics-models-result" class="statistics-analysis-result" aria-live="polite" hidden></div>
+      </details>
+      </details>
+      <details id="statistics-analysis" class="statistics-section"><summary>General analysis</summary>
+      <div class="form-row"><label>Analyze<select id="statistics-op"><optgroup label="Mean comparisons"><option value="ttest">One-sample t test</option><option value="ttest2">Independent t test</option><option value="ttestpaired">Paired t test</option><option value="ztest">One-sample z test</option><option value="ztest2">Independent z test</option><option value="anova">One-way ANOVA</option></optgroup><optgroup label="Rank &amp; nonparametric tests"><option value="wilcoxon">Wilcoxon signed-rank</option><option value="mannwhitney">Mann–Whitney U</option><option value="kruskal">Kruskal–Wallis</option></optgroup><optgroup label="Categorical data"><option value="chi2independence">χ² independence test</option><option value="fisherexact">Fisher exact test</option><option value="propztest">One-sample proportion z test</option><option value="propztest2">Two-sample proportion z test</option><option value="mcnemar">McNemar</option></optgroup></select></label></div>
+      <div id="statistics-basic-controls"><div class="form-row"><label>Column<select id="statistics-column"><option value="0">x</option><option value="1">y</option><option value="2">z</option></select></label><label>Null mean / confidence level<input id="statistics-extra" value="0"></label></div><div class="form-row"><label>Grouping<select id="statistics-grouping"><option value="columns">Columns</option><option value="groups">Group / value columns</option></select></label><label>First group<select id="statistics-first-group"><option value="x">x</option><option value="y">y</option><option value="z">z</option></select></label><label>Second group<select id="statistics-second-group"><option value="x">x</option><option value="y" selected>y</option><option value="z">z</option></select></label><label>Alternative hypothesis<select id="statistics-tail"><option value="two">Two-sided</option><option value="left">Left</option><option value="right">Right</option></select></label><label>Known σ<input id="statistics-sigma" value="1"></label><label>Known σy<input id="statistics-sigma-y" value="1"></label></div>
+      <div class="form-row"><label id="statistics-t-method-label" hidden>Independent t method<select id="statistics-t-method"><option value="welch">Welch (unequal variances)</option><option value="student">Student (equal variances)</option></select></label><label id="statistics-anova-method-label" hidden>ANOVA method<select id="statistics-anova-method"><option value="welch">Welch (unequal variances)</option><option value="classic">Classic (equal variances)</option></select></label><p id="statistics-posthoc-help" class="hint" hidden></p></div>
+      <input type="hidden" id="statistics-group-columns-choice" value="auto"><fieldset id="statistics-group-columns" class="form-row statistics-form-columns" hidden></fieldset>
+      <div id="statistics-group-role-options" class="form-row" hidden><label>Group column<select id="statistics-group-column"></select></label><label>Value column<select id="statistics-value-column"></select></label><label id="statistics-pair-matching-label" hidden>Pair matching<select id="statistics-pair-matching"><option value="order">Row order within each group</option><option value="subject">Subject ID</option></select></label><label id="statistics-subject-column-label" hidden>Subject column<select id="statistics-subject-column"></select></label><p id="statistics-pair-order-help" class="hint" hidden>Row order pairing requires the same subject order in each group. Missing values require subject-ID matching.</p></div>
+      <div id="statistics-yates-options" hidden><label class="check"><input id="statistics-yates" type="checkbox" checked>Yates continuity correction</label><p class="hint">Applies only to 2×2 tables. Turn off for Pearson χ².</p></div>
+      <p id="statistics-samples" class="hint" aria-live="polite"></p>
+      <div class="form-row"><button data-run="statistics">Analyze</button></div>
+      <div id="statistics-analysis-result" class="statistics-analysis-result" aria-live="polite" hidden></div>
+      </div>
+      <div id="statistics-general" hidden>
+        <div class="form-row"><label hidden>Analyze<select id="statistics-general-kind"></select></label><button id="statistics-general-example">Example</button><button id="statistics-general-data">Use current data</button></div>
+        <details id="statistics-general-help-details" class="statistics-model-help"><summary>Model details</summary><p id="statistics-general-help" class="hint"></p></details>
+        <label>Input source<select id="statistics-general-input"><option value="current">Current data</option><option value="example">Example</option><option value="expression">Expression</option></select></label>
+        <div id="statistics-general-controls" class="form-row"></div>
+        <details id="statistics-general-example-preview" hidden><summary>Show example data</summary><pre id="statistics-general-example-data" class="hint"></pre></details>
+        <details id="statistics-general-preview" hidden><summary>Show analysis expression</summary><pre id="statistics-general-preview-source" class="hint"></pre></details>
+        <p id="statistics-general-status" class="hint" role="status" aria-live="polite"></p>
+        <label id="statistics-general-expression">Analysis expression<textarea id="statistics-general-source" rows="3" spellcheck="false"></textarea></label>
+        <button data-run="statistics-general">Analyze</button>
+        <div id="statistics-general-result" class="statistics-analysis-result" aria-live="polite" hidden></div>
+      </div>
+      <details id="statistics-tests" class="statistics-section"><summary>More tests &amp; effect sizes</summary>
+        <div class="form-row"><label>Analyze<select id="statistics-tests-kind"></select></label><button id="statistics-tests-example">Example</button><button id="statistics-tests-data">Use current data</button></div>
+        <details id="statistics-tests-help-details" class="statistics-model-help"><summary>Model details</summary><p id="statistics-tests-help" class="hint"></p></details>
+        <label>Input source<select id="statistics-tests-input"><option value="current">Current data</option><option value="example">Example</option><option value="expression">Expression</option></select></label>
+        <div id="statistics-tests-controls" class="form-row"></div>
+        <details id="statistics-tests-example-preview" hidden><summary>Show example data</summary><pre id="statistics-tests-example-data" class="hint"></pre></details>
+        <details id="statistics-tests-preview" hidden><summary>Show analysis expression</summary><pre id="statistics-tests-preview-source" class="hint"></pre></details>
+        <p id="statistics-tests-status" class="hint" role="status" aria-live="polite"></p>
+        <label id="statistics-tests-expression">Analysis expression<textarea id="statistics-tests-source" rows="3" spellcheck="false"></textarea></label>
+        <button data-run="statistics-tests">Analyze</button>
+        <div id="statistics-tests-result" class="statistics-analysis-result" aria-live="polite" hidden></div>
+      </details>
+      </details>
+      <details id="statistics-advanced" class="statistics-section"><summary>Advanced analysis</summary>
+        <div class="form-row"><label>Analyze<select id="statistics-advanced-kind"></select></label><button id="statistics-advanced-example">Example</button><button id="statistics-advanced-data">Use current data</button></div>
+        <details id="statistics-advanced-help-details" class="statistics-model-help"><summary>Model details</summary><p id="statistics-advanced-help" class="hint"></p></details>
+        <label>Input source<select id="statistics-advanced-input"><option value="current">Current data</option><option value="example">Example</option><option value="expression">Expression</option></select></label>
+        <div id="statistics-advanced-controls" class="form-row"></div>
+        <details id="statistics-advanced-example-preview" hidden><summary>Show example data</summary><pre id="statistics-advanced-example-data" class="hint"></pre></details>
+        <details id="statistics-advanced-preview" hidden><summary>Show analysis expression</summary><pre id="statistics-advanced-preview-source" class="hint"></pre></details>
+        <p id="statistics-advanced-status" class="hint" role="status" aria-live="polite"></p>
+        <label id="statistics-advanced-expression">Analysis expression<textarea id="statistics-advanced-source" rows="3" spellcheck="false"></textarea></label>
+        <button data-run="statistics-advanced">Analyze</button>
+        <div id="statistics-advanced-result" class="statistics-analysis-result" aria-live="polite" hidden></div>
+        <div id="statistics-survival-tools" class="form-row" hidden><span class="hint">Kaplan–Meier · log-rank · Cox</span><label class="check"><input id="statistics-survival-band" type="checkbox" checked>95% CI band</label></div>
+        <section id="statistics-survival-result" class="survival-report" aria-live="polite" hidden></section>
+      </details>
+    </section>
+    <section class="workspace" data-mode="programmer" hidden="">
+      <div class="form-row"><label>Base<select id="programmer-base"><option value="10">DEC</option><option value="16">HEX</option><option value="2">BIN</option><option value="8">OCT</option></select></label><label>Bits<select id="programmer-width"><option>8</option><option>16</option><option selected="">32</option><option>64</option></select></label><label class="check"><input id="programmer-signed" type="checkbox">Signed</label></div><div class="form-row"><label>A<input id="programmer-a" value="255"></label><label>Operation<select id="programmer-op"><option value="">Convert</option><option>AND</option><option>OR</option><option>XOR</option><option>NOT</option><option>NAND</option><option>NOR</option><option>&lt;&lt;</option><option>&gt;&gt;</option></select></label><label>B / shift count<input id="programmer-b" value="1"></label><button data-run="programmer">Calculate</button></div><pre id="programmer-output"></pre>
+    </section>
+    <section class="workspace" data-mode="units" hidden=""><label>Unit category<select id="unit-category"><option value="all">All units</option></select></label><div class="form-row"><label>Value<input id="unit-value" value="32"></label><label>From unit<select id="unit-from"></select></label><label>To unit<select id="unit-to"></select></label><button data-run="units">Convert</button><button id="units-swap">Swap</button></div><p class="hint">Compound units are supported: convert(qty(1,V)/qty(1,ohm),A)</p></section>
+    <section class="workspace" data-mode="constants" hidden=""><label>Search constants<input id="constants-search"></label><button data-run="constants">Load constants</button><div id="constants-list"></div></section>
+    <section class="workspace" data-mode="tip" hidden=""><div class="form-row"><label>Amount<input id="tip-amount" value="100"></label><label>Tip %<input id="tip-percent" value="15"></label><label>Tax %<input id="tip-tax" value="0"></label><label>Tip method<select id="tip-method"><option value="percent">Tip %</option><option value="amount">Tip amount</option></select></label><label>Tip amount<input id="tip-fixed" value="15"></label><label>People<input id="tip-people" type="number" min="1" value="2"></label><label class="check"><input id="tip-whole" type="checkbox" checked="">Whole amounts per person</label><button data-run="tip">Per person</button></div></section>
+    <section class="workspace" data-mode="currency" hidden=""><div class="form-row"><label>Amount<input id="currency-amount" value="100"></label><label>From currency<input id="currency-from" value="USD" maxlength="3"></label><label>To currency<input id="currency-to" value="KRW" maxlength="3"></label><label>Manual rate<input id="currency-rate" value="1300"></label><button data-run="currency">Convert</button><button id="currency-fetch">Get daily rates</button><button id="currency-swap">Swap currencies</button></div><p id="currency-status" class="hint">Using a manual rate. Click Get daily rates to fetch online rates.</p></section>
+    <section class="workspace" data-mode="functions" hidden=""><label>Function name<input id="function-name" value="f"></label><label>Parameters · comma-separated<input id="function-parameters" value="x"></label><label>Expression<input id="function-body" value="x^2+1"></label><div class="form-row"><button id="function-save">Save</button><button id="function-export">Export JSON</button><button id="function-import">Import JSON</button></div><button id="function-clear">Clear</button><div id="functions-list"></div></section>
+
+    <section class="workspace keypad-workspace" data-mode="scientific"><div id="keypad" class="keypad"></div></section>
+  </main>
+  <footer>SymvaCAS · MIT · <a href="README.md">Web guide</a> · <a href="THIRD_PARTY.md">Open-source licenses</a><span id="offline-status"></span></footer>
+</div>
+<dialog id="dialog"><div class="dialog-heading"><h2 id="dialog-title"></h2><button id="dialog-close" aria-label="Close" data-i18narialabel="닫기">✕</button></div><div id="dialog-body"></div></dialog>
+<dialog id="settings-dialog"><div class="dialog-heading"><h2>Setup</h2><button id="settings-close" aria-label="Close" data-i18narialabel="닫기">✕</button></div><div class="preferences"><label for="language">Language<select id="language"><option value="en">English</option><option value="ko">한국어</option></select></label><label for="theme">Theme<select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div><button id="variables-button">RCL / STO</button><div id="settings-body"></div></dialog>
+<input id="file-input" type="file" hidden="">
+<div id="toast" role="status" hidden=""></div>
+
+
+<!-- Cloudflare Web Analytics -->
+<script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "1e427b45ad874ea79bef458a0e2524bf"}'></script>
+<!-- End Cloudflare Web Analytics -->
+</body></html>

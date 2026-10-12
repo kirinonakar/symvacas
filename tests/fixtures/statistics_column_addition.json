@@ -1,0 +1,11 @@
+{
+  "cases": [
+    {"source": "", "columns": 1, "csv": ",", "kind": "xy"},
+    {"source": "1\n2\n", "columns": 1, "csv": "1,\n2,\n,", "kind": "xy"},
+    {"source": "Treatment,Measurement\nA,1\nB,2", "columns": 2, "csv": "Treatment,Measurement,z\nA,1,\nB,2,", "kind": "xyz"},
+    {"source": "1,2,3\n4,,6", "columns": 3, "csv": "1,2,3,\n4,,6,", "kind": "columns:4"},
+    {"source": "\"Group,name\",Measurement\n\"a,b\",1\nC,2", "columns": 2, "csv": "\"Group,name\",Measurement,z\n\"a,b\",1,\nC,2,", "kind": "xyz"},
+    {"source": "1\n2,3", "columns": 4, "csv": "1,,,,\n2,3,,,", "kind": "columns:5"},
+    {"source": "1,2,3\n4,5,6", "columns": 1, "csv": "1,2,3,\n4,5,6,", "kind": "columns:4"}
+  ]
+}

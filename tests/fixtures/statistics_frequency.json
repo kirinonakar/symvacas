@@ -1,0 +1,11 @@
+{
+  "cases": [
+    {"series": [["3","3","3","3","3"]], "values": [3], "counts": [[5]], "positions": [0.5], "peak": 5},
+    {"series": [["0","3","3","3","3","3","10","10"]], "values": [0,3,10], "counts": [[1,5,2]], "positions": [0.08,0.332,0.92], "peak": 5},
+    {"series": [["3","3"],["3","4","4"]], "values": [3,4], "counts": [[2,0],[1,2]], "positions": [0.08,0.92], "peak": 2},
+    {"series": [["-0","0","0.0","2"]], "values": [0,2], "counts": [[3,1]], "positions": [0.08,0.92], "peak": 3},
+    {"series": [["-1e308","0","1e308","Infinity","NaN"]], "values": [-1e308,0,1e308], "counts": [[1,1,1]], "positions": [0.08,0.5,0.92], "peak": 1},
+    {"series": [["0","1e-308","1e308"]], "values": [0,1e-308,1e308], "counts": [[1,1,1]], "positions": [0.08,0.08,0.92], "peak": 1},
+    {"series": [[]], "values": [], "counts": [[]], "positions": [], "peak": 1}
+  ]
+}

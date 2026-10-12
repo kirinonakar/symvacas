@@ -1,0 +1,13 @@
+{
+  "cases": [
+    {"kind":"xy","rows":[["A","5"],["B","8"],["C","3"]],"labels":["A","B","C"],"series":[{"label":"y","values":[5,8,3]}],"minimum":0,"maximum":8,"baseline":1,"positions":[[0.375,0,0.625]]},
+    {"kind":"columns:3","columnNames":["Name","One","Two"],"rows":[["A","5","6"],["B","8","4"],["C","3","2"]],"labels":["A","B","C"],"series":[{"label":"One","values":[5,8,3]},{"label":"Two","values":[6,4,2]}],"minimum":0,"maximum":8,"baseline":1,"positions":[[0.375,0,0.625],[0.25,0.5,0.75]]},
+    {"kind":"columns:3","grouping":"column:1","rows":[["A","G1","5"],["B","G1","8"],["A","G2","3"],["B","G2","4"]],"labels":["A","B"],"series":[{"label":"G1","values":[5,8]},{"label":"G2","values":[3,4]}],"minimum":0,"maximum":8,"baseline":1,"positions":[[0.375,0],[0.625,0.5]]},
+    {"kind":"columns:3","grouping":"first","rows":[["G1","A","5"],["G1","B",""],["G2","A","8"],["G2","B","3"]],"labels":["A","B"],"series":[{"label":"G1","values":[5,null]},{"label":"G2","values":[8,3]}],"minimum":0,"maximum":8,"baseline":1,"positions":[[0.375,null],[0,0.625]]},
+    {"kind":"xy","rows":[["A","5"],["A","8"],["B","3"]],"labels":["A","A","B"],"series":[{"label":"y","values":[5,8,3]}],"minimum":0,"maximum":8,"baseline":1,"positions":[[0.375,0,0.625]]},
+    {"kind":"columns:3","grouping":"last","rows":[["A","5","G1"],["A","8","G1"],["A","3","G2"]],"labels":["A","A"],"series":[{"label":"G1","values":[5,8]},{"label":"G2","values":[3,null]}],"minimum":0,"maximum":8,"baseline":1,"positions":[[0.375,0],[0.625,null]]},
+    {"kind":"xy","rows":[["A","-5"],["B","0"],["C","8"],["D","NaN"],["E","Infinity"]],"labels":["A","B","C"],"series":[{"label":"y","values":[-5,0,8]}],"minimum":-5,"maximum":8,"baseline":0.6153846153846154,"positions":[[1,0.6153846153846154,0]]},
+    {"kind":"xy","rows":[["A","-1e308"],["B","1e308"]],"labels":["A","B"],"series":[{"label":"y","values":[-1e308,1e308]}],"minimum":-1e308,"maximum":1e308,"baseline":0.5,"positions":[[1,0]]},
+    {"kind":"xy","rows":[["A","0"],["B","0"]],"labels":["A","B"],"series":[{"label":"y","values":[0,0]}],"minimum":0,"maximum":0,"baseline":1,"positions":[[1,1]]}
+  ]
+}

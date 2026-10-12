@@ -1,0 +1,325 @@
+"""Presentation-only tables for Statistics; reusable answers stay untouched."""
+import sympy as s
+import math
+from calc_display import approximate, display_rounded, display_tree, readable
+
+BASIC = set('mean median variance stdev mode skewness kurtosis sumdata quartiles stats covariance correlation ttest ttest2 ttestpaired ztest ztest2 chi2test chi2independence fisherexact anova tukey shapiro wilcoxon mannwhitney kruskal tinterval zinterval'.split())
+BASIC.update(('welchanova','gameshowell'))
+TITLES = dict(zip('stats mean median variance stdev sumdata quartiles covariance correlation ttest ttest2 ttestpaired ztest ztest2 chi2test chi2independence fisherexact anova tukey shapiro wilcoxon mannwhitney kruskal tinterval zinterval padjust effectsize levene bartlett mcnemar kaplanmeier logrank cox repeatedanova poissonreg nbreg mixedmodel gee glmm multinomial ordinal bootstrap power samplesize impute crossvalidate pca kmeans'.split(),
+    ['Descriptive statistics','Mean','Median','Variance','Standard deviation','Sum','Quartiles','Covariance','Correlation','One-sample t test','Welch t test','Paired t test','One-sample z test','Two-sample z test','χ² test','χ² independence test','Fisher exact test','ANOVA','Tukey HSD','Shapiro–Wilk','Wilcoxon','Mann–Whitney','Kruskal–Wallis','t interval','z interval','P-value adjustment','Effect size','Levene test','Bartlett test','McNemar test','Kaplan–Meier','Log-rank test','Cox regression','Repeated-measures ANOVA','Poisson regression','Negative binomial regression','Mixed model','GEE','GLMM','Multinomial regression','Ordinal regression','Bootstrap','Power','Sample size','Imputation','Cross-validation','PCA','K-means']))
+
+
+TITLES.update({'mode':'Mode', 'skewness':'Skewness', 'kurtosis':'Excess kurtosis'})
+TITLES['logisticcompare']='Nested logistic model comparison'
+TITLES['modelcompare']='Model Comparison'
+TITLES.update({'propztest':'One-sample proportion z test', 'propztest2':'Two-sample proportion z test',
+               'ancova':'ANCOVA', 'glm':'Generalized linear model (GLM)',
+               'welchanova':'Welch ANOVA','gameshowell':'Games–Howell','linearmodel':'Factorial linear model / ANOVA', 'twowayanova':'Two-way ANOVA', 'friedman':'Friedman test',
+               'cohend':'Effect size', 'eta2':'Effect size', 'bootstrapci':'Bootstrap confidence interval',
+               'testpower':'Power', 'kstest':'Kolmogorov–Smirnov test',
+               'bayesproportion':'Bayesian proportion', 'bayesmean':'Bayesian mean', 'bayesrate':'Bayesian rate',
+               'bayescompare':'Bayesian Two-Sample Comparison','bayesbootstrap':'Bayesian Bootstrap'})
+TITLES.update({'cronbach':'Cronbach α reliability','efa':'Exploratory factor analysis (EFA)',
+               'cfa':'Confirmatory factor analysis (CFA)','sem':'Structural equation model (SEM)',
+               'manova':'MANOVA','mediation':'Mediation analysis','moderation':'Moderation analysis',
+               'cramerv':'Cramér’s V','phi':'Phi coefficient','cohenkappa':'Cohen’s κ agreement',
+               'dunn':'Dunn post-hoc test','discriminantanalysis':'Discriminant analysis (LDA/QDA)',
+               'quantreg':'Quantile regression','zeroinflated':'Zero-inflated regression (ZIP/ZINB)',
+               'tobit':'Tobit censored regression','hcluster':'Hierarchical clustering'})
+TITLES.update({'arima': 'ARIMA / time-series forecast', 'sarima': 'SARIMA / time-series forecast'})
+
+
+def statistics_report(name, value, precision, labels=None):
+    """Each section has named columns and cells using the normal result formatter.
+
+    Preview large tables at 100 rows; copyRows retains every formatted row for Copy.
+    Never infer that unrelated vectors of equal length describe the same observations.
+    """
+    sections = []
+    plots = []
+    assumptions = []
+    details = []
+    table_labels = labels if isinstance(labels, dict) else {}
+    contingency = name in ('chi2independence', 'fisherexact', 'mcnemar','cramerv','phi','cohenkappa')
+    categorical = contingency and all(table_labels.get(key) for key in ('table:row', 'table:column'))
+
+    def cell(v):
+        if isinstance(v, str): return v
+        if isinstance(v, bool): return str(v)
+        if v is None: return 'unavailable'
+        if v is s.nan: return 'undefined'
+        if isinstance(v,(int,float)): v=s.sympify(v)
+        shown = display_rounded(v, precision)
+        dec = approximate(v, precision)
+        return {'exact': readable(shown), 'decimal': readable(dec),
+                'tree': display_tree(shown), 'decimalTree': display_tree(dec),
+                'approximate': bool(getattr(shown, 'has', lambda *_: False)(s.Float))}
+
+    def add(title, columns, rows):
+        if rows and columns:
+            formatted = [[cell(v) for v in row] for row in rows]
+            section = {'title': title, 'columns': columns, 'rows': formatted[:100], 'totalRows': len(rows)}
+            if len(rows) > 100: section['copyRows'] = formatted
+            sections.append(section)
+            return section
+
+    def count_table(title, headers, values):
+        counts = [[s.sympify(v) for v in row] for row in values]
+        row_totals = [sum(row) for row in counts]
+        column_totals = [sum(column) for column in zip(*counts)]
+        total = sum(row_totals)
+        margins = [row+[row_total] for row,row_total in zip(counts,row_totals)]+[column_totals+[total]]
+        row_labels = [table_labels.get('table:row:'+str(i+1),str(i+1)) for i in range(len(counts))]+['Total']
+        columns = [table_labels.get('table:row','Row')]+headers+['Total']
+        def table(heading, rows):
+            section = add(heading, columns, [[label]+row for label,row in zip(row_labels,rows)])
+            section['totalRow'] = len(counts)
+        table(title, margins)
+        if title == 'observed':
+            def percent(count, denominator):
+                return 100*count/denominator if denominator != 0 else None
+            table('Row percentages (%)', [[percent(count,row[-1]) for count in row] for row in margins])
+            table('Column percentages (%)', [[percent(count,margins[-1][j]) for j,count in enumerate(row)] for row in margins])
+
+    def vector(v): return isinstance(v, (list, tuple)) and all(not isinstance(x, (list, tuple, dict)) for x in v)
+
+    def explanatory(key, item):
+        # Match metadata, not text length: variable names and fitted expressions
+        # are still data, and numeric inference fields stay in tables.
+        key = str(key).lower().replace('_', ' ').strip()
+        metadata = ('method', 'estimator', 'estimation', 'extraction', 'rotation',
+                    'convention', 'inference', 'interpretation', 'description',
+                    'note', 'notes', 'warning', 'warnings', 'reason')
+        text = isinstance(item, str) or vector(item) and all(isinstance(x, str) for x in item)
+        return text and any(key == word or key.endswith(' '+word) for word in metadata)
+
+    def describe(title, key, item, context=()):
+        for text in item if isinstance(item, (list, tuple)) else [item]:
+            if text: details.append({'section':title, 'label':str(key), 'text':text, 'context':list(context)})
+
+    def extract_details(title, remaining, context=()):
+        for key in list(remaining):
+            if explanatory(key, remaining[key]): describe(title, key, remaining.pop(key), context)
+
+    def finite(v):
+        try: return float(v) if math.isfinite(float(v)) else None
+        except (TypeError,ValueError,OverflowError): return None
+
+    def interval_plot(title, rows, reference=None):
+        points=[]
+        for label,estimate,lower,upper in rows:
+            values=list(map(finite,(estimate,lower,upper)))
+            if all(v is not None for v in values) and values[1]<=values[0]<=values[2]: points.append([str(label),*values])
+        if points: plots.append({'kind':'intervals','title':title,'rows':points,'reference':reference})
+
+    def visit(title, v):
+        if isinstance(v, s.MatrixBase): v = v.tolist()
+        if isinstance(v, dict):
+            remaining = dict(v)
+            if name=='cfa': remaining.pop('Latent R²',None)
+            if isinstance(remaining.get('Assumptions'), str):
+                assumptions.append(remaining.pop('Assumptions'))
+            elif isinstance(remaining.get('Assumptions'), list) and all(isinstance(v,str) for v in remaining['Assumptions']):
+                assumptions.extend(remaining.pop('Assumptions'))
+            extract_details(title, remaining)
+            if isinstance(remaining.get('diagnostics'),dict):
+                visit('Model diagnostics',remaining.pop('diagnostics'))
+            estimate=v.get('estimate',v.get('posterior mean',v.get('sample mean')))
+            interval=v.get('credible interval',v.get('confidence interval'))
+            if vector(interval) and len(interval)==2:
+                interval_plot('Credible interval' if 'credible interval' in v else 'Confidence interval',[(TITLES.get(name,name) if title=='Summary' else title,estimate,*interval)])
+            elif 'lower' in v and 'upper' in v:
+                interval_plot('Confidence interval',[(TITLES.get(name,name) if title=='Summary' else title,estimate,v['lower'],v['upper'])])
+            if name=='bayescompare' and 'difference credible interval' in v:
+                interval_plot('Difference credible interval', [('Difference (B − A)',v['Posterior Mean Difference (B - A)'],*v['difference credible interval'])],0)
+                interval_plot('Effect credible interval', [('Posterior Effect Size',v['Posterior Effect Size'],*v['effect credible interval'])],0)
+            if name == 'tukey':
+                pairs = [key[:-16] for key in remaining if key.endswith(' mean difference')]
+                add('Pairwise comparisons', ['Comparison','Mean difference','Adjusted p value'],
+                    [[pair, remaining.pop(pair+' mean difference'), remaining.pop(pair+' adjusted p value')] for pair in pairs])
+            # Preserve row relationships for known parallel arrays.
+            bundles = [('P-value adjustment', 'Observation', ['raw p','adjusted p','reject (1=yes)']),
+                       ('Components', 'Component', ['eigenvalues','explained variance ratio','cumulative explained variance']),
+                       ('Feature scaling', 'Feature', ['centers','scales']),
+                       ('Fold scores', 'Fold', ['fold MSE','fold log loss'])]
+            summary = [[key, item] for key, item in remaining.items() if not isinstance(item, (dict, list, tuple, s.MatrixBase))]
+            add(title, ['Metric','Value'], summary)
+            for key, _ in summary: remaining.pop(key)
+            for heading, index, keys in bundles:
+                present = [key for key in keys if key in remaining and vector(remaining[key])]
+                if not present: continue
+                lengths = {len(remaining[key]) for key in present}
+                if len(lengths) != 1: continue
+                add(heading, [index]+present, [[table_labels.get('feature:'+str(i+1),i+1) if name=='pca' and index=='Feature' else i+1]+[remaining[key][i] for key in present] for i in range(next(iter(lengths)))])
+                for key in present: remaining.pop(key)
+            for key, item in remaining.items(): visit(key, item)
+        elif isinstance(v, (list, tuple)):
+            if not v: return
+            if all(isinstance(row, dict) for row in v):
+                intervals=[]; expanded=[]
+                for row_index, raw in enumerate(v):
+                    row=dict(raw)
+                    if name in ('cfa','sem') and title=='Latent R²' and row.get('Role')=='Exogenous (R² not applicable)': row['R²']='Not applicable'
+                    bounds=row.pop('CI95',None)
+                    if isinstance(bounds,(list,tuple)) and len(bounds)==2: row['Lower 95% CI'],row['Upper 95% CI']=bounds
+                    elif 'CI95' in raw: row['Lower 95% CI']=row['Upper 95% CI']=None
+                    standardized_bounds=row.pop('Standardized CI95',None)
+                    if isinstance(standardized_bounds,(list,tuple)) and len(standardized_bounds)==2:
+                        row['Standardized lower 95% CI'],row['Standardized upper 95% CI']=standardized_bounds
+                    for key,prefix in (('Bootstrap CI95','Bootstrap '),('Standardized bootstrap CI95','Standardized bootstrap ')):
+                        bounds=row.pop(key,None)
+                        if isinstance(bounds,(list,tuple)) and len(bounds)==2: row[prefix+'lower 95% CI'],row[prefix+'upper 95% CI']=bounds
+                        elif key in raw: row[prefix+'lower 95% CI']=row[prefix+'upper 95% CI']=None
+                    label=row.get('term',row.get('Term',row.get('group',row.get('Group',row.get('Comparison','')))))
+                    if name in ('arima','sarima') and not label: label=row.get('Parameter','')
+                    estimate=row.get('estimate',row.get('Estimate',row.get('Mean',row.get('adjusted mean',row.get('Mean difference')))))
+                    low=row.get('Lower 95% CI',row.get('Lower CI'))
+                    high=row.get('Upper 95% CI',row.get('Upper CI'))
+                    standardized=name in ('cfa','sem') and title in ('Loadings','Structural paths')
+                    if standardized:
+                        estimate=row.get('Standardized loading',row.get('Standardized path'))
+                        low=row.get('Standardized lower 95% CI'); high=row.get('Standardized upper 95% CI')
+                    if label:
+                        if title=='Effects': label=str(label)+' / '+str(row.get('Effect',''))
+                        if name in ('cfa','sem') and 'Group' in row: label=str(row['Group'])+' / '+str(label)
+                        if name in ('cfa','sem') and 'Factor' in row: label=str(label)+' / Factor '+str(row['Factor'])
+                        intervals.append((label,estimate,low,high))
+                    identifiers = ('term','Term','group','Group','Factor','Feature','Variable','Parameter','Effect','Comparison','Check','Component','Threshold')
+                    context = [{'label':key, 'value':str(row[key])} for key in identifiers if key in row]
+                    if not context: context = [{'label':'Observation', 'value':str(row_index+1)}]
+                    extract_details(title, row, context)
+                    expanded.append(row)
+                if intervals:
+                    plot_title={'Loadings':'Standardized factor loadings (95% CI)','Structural paths':'Standardized structural paths (95% CI)'}.get(title,title+' intervals') if name in ('cfa','sem') else title+' intervals'
+                    interval_plot(plot_title,intervals,0 if (name in ('cfa','sem','gameshowell') or 'coefficients' in title.lower() or 'post-hoc' in title.lower()) else None)
+                v=expanded
+                keys = list(dict.fromkeys(key for row in v for key in row))
+                if title=='Effects':
+                    raw_keys=[key for key in keys if not key.startswith('Standardized ')]
+                    add(title,raw_keys,[[row.get(key,'unavailable') for key in raw_keys] for row in v])
+                    standard_keys=[key for key in keys if key in ('term','Effect','Group') or key.startswith('Standardized ')]
+                    add('Standardized effects',standard_keys,[[row.get(key,'unavailable') for key in standard_keys] for row in v])
+                else:
+                    hidden=('First indicator position','Second indicator position') if title=='Residual covariances' else ()
+                    keys=[key for key in keys if key not in hidden and not (title=='Residual covariances' and key=='term')]
+                    add(title, keys, [[row.get(key, 'unavailable') for key in keys] for row in v])
+            elif all(vector(row) for row in v) and len({len(row) for row in v}) == 1:
+                width = len(v[0])
+                headers = {'survival table':['Time','At risk','Events','Censored','Survival','Lower 95% CI','Upper 95% CI'],
+                           'observed':['Category 1','Category 2'], 'expected':['Category 1','Category 2']}.get(title)
+                if headers is None or len(headers) != width:
+                    prefix = ('Factor ' if name=='efa' else 'PC') if title in ('loadings','scores','Structure loadings','Factor correlations') else 'Feature ' if title=='centroids' else 'Column '
+                    headers = [prefix+str(i+1) for i in range(width)]
+                    if title=='centroids': headers=[table_labels.get('feature:'+str(i+1),header) for i,header in enumerate(headers)]
+                index = 'Feature' if title in ('loadings','Structure loadings') else 'Factor' if title=='Factor correlations' else 'Cluster' if title == 'centroids' else 'Observation'
+                if contingency and title in ('observed', 'expected'):
+                    if categorical:
+                        headers = [str(table_labels['table:column'])+': '+str(table_labels.get('table:column:'+str(i+1), 'Category '+str(i+1))) for i in range(width)]
+                    count_table(title, headers, v)
+                    return
+                add(title, [index]+headers, [[table_labels.get('feature:'+str(i+1),i+1) if name in ('pca','efa') and index=='Feature' else i+1]+list(row) for i,row in enumerate(v)])
+            elif vector(v):
+                if title in ('confidence interval','credible interval','difference credible interval','effect credible interval','quartiles (inclusive)','Quartiles'):
+                    labels = ['Lower','Upper'] if len(v)==2 else ['Q1','Median','Q3']
+                    if len(labels)==len(v): add(title, labels, [list(v)]); return
+                add(title, ['Fold' if title in ('fold MSE','fold log loss','fold sizes') else 'Observation','Value'], [[i+1,item] for i,item in enumerate(v)])
+            else:
+                for i,item in enumerate(v): visit(title+' '+str(i+1), item)
+        elif explanatory(title, v): describe(title, title, v)
+        else: add(title, ['Metric','Value'], [[title,v]])
+
+    if name in ('stats','mode','skewness','kurtosis','mean','median','stdev','variance','sumdata','quartiles','correlation','covariance') and table_labels.get('sample:1'):
+        add('Analyzed variables',['Sample'],[[table_labels[key]] for key in sorted(table_labels) if key.startswith('sample:')])
+    if categorical:
+        add('Compared columns', ['First column', 'Second column'] if name == 'mcnemar' else ['Row variable', 'Column variable'], [[table_labels['table:row'], table_labels['table:column']]])
+    if name=='bayesbootstrap' and isinstance(value,dict) and value.get('comparison'):
+        add('Compared groups',['Group A','Group B'],[[table_labels.get('sample:A','A'),table_labels.get('sample:B','B')]])
+    if name=='kmeans' and isinstance(value,dict):
+        assignments=value.get('labels (1-based)',[])
+        add('Cluster sizes',['Cluster','n'],[[i+1,sum(label==i+1 for label in assignments)] for i in range(len(value.get('centroids',[])))])
+    if name=='crossvalidate' and isinstance(value,dict):
+        metric='fold log loss' if 'fold log loss' in value else 'fold MSE'
+        scores=value.get(metric,[])
+        if scores: plots.append({'kind':'bars','title':'Validation score by fold','values':list(map(float,scores)),'labels':['Fold '+str(i+1) for i in range(len(scores))],'ylabel':'Log loss' if metric=='fold log loss' else 'MSE'})
+    if name=='friedman' and isinstance(value,dict):
+        ranks=value['mean ranks'];plots.append({'kind':'bars','title':'Mean ranks by condition','values':list(map(float,ranks)),'labels':[table_labels.get('feature:'+str(i+1),'Condition '+str(i+1)) for i in range(len(ranks))],'ylabel':'Mean rank'})
+    if name=='padjust' and isinstance(value,dict):
+        plots.append({'kind':'bars','title':'Raw and adjusted p values','values':list(map(float,value['adjusted p'])),'secondary':list(map(float,value['raw p'])),'labels':[str(i+1) for i in range(len(value['raw p']))],'ylabel':'p value','reference':float(value['alpha']),'maximum':1})
+    if name in ('cfa','sem') and isinstance(value,dict):
+        from calc_statistics_sem_diagram import diagrams
+        plots.extend(diagrams(value,table_labels))
+        assumptions.append('Fully standardized coefficients: 95% Wald confidence intervals by the delta method using the full parameter covariance. Fixed raw marker loadings retain standardized uncertainty. Latent R² = 1 − disturbance variance / total latent variance; R² is not applicable to exogenous factors. WLSMV loadings refer to underlying probit responses. Diagram arrows show specified effects, not proof of causality.')
+        assumptions.append('Indicator R² = 1 − indicator residual variance / model-implied indicator variance. Cross-loadings include factor covariance terms. With WLSMV, R² refers to the underlying probit response.')
+    if name=='modelcompare' and isinstance(value,dict):
+        value=dict(value)
+        if 'Model fit' in value:
+            add('Compared models',['Model','Variables','Response'],[[model,table_labels.get('model:'+letter,model),table_labels.get('response','')] for model,letter in [('Model A','A'),('Model B','B')]])
+            add('Model fit',['Model','n','Fixed coefficients','Log likelihood','AIC','BIC','R²','Deviance','χ²','df','CFI','RMSEA'],value.pop('Model fit'))
+        if 'Validation performance' in value:
+            performance=value.pop('Validation performance');columns=list(performance[0])
+            add('Validation performance',columns,[[row.get(key) for key in columns] for row in performance])
+        if 'Paired differences' in value:
+            differences=value.pop('Paired differences')
+            add('Paired performance differences (B − A)',['Metric','Difference','Lower CI','Upper CI','p value','Inference'],differences)
+            for row in differences:interval_plot('Δ'+str(row[0])+' (B − A)',[['Model B − Model A',*row[1:4]]],0)
+        if 'ROC curves' in value:
+            curves=value.pop('ROC curves')
+            intervals=value.pop('AUC intervals',[None,None])
+            plots.append({'kind':'roc-comparison','title':'ROC / AUC comparison','evaluation':str(value['Validation method']),
+                          'series':[{'label':row['Model'],'points':[[float(x),float(y)] for x,y in points],'auc':float(row['AUC']),'interval':[float(v) for v in interval] if isinstance(interval,(list,tuple)) and all(finite(v) is not None for v in interval) else None} for row,points,interval in zip(performance,curves,intervals)]})
+        if 'Calibration curves' in value:
+            calibration=value.pop('Calibration curves')
+            plots.append({'kind':'calibration-comparison','title':'Calibration comparison','evaluation':str(value['Validation method']),
+                          'series':[{'label':row['Model'],'points':[[float(x),float(y),int(n)] for x,y,n in points]} for row,points in zip(performance,calibration)]})
+        if 'Candidate comparisons' in value:
+            candidates=value.pop('Candidate comparisons');columns=list(dict.fromkeys(key for row in candidates for key in row))
+            for row in candidates:row['Candidate']=table_labels.get('candidate:'+str(row['Candidate']),str(row['Candidate']))
+            add('Candidate comparisons',columns,[[row.get(key) for key in columns] for row in candidates])
+        if 'Failed candidate comparisons' in value:
+            failed=value.pop('Failed candidate comparisons')
+            add('Failed candidate comparisons',['Candidate','Reason'],[[table_labels.get('candidate:'+str(row['Candidate']),str(row['Candidate'])),row['Reason']] for row in failed])
+    if name=='logisticcompare' and isinstance(value,dict):
+        value=dict(value)
+        add('Compared predictors',['Model','Predictors','Response'],[[model,table_labels.get('model:'+letter,model),table_labels.get('response','0/1')] for model,letter in [('Model A','A'),('Model B','B')]])
+        add('Training model fit',['Model','n','Coefficient count','Log likelihood','AIC','BIC'],value.pop('Training models'))
+        validation=value.pop('Validation models')
+        add('Validation performance',['Model','n','AUC','Accuracy','Log loss','Brier score','Calibration intercept','Calibration slope'],validation)
+        differences=value.pop('Paired differences')
+        add('Paired performance differences (B − A)',['Metric','Difference','Lower CI','Upper CI','p value','Inference'],differences)
+        curves=value.pop('ROC curves');intervals=value.pop('AUC intervals');calibration=value.pop('Calibration curves')
+        plot_series=[{'label':row[0],'points':[[float(x),float(y)] for x,y in points],'auc':float(row[2]),'interval':[float(v) for v in interval] if isinstance(interval,(list,tuple)) and all(finite(v) is not None for v in interval) else None} for row,points,interval in zip(validation,curves,intervals)]
+        plots.append({'kind':'roc-comparison','title':'ROC / AUC comparison','series':plot_series,'evaluation':str(value['Validation method'])})
+        plots.append({'kind':'calibration-comparison','title':'Calibration comparison','series':[{'label':row[0],'points':[[float(x),float(y),int(n)] for x,y,n in points]} for row,points in zip(validation,calibration)],'evaluation':str(value['Validation method'])})
+        delta=differences[0]
+        if all(finite(v) is not None for v in delta[1:4]):interval_plot('ΔAUC (B − A)',[['Model B − Model A',*delta[1:4]]],0)
+    visit('Summary' if isinstance(value, dict) else TITLES.get(name, name), value)
+    priority=['Cronbach α','Cohen κ',"Cramér’s V",'phi','Indirect effect a×b','CFI','RMSEA','KMO','p value','p','mean difference','posterior mean','Posterior Mean Difference (B - A)','Posterior Effect Size','BF10','P(μB > μA)','estimate','power','achieved power','n per group / pairs','R²','Adjusted R²','Kendall W','eta2','Cohen d','Cohen dz','RMSE','R2','inertia']
+    report_title=TITLES.get(name,name)
+    if name=='mcnemar' and isinstance(value,dict):
+        priority=['discordant pairs','p']
+        report_title={'asymptotic':'McNemar','exact':'Exact McNemar','corrected':'McNemar (continuity correction)'}.get(value.get('method'),report_title)
+    if name in ('cfa','sem'): priority=['CFI','RMSEA','SRMR','p']
+    if name in ('arima','sarima'): priority=['Forecast horizon','Prediction level','RMSE','Conditional AICc']
+    if name=='logisticcompare':priority=['LRT χ²','LRT p','ΔAIC (B − A)','ΔBIC (B − A)']
+    if name=='modelcompare':priority=['F','LRT χ²','Difference χ²','p','ΔR² (B − A)','ΔAUC (B − A)','ΔC-index (B − A)','ΔRMSE (B − A)','ΔAIC (B − A)']
+    highlights=[{'label':('χ² p' if name in ('cfa','sem') else 'p value') if key=='p' and name in ('cfa','sem','mcnemar') else key,'value':cell(value[key])} for key in priority if isinstance(value,dict) and key in value and finite(value[key]) is not None][:4]
+    report = {'analysis': name, 'title': report_title, 'sections': sections,'highlights':highlights,'plots':plots}
+    if assumptions: report['assumptions'] = assumptions
+    if details: report['details'] = details
+    return report
+
+
+def statistics_copy_report(name, value, details, precision):
+    """Copy tables for dedicated reports without changing visible report routing."""
+    if name == 'regression':
+        data = {'Fitted expression': value, **details}
+        report = statistics_report(name, data, precision)
+        report['title'] = 'Regression'
+    else:
+        data = {key: item for key, item in details.items() if key != 'groups'}
+        for index, group in enumerate(details.get('groups', [])):
+            data['Group '+str(index+1)] = {key: item for key, item in group.items() if key != 'curve'}
+            data['Group '+str(index+1)]['survival table'] = group.get('curve', [])
+        report = statistics_report(name, data, precision)
+        report['title'] = 'Survival analysis'
+    return report

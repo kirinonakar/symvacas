@@ -1,0 +1,36 @@
+{
+  "numeric": "value,label\n01.00,A\n2,B\n-1,C\n,D\nNaN,E\n1e309,F\n\"1,000\",G",
+  "text": "label,id\n서울역,1\n서울,2\n부산역,3\nSeoul,4\nseoul,5\n,6",
+  "multi": "ID,age,group\n\"A,B\",18,남성\nC,17,여성\nD,40,여성\nE,,여성\n\"A,B\",18,남성",
+  "cases": [
+    {"source":"numeric","match":"all","conditions":[{"column":"0","operator":"eq","value":"1"}],"rows":[0]},
+    {"source":"numeric","match":"all","conditions":[{"column":"0","operator":"neq","value":"1"}],"rows":[1,2,6]},
+    {"source":"numeric","match":"all","conditions":[{"column":"0","operator":"lt","value":"1"}],"rows":[2]},
+    {"source":"numeric","match":"all","conditions":[{"column":"0","operator":"lte","value":"1"}],"rows":[0,2]},
+    {"source":"numeric","match":"all","conditions":[{"column":"0","operator":"gt","value":"1"}],"rows":[1,6]},
+    {"source":"numeric","match":"all","conditions":[{"column":"0","operator":"gte","value":"2"}],"rows":[1,6]},
+    {"source":"text","match":"all","conditions":[{"column":"0","operator":"textEquals","value":"Seoul"}],"rows":[3]},
+    {"source":"text","match":"all","conditions":[{"column":"0","operator":"textNotEquals","value":"Seoul"}],"rows":[0,1,2,4,5]},
+    {"source":"text","match":"all","conditions":[{"column":"0","operator":"contains","value":"서울"}],"rows":[0,1]},
+    {"source":"text","match":"all","conditions":[{"column":"0","operator":"startsWith","value":"서울"}],"rows":[0,1]},
+    {"source":"text","match":"all","conditions":[{"column":"0","operator":"endsWith","value":"역"}],"rows":[0,2]},
+    {"source":"text","match":"all","conditions":[{"column":"0","operator":"blank","value":"ignored"}],"rows":[5]},
+    {"source":"text","match":"all","conditions":[{"column":"0","operator":"notBlank","value":""}],"rows":[0,1,2,3,4]},
+    {"source":"multi","match":"all","conditions":[{"column":"1","operator":"gte","value":"18"},{"column":"2","operator":"textEquals","value":"여성"}],"rows":[2]},
+    {"source":"multi","match":"any","conditions":[{"column":"1","operator":"gte","value":"18"},{"column":"2","operator":"textEquals","value":"여성"}],"rows":[0,1,2,3,4]},
+    {"source":"multi","match":"all","conditions":[{"column":"0","operator":"contains","value":","}],"rows":[0,4]},
+    {"source":"numeric","match":"all","conditions":[{"column":"0","operator":"gt","value":"1000"}],"rows":[]}
+  ],
+  "invalid": [
+    {"match":"xor","conditions":"[{\"column\":\"0\",\"operator\":\"blank\",\"value\":\"\"}]","error":"Choose how to combine filter conditions"},
+    {"match":"all","conditions":"[]","error":"Enter valid filter conditions"},
+    {"match":"all","conditions":"invalid","error":"Enter valid filter conditions"},
+    {"match":"all","conditions":"[{\"column\":\"0\",\"operator\":\"eq\"}]","error":"Enter valid filter conditions"},
+    {"match":"all","conditions":"[{\"column\":\"5\",\"operator\":\"blank\",\"value\":\"\"}]","error":"Choose valid data columns"},
+    {"match":"all","conditions":"[{\"column\":\"\",\"operator\":\"blank\",\"value\":\"\"}]","error":"Choose valid data columns"},
+    {"match":"all","conditions":"[{\"column\":\"0\",\"operator\":\"eq\",\"value\":\"NaN\"}]","error":"Enter a finite numeric filter value"},
+    {"match":"all","conditions":"[{\"column\":\"0\",\"operator\":\"lt\",\"value\":\"\"}]","error":"Enter a finite numeric filter value"},
+    {"match":"all","conditions":"[{\"column\":\"0\",\"operator\":\"regex\",\"value\":\".*\"}]","error":"Choose a valid filter operator"},
+    {"match":"all","conditions":"[{\"column\":\"0\",\"operator\":\"contains\",\"value\":\"\"}]","error":"Enter a text filter value"}
+  ]
+}

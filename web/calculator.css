@@ -1,0 +1,355 @@
+/* Android InstrumentColors and keypad geometry. The calculator owns one viewport;
+   long expressions/results scroll inside their displays, never below the keypad. */
+@font-face{font-family:"SymvaCAS Math";src:url("fonts/STIXTwoMath-Regular.woff2") format("woff2");font-weight:400;font-style:normal;font-display:swap}
+math{font-family:"SymvaCAS Math","Cambria Math",math;font-weight:400;font-synthesis:none;line-height:normal}
+.workspace[data-mode="statistics"] label:has(>select),.workspace[data-mode="statistics"] .statistics-form-columns legend{font-size:14px;font-weight:600;color:var(--ink)}
+.workspace[data-mode="statistics"] label>select{font-size:13px;font-weight:400}
+.statistics-result-report{width:100%;min-width:0;font-family:system-ui,sans-serif;font-size:13px;line-height:1.5;text-align:left;color:var(--ink);white-space:normal}
+.statistics-assumptions{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.statistics-assumptions h4{margin:0 0 6px;font-size:13px}
+.statistics-analysis-result{margin:12px 0 18px}
+.statistics-result-heading{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-bottom:12px}
+.statistics-result-heading>h3{flex:1;min-width:0;margin:0}
+.statistics-result-report h3{font-size:17px;margin:0}
+.statistics-result-heading button{flex:none;font-size:12px;white-space:nowrap}
+.statistics-result-report section+section{margin-top:16px}
+.statistics-result-scroll{width:max-content;max-width:100%;height:auto;max-height:none;overflow-x:auto;overflow-y:hidden;border:1px solid var(--line);border-radius:6px}
+.statistics-result-scroll:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.statistics-result-report table{width:max-content;table-layout:auto;border-collapse:collapse;font-size:13px}
+.statistics-result-report caption{text-align:left;padding:8px 10px;font-weight:600;background:var(--panel)}
+.statistics-result-report th{background:var(--bar);color:var(--muted);font-weight:600;text-align:left}
+.statistics-result-report th,.statistics-result-report td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+.statistics-result-report tbody tr:last-child td{border-bottom:0}
+.statistics-result-report tbody tr:nth-child(even){background:var(--panel)}
+.statistics-result-report td:first-child{font-weight:500}
+.statistics-result-report .result-flow{font-size:14px}
+.statistics-result-report .result-part{padding:.12em 0}
+.statistics-result-report table .result-flow{width:max-content;max-width:none;flex-wrap:nowrap}
+.statistics-result-report table .result-part{max-width:none;overflow:visible;padding:.12em 0}
+.statistics-result-details .statistics-interpretation{white-space:normal;overflow-wrap:anywhere}
+.regression-section table,#statistics-survival-result table{width:max-content;table-layout:auto}
+.mode-picker{position:relative;flex:0 1 176px;width:176px;max-width:55%;min-width:0;margin-right:auto;color:var(--ink)}
+.mode-picker::after{content:"";position:absolute;left:12px;top:50%;width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-70%) rotate(45deg);pointer-events:none}
+.mode-bar .mode-picker #mode-status{width:100%;max-width:none;padding-left:30px;padding-right:8px;color:inherit;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.catalog-dialog[open],.history-dialog[open]{display:flex;flex-direction:column;overflow:hidden;height:min(720px,85dvh)}
+.catalog-dialog .dialog-heading,.history-dialog .dialog-heading{flex:none}
+.catalog-dialog #dialog-body,.history-dialog #dialog-body{display:flex;flex:1;min-height:0;overflow:hidden}
+.history-content{display:flex;flex-direction:column;gap:8px;width:100%;min-height:0;overflow:hidden}
+.history-content>input,.history-actions{flex:none}
+.history-actions{display:flex;gap:8px}
+.history-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
+.catalog-content{display:flex;flex-direction:column;gap:8px;width:100%;min-height:0;overflow:hidden}
+.catalog-tools{display:flex;align-items:center;gap:8px;flex:none}
+.catalog-tools input{flex:1;min-width:0}.catalog-tools button{flex:none}
+.catalog-search{position:relative;flex:1;min-width:0}.catalog-search input{padding-right:40px;width:100%}
+.catalog-search-clear{position:absolute;right:5px;top:50%;transform:translateY(-50%);padding:5px 8px;line-height:1;color:var(--muted)}
+.catalog-content .catalog-tabs{flex:none;padding-bottom:6px}
+.catalog-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
+.catalog-content>.hint{flex:none;margin:0;font-size:11px}
+.catalog-help-block{padding:7px 0}.catalog-help-block code{overflow-wrap:anywhere}
+.catalog-help-block .hint{margin:4px 0}.catalog-example{text-align:left;padding:5px 0;overflow-wrap:anywhere;font-weight:400}
+.regression-section{border-block:1px solid var(--line);padding:14px 0;margin:16px 0}.regression-section h2{margin-bottom:12px}
+#tip-percent:disabled,#tip-fixed:disabled{opacity:.45;cursor:not-allowed}
+#statistics-editor{margin-bottom:16px}#statistics-editor>label{margin-bottom:0}#statistics-editor .line-numbered{display:flex;align-items:stretch;height:180px}#statistics-editor.expanded .line-numbered{height:360px}#statistics-editor.expanded #statistics-grid{max-height:560px}#statistics-editor .line-numbered>textarea{flex:1;min-width:0;height:100%;resize:none;border-radius:0 7px 7px 0}#statistics-editor .line-numbers{flex:none;overflow:hidden;padding:10px 6px;border:1px solid var(--line);border-right:0;border-radius:7px 0 0 7px;background:var(--bar);color:var(--muted);font-family:Consolas,"SFMono-Regular",monospace;font-size:14px;line-height:1.7;text-align:right;pointer-events:none;user-select:none}#statistics-editor .line-numbers>span{display:block;white-space:pre}
+.matrix-grid{display:block;margin:20px 0;overflow:auto}
+.editable-table{width:100%;border-collapse:collapse;table-layout:fixed;background:var(--panel)}
+.editable-table td,.editable-table th{border:1px solid var(--line);padding:0}
+.editable-table th{padding:7px 10px;text-align:center;font-weight:500;background:var(--bar)}
+/* Keep column labels and actions together when the editor scrolls. */
+.editable-table thead{position:sticky;top:0;z-index:2}
+.editable-table thead th{position:static}
+.editable-table tbody th{position:sticky;left:0;top:auto;z-index:1}
+.editable-table input{display:block;width:100%;min-width:0;margin:0;padding:9px 10px;border:0;border-radius:0;background:transparent;text-align:right;box-shadow:none}
+.editable-table input:focus{outline:2px solid var(--accent);outline-offset:-2px;background:var(--bg)}
+.editable-table .table-row-action{text-align:center}
+#statistics-grid .table-row-action{background:var(--bar)}
+.editable-table .table-row-action button{padding:5px 8px}
+.editable-table .table-column-actions th{padding:2px;white-space:nowrap}
+.editable-table .table-column-actions button{padding:2px 4px;font-size:11px;line-height:1;min-width:0}
+.editable-table .table-column-actions button+button{margin-left:2px}
+.editable-table .table-column-actions button:disabled{opacity:.35}
+.virtual-table{overflow-anchor:none}
+.virtual-table tbody tr:not([aria-hidden]){height:40px}
+.virtual-table tbody input{height:39px;box-sizing:border-box}
+.editable-table td.table-row-spacer{padding:0;border:0;background:transparent}
+label:has(>input:disabled),label:has(>select:disabled){color:var(--muted)}
+input:disabled,select:disabled{opacity:.45;cursor:default}
+:root[data-engineering-conversion="true"] .key[data-input="ENG"]{color:var(--accent);background:var(--bar)}
+.shortcut-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;max-height:260px;overflow:auto}
+.shortcut-choices button{text-align:left;overflow-wrap:anywhere}
+:root{--bg:#e9ede9;--panel:#f3f6ee;--bar:#d8e0da;--ink:#162a26;--muted:#53635d;--line:#b3c0b8;--accent:#006d5b;--key:#d8e0da;--number:#fafbf8;--lime:#acca4a;--gold:#785600;--alpha:#754584;--operator:#c6d9d2}
+:root[data-theme="dark"]{--bg:#111916;--panel:#09120f;--bar:#202d27;--ink:#e6f0e7;--muted:#9eb3a6;--line:#3c5246;--accent:#79dbb7;--key:#202d27;--number:#2b3731;--lime:#acca4a;--gold:#e7c36e;--alpha:#d6ace9;--operator:#29443a}
+.title-button{display:inline-flex;align-items:center;gap:8px;font:inherit;letter-spacing:inherit;color:inherit;padding:4px 0;min-height:0;border:0;border-radius:4px}.title-icon{display:block;flex-shrink:0;width:24px;height:24px}.about-content{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}.about-content p{margin:0}.about-content a{font-size:12px}.about-content button{align-self:flex-end}
+.mode-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.preferences{width:100%;padding:0;margin-bottom:18px;border:0;gap:16px}.preferences label{flex:1}.preferences select{width:100%;font-size:14px;padding:10px 24px 10px 12px}#digits-indicator{white-space:nowrap;font-size:10px;font-weight:400;color:var(--muted);border:0;background:transparent;padding:4px;flex-shrink:0}#key-modifier{font-size:10px;color:var(--gold)}#key-modifier.alpha{color:var(--alpha)}#insert-mode{color:var(--muted);font-weight:400;font-size:10px;padding:4px}.mode-bar #mode{max-width:none;min-width:0;flex:1}.mode-bar #angle{width:70px;flex-shrink:0}.edit-actions #commit-indicator{margin-right:auto;color:var(--muted)}.answer-toolbar{overflow-x:auto;overflow-y:hidden;white-space:nowrap}.answer-toolbar button{flex-shrink:0}.answer-toolbar #exact-toggle{margin-right:0}.answer-toolbar button.active{color:var(--accent);background:var(--bar)}
+:root body{padding:0}
+:root .instrument{min-height:100dvh;border-radius:0}
+:root[data-workspace="scientific"] body{height:100dvh;min-height:0;overflow:hidden}
+:root[data-workspace="scientific"] .instrument{height:100dvh;min-height:0;max-height:100dvh;display:grid;grid-template-areas:"header" "mode" "runtime" "main";grid-template-rows:44px 48px auto minmax(0,1fr);padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+:root[data-workspace="scientific"] header{grid-area:header}
+:root[data-workspace="scientific"] .mode-bar{grid-area:mode}
+:root[data-workspace="scientific"] .runtime-bar{grid-area:runtime}
+:root[data-workspace="scientific"] main{grid-area:main}
+:root header{height:44px;padding:0 14px;flex-wrap:nowrap;gap:8px}
+:root h1{font-size:18px;letter-spacing:2px}
+:root .header-actions{gap:0}
+:root .header-actions button{font-size:11px;padding:6px 8px;white-space:nowrap}
+:root .mode-bar{height:48px;padding:0 8px;gap:6px}
+:root .mode-bar #mode-status{font-size:12px;font-weight:400;padding-left:30px;letter-spacing:0}
+:root .mode-bar #angle{font-size:11px;width:62px;padding-right:12px}
+:root[data-workspace="scientific"] .runtime-bar{min-width:0;padding:2px 14px;font-size:10px}
+:root[data-workspace="scientific"] #status{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:root[data-workspace="scientific"][data-engine="ready"] .runtime-bar{display:none}
+/* Keep keypad geometry tied to the viewport; tall math scrolls in the tape. */
+:root[data-workspace="scientific"] main{min-height:0;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr) minmax(0,min(68%,520px))}
+:root[data-workspace="scientific"] .workspace[data-mode="scientific"]:not(.keypad-workspace){grid-row:1;min-height:0;overflow:hidden;padding:0 14px;display:grid;grid-template-rows:28px minmax(0,1fr)}
+:root[data-workspace="scientific"] .edit-actions{height:28px;min-width:0;margin:0;padding:0;align-items:center;gap:1px;overflow-x:auto;overflow-y:hidden;white-space:nowrap}
+:root[data-workspace="scientific"] .edit-actions button{min-width:0;flex-shrink:0;font-size:11px;padding:5px 8px}
+:root[data-workspace="scientific"] .edit-actions #stop{flex:0 0 44px}
+:root[data-workspace="scientific"] #expression{display:none;resize:none;height:100%;min-height:0;padding:4px 0;font-size:clamp(16px,3vw,28px);line-height:1.35;overflow:auto}
+:root[data-workspace="scientific"] .expression-preview{display:flex;align-items:center;min-width:0;min-height:0;overflow:auto;padding:4px 0;font-family:"Cambria Math",Cambria,serif;font-size:clamp(20px,4vw,32px);white-space:pre-wrap;overflow-wrap:anywhere;cursor:text}
+:root[data-workspace="scientific"] .expression-preview math{margin:0;flex-shrink:0}
+.input-math,.math-frame{position:relative;display:inline-block;flex-shrink:0}
+:root[data-workspace="scientific"][data-word-wrap="true"] .calculation-display .expression-preview{align-items:flex-start;white-space:pre-wrap;overflow-x:hidden}
+.input-flow{display:flex;flex-wrap:nowrap;align-items:baseline;width:max-content;white-space:pre-wrap}
+.input-wrapped{flex-wrap:wrap;width:100%;min-width:0;overflow-wrap:anywhere}
+.result-flow{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:flex-end;gap:.15em;width:100%;min-width:0;max-width:100%}
+.result-part{display:block;min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden;padding:.12em 0}
+.result-part math{margin:0}
+.input-part{display:inline-block;max-width:100%;flex-shrink:0}
+.calc-value>.input-wrapped{flex:1;min-width:0;width:auto}
+:root[data-word-wrap="true"] #expression{white-space:pre-wrap;overflow-wrap:anywhere;overflow-x:hidden}
+.math-root-overlay{position:absolute;left:0;top:0;overflow:visible;pointer-events:none;color:var(--math-ink)}
+.math-root-painted{color:transparent}
+.math-root-painted>.math-root-content{color:var(--math-ink)}
+.expression-preview .selected{background:var(--operator)}.expression-preview .input-slot{color:var(--muted);border:1px dashed var(--line)}
+.input-caret{position:absolute;display:block;width:2px;background:var(--accent);pointer-events:none;animation:input-blink 1.1s step-end infinite}.text-caret{color:var(--accent);animation:input-blink 1.1s step-end infinite}
+@keyframes input-blink{50%{opacity:0}}@media(prefers-reduced-motion:reduce){.input-caret,.text-caret{animation:none}}
+:root[data-calc-active="true"] .expression-preview{flex-direction:column;align-items:stretch;justify-content:center;gap:4px}
+.calc-source{font:12px Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+.calc-value{display:flex;align-items:center;min-height:0;gap:6px}
+:root[data-workspace="scientific"][data-typing="true"] #expression{display:block}
+:root[data-workspace="scientific"][data-typing="true"] .expression-preview{display:none}
+:root[data-workspace="scientific"] .answer-panel{grid-row:2;min-height:0;min-width:0;overflow:hidden;border:0;padding:0 14px;display:grid;grid-template-rows:minmax(0,1fr) auto 30px}
+:root[data-workspace="scientific"] #answer{min-height:0;min-width:0;margin:0;padding:2px 0;overflow:auto;align-items:safe center;font-size:clamp(22px,4vw,34px);line-height:1.2}
+:root[data-workspace="scientific"] #note{max-height:16px;overflow:auto;white-space:nowrap;font-size:10px;line-height:16px;margin:0}
+:root[data-workspace="scientific"] .answer-toolbar{height:30px;min-width:0;gap:6px;align-items:center;scrollbar-width:none}
+:root[data-workspace="scientific"] .answer-toolbar button{font-size:11px;padding:5px 9px}
+.answer-toolbar #engineering-toggle:not(.active),.answer-toolbar #screen-toggle:not(.active),.answer-toolbar #grouping-toggle:not(.active){color:var(--muted);opacity:.45}
+:root[data-workspace="scientific"] .keypad-workspace{grid-row:3;min-height:0;min-width:0;overflow:hidden;padding:4px 8px;background:var(--bg);container-type:size}
+:root[data-workspace="scientific"] .calculation-display{grid-column:1;grid-row:1 / span 2;min-height:0;min-width:0;overflow:hidden;display:grid;grid-template-rows:28px minmax(0,1fr) 30px;padding:0 14px}
+.calculation-tape{min-height:0;min-width:0;overflow:auto;overscroll-behavior-y:contain;display:flex;flex-direction:column;scrollbar-width:none;padding-right:8px;overflow-anchor:none}
+.tape-history{flex:none;min-width:0}
+.tape-active{flex:none;min-width:0;min-height:100%;display:flex;flex-direction:column;justify-content:flex-start}
+:root[data-workspace="scientific"] .calculation-display .workspace[data-mode="scientific"]:not(.keypad-workspace){display:block;grid-row:auto;overflow:visible;padding:0;flex:none}
+:root[data-workspace="scientific"] .calculation-display .expression-preview{min-height:60px;overflow-x:auto;overflow-y:hidden;align-items:center}
+:root[data-workspace="scientific"] .calculation-display #expression{height:64px;min-height:64px}
+:root[data-workspace="scientific"] .calculation-display .answer-panel{display:block;grid-row:auto;padding:0;flex:none;overflow:visible}
+:root[data-workspace="scientific"] .calculation-display #answer{min-height:56px}
+/* Each answer grows with its MathML; vertical navigation belongs to the tape. */
+:root[data-workspace="scientific"] .calculation-display #answer,
+:root[data-workspace="scientific"] .calculation-display #answer .result-part{overflow-y:hidden;scrollbar-width:none}
+:root[data-workspace="scientific"] .calculation-display #answer .result-part::-webkit-scrollbar{display:none}
+.tape-entry{padding:10px 0;border-bottom:1px solid var(--line);min-width:0}
+.tape-expression{display:block;width:100%;min-width:0;padding:0;border:0;border-radius:0;color:var(--ink);font-family:"Cambria Math",Cambria,serif;font-size:clamp(16px,3.4vw,27px);font-weight:400;line-height:1.5;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;overflow-x:auto;overflow-y:hidden}
+.tape-expression:hover{background:var(--operator)}.tape-expression:disabled{opacity:1}
+.tape-result{display:flex;justify-content:flex-end;min-width:0;padding:6px 8px 10px 0;font-family:"Cambria Math",Cambria,serif;font-size:clamp(18px,3.3vw,28px);line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;overflow-x:auto;overflow-y:hidden}
+.tape-expression math,.tape-result math{margin:0;flex-shrink:0}
+.tape-expression math{display:inline-block}
+.tape-note{font-size:10px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
+.formula-preview{min-width:0;overflow-x:auto;overflow-y:hidden;padding:8px 0;font-family:"Cambria Math",Cambria,serif;font-size:clamp(16px,2.6vw,24px);color:var(--ink)}
+.formula-line{min-width:0;overflow-x:auto;overflow-y:hidden;padding:4px 0}.formula-preview math{margin:0;display:inline-block}
+/* A hidden source leaves only the result's natural height in the lower Output. */
+:root:not([data-workspace="scientific"]) .answer-panel.compact-output{padding-top:6px;padding-bottom:8px}
+:root:not([data-workspace="scientific"]) .answer-panel.compact-output #answer{min-height:0;padding-top:4px;padding-bottom:4px}
+/* Tall fractions can overflow MathML line boxes. Keep scrolling available
+   without native scrollbar tracks inside the calculation display. */
+.expression-preview,#answer,.tape-expression,.tape-result,.formula-preview,.formula-line{scrollbar-width:none}
+.calculation-tape::-webkit-scrollbar,.expression-preview::-webkit-scrollbar,#answer::-webkit-scrollbar,.tape-expression::-webkit-scrollbar,.tape-result::-webkit-scrollbar,.formula-preview::-webkit-scrollbar,.formula-line::-webkit-scrollbar{display:none}
+:root[data-workspace="scientific"] .expression-preview{font-size:var(--input-font,24px)}
+#answer,:root[data-workspace="scientific"] #answer{font-size:var(--output-font,30px)}
+#answer,:root[data-workspace="scientific"] #answer{padding-right:8px;padding-bottom:10px}
+.graph-source-editor{display:flex;align-items:stretch;height:94px;min-width:0;margin-bottom:12px}
+.graph-source-editor #graph-source{flex:1;min-width:0;height:100%;resize:none;border-radius:0 7px 7px 0;font:14px/24px Consolas,"SFMono-Regular",monospace;padding:10px 12px}
+.graph-line-gutter{flex:none;width:46px;overflow:hidden;padding:10px 0;border:1px solid var(--line);border-right:0;border-radius:7px 0 0 7px;background:var(--bar);color:var(--muted);font:14px/24px Consolas,"SFMono-Regular",monospace}
+.graph-input-line{display:flex;align-items:center;height:24px}
+.graph-input-line>span{flex:1;padding-right:4px;text-align:right;user-select:none}
+.graph-input-line>button{flex:none;width:24px;height:24px;min-height:0;padding:0;border-radius:4px;color:var(--muted);font:inherit}
+#statistics-editor .line-numbers{width:58px;padding-left:0;padding-right:0;pointer-events:auto}
+#statistics-editor .statistics-direct-input>label{margin-bottom:0}
+/* Use whole-pixel line boxes and identical font metrics for source and gutter. */
+#graph-source,.graph-line-gutter,#statistics-editor .line-numbered>textarea,#statistics-editor .line-numbers{font:14px/24px Consolas,"SFMono-Regular",monospace;letter-spacing:normal}
+#answer math{max-width:none}.graph-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0}.graph-toolbar label{margin:0;min-width:100px}.graph-toolbar button{background:var(--bar)}
+.graph-toolbar .graph-curve-picker{flex-direction:row;align-items:center;gap:10px}.graph-curve-picker span{white-space:nowrap}.graph-curve-picker select{width:auto;min-width:85px}
+.graph-derivative-controls{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;flex:0 0 auto}.graph-derivative-controls .check{min-width:0;gap:4px;white-space:nowrap}.graph-derivative-controls input{margin:0;flex-shrink:0}
+#graph-animate{display:inline-flex;align-items:center;justify-content:center;min-width:40px}#graph-animate .graph-stop-icon,#graph-animate[aria-pressed="true"] .graph-play-icon{display:none}#graph-animate[aria-pressed="true"] .graph-stop-icon{display:block}
+#graph-formulas{display:flex;flex-wrap:nowrap;align-items:baseline;gap:8px;overflow-x:auto;overflow-y:hidden;max-width:100%;padding:4px 2px;font-family:"SymvaCAS Math","Cambria Math",math}
+#graph-formulas .formula-line.selected-curve{background:var(--bar);font-weight:600;border-color:var(--curve-color)}
+#graph-formulas .graph-formula-select{display:flex;align-items:baseline;gap:6px;padding:0;border:0;background:transparent;color:inherit;font:inherit}
+#graph-formulas .graph-formula-select::before{content:'○';color:var(--curve-color);font-size:13px}#graph-formulas .selected-curve .graph-formula-select::before{content:'●'}
+#graph-formulas button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#graph-formulas .graph-formula-remove{flex:0 0 auto;display:block;align-self:baseline;min-width:0;min-height:0;padding:3px 5px;border:0;border-radius:6px;background:transparent;color:var(--muted);font:inherit;font-weight:400;line-height:normal;cursor:pointer}
+#graph-formulas .graph-formula-remove:hover{background:var(--bar);color:var(--ink)}
+.interactive-plot{touch-action:none;user-select:none;cursor:grab}.interactive-plot:active{cursor:grabbing}.interactive-plot svg{display:block;aspect-ratio:800/460;width:100%;height:auto;max-height:none}.interactive-plot canvas{display:block;aspect-ratio:800/460;width:100%;height:auto;max-height:none}
+#graph-formulas .formula-line{flex:0 0 auto;display:flex;align-items:baseline;gap:6px;border:1px solid transparent;border-radius:8px;padding:7px 10px;margin:0;background:var(--bg);white-space:nowrap;overflow:visible}.analysis-point{display:inline-block;margin:4px;background:var(--bar)}
+#graph-parameters label{min-width:200px}#graph-table tr[tabindex]{cursor:pointer}#graph-table tr[tabindex]:hover{background:var(--bar)}
+#graph-parameters-toggle::after{content:' ▾'}#graph-parameters-toggle[aria-expanded="false"]::after{content:' ▸'}
+#graph-cartesian-help{font-size:12px;color:var(--muted);margin:0 0 12px}
+#graph-parameters .graph-parameter{flex:1 1 320px;min-width:0}#graph-parameters .graph-parameter-value>input[type="range"]{flex:1;min-width:0;width:100%;height:36px;padding:0;border:0;background:transparent}
+#graph-parameters .graph-parameter-value{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;font-size:12px;color:var(--muted)}#graph-parameters .graph-parameter-value span{overflow-wrap:anywhere}#graph-parameters .graph-parameter-value input[type="number"]{width:120px;flex-shrink:0;padding:7px 9px}#graph-parameters .graph-parameter-name{min-width:0;flex:0 0 auto;margin:0;padding:0;gap:6px}#graph-parameters .graph-parameter-name input{margin:0}#graph-parameters input[aria-invalid="true"]{border-color:#b33724}
+.graph-range-pair{flex:1 1 240px;min-width:0}.graph-range-fields{display:flex;gap:12px}.graph-range-fields label{min-width:0!important;flex:1}.graph-range-fields output{font-variant-numeric:tabular-nums}
+.graph-range-slider{position:relative;height:36px;margin:4px 0 8px;isolation:isolate;cursor:pointer}
+.graph-range-slider::before{content:"";position:absolute;left:10px;right:10px;top:16px;height:4px;border-radius:2px;background:linear-gradient(to right,var(--line) 0 var(--range-start),var(--accent) var(--range-start) var(--range-end),var(--line) var(--range-end) 100%)}
+.graph-range-slider input[type="range"]{appearance:none;-webkit-appearance:none;position:absolute;inset:0;width:100%;height:36px;margin:0;padding:0;border:0;border-radius:0;background:transparent;pointer-events:none}
+.graph-range-slider input[type="range"]::-webkit-slider-runnable-track{height:4px;background:transparent}
+.graph-range-slider input[type="range"]::-moz-range-track{height:4px;background:transparent}
+.graph-range-slider input[type="range"]::-moz-range-progress{background:transparent}
+.graph-range-slider input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;box-sizing:border-box;width:20px;height:20px;margin-top:-8px;border:2px solid var(--accent);border-radius:50%;background:var(--number);pointer-events:auto;cursor:ew-resize}
+.graph-range-slider input[type="range"]::-moz-range-thumb{box-sizing:border-box;width:20px;height:20px;border:2px solid var(--accent);border-radius:50%;background:var(--number);pointer-events:auto;cursor:ew-resize}
+.graph-range-slider input[type="range"]:focus-visible{outline:none;z-index:1}
+.graph-range-slider input[type="range"]:focus-visible::-webkit-slider-thumb{outline:2px solid var(--accent);outline-offset:3px}
+.graph-range-slider input[type="range"]:focus-visible::-moz-range-thumb{outline:2px solid var(--accent);outline-offset:3px}
+.graph-range-slider:has(input:disabled){opacity:.45;cursor:default}
+.graph-range-slider input[type="range"]:disabled::-webkit-slider-thumb{pointer-events:none;cursor:default}
+.graph-range-slider input[type="range"]:disabled::-moz-range-thumb{pointer-events:none;cursor:default}
+#graph-analysis-sliders{width:100%;min-width:0;padding-left:var(--graph-axis-left,5.25%);padding-right:var(--graph-axis-right,5.25%)}
+#graph-analysis-sliders .graph-range-fields label{flex-direction:row;align-items:center;gap:8px;margin-bottom:0;white-space:nowrap}
+#graph-analysis-sliders .graph-range-fields input{flex:1;min-width:0;width:0}
+/* Range inputs travel by their width minus the 20px thumb. Align thumb centers
+   and the painted track with the canvas x axis, including its dynamic y labels. */
+.graph-axis-slider{margin-left:-10px;margin-right:-10px}
+.graph-axis-slider:has(#graph-tangent-slider)::before{background:var(--line)}
+.graph-surface-panel{display:grid;gap:16px;padding:16px;margin:12px 0;border:1px solid var(--line);border-radius:8px;background:var(--number)}
+.graph-surface-appearance,.graph-surface-camera{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}
+.graph-surface-panel label{margin:0;min-width:0;gap:6px}.graph-surface-panel label>span{line-height:20px}
+.graph-surface-appearance select,.graph-surface-appearance input[type="color"]{height:42px;min-width:0;width:100%}
+.graph-surface-appearance input[type="color"]{padding:5px;cursor:pointer}
+.graph-surface-slider{display:flex;align-items:center;gap:10px;min-width:0;height:42px}
+.graph-surface-slider input[type="range"]{flex:1;min-width:0;width:100%;height:36px;padding:0;border:0;background:transparent}
+.graph-surface-slider output{flex:none;min-width:5ch;text-align:right;white-space:nowrap;font-size:12px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.graph-surface-density-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:20px;margin-bottom:6px;line-height:20px}.graph-surface-density-heading .check{padding:0;gap:4px}.graph-surface-density-heading input{margin:0}
+.graph-surface-z-range{display:grid;gap:8px;padding-top:12px;border-top:1px solid var(--line)}
+.graph-surface-z-range .check{padding:0;gap:8px;min-height:24px}.graph-surface-z-range .form-row{margin:0}
+@media(max-width:600px){.graph-surface-appearance{grid-template-columns:repeat(2,minmax(0,1fr))}.graph-surface-density{grid-column:1/-1}.graph-surface-camera{grid-template-columns:minmax(0,1fr);gap:8px}.graph-surface-camera label{display:grid;grid-template-columns:84px minmax(0,1fr);align-items:center;gap:12px}}
+:root[data-workspace="scientific"] footer{display:none}
+.keypad{--keypad-font-height:100cqh;--keypad-width:420px;--keypad-gap:4px;width:100%;max-width:var(--keypad-width);margin-inline:auto;height:100%;min-height:0;display:flex;flex-direction:column;gap:var(--keypad-gap)}
+.keypad-pages{flex:5 1 calc(3 * var(--keypad-gap));min-height:0;display:flex}
+.keypad-page{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;gap:var(--keypad-gap)}
+.keypad[data-page="1"] .keypad-page[data-page="2"],.keypad[data-page="2"] .keypad-page[data-page="1"],.keypad .keypad-page-title{display:none}
+/* Use the face-only pressed effect below, including on Samsung Internet. */
+.keypad,.keypad *{-webkit-tap-highlight-color:transparent}
+.keypad-top{flex:2;min-height:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));column-gap:4px;row-gap:4px}
+.keypad-row{flex:1;min-height:0;display:grid;gap:5px;grid-template-columns:repeat(6,minmax(0,1fr))}
+.keypad-row.numeric-row{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+/* The workspace's available width, including in the landscape split layout,
+   must fit two normal keypads before showing both function pages. */
+@container(min-width:840px){
+  .keypad{max-width:calc(2 * var(--keypad-width))}
+  .keypad-pages{gap:8px}
+  .keypad[data-page] .keypad-page[data-page]{display:flex}
+  .keypad .keypad-page-switch{display:none}
+  .keypad .keypad-page-title{display:inline}
+  .keypad-row.numeric-row{width:100%;max-width:var(--keypad-width);margin-inline:auto}
+}
+.keypad .key{background:transparent;border:0;border-radius:0;padding:0;min-height:0;min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:0;color:var(--ink);touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.keypad .key:hover{background:transparent;filter:none}
+.keypad .key:active .key-face{filter:brightness(.86)}
+.keypad .key-hints{flex:0 0 25%;max-height:15px;min-height:0;overflow:hidden;white-space:nowrap;text-align:center;font-size:clamp(7px,calc(var(--keypad-font-height) * .018 + 1px),11px);line-height:1.2;color:var(--gold);font-weight:400}
+.keypad .alpha-legend{color:var(--alpha)}
+.keypad .key .key-face{display:flex;flex:1;min-height:0;min-width:0;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:7px 7px 4px 4px;background:var(--key);font-size:clamp(10px,3.5cqh,24px);line-height:1;font-weight:600;overflow:hidden;white-space:nowrap}
+.key-fraction{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:.5em;line-height:1}
+.key-fraction-bar{width:1.6em;min-width:10px;border-top:1px solid currentColor}
+.key-integral{display:inline-flex;align-items:center;gap:1px;font-weight:500}
+.key-integral-limits{display:flex;flex-direction:column;align-items:center;font-size:max(6px,.52em);line-height:1}
+.key-backspace{display:block;width:1.333333em;height:1em;flex-shrink:0}
+.keypad .numeric .key-face{background:var(--number);font-size:clamp(12px,calc(var(--keypad-font-height) * .048),24px)}
+.keypad .danger .key-face{background:var(--lime);color:#18210e;font-size:clamp(12px,calc(var(--keypad-font-height) * .048),24px)}
+.keypad .action .key-face{background:var(--operator);font-size:clamp(9px,2.6cqh,18px)}
+.keypad .utility{padding:3px 0}
+.keypad .utility .key-hints{display:none}
+.keypad .utility .key-face{border-radius:8px;font-size:clamp(10px,2.7cqh,16px);font-weight:700;background:var(--operator)}
+.keypad .utility[data-input="SHIFT"] .key-face{background:var(--gold);color:white}
+.keypad .utility[data-input="ALPHA"] .key-face{background:var(--alpha);color:white}
+.keypad .utility[data-input="MODE"] .key-face{background:var(--accent);color:white}
+.keypad .active .key-face{outline:2px solid var(--ink);outline-offset:-2px}
+[data-theme="dark"] .keypad .utility:not([data-input="SECOND"]) .key-face{color:var(--panel)}
+.direction-pad{grid-column:3 / span 2;grid-row:1 / span 2;position:relative;min-height:0;min-width:0}
+.direction-pad::before{content:"";position:absolute;inset:6%;border:1px solid var(--line);border-radius:50%;background:var(--key)}
+.direction-key,.direction-key:hover{position:absolute;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid var(--line);border-radius:35%;background:linear-gradient(var(--number),var(--key));color:var(--ink);overflow:hidden;touch-action:manipulation;user-select:none}
+.direction-key:hover{filter:brightness(.97)}.direction-key:active{filter:brightness(.86)}
+.direction-key .key-hints{display:none}.direction-key .key-face{font-size:12px;line-height:1}
+.direction-key.up,.direction-key.down{left:35%;width:30%;height:34%}
+.direction-key.up{top:0}.direction-key.down{bottom:0}
+.direction-key.left,.direction-key.right{top:34%;width:36%;height:32%}
+.direction-key.left{left:0}.direction-key.right{right:0}
+:root[data-workspace="scientific"][data-screen-expanded="true"] main{grid-template-rows:minmax(0,1fr) minmax(0,1fr) minmax(0,calc((min(68%,520px) - 36px) * 4 / 9 + 20px))}
+/* Undo the numeric-only track's 4/9 height reduction for font sizing.
+   With 8px workspace padding, the full content height is 9/4 of the
+   reduced content height plus 1px, in both portrait and landscape. */
+:root[data-workspace="scientific"][data-screen-expanded="true"] .keypad{--keypad-font-height:calc(225cqh + 1px);max-width:var(--keypad-width)}
+:root[data-screen-expanded="true"] .keypad-pages{display:none}
+:root[data-screen-expanded="true"] .keypad-top,:root[data-screen-expanded="true"] .scientific-row{display:none}
+@media(min-width:651px) and (max-height:592px){
+  :root[data-workspace="scientific"] main{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:repeat(2,minmax(0,1fr))}
+  :root[data-workspace="scientific"] .workspace[data-mode="scientific"]:not(.keypad-workspace){grid-column:1;grid-row:1}
+  :root[data-workspace="scientific"] .answer-panel{grid-column:1;grid-row:2}
+  :root[data-workspace="scientific"] .keypad-workspace{grid-column:2;grid-row:1 / span 2}
+  :root[data-workspace="scientific"][data-screen-expanded="true"] main{grid-template-rows:repeat(2,minmax(0,1fr));grid-template-columns:minmax(0,1fr) minmax(0,.7fr)}
+  :root[data-workspace="scientific"][data-screen-expanded="true"] .keypad-workspace{align-self:end;height:calc((100% - 36px) * 4 / 9 + 20px)}
+}
+@media(max-height:480px) and (max-width:650px){
+  :root[data-workspace="scientific"] .instrument{grid-template-rows:34px 34px auto minmax(0,1fr)}
+  :root header,:root .mode-bar{height:34px}
+  :root[data-workspace="scientific"] .edit-actions{height:22px}
+  :root[data-workspace="scientific"] .workspace[data-mode="scientific"]:not(.keypad-workspace){grid-template-rows:22px minmax(0,1fr)}
+  :root[data-workspace="scientific"] .answer-panel{grid-template-rows:minmax(0,1fr) auto 22px}
+  :root[data-workspace="scientific"] .answer-toolbar{height:22px}
+  :root[data-workspace="scientific"] .calculation-display{grid-template-rows:22px minmax(0,1fr) 22px}
+  :root[data-workspace="scientific"] .keypad-workspace{padding:2px 6px}
+  /* The compact layout has 4px workspace padding instead of 8px. */
+  :root[data-workspace="scientific"][data-screen-expanded="true"] .keypad{--keypad-font-height:calc(225cqh - 4px)}
+  .keypad{--keypad-gap:2px}
+  .keypad-row,.keypad-top{gap:2px}
+}
+
+.graph-plot-frame{position:relative;margin:18px 0}.graph-plot-frame .plot{margin:0}.graph-plot-frame:has(.plot:empty){display:none}#graph-height-toggle{position:absolute;top:6px;right:6px;width:32px;height:32px;padding:0;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--ink);font-size:19px;line-height:1}#graph-height-toggle[aria-pressed="true"]{color:var(--accent)}
+
+.graph-section{padding:12px 0}
+.graph-section>summary{font-size:17px;cursor:pointer}
+.graph-section[open]>summary{margin-bottom:12px}
+.statistics-section{margin:16px 0}
+.statistics-section>summary{font-size:17px;cursor:pointer}
+.statistics-model-help{margin:8px 0;color:var(--muted);font-size:12px}
+.statistics-model-help>summary,.statistics-assumptions>summary{cursor:pointer}
+.statistics-section[open]>summary{margin-bottom:12px}
+.graph-range-actions{display:flex;justify-content:flex-end}
+.graph-range-actions:has(button[hidden]){display:none}
+#graph-help{margin-bottom:12px}
+#graph-help>summary{cursor:pointer;color:var(--muted)}
+#graph-help[open]>summary{margin-bottom:8px}
+
+.statistics-plot-legend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12px;margin:6px 0}
+.statistics-heatmap-scroll{overflow:auto;max-height:420px}.plot svg.statistics-heatmap{min-width:100%;max-height:none}.statistics-heatmap-legend{display:flex;align-items:center;gap:10px;margin:10px 16px;font-size:12px}.statistics-heatmap-scale{height:12px;flex:1;background:linear-gradient(to right,rgb(59,112,189),rgb(241,241,235),rgb(180,55,72))}.plot svg.statistics-distribution{max-height:none}.statistics-distribution-scroll{overflow-x:auto;overflow-y:hidden}.statistics-distribution-scroll svg{min-width:100%}
+.statistics-heatmap-axes{flex-basis:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.statistics-heatmap-axis{min-width:0}.statistics-heatmap-axis>strong{display:block;margin-bottom:5px}.statistics-heatmap-variable-options{display:flex;flex-wrap:wrap;gap:4px;max-height:150px;overflow:auto;padding:4px;border:1px solid var(--line);border-radius:8px}.statistics-heatmap-variable-options label{font-size:12px;white-space:nowrap}
+
+.regression-parameter{display:inline-block;margin-right:16px;font-size:12px}
+
+/* Heat map fit-to-screen: scale the whole chart into the viewport instead of scrolling. */
+.statistics-heatmap-fit-scroll{overflow:visible;max-height:none}
+.plot svg.statistics-heatmap.statistics-heatmap-fit{min-width:0;max-width:100%}
+.statistics-highlights{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:12px 0}.statistics-highlight{padding:12px;background:var(--number);border:1px solid var(--line);border-radius:8px;min-width:0}.statistics-highlight>span{display:block;font-size:.8rem;color:var(--muted);margin-bottom:6px}.statistics-highlight .math-display{font-size:1.2rem}.statistics-interpretation{padding:10px 12px;border-left:3px solid var(--accent);background:var(--number);font-size:.85rem;line-height:1.5}.statistics-result-details{margin:12px 0}.statistics-visualization{margin:16px 0;padding:12px;border:1px solid var(--line);border-radius:8px}.statistics-visualization>label{display:block;margin:8px 0}.statistics-visualization h4{margin:0 0 10px}.statistics-section pre{white-space:pre-wrap;overflow-wrap:anywhere}
+.catalog-help-block pre{overflow:auto;white-space:pre;font:12px/1.65 monospace;padding:12px;background:var(--number);border:1px solid var(--line);border-radius:8px}.catalog-help-block table{border-collapse:collapse;min-width:600px;font-size:13px}.catalog-help-block th,.catalog-help-block td{padding:10px;border:1px solid var(--line);text-align:left;vertical-align:top}.catalog-help-block th{background:var(--number)}
+
+/* Statistics navigation: colored primary headings, indented neutral submenus. */
+.workspace[data-mode="statistics"]>details.statistics-section>summary{color:var(--accent);font-size:16px;font-weight:700}
+.workspace[data-mode="statistics"] .statistics-section .statistics-section{margin:12px 0 12px 8px;padding-left:14px;border-left:1px solid var(--line)}
+.workspace[data-mode="statistics"] .statistics-section .statistics-section>summary{color:var(--ink);font-size:14px;font-weight:600}
+.workspace[data-mode="statistics"] .statistics-section details:not(.statistics-section)>summary{color:var(--ink);font-size:12px;font-weight:400}
+
+#statistics-regression #regression-section>h2{font-size:14px;font-weight:600;color:var(--ink)}
+
+.workspace[data-mode="statistics"] select optgroup{font-size:14px;font-weight:600;color:var(--ink)}
+.workspace[data-mode="statistics"] select option{font-size:13px;font-weight:400;color:var(--ink)}
+
+#statistics-collapse-all{position:fixed;top:calc(env(safe-area-inset-top,0px) + 90px);right:calc(max(0px, (100% - 1120px) / 2) + env(safe-area-inset-right,0px) + 16px);z-index:12;background:var(--bar);color:var(--accent);box-shadow:0 3px 12px #0002;border:1px solid var(--line);border-radius:20px;font-size:12px;padding:10px 14px}
+@media(max-height:480px) and (max-width:650px){#statistics-collapse-all{top:calc(env(safe-area-inset-top,0px) + 66px)}}
+.workspace[data-mode="statistics"][hidden] #statistics-collapse-all{display:none}

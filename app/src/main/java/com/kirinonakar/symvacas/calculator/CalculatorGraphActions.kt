@@ -1,0 +1,294 @@
+package com.kirinonakar.symvacas.calculator
+
+import androidx.lifecycle.viewModelScope
+import android.os.Handler
+import android.os.Looper
+import android.view.Choreographer
+import com.kirinonakar.symvacas.math.*
+import kotlinx.coroutines.*
+import org.json.JSONArray
+import org.json.JSONObject
+import kotlin.coroutines.resume
+
+internal fun graphInputTree(source:String,kind:String="cartesian",removeComputationLimit:Boolean=false):Expr {
+    val tree=Parser(LatexInput.convert(source) ?: source,removeComputationLimit=removeComputationLimit).parse()
+    return if(kind=="cartesian")FunctionTransfer.graphExpression(tree)else tree
+}
+
+internal fun graphExpressionTarget(source:String):Pair<String,String> {
+    val tree=Parser(source).parse()
+    if(tree.nodes().any {it.kind in listOf("list","tuple") && it.args.size==3})return "space" to source
+    if(tree.kind=="relation") {
+        require(tree.value in listOf("=","==")) {"Graph an expression, y = f(x), or an equation F(x,y)=0"}
+        if(tree.args[0].kind=="symbol" && tree.args[0].value=="z" && tree.args[1].nodes().none {it.kind=="symbol" && it.value=="z"}) {
+            val rhs=tree.args[1]
+            return "surface" to source.substring(rhs.start,rhs.end)
+        }
+    }
+    return (if(tree.nodes().any {it.kind=="symbol" && it.value=="z"})"surface" else "cartesian") to source
+}
+
+internal fun isImplicitSurface(source:String):Boolean = runCatching {
+    val tree=Parser(LatexInput.convert(source) ?: source).parse()
+    if(tree.kind=="relation")!(tree.args[0].kind=="symbol" && tree.args[0].value=="z" && tree.args[1].nodes().none {it.kind=="symbol" && it.value=="z"})
+    else tree.nodes().any {it.kind=="symbol" && it.value=="z"}
+}.getOrDefault(false)
+
+internal fun graphCurveLimit(kind:String):Int=when(kind){"differential"->1;"surface","space"->5;else->20}
+internal fun graphSourceLimit(kind:String):Int=when(kind){"differential"->1;"surface","space"->5;else->24}
+internal fun hasImplicitSurface(source:String):Boolean=source.lines().filter(String::isNotBlank).take(5).any(::isImplicitSurface)
+
+internal fun appendGraphSource(existing:String,source:String,kind:String="cartesian"):String {
+    val lines=existing.lines().filter(String::isNotBlank)
+    val limit=graphCurveLimit(kind)
+    if(lines.any {it.trim()==source.trim()})return existing
+    require(lines.size<graphSourceLimit(kind) && lines.count {!isGraphShading(it)}<limit) {"Graph limit reached. Remove a function before adding another."}
+    return existing.trimEnd()+(if(lines.isEmpty())"" else "\n")+source
+}
+
+internal fun removeGraphSource(existing:String,index:Int,kind:String="cartesian",shading:Boolean=false):String {
+    val lines=existing.lines()
+    val visible=lines.withIndex().filter {it.value.isNotBlank()}.take(graphSourceLimit(kind))
+    val target=visible.filter {isGraphShading(it.value)==shading}
+        .take(if(shading)4 else graphCurveLimit(kind)).getOrNull(index) ?: return existing
+    return lines.filterIndexed {i,_->i!=target.index}.joinToString("\n")
+}
+
+internal fun removeGraphInputLine(source:String,index:Int):String {
+    val lines=source.lines()
+    return if(index in lines.indices)lines.filterIndexed {i,_->i!=index}.joinToString("\n") else source
+}
+
+internal data class GraphAnalysisTarget(val source:Int,val order:Int=0)
+internal fun graphAnalysisTarget(curve:Int,derivative:Int?,secondDerivative:Int?):GraphAnalysisTarget? = when(curve) {
+    -1->derivative?.let {GraphAnalysisTarget(it,1)}
+    -2->secondDerivative?.let {GraphAnalysisTarget(it,2)}
+    else->curve.takeIf {it>=0}?.let {GraphAnalysisTarget(it)}
+}
+
+internal object CalculatorGraphActions {
+    private suspend fun nextAnimationFrame():Long = suspendCancellableCoroutine {continuation->
+        val clock=Choreographer.getInstance()
+        val callback=Choreographer.FrameCallback {time->if(continuation.isActive)continuation.resume(time)}
+        clock.postFrameCallback(callback)
+        continuation.invokeOnCancellation {Handler(Looper.getMainLooper()).post {clock.removeFrameCallback(callback)}}
+    }
+    fun CalculatorModel.performPlot(auto: Boolean = false, preview: Boolean = false) {
+        val limit=graphCurveLimit(graphKind)
+        // Coalesce animation ticks before reparsing or allocating another request.
+        if((graphAnimating || preview) && graphJob?.isActive==true) {graphPendingPlot={performPlot(auto,preview)};return}
+        val trees=mutableListOf<JSONObject>()
+        val shadings=JSONArray()
+        try {
+            graphSource.lines().filter { it.isNotBlank() }.take(graphSourceLimit(graphKind)).forEach { raw->
+                val line=raw.trim()
+                if(isGraphShading(line)) {
+                    if(graphKind!="cartesian")throw SyntaxException("Shading is available on Cartesian graphs",0)
+                    if(shadings.length()<4)shadings.put(graphShadeEntry(graphShadingBody(line),removeComputationLimit))
+                    return@forEach
+                }
+                if(trees.size<limit) trees+=JSONObject(graphInputTree(line,graphKind,removeComputationLimit).json())
+            }
+        } catch(e:Exception) { error=e.message ?: "Syntax ERROR"; return }
+        if(trees.isEmpty() && shadings.length()==0) { if(!auto)error="Enter a function"; return }
+        val derivativeSelected=graphDerivativeSelected?.takeIf {graphKind=="cartesian" && it in trees.indices}
+        val secondDerivativeSelected=graphSecondDerivativeSelected?.takeIf {graphKind=="cartesian" && it in trees.indices}
+        val source=graphSource;val kind=graphKind;val min=if(kind in listOf("cartesian","implicit","surface"))xMin else parameterMin;val max=if(kind in listOf("cartesian","implicit","surface"))xMax else parameterMax
+        val viewYMin=yMin;val viewYMax=yMax;val parameters=graphState.parameterPayload()
+        val initials=sequenceInitials;val differentialSeeds=differentialInitials;val initialTime=differentialT0
+        val environment=request("graph").put("angle","RAD").toString()
+        val request=request("graph").put("angle","RAD").put("trees",JSONArray(trees)).put("graphKind",kind)
+            .put("variable",when(kind){"cartesian","implicit","surface"->"x";"sequence"->"n";else->"t"})
+            .put("min",min).put("max",max).put("samples",if(graphAnimating || preview)200 else 500).put("xMin",xMin).put("xMax",xMax).put("yMin",viewYMin).put("yMax",viewYMax)
+            .put("parameters",parameters)
+        if(preview && kind in listOf("cartesian","implicit")) {
+            // Sample a small margin so the next pointer frames already have data.
+            val dx=(max-min)*.15;val dy=(viewYMax-viewYMin)*.15
+            request.put("min",min-dx).put("max",max+dx).put("xMin",min-dx).put("xMax",max+dx)
+                .put("yMin",viewYMin-dy).put("yMax",viewYMax+dy)
+        }
+        if(derivativeSelected!=null)request.put("derivativeSelected",derivativeSelected)
+        if(secondDerivativeSelected!=null)request.put("secondDerivativeSelected",secondDerivativeSelected)
+        if(shadings.length()>0)request.put("shadings",shadings)
+        if(kind=="surface") {
+            val implicit=hasImplicitSurface(source)
+            val density=SurfaceMesh.sampleCount(xMin,xMax,yMin,yMax,surfaceSamples,surfaceAutoDensity,surfaceZoom.toDouble(),implicit)
+            request.put("surfaceYMin",yMin).put("surfaceYMax",yMax).put("surfaceSamples",if(graphAnimating)minOf(density,if(implicit)16 else 32) else density)
+            request.put("surfaceZMin",zMin ?: yMin).put("surfaceZMax",zMax ?: yMax)
+        }
+        if(kind=="space")request.put("surfaceZMin",zMin ?: -5.0).put("surfaceZMax",zMax ?: 5.0)
+        if(kind=="sequence") {
+            try {
+                val seeds=sequenceInitials.split(',').map(String::trim).filter(String::isNotEmpty).map { JSONObject(Parser(it,removeComputationLimit=removeComputationLimit).parse().json()) }
+                require(seeds.isNotEmpty()) { "Enter at least one initial sequence value" }
+                request.put("initialTrees",JSONArray(seeds))
+            } catch(e:Exception) { error=e.message ?: "Invalid initial sequence values";return }
+        }
+        if(kind=="differential") {
+            val t0=differentialT0.trim().toDoubleOrNull()
+            val initials=differentialInitials.split(',').map(String::trim).filter(String::isNotEmpty).mapNotNull(String::toDoubleOrNull)
+            if(t0==null || !t0.isFinite() || initials.isEmpty() || initials.size>20 || differentialInitials.split(',').map(String::trim).filter(String::isNotEmpty).size!=initials.size) {
+                error="Enter t₀ and one to twenty finite initial y values";return
+            }
+            request.put("t0",t0).put("initialValues",JSONArray(initials))
+        }
+        val signature=request.toString()
+        // The screen's delayed auto-plot can repeat a transfer or explicit Plot request.
+        // Cancelling an active engine call restarts its process, so reuse that request.
+        if(graphRequestSignature==signature && graphJob?.isActive==true || auto && graphState.graphResultSignature==signature && graphData!=null) return
+        // Conflate updates while a request is running. Cancelling each frame
+        // restarts the Python process and discards its compiled function cache.
+        if(graphJob?.isActive==true) {graphPendingPlot={performPlot(auto,preview)};return}
+        graphRequestSignature=signature
+        graphJob=viewModelScope.launch {
+            graphBusy=true; error=""
+            try {
+                val response=engine.execute(request)
+                val domainMatches=if(kind in listOf("cartesian","implicit","surface"))preview || min==xMin && max==xMax else min==parameterMin && max==parameterMax
+                // Keep useful preview geometry even if another pan happened while
+                // Python was running. The Canvas projects it into the latest view.
+                if(source==graphSource && kind==graphKind && derivativeSelected==graphDerivativeSelected && secondDerivativeSelected==graphSecondDerivativeSelected && domainMatches && (preview || viewYMin==yMin && viewYMax==yMax) && initials==sequenceInitials && differentialSeeds==differentialInitials && initialTime==differentialT0 && environment==request("graph").put("angle","RAD").toString() && (graphAnimating || parameters.toString()==graphState.parameterPayload().toString())) {
+                    if(response.optBoolean("ok")) {
+                    } else error=response.optString("error")
+                    graphState.applyPlotResponse(response,signature)
+                }
+                if(!graphState.graphAnimating && !preview)save()
+            } finally {
+                graphBusy=false
+                graphJob=null
+                val pending=graphPendingPlot;graphPendingPlot=null
+                if(isActive)pending?.invoke()
+            }
+        }
+    }
+    fun CalculatorModel.performSetGraphParameter(name:String,value:Double,centerRange:Boolean=false) {
+        graphState.setParameter(name,value,centerRange)
+    }
+    fun CalculatorModel.performSetGraphParameterRange(name:String,low:Double,high:Double) {
+        if(name !in graphState.graphParameters)return
+        if(!graphState.setParameterRange(name,low,high)) {error="Enter finite values with minimum < maximum";return}
+        error="";save()
+    }
+    fun CalculatorModel.performResetGraphParameters(name:String?=null) {
+        graphState.resetParameters(name)
+        error=""
+        save()
+    }
+    fun CalculatorModel.performToggleGraphAnimation() {
+        if(graphState.graphAnimating) {
+            graphState.graphAnimating=false
+            animationJob?.cancel()
+            animationJob=null
+            save()
+            plot()
+            return
+        }
+        if(graphState.graphParameters.isEmpty())return
+        animationJob?.cancel()
+        graphState.graphAnimating=true
+        graphState.beginAnimation()
+        animationJob=viewModelScope.launch {
+            var previous=0L
+            while(isActive&&graphState.graphAnimating) {
+                val now=nextAnimationFrame()
+                if(mode!="Graph") {graphState.graphAnimating=false;animationJob=null;save();break}
+                // Match display frames, capped at 60 updates on high-refresh screens.
+                if(previous!=0L&&now-previous<16_666_666L)continue
+                val seconds=if(previous==0L)0.0 else (now-previous)/1_000_000_000.0
+                previous=now
+                if(graphState.advanceAnimation(seconds))plot()
+            }
+        }
+    }
+    fun CalculatorModel.performUpdateGraphSource(source:String) {
+        graphState.updateSource(source)
+        save()
+    }
+    fun CalculatorModel.performUndoGraph() {
+        if(!graphState.canUndoInput)return
+        graphJob?.cancel();analysisJob?.cancel();animationJob?.cancel();animationJob=null;graphPendingPlot=null
+        clearGraphTangent()
+        graphState.undoInput()
+        save()
+    }
+    fun CalculatorModel.performRemoveGraphSource(index:Int,shading:Boolean) {
+        val next=removeGraphSource(graphSource,index,graphKind,shading)
+        if(next==graphSource)return
+        graphState.graphAnimating=false;animationJob?.cancel();animationJob=null;graphPendingPlot=null
+        clearGraphTangent()
+        updateGraphSource(next)
+        graphData=null;graphState.graphResultSignature=null;error=""
+        if(next.isBlank())graphState.graphParameters=emptyMap()
+        save()
+    }
+    fun CalculatorModel.performToggleGraphDerivative(selected:Int,order:Int) {
+        if(graphKind!="cartesian")return
+        val current=if(order==2)graphSecondDerivativeSelected else graphDerivativeSelected
+        if(current!=null) {
+            graphState.rememberInput()
+            clearGraphTangent()
+            if(order==2)graphSecondDerivativeSelected=null else graphDerivativeSelected=null
+            return
+        }
+        val sources=graphSource.lines().filter(String::isNotBlank).take(24).map(String::trim).filter {!isGraphShading(it)}.take(20)
+        if(selected !in sources.indices) {error="Select a function";return}
+        graphState.rememberInput()
+        clearGraphTangent()
+        if(order==2)graphSecondDerivativeSelected=selected else graphDerivativeSelected=selected
+    }
+    fun CalculatorModel.performSendExpressionToGraph() {
+        val source=editor.source.trim()
+        if(source.isEmpty()) {error="Enter an expression to graph";return}
+        val target=try {graphExpressionTarget(source)} catch(e:Exception) {error=e.message ?: "Syntax ERROR";return}
+        val next=try {appendGraphSource(graphState.sourceForKind(target.first),target.second,target.first)} catch(e:Exception) {error=e.message ?: "Syntax ERROR";return}
+        changeGraphKind(target.first)
+        updateGraphSource(next)
+        error="";mode="Graph"
+    }
+    fun CalculatorModel.performChangeGraphKind(kind:String) {
+        if(!graphState.changeKind(kind))return
+        animationJob?.cancel()
+        save()
+    }
+    fun CalculatorModel.performAnalyzeGraph(action:String,first:String,second:String,selected:Int,other:Int) {
+        if(graphKind !in listOf("cartesian","parametric","polar")) {error="Analysis requires a Cartesian, parametric or polar graph";return}
+        val fixedIntercept=action=="yintercept" && graphKind=="cartesian"
+        val singled=action in listOf("derivative","tangent","tangentangle") || fixedIntercept
+        val a=if(fixedIntercept)0.0 else first.toDoubleOrNull();val b=if(singled)a else second.toDoubleOrNull()
+        if(a==null || !a.isFinite() || b==null || !b.isFinite() || (!singled && a>=b)) {error="Enter finite values with a < b";return}
+        val sources=graphSource.lines().filter {it.isNotBlank()}.take(24).filter {graphKind!="cartesian" || !isGraphShading(it)}.take(20)
+        val selectedTarget=graphAnalysisTarget(selected,graphDerivativeSelected,graphSecondDerivativeSelected)
+        val otherTarget=graphAnalysisTarget(other,graphDerivativeSelected,graphSecondDerivativeSelected)
+        if(selectedTarget==null || selectedTarget.source !in sources.indices || action in listOf("intersection","intersectionangle") && (otherTarget==null || otherTarget.source !in sources.indices || otherTarget==selectedTarget)) {error="Select two different functions";return}
+        val trees=try {JSONArray(sources.map {JSONObject(graphInputTree(it,graphKind,removeComputationLimit).json())})} catch(e:Exception) {error=e.message ?: "Syntax ERROR";return}
+        analysisJob?.cancel()
+        val source=graphSource
+        val kind=graphKind
+        val parameters=graphState.parameterPayload()
+        val derivative=graphDerivativeSelected;val secondDerivative=graphSecondDerivativeSelected
+        val analysisRequest=request("graphAnalysis").put("angle","RAD").put("trees",trees).put("graphKind",kind).put("analysis",action).put("a",a).put("b",b).put("selected",selectedTarget.source).put("selectedDerivativeOrder",selectedTarget.order).put("other",otherTarget?.source ?: 0).put("otherDerivativeOrder",otherTarget?.order ?: 0).put("variable",if(kind=="cartesian")"x" else "t").put("parameters",parameters).put("xMin",xMin).put("xMax",xMax).put("yMin",yMin).put("yMax",yMax)
+        trace?.let {analysisRequest.put("tracePoint",JSONArray(listOf(it.first,it.second)))}
+        analysisJob=viewModelScope.launch {
+            graphState.graphAnalysisBusy=true;error="";graphState.graphAnalysis=null
+            try {
+                val response=engine.execute(analysisRequest)
+                if(source==graphSource && kind==graphKind && derivative==graphDerivativeSelected && secondDerivative==graphSecondDerivativeSelected && parameters.toString()==graphState.parameterPayload().toString()) {
+                    if(response.optBoolean("ok")) {
+                        graphState.graphAnalysis=response
+                        shadedInterval=if(action=="integral" && graphKind=="cartesian")a to b else null
+                        response.optJSONArray("points")?.optJSONArray(0)?.let {trace=it.getDouble(0) to it.getDouble(1)}
+                    } else error=response.optString("error","Analysis failed")
+                }
+            } finally {graphState.graphAnalysisBusy=false}
+        }
+    }
+    fun CalculatorModel.performClearGraphTangent() {
+        analysisJob?.cancel()
+        analysisJob=null
+        graphState.graphAnalysisBusy=false
+        graphState.graphAnalysis=null
+        trace=null
+        shadedInterval=null
+        error=""
+    }
+}

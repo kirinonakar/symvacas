@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- User settings and work, including history, variables and the Python draft.
+         On Android 9-11, cloud backup requires client-side encryption. -->
+    <include domain="sharedpref" path="calculator.xml" requireFlags="clientSideEncryption" />
+</full-backup-content>

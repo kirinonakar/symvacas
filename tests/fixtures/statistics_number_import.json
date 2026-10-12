@@ -1,0 +1,30 @@
+{
+  "imports": [
+    {
+      "source": "Name,Amount,Change,Note\nA,\"1,234\",\"-2,345.67\",\"hello, world\"\nB,\"12,345,678\",\"+1,234.5e-2\",\"1,23\"",
+      "expected": [["Name", "Amount", "Change", "Note"], ["A", "1234", "-2345.67", "hello, world"], ["B", "12345678", "+1234.5e-2", "1,23"]],
+      "csv": "Name,Amount,Change,Note\nA,1234,-2345.67,\"hello, world\"\nB,12345678,+1234.5e-2,\"1,23\""
+    },
+    {
+      "source": "2024-01-01\t \u00a01,234\u00a0 \t\r\n2024-01-02\t-12,345.6\tA,B\r\n",
+      "expected": [["2024-01-01", "1234", ""], ["2024-01-02", "-12345.6", "A,B"]],
+      "csv": "2024-01-01,1234,\n2024-01-02,-12345.6,\"A,B\""
+    },
+    {
+      "source": "1,2,3\n4,5,6",
+      "expected": [["1", "2", "3"], ["4", "5", "6"]],
+      "csv": "1,2,3\n4,5,6"
+    }
+  ],
+  "pastes": [
+    {"source": "1,234\r\n-12,345.67\r\n", "singleColumn": true, "expected": "1234\r\n-12345.67\r\n"},
+    {"source": "Value\n1,234\n5", "singleColumn": true, "expected": "Value\n1234\n5"},
+    {"source": "1,234\n2,345", "singleColumn": false, "expected": "1,234\n2,345"},
+    {"source": "x,y\n1,234", "singleColumn": true, "expected": "x,y\n1,234"},
+    {"source": "date\tamount\tnote\r\n2024-01-01\t 1,234 \tA,B\r\n\t-12,345.6\t\r\n", "expected": "date\tamount\tnote\r\n2024-01-01\t 1234 \tA,B\r\n\t-12345.6\t\r\n"},
+    {"source": "\"1,234\",\"12,345,678\",\"+1,234.5e-2\",\"hello, world\",\"1,23\"", "expected": "1234,12345678,+1234.5e-2,\"hello, world\",\"1,23\""},
+    {"source": "\"1234\",\"\",\"-0.50\",\".25\",\"A,B\",\"say \"\"hello\"\"\"", "expected": "1234,\"\",-0.50,.25,\"A,B\",\"say \"\"hello\"\"\""},
+    {"source": "\"hello,\n1,234\",\"5,678\"", "expected": "\"hello,\n1,234\",5678"},
+    {"source": "| Name | Amount |\n| --- | --- |\n| A,B | 1,234 |", "expected": "Name,Amount\n\"A,B\",1234"}
+  ]
+}

@@ -1,0 +1,541 @@
+{
+  "cases": [
+    {
+      "id": "derive",
+      "source": "test,group,test1,x3\n1,2,3,4\n5,6,7,8",
+      "kind": "columns:4",
+      "settings": {"formula": "test+x+group+y+test1+z+x3+x4", "header": "total"},
+      "headers": ["test", "group", "test1", "x3", "total"],
+      "rows": [["1", "2", "3", "4", "20"], ["5", "6", "7", "8", "52"]],
+      "changed": 2,
+      "omitted": 0,
+      "numericColumns": [4]
+    },
+    {
+      "id": "derive",
+      "source": "1,2,3,4\n5,6,7,8",
+      "kind": "columns:4",
+      "settings": {"formula": "x+y+z+x4", "header": "total"},
+      "headers": ["x", "y", "z", "x4", "total"],
+      "rows": [["1", "2", "3", "4", "10"], ["5", "6", "7", "8", "26"]],
+      "changed": 2,
+      "omitted": 0,
+      "numericColumns": [4]
+    },
+    {
+      "id": "derive",
+      "source": "test,c1,x\n1,2,3",
+      "kind": "xyz",
+      "settings": {"formula": "test+c1+x", "header": "total"},
+      "headers": ["test", "c1", "x", "total"],
+      "rows": [["1", "2", "3", "6"]],
+      "changed": 1,
+      "omitted": 0,
+      "numericColumns": [3]
+    },
+    {
+      "id": "recode",
+      "source": "ID,code\nA,1\nB,2\nC,\nD,3",
+      "kind": "xy",
+      "settings": {
+        "column": "1",
+        "rules": " 1 , 남성 \r\n2,\r\n\r\n<missing>, 미입력",
+        "header": "label"
+      },
+      "headers": ["ID", "code", "label"],
+      "rows": [["A", "1", "남성"], ["B", "2", ""], ["C", "", "미입력"], ["D", "3", "3"]],
+      "changed": 3,
+      "omitted": 0
+    },
+    {
+      "id": "wideToLong",
+      "source": "ID,pre,post\nA,1,\nB,2.00,4",
+      "kind": "xyz",
+      "settings": {},
+      "headers": [
+        "ID",
+        "variable",
+        "value"
+      ],
+      "rows": [
+        [
+          "A",
+          "pre",
+          "1"
+        ],
+        [
+          "A",
+          "post",
+          ""
+        ],
+        [
+          "B",
+          "pre",
+          "2.00"
+        ],
+        [
+          "B",
+          "post",
+          "4"
+        ]
+      ],
+      "changed": 4,
+      "omitted": 0
+    },
+    {
+      "id": "wideToLong",
+      "source": "1,2\n3,4",
+      "kind": "xy",
+      "settings": {
+        "ids": ""
+      },
+      "headers": [
+        "row_id",
+        "variable",
+        "value"
+      ],
+      "rows": [
+        [
+          "1",
+          "x",
+          "1"
+        ],
+        [
+          "1",
+          "y",
+          "2"
+        ],
+        [
+          "2",
+          "x",
+          "3"
+        ],
+        [
+          "2",
+          "y",
+          "4"
+        ]
+      ],
+      "changed": 4,
+      "omitted": 0
+    },
+    {
+      "id": "longToWide",
+      "source": "ID,occasion,response\nA,pre,1\nA,post,\nB,post,4\nB,pre,2.00",
+      "kind": "xyz",
+      "settings": {},
+      "headers": [
+        "ID",
+        "pre",
+        "post"
+      ],
+      "rows": [
+        [
+          "A",
+          "1",
+          ""
+        ],
+        [
+          "B",
+          "2.00",
+          "4"
+        ]
+      ],
+      "changed": 2,
+      "omitted": 0
+    },
+    {
+      "id": "longToWide",
+      "source": "ID,occasion,response\nA,pre,1\nA,pre,3\nA,post,4\nB,post,6",
+      "kind": "xyz",
+      "settings": {
+        "duplicates": "mean"
+      },
+      "headers": [
+        "ID",
+        "pre",
+        "post"
+      ],
+      "rows": [
+        [
+          "A",
+          "2",
+          "4"
+        ],
+        [
+          "B",
+          "",
+          "6"
+        ]
+      ],
+      "changed": 2,
+      "omitted": 0
+    },
+    {
+      "id": "longToWide",
+      "source": "ID,visit,score\ns1,1,10\ns1,2,20",
+      "kind": "xyz",
+      "settings": {
+        "prefix": "visit_"
+      },
+      "headers": [
+        "ID",
+        "visit_1",
+        "visit_2"
+      ],
+      "rows": [
+        [
+          "s1",
+          "10",
+          "20"
+        ]
+      ],
+      "changed": 1,
+      "omitted": 0
+    },
+    {
+      "id": "recode",
+      "source": "Gender\n1\n2\n3\n",
+      "kind": "list",
+      "settings": {
+        "rules": "1, 남성\n2, 여성",
+        "otherwise": "blank",
+        "output": "replace",
+        "header": "Sex"
+      },
+      "headers": [
+        "Sex"
+      ],
+      "rows": [
+        [
+          "남성"
+        ],
+        [
+          "여성"
+        ],
+        [
+          ""
+        ],
+        [
+          ""
+        ]
+      ],
+      "changed": 3,
+      "omitted": 0
+    },
+    {
+      "id": "recode",
+      "source": "ID,code\nA,1\nB,2\nC,3\nD,",
+      "kind": "xy",
+      "settings": {
+        "column": "1",
+        "rules": "1, Yes\n2, No\n<missing>, unknown",
+        "header": "answer"
+      },
+      "headers": [
+        "ID",
+        "code",
+        "answer"
+      ],
+      "rows": [
+        [
+          "A",
+          "1",
+          "Yes"
+        ],
+        [
+          "B",
+          "2",
+          "No"
+        ],
+        [
+          "C",
+          "3",
+          "3"
+        ],
+        [
+          "D",
+          "",
+          "unknown"
+        ]
+      ],
+      "changed": 3,
+      "omitted": 0
+    },
+    {
+      "id": "recode",
+      "source": "-1\n0\n1\nNA",
+      "kind": "list",
+      "settings": {
+        "method": "intervals",
+        "cuts": "0",
+        "groups": "Low,High",
+        "otherwise": "value",
+        "otherwiseValue": "unknown",
+        "header": "band"
+      },
+      "headers": [
+        "x",
+        "band"
+      ],
+      "rows": [
+        [
+          "-1",
+          "Low"
+        ],
+        [
+          "0",
+          "High"
+        ],
+        [
+          "1",
+          "High"
+        ],
+        [
+          "NA",
+          "unknown"
+        ]
+      ],
+      "changed": 4,
+      "omitted": 0
+    },
+    {
+      "id": "derive",
+      "source": "weight,height\n70,175\n80,200\n90,0\n,180",
+      "kind": "xy",
+      "settings": {
+        "formula": "weight/(height/100)^2",
+        "header": "BMI"
+      },
+      "headers": [
+        "weight",
+        "height",
+        "BMI"
+      ],
+      "rows": [
+        [
+          "70",
+          "175",
+          "22.857142857142858"
+        ],
+        [
+          "80",
+          "200",
+          "20"
+        ],
+        [
+          "90",
+          "0",
+          ""
+        ],
+        [
+          "",
+          "180",
+          ""
+        ]
+      ],
+      "changed": 2,
+      "omitted": 2,
+      "numericColumns": [
+        2
+      ]
+    },
+    {
+      "id": "derive",
+      "source": "weight,height\n70,175\n80,200\n90,0\n,180",
+      "kind": "xy",
+      "settings": {
+        "formula": "if(height=0,0,weight/(height/100)^2)",
+        "header": "BMI"
+      },
+      "headers": [
+        "weight",
+        "height",
+        "BMI"
+      ],
+      "rows": [
+        [
+          "70",
+          "175",
+          "22.857142857142858"
+        ],
+        [
+          "80",
+          "200",
+          "20"
+        ],
+        [
+          "90",
+          "0",
+          "0"
+        ],
+        [
+          "",
+          "180",
+          ""
+        ]
+      ],
+      "changed": 3,
+      "omitted": 1,
+      "numericColumns": [
+        2
+      ]
+    },
+    {
+      "id": "derive",
+      "source": "4,100\n-9,10\n1,-1",
+      "kind": "xy",
+      "settings": {
+        "formula": "max(sqrt(abs(x)),2)+log(y,10)",
+        "header": "score"
+      },
+      "headers": [
+        "x",
+        "y",
+        "score"
+      ],
+      "rows": [
+        [
+          "4",
+          "100",
+          "4"
+        ],
+        [
+          "-9",
+          "10",
+          "4"
+        ],
+        [
+          "1",
+          "-1",
+          ""
+        ]
+      ],
+      "changed": 2,
+      "omitted": 1,
+      "numericColumns": [
+        2
+      ]
+    },
+    {
+      "id": "derive",
+      "source": "-1.25\n1.25",
+      "kind": "list",
+      "settings": {
+        "formula": "round(x,1)",
+        "header": "rounded"
+      },
+      "headers": [
+        "x",
+        "rounded"
+      ],
+      "rows": [
+        [
+          "-1.25",
+          "-1.3"
+        ],
+        [
+          "1.25",
+          "1.3"
+        ]
+      ],
+      "changed": 2,
+      "omitted": 0,
+      "numericColumns": [
+        1
+      ]
+    }
+  ],
+  "invalid": [
+    {
+      "id": "derive",
+      "source": "test,group\n1,2",
+      "kind": "xy",
+      "settings": {"formula": "c1+c2"},
+      "error": "Unknown column in formula: c1"
+    },
+    {
+      "id": "recode",
+      "source": "1\n2",
+      "kind": "list",
+      "settings": {"rules": "1 => male"},
+      "error": "Use one old value, new value mapping per line"
+    },
+    {
+      "id": "recode",
+      "source": "1\n2",
+      "kind": "list",
+      "settings": {"rules": ", male"},
+      "error": "Use one old value, new value mapping per line"
+    },
+    {
+      "id": "wideToLong",
+      "source": "1,2",
+      "kind": "xy",
+      "settings": {
+        "ids": "0",
+        "measures": "0"
+      },
+      "error": "Choose distinct ID and measurement columns"
+    },
+    {
+      "id": "longToWide",
+      "source": "ID,variable,value\nA,pre,1\nA,pre,2",
+      "kind": "xyz",
+      "settings": {},
+      "error": "Duplicate ID / variable pair; choose an aggregation"
+    },
+    {
+      "id": "longToWide",
+      "source": "ID,variable,value\nA,pre,text\nA,pre,2",
+      "kind": "xyz",
+      "settings": {
+        "duplicates": "sum"
+      },
+      "error": "Aggregation requires finite numeric values"
+    },
+    {
+      "id": "longToWide",
+      "source": "ID,variable,value\n,pre,1",
+      "kind": "xyz",
+      "settings": {},
+      "error": "ID and variable cells must not be blank"
+    },
+    {
+      "id": "recode",
+      "source": "1\n2",
+      "kind": "list",
+      "settings": {
+        "rules": "1, a\n1, b"
+      },
+      "error": "Duplicate value mapping"
+    },
+    {
+      "id": "derive",
+      "source": "1\n2",
+      "kind": "list",
+      "settings": {
+        "formula": "unknown+1"
+      },
+      "error": "Unknown column in formula: unknown"
+    },
+    {
+      "id": "derive",
+      "source": "1\n2",
+      "kind": "list",
+      "settings": {
+        "formula": "eval(x)"
+      },
+      "error": "Unsupported function or argument count: eval"
+    },
+    {
+      "id": "derive",
+      "source": "1\n2",
+      "kind": "list",
+      "settings": {
+        "formula": "1/(x-x)"
+      },
+      "error": "No finite derived values; check the formula and data"
+    }
+  ]
+}

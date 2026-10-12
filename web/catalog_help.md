@@ -1,0 +1,1018 @@
+# Catalog function reference
+
+The function catalog inserts ready-to-fill templates into the current editor. Tap a template to insert it, then tap each empty slot (shown as `[]` or as a blank argument such as `round(x,)`) and type its value. In Python mode the same catalog inserts `calc.<function>(...)` and adds the shared `import symvacas_catalog as calc` line and the symbols `x, y, z, t, pi` once at the top of the file.
+
+Use the search box above to filter by function name, template, example or description. The search matches every category at once. Clear the box to see the full reference again.
+
+Tap an example to place its expression in the calculator input.
+
+## Using the catalog
+- Numeric trigonometry follows the selected DEG/RAD/GRAD angle unit. An explicit `pi` or `°` inside the expression overrides it.
+- Symbolic calculus is always evaluated in radians.
+- Matrix and vector commands accept literals such as `[[1,2],[3,4]]`.
+- A saved custom function appears in the `Custom` category of the catalog.
+- The Functions screen exports the custom library to a JSON file and imports it back; import validates each definition and reports added, replaced and skipped entries.
+- Read the hint line under the catalog list for category-specific guidance.
+
+## Step-by-step explanations
+
+Android and Web use the same explanation engine. Explanations retain the computed answer and original domain restrictions; unsupported transformations show a solver summary.
+
+Equation mode always includes explanations. In calculator mode, enable **Calc mode step by step** in Setup to include them on subsequent calculations; this option is off by default.
+
+**Equations:** Linear/quadratic equations, factorable polynomials through degree 8 whose factors are linear or quadratic, cubic Cardano transformations, and power substitutions that reduce to a linear/quadratic equation (such as `x^6-5*x^3+6=0`). Simple trigonometric/exponential/logarithmic equations include inverse and periodic branches. Affine products with exponentials, such as `x*exp(x)=1`, explain the Lambert W inverse and the selected real or complex branches.
+
+**Systems:** Linear systems with at most 6 equations and 6 unknowns, including parameter coefficients/right-hand sides when every pivot and consistency decision is provable. Two-variable polynomial systems with a linear equation support substitution when the remaining equation reduces to degree 2 or less, including matching each root with the other variable (for example, `x+y=3`, `x^2+y^2=5`). Symmetric quadratic systems determining `x^2+y^2` and `x*y` use the squared sum and difference and retain every sign combination. Parameter-dependent rank or consistency falls back to a summary.
+
+Small two-variable polynomial systems with rational coefficients also show a lexicographic elimination basis and back-substitution of each returned solution, with original-equation residual checks. Internal polynomial division is omitted. For example, `solve([x^2+2*y^2=9,x*y=2],[x,y])` shows all four matching pairs. Large or complicated algebraic candidates retain a summary.
+
+**Inequalities:** One-variable polynomial/rational inequalities with rational coefficients (degree at most 6) show factorization, zeros/poles, an exact test point in each interval, and endpoint inclusion. `solve(x^2<4,x)` explains why the solution is `-2<x<2`; denominator zeros are always excluded.
+
+**ODEs:** First-order linear integrating factors with a verified elementary primitive, including nonpolynomial coefficients such as `1/t` and `sin(t)`. Homogeneous second-order equations with constant coefficients include characteristic roots and repeated-root solutions when the root case is decidable.
+
+First-order separable equations show variable separation and formal integrals, with polynomial equilibrium solutions checked before division. Other explicit ODE solutions include a substitution check when their residual simplifies exactly to zero. Verification is distinguished from a full derivation and retains domain restrictions.
+
+**Integration:** Verified SymPy manual-integration rules for the selected variable, including constant parameters. Parameter cases such as `a=0` in `exp(a*x)` and `a=-1` in `x^a` are explained separately. Definite bounds are shown only when the primitive's endpoint difference matches the computed answer. For a worked example, try `integrate(x*exp(x),x)`. Integrals such as `integrate(exp(-x^2)*cos(2*x),x,0,oo)` and `integrate(1/(x^4+1),x)` can produce an answer without a detailed derivation.
+
+**Differentiation:** Sum/product/quotient, constant/variable powers, and common trigonometric/hyperbolic chain rules, through derivative order 10. Traversal is bounded to depth 12, 96 visits and 80 rule steps; omitted detail is reported.
+
+**Limits:** Direct substitution excludes variable exponents and floor/ceiling, sign and piecewise jumps; these use other supported rules or a summary. Cancellation, square-root conjugates, checked `0/0` and infinity/infinity L'Hôpital transformations, highest-power comparison, one-sided cases, bounded local series, and sine/cosine squeeze cases.
+
+These explanations have expression-size, traversal and output-size limits. Unsupported nonlinear systems and ODEs retain summaries; an indefinite integral without a detailed rule can show a derivative check when verified. A missing derivation does not establish that no closed form exists.
+
+## Scientific
+`sin(x)` — Sine of x (uses the current angle unit).
+Example: sin(pi/6)
+`cos(x)` — Cosine of x (uses the current angle unit).
+Example: cos(0)
+`tan(x)` — Tangent of x (uses the current angle unit).
+Example: tan(pi/4)
+`asin(x)` — Inverse sine; result is an angle in the current unit.
+Example: asin(1)
+`acos(x)` — Inverse cosine; result is an angle in the current unit.
+Example: acos(0)
+`atan(x)` — Inverse tangent; result is an angle in the current unit.
+Example: atan(1)
+`abs(x)` — Absolute value, magnitude or complex modulus |x|.
+Example: abs(-3)
+`floor(x)` — Greatest integer less than or equal to x.
+Example: floor(2.7)
+`ceil(x)` — Least integer greater than or equal to x.
+Example: ceil(2.1)
+`round(x,n)` — Round x to n decimal places using banker's rounding (half to even); n defaults to 0.
+Example: round(2.5) → 2 (banker's rounding)
+`roundh(x,n)` — Round x to n decimal places using round half up (half away from zero); n defaults to 0.
+Example: roundh(2.5) → 3 (round half up)
+`sign(x)` — Sign of x: −1, 0 or 1.
+Example: sign(-5)
+`sqrt(x)` — Principal square root.
+Example: sqrt(16)
+`cbrt(x)` — Cube root.
+Example: cbrt(27)
+`nthroot(x,n)` — Real n-th root of x.
+Example: nthroot(81,4)
+`atan2(y,x)` — Angle of the point (x,y) across all four quadrants.
+Example: atan2(1,1)
+`frac(x)` — Fractional part, x − floor(x).
+Example: frac(3.75)
+`iPart(x)` — Integer part, truncating toward zero.
+Example: iPart(-3.75)
+`log(x,b)` — Logarithm of x to base b; base 10 is used when b is omitted.
+Example: log(1000,10)
+`ln(x)` — Natural logarithm.
+Example: ln(e)
+`exp(x)` — e raised to the power x.
+Example: exp(1)
+`sinc(x)` — sin(x) / x, with sinc(0) = 1.
+Example: sinc(0)
+`sinh(x)` — Hyperbolic sine.
+Example: sinh(1)
+`cosh(x)` — Hyperbolic cosine.
+Example: cosh(0)
+`tanh(x)` — Hyperbolic tangent.
+Example: tanh(1)
+`asinh(x)` — Inverse hyperbolic sine.
+Example: asinh(1)
+`acosh(x)` — Inverse hyperbolic cosine, defined for x ≥ 1.
+Example: acosh(2)
+`atanh(x)` — Inverse hyperbolic tangent, defined for |x| < 1.
+Example: atanh(0.5)
+`gamma(x)` — Gamma function.
+Example: gamma(5)
+`erf(x)` — Error function.
+Example: erf(1)
+`erfc(x)` — Complementary error function, 1 − erf(x).
+Example: erfc(1)
+`Ei(x)` — Exponential integral.
+Example: Ei(1)
+`Si(x)` — Sine integral.
+Example: Si(1)
+`Ci(x)` — Cosine integral.
+Example: Ci(1)
+`zeta(x)` — Riemann zeta function.
+Example: zeta(2)
+`factorial(n)` — n! for a non-negative integer.
+Example: factorial(5)
+`nCr(n,r)` — Binomial coefficient, combinations of n taken r at a time.
+Example: nCr(5,2)
+`nPr(n,r)` — Number of ordered permutations.
+Example: nPr(5,2)
+`gcd(a,b)` — Greatest common divisor.
+Example: gcd(12,18)
+`lcm(a,b)` — Least common multiple.
+Example: lcm(4,6)
+`prime(n)` — Returns the n-th prime number.
+Example: prime(1000)
+`isprime(n)` — True when n is prime, otherwise false. Requires an integer with |n| < 2^64; for example, isprime(2^61-1) is true.
+Example: isprime(97)
+`factorint(n)` — Prime factorisation of a positive integer. No separate 10^15 input cap; execution time and cancellation bound the work, within the calculator's general number limits.
+Example: factorint(360)
+`divisors(n)` — All positive divisors of a positive integer, sorted ascending. Factorization is bounded by execution time; output is limited to 2000 divisors and 40000 characters.
+Example: divisors(28)
+`rnd()` — Random real number in the interval [0,1).
+Example: rnd()
+`eng(x)` — Engineering notation with a power-of-three exponent.
+Example: eng(12345)
+`pol(x,y)` — Polar coordinates (r,θ) from rectangular (x,y).
+Example: pol(1,1)
+`rec(r,θ)` — Rectangular coordinates (x,y) from polar (r,θ).
+Example: rec(1,0)
+`randInt(a,b)` — Random integer in the inclusive range [a,b].
+Example: randInt(1,6)
+`sexagesimal(h,m,s)` — Hours, minutes and seconds converted to decimal degrees.
+Example: sexagesimal(1,30,0)
+`dms(x)` — Decimal degrees converted to degrees, minutes and seconds.
+Example: dms(1.5)
+`mixed(a,b,c)` — Mixed fraction a b/c.
+Example: mixed(1,1,2)
+`quotient(a,b)` — Integer quotient of a divided by b.
+Example: quotient(17,5)
+`remainder(a,b)` — Remainder of a divided by b.
+Example: remainder(17,5)
+`mod(a,b)` — Remainder of a divided by b; the mod operator gives the same result.
+Example: mod(17,5)
+`divmod(a,b)` — Integer quotient and remainder of a divided by b, as a list.
+Example: divmod(17,5)
+`sumdata(values)` — Sum of a list of values.
+Example: sumdata([1,2,3])
+`percent(x)` — x percent, x/100.
+Example: percent(50)
+`degree(x)` — An angle of x degrees converted to radians.
+Example: degree(30)
+`rad(x)` — Returns x unchanged and marks it as radians.
+Example: rad(pi/2)
+`gradian(x)` — An angle of x gradians converted to radians.
+Example: gradian(100)
+`fibonacci(n)` — n-th Fibonacci number.
+Example: fibonacci(10)
+`lucas(n)` — n-th Lucas number.
+Example: lucas(10)
+`bernoulli(n)` — n-th Bernoulli number.
+Example: bernoulli(4)
+`harmonic(n,m)` — Generalized harmonic number H(n,m); m defaults to 1.
+Example: harmonic(5)
+`subfactorial(n)` — Number of derangements of n items, !n.
+Example: subfactorial(5)
+`totient(n)` — Euler's totient φ(n).
+Example: totient(10)
+`divisor_sigma(n,k)` — Sum of the k-th powers of the divisors of n; k defaults to 1.
+Example: divisor_sigma(12)
+`primepi(x)` — Number of primes less than or equal to x.
+Example: primepi(100)
+`nextprime(n)` — Smallest prime greater than n.
+Example: nextprime(100)
+`prevprime(n)` — Largest prime less than n.
+Example: prevprime(100)
+`lambertw(x)` — Lambert W function, the inverse of x·e^x.
+Example: lambertw(1)
+`lambertw(z,k)` — Lambert W branch k (an integer). Branch 0 is the principal branch; branch −1 is also real on [−1/e,0).
+Example: lambertw(-1,1)
+`beta(a,b)` — Beta function B(a,b).
+Example: beta(2,3)
+`digamma(x)` — Logarithmic derivative of the gamma function.
+Example: digamma(1)
+`polygamma(n,x)` — n-th polygamma function.
+Example: polygamma(1,1)
+`besselj(n,x)` — Bessel function of the first kind.
+Example: besselj(0,1)
+`bessely(n,x)` — Bessel function of the second kind.
+Example: bessely(0,1)
+`besseli(n,x)` — Modified Bessel function of the first kind.
+Example: besseli(0,1)
+`besselk(n,x)` — Modified Bessel function of the second kind.
+Example: besselk(0,1)
+
+## Symbolic
+`simplify(expr)` — Simplify an expression.
+Example: simplify(sin(x)^2+cos(x)^2)
+`expand(expr)` — Expand products and powers.
+Example: expand((x+1)^3)
+`factor(expr)` — Factor a polynomial over the rationals.
+Example: factor(x^2-1)
+`collect(expr,x)` — Collect terms as a polynomial in x.
+Example: collect(x^2+2x+1,x)
+`subs(expr,x,value)` — Substitute value for x.
+Example: subs(x^2+1,x,3)
+`diff(expr,x)` — First derivative with respect to x.
+Example: diff(sin(x),x)
+`diff(expr,x,n)` — n-th derivative with respect to x.
+Example: diff(x^4,x,2)
+`integrate(expr,x)` — Indefinite integral (antiderivative). An unevaluated Integral means the symbolic algorithm did not finish; use nintegrate(expr,x,a,b) for a definite numeric value on valid finite bounds.
+Example: integrate(x^2,x)
+`integrate(sqrt(tan(x)),x)` — Uses t=sqrt(tan(x)) to reduce the integral to a rational function, returning logarithms, arctangents and C. Valid on continuous real intervals with tan(x)>0; the conditions are retained in Ans. The same rule covers suitable fractional tan/cot powers with affine real arguments and root order up to 4.
+Example: integrate(sqrt(tan(x)),x)
+`integrate(expr,x,a,b)` — Definite integral from a to b.
+Example: integrate(x^2,x,0,1)
+`limit(expr,x,a)` — Two-sided limit as x tends to a.
+Example: limit(sin(x)/x,x,0)
+`limit(expr,x,a,left)` — Limit approaching a from the left.
+Example: limit(1/x,x,0,left)
+`limit(expr,x,a,right)` — Limit approaching a from the right.
+Example: limit(1/x,x,0,right)
+`series(expr,x,a,n)` — Series expansion about a up to order n.
+Example: series(exp(x),x,0,6)
+`taylor(expr,x,a,n)` — Taylor polynomial of order n about a.
+Example: taylor(sin(x),x,0,5)
+`sum(expr,x,a,b)` — Summation of expr over integer x from a to b.
+Example: sum(x^2,x,1,10)
+`product(expr,x,a,b)` — Product of expr over integer x from a to b.
+Example: product(x,x,1,5)
+`solve(eq,x)` — Solve an equation or system for x. Tries the complex domain first, then automatically retries the real domain for unsupported expressions such as absolute values; the result note identifies real-domain solving. In systems, only variables needed by the real-valued terms are changed for that retry. Variable assumptions still apply. A ConditionSet means the symbolic solution is unresolved, not that a root exists. For a simple unresolved equation in one variable without free parameters, automatically searches −10 to 10 using graph root candidates, then refines and checks candidates against the original expression and domain. Displays at most 16 approximate real roots as partial results; roots can be missed even inside this interval, and complex roots are not searched. Integer-domain solving is excluded. For another interval use nsolve on a continuous interval with a sign change.
+Example: solve(x^2-5x+6=0,x)
+`solve(eq,x,real)` — Explicitly restrict the domain for one equation and one variable; complex and integer are also supported. Existing assumptions still apply. Omit the domain to enable automatic real-domain retry for absolute-value equations.
+Example: solve(abs(x-1)=3,x,real)
+`solve(abs(x-1)=3,x)` — Absolute-value equations can be solved without setting a real assumption.
+Example: solve(abs(x-1)=3,x) → {-2, 4}
+`solve(exp(x)=x,x)` — Returns the entire complex family −LambertW(−1,k), k ∈ ℤ. An explicitly real domain returns EmptySet. Affine exponential equations can use this full-branch strategy; auxiliary solve results for other Lambert W equations are labeled partial rather than complete.
+
+`solve(x*exp(x)=1,x)` — Returns all complex branches LambertW(1,k), k ∈ ℤ, with a step-by-step Lambert W explanation. `solve(x*exp(x)=1,x,real)` returns the unique real root LambertW(1) ≈ 0.5671432904. Finite real numeric coefficients are supported in `(a*x+d)*exp(b*x+c)+f=0` when a and b are nonzero.
+Example: solve(exp(x)=x,x)
+`nsolve(expr,x,a,b)` — Numeric root search in the interval [a,b].
+Example: nsolve(cos(x)-x,x,0,1)
+`nintegrate(expr,x,a,b)` — Numeric definite integral from a to b.
+Example: nintegrate(sin(x),x,0,pi)
+`nderivative(expr,x,a)` — Numeric derivative evaluated at x = a.
+Example: nderivative(sin(x),x,0)
+`minimum(expr,x,a,b)` — Minimum value of expr on the interval [a,b].
+Example: minimum(x^2,x,-1,2)
+`maximum(expr,x,a,b)` — Maximum value of expr on the interval [a,b].
+Example: maximum(x^2,x,-1,2)
+`piecewise([expr,cond],...)` — Piecewise-defined function.
+Example: piecewise([1,x>0],[0,true])
+
+Graphs also accept Desmos-style `{condition:value,condition:value,default}`. The first matching branch wins; omit the default to leave unmatched values undefined. Example: `f(x)={x<0:x^2,x>=0:2*x}`. Append `{condition}` to restrict the whole preceding expression, with or without spaces or outer parentheses: `y=x^2 {0<=x<=2}` and `y=2*x {x>2}`. Chained inequalities are supported; excluded intervals are omitted and explicit polynomial branch boundaries are sampled separately to avoid connecting jumps.
+Graph angle analysis: select a curve (including f′ or f″) and choose **Tangent angle** at an x coordinate, or at t for parametric/polar curves. It reports the inclination from the positive x axis, 0° ≤ θ < 180°. Choose **Intersection angle**, a second Cartesian curve, and an a–b x interval to report the smaller angle between the two tangents at each isolated intersection, 0°–90°. Results include degrees and radians; vertical tangents are supported. For multi-branch curves, tap a point to choose the tangent branch. Corners and singular points with no defined tangent are marked undefined. Intersection search is numerical and may miss points.
+
+`apart(expr,x)` — Partial-fraction decomposition in x.
+Example: apart(1/(x*(x+1)),x)
+`partfrac(expr,x)` — Partial fractions; alias of apart.
+Example: partfrac(1/(x^2-1),x)
+`together(expr)` — Combine terms into a single fraction.
+Example: together(1/x+1/(x+1))
+`cancel(expr)` — Cancel common factors in a rational expression.
+Example: cancel((x^2-1)/(x-1))
+`trigsimp(expr)` — Simplify using trigonometric identities.
+Example: trigsimp(sin(x)^2+cos(x)^2)
+`trigexpand(expr)` — Expand trigonometric functions of sums and multiples.
+Example: trigexpand(sin(x+y))
+`powsimp(expr)` — Combine powers that share a base.
+Example: powsimp(x^a*x^b)
+`powdenest(expr)` — Simplify nested powers and radicals.
+Example: powdenest((x^2)^(1/2))
+`hyperexpand(expr)` — Expand hypergeometric functions.
+Example: hyperexpand(exp(x))
+`nsimplify(expr)` — Guess an exact closed form for a numeric value.
+Example: nsimplify(0.333333)
+`comDenom(expr)` — Common denominator of a sum of fractions.
+Example: comDenom(1/(x+1)+1/(x+2))
+`numden(expr)` — Numerator and denominator of an expression.
+Example: numden((x+1)/(x-1))
+`coeff(expr,x)` — Coefficient of the indicated power of x.
+Example: coeff(3x^2+2x+1,x)
+`quo(a,b,x)` — Polynomial quotient of a divided by b in x.
+Example: quo(x^3-1,x-1,x)
+`rem(a,b,x)` — Polynomial remainder of a divided by b in x.
+Example: rem(x^3-1,x-1,x)
+`resultant(a,b,x)` — Resultant of two polynomials in x.
+Example: resultant(x^2-1,x-2,x)
+`discriminant(poly,x)` — Discriminant analysis (LDA/QDA). Discriminant of a polynomial in x.
+Example: discriminant(x^2-4x+3,x)
+`domain(expr,x)` — Real domain of the expression in x.
+Example: domain(1/(x-1),x)
+`range(expr,x)` — Range of the expression over its domain.
+Example: range(x^2,x)
+`roots(poly,x)` — Exact roots of a polynomial with their multiplicities.
+Example: roots(x^2-1,x)
+`real_roots(poly,x)` — Real roots of a polynomial.
+Example: real_roots(x^3-1,x)
+
+## Complex
+`re(z)` — Real part of a complex number.
+Example: re(3+4i)
+`im(z)` — Imaginary part of a complex number.
+Example: im(3+4i)
+`conj(z)` — Complex conjugate.
+Example: conj(3+4i)
+`abs(z)` — Modulus (absolute value) of a complex number.
+Example: abs(3+4i)
+`arg(z)` — Argument (angle) of a complex number.
+Example: arg(1+i)
+`polar(r,θ)` — Complex number in polar form, r·e^(iθ).
+Example: polar(2,pi/3)
+`rectpolar(z)` — Rectangular and polar forms of a complex number.
+Example: rectpolar(1+i)
+
+## ODE & transforms
+`dsolve(eq,y(t),t)` — Solve an ordinary differential equation.
+Example: dsolve(diff(y(t),t)=y(t),y(t),t)
+`laplace(f,t,s)` — Laplace transform from the time variable t to s.
+Example: laplace(sin(t),t,s)
+`ilaplace(F,s,t)` — Inverse Laplace transform from s back to t.
+Example: ilaplace(1/(s^2+1),s,t)
+`fourier(f,t,w)` — Fourier transform from t to w using the e^(-2πiwt) kernel (ordinary frequency).
+Example: fourier(exp(-t^2),t,w)
+`ifourier(F,w,t)` — Inverse Fourier transform from w back to t.
+Example: ifourier(exp(-w^2/4),w,t)
+`fft(list)` — Discrete fast Fourier transform of a list.
+Example: fft([1,0,0,0])
+`ifft(list)` — Inverse discrete fast Fourier transform of a list.
+Example: ifft([1,1,1,1])
+`ztrans(f,n,z)` — Unilateral Z-transform of the sequence f(n): the sum of f(n)/z^n for n ≥ 0.
+Example: ztrans(a^n,n,z)
+`invztrans(F,z,n)` — Inverse Z-transform of a rational F(z), reconstructed from its poles.
+Example: invztrans(z/(z-2),z,n)
+`mellin(f,x,s)` — Mellin transform; its fundamental convergence strip is reported with the result.
+Example: mellin(exp(-x),x,s)
+`invmellin(F,s,x)` — Inverse Mellin transform; pass the convergence strip as two extra arguments to override the inferred one.
+Example: invmellin(gamma(s),s,x)
+`pdsolve(eq,u(x,y))` — Solve a first-order partial differential equation.
+Example: pdsolve(diff(u(x,y),x)+diff(u(x,y),y)=0,u(x,y))
+`rsolve(eq,y(n))` — Solve a recurrence relation for the sequence y(n).
+Example: rsolve(y(n)=2*y(n-1),y(n))
+`rsolve(eq,y(n),conds)` — The same with initial conditions, given as equations.
+Example: rsolve(y(n)=y(n-1)+1,y(n),[y(0)=0])
+
+## Vector calculus
+`gradient(f,[x,y])` — Gradient vector of a scalar field.
+Example: gradient(x^2+y^2,[x,y])
+`divergence(f,[x,y])` — Divergence of a vector field.
+Example: divergence([x,y],[x,y])
+`curl(f,[x,y])` — Curl of a two- or three-dimensional vector field.
+Example: curl([-y,x],[x,y])
+`hessian(f,[x,y])` — Hessian matrix of second derivatives.
+Example: hessian(x^2*y,[x,y])
+`jacobian(f,[x,y])` — Jacobian matrix of a vector function.
+Example: jacobian([x*y,x+y],[x,y])
+`laplacian(f,[x,y])` — Laplacian of a scalar field.
+Example: laplacian(x^2+y^2,[x,y])
+
+## Matrix & vector
+`det(A)` — Determinant.
+Example: det([[1,2],[3,4]])
+`inverse(A)` — Matrix inverse.
+Example: inverse([[1,2],[3,4]])
+`transpose(A)` — Transpose.
+Example: transpose([[1,2],[3,4]])
+`rank(A)` — Rank.
+Example: rank([[1,2],[2,4]])
+`trace(A)` — Trace, the sum of the diagonal entries.
+Example: trace([[1,2],[3,4]])
+`ref(A)` — Row echelon form.
+Example: ref([[1,2],[3,4]])
+`rref(A)` — Reduced row echelon form.
+Example: rref([[1,2],[3,4]])
+`lu(A)` — LU decomposition with row permutations.
+Example: lu([[2,1],[1,3]])
+`linsolve(A,b)` — Solve the linear system A·x = b.
+Example: linsolve([[2,1],[1,3]],[1,2])
+`eigenvalues(A)` — Each result shows an eigenvalue and its algebraic multiplicity. The reusable numeric result is a list of [eigenvalue, multiplicity] pairs, not a matrix of eigenvalues.
+Example: eigenvalues([[2,0],[0,3]])
+`eigenvectors(A)` — Eigenvectors.
+Example: eigenvectors([[2,0],[0,3]])
+`dot(u,v)` — Dot product.
+Example: dot([1,2,3],[4,5,6])
+`cross(u,v)` — Cross product of two three-dimensional vectors.
+Example: cross([1,0,0],[0,1,0])
+`norm(v)` — Euclidean norm (length) of a vector.
+Example: norm([3,4])
+`normalize(v)` — Unit vector in the direction of v.
+Example: normalize([3,4])
+`angle(u,v)` — Angle between two vectors.
+Example: angle([1,0],[0,1])
+`projection(u,v)` — Projection of u onto v.
+Example: projection([1,1],[1,0])
+`charpoly(A,x)` — Characteristic polynomial in x.
+Example: charpoly([[1,2],[3,4]],x)
+`identity(n)` — n×n identity matrix.
+Example: identity(3)
+`diag(list)` — Diagonal matrix built from a list.
+Example: diag([1,2,3])
+`qr(A)` — QR decomposition.
+Example: qr([[1,2],[3,4]])
+`cholesky(A)` — Cholesky decomposition, A = L·Lᵀ.
+Example: cholesky([[4,2],[2,3]])
+`nullspace(A)` — Basis of the null space.
+Example: nullspace([[1,2],[2,4]])
+`cofactor(A)` — Matrix of cofactors.
+Example: cofactor([[1,2],[3,4]])
+`adjugate(A)` — Adjugate (classical adjoint) matrix.
+Example: adjugate([[1,2],[3,4]])
+`rowspace(A)` — Basis of the row space.
+Example: rowspace([[1,2],[3,4]])
+`singularvalues(A)` — Singular values.
+Example: singularvalues([[1,0],[0,2]])
+`frob(A)` — Frobenius norm.
+Example: frob([[1,2],[3,4]])
+`jordan(A)` — Jordan canonical form.
+Example: jordan([[2,1],[0,2]])
+`dim(v)` — Dimension of a vector or length of a list.
+Example: dim([1,2,3])
+`pinv(A)` — Moore-Penrose pseudoinverse.
+Example: pinv([[1,2],[3,4]])
+`ctranspose(A)` — Conjugate (Hermitian) transpose.
+Example: ctranspose([[1,2],[3,4]])
+`svd(A)` — Singular value decomposition as [U, S, V]; the symbolic result can be large.
+Example: svd([[1,0],[0,2]])
+
+## Stats — choosing a test
+
+```text
+What do you want to compare?
+├─ Numeric values
+│  ├─ One sample vs a target mean → One-sample t test
+│  ├─ Two independent groups → Welch t test
+│  ├─ Before/after on the same subjects → Paired t test
+│  ├─ 3+ independent groups → Welch ANOVA → Games–Howell
+│  │  └─ Equal-variance ANOVA selected → Tukey–Kramer
+│  ├─ Same subjects in several conditions → Repeated-measures ANOVA / Friedman
+│  ├─ Two independent factors → Two-way ANOVA
+│  ├─ 3+ factors / numeric covariates → Factorial linear model
+│  └─ Groups with covariates to adjust → ANCOVA
+├─ Categories / counts
+│  ├─ Independent categories → χ² independence
+│  │  └─ Sparse 2×2 table → Fisher exact
+│  ├─ One proportion vs a target / two independent proportions → Proportion z test
+│  ├─ Paired binary outcomes → McNemar
+│  └─ Counts vs expected frequencies → χ² goodness of fit
+├─ Time until an event, with censoring → Survival analysis
+└─ Predict a response from variables → Regression & models
+
+Review shape, outliers and study design:
+  Mean analysis → Shapiro–Wilk + Q–Q plot
+  Equal-variance assumption → Brown–Forsythe / Levene
+  Independent rank comparisons → Mann–Whitney (2), Kruskal–Wallis (3+)
+  Symmetric paired differences → Wilcoxon signed-rank
+```
+
+### Independent and paired samples at a glance
+
+| Data structure | Parametric comparison | Nonparametric comparison | Defaults / options |
+| --- | --- | --- | --- |
+| Two independent groups | Student / Welch t-test | Mann–Whitney U | Welch default; Student selectable |
+| Two paired groups | Paired t-test | Wilcoxon signed-rank | Complete paired observations |
+| 3+ independent groups | ANOVA / Welch ANOVA | Kruskal–Wallis | Welch ANOVA default |
+| 3+ repeated conditions | Repeated-measures ANOVA | Friedman test | Complete paired observations |
+
+Select by the data structure and target quantity. Rank-based location comparisons require appropriate distribution shapes or symmetry. Repeated conditions are measurements of the same subjects.
+
+Choose by purpose, measurement scale and study design. Use Welch for unequal-variance means. One-way ANOVA defaults to Welch with Games–Howell; equal-variance ANOVA adds Tukey. Enter known population SDs for z tests.
+
+Raw-data t tests, t intervals, ANOVA and Tukey include sample summaries, assumption checks, Q–Q plots and distributions. t tests add effect sizes and two-sided 95% mean intervals; ANOVA adds η² and automatic post-hoc comparisons; Tukey/Games–Howell add overall ANOVA. Paired t checks differences; ANCOVA and factorial linear models check residuals. Enter raw observations for normality checks.
+
+### Normal-model methods (parametric)
+- One-sample t / t intervals: normal population for exact small-sample inference. Paired t: normally distributed within-pair differences. Inspect Q–Q plots, skewness and outliers.
+- Welch t / Welch ANOVA / Games–Howell: independent group means with unequal variances. Student t / classic ANOVA / Tukey: equal variances.
+- ANCOVA / factorial linear models: normal independent errors, common residual variance and a full-rank design. ANCOVA uses linear covariate effects and common slopes. Review interactions before main effects; Type II respects marginality and Type III uses sum contrasts.
+- Repeated-measures ANOVA: complete within-subject measurements; review sphericity and Greenhouse–Geisser corrected p values.
+- Gaussian mixed models: normal conditional errors and random effects. Bayesian mean / two-sample models: normal likelihood with the selected priors.
+- Bartlett: normally distributed groups. For uncertain normality, use median-centered Levene / Brown–Forsythe.
+
+### Distribution assumptions by model
+- Mean z tests / z intervals: enter known population SDs; the mean sampling distribution is normal or adequately approximated.
+- Logistic / multinomial / ordinal: categorical outcomes. Poisson / negative binomial: count outcomes. Check the family, link, dispersion and model diagnostics.
+- GEE: cluster mean/variance model and working correlation. Review cluster count, mean specification and robust standard errors.
+- GLMM: selected response family and random effects. Bayesian proportion / rate: binomial / Poisson likelihoods.
+
+### Rank, distribution and resampling methods (nonparametric)
+- Mann–Whitney / Kruskal–Wallis: independent distributions. Comparable distribution shapes are needed for location interpretations.
+- Wilcoxon signed-rank: paired or one-sample differences; symmetry is needed for a location interpretation.
+- Friedman: three or more repeated conditions; complete matched rows, ranks within subjects and tie correction.
+- Kolmogorov–Smirnov: continuous distributions. Specify one-sample reference parameters independently of the tested sample.
+- Kaplan–Meier / log-rank: censored event times. Review independent subjects and censoring; Cox uses proportional hazards.
+- IID bootstrap: independent, representative observations. Match paired, clustered or time-dependent sampling to the data structure.
+
+### Categorical tests
+- χ²: independent counts and adequate expected frequencies. Fisher exact: independent 2×2 counts. McNemar: paired binary outcomes.
+
+### Choosing a method
+Choose the outcome and question first: means, distributions, association, prediction or survival. Then select independent groups, paired observations or clusters. Assess assumptions using Q–Q plots, p values, sample sizes and study design. For skewed or dependent data, review transformations and a model that matches the distribution and sampling structure.
+
+## Data & units
+Histogram: enable KDE (kernel density) to switch the Y-axis from Count to Density. Each series is normalized as count / (sample size × bin width), so its histogram area is 1. Transparent density bars overlap, and a matching-color Gaussian KDE uses Scott bandwidth (sample SD × n^(-1/5)). The curve extends into the tails without rescaling its height to the peak. KDE requires at least two finite observations with variation; otherwise the histogram remains and that series is marked unavailable. The option is saved.
+
+Row filtering: choose a column, comparison and value for each condition; add or remove conditions as needed. Combine them with All conditions (AND) or Any condition (OR). Numeric comparisons exclude blank, nonnumeric and nonfinite cells. Text comparisons are case-sensitive; blank checks include whitespace-only cells. Preview shows input, kept and removed row counts plus the first six kept rows. Enter a new dataset name before saving; leave it blank for an unused D-number. Names start with an English letter and use letters, digits or underscores. Save as new dataset saves and opens the result; existing names are rejected and the source dataset stays unchanged. Editing only the output name does not require a new preview. Row order, cell text and columns are retained. Changing data or conditions requires a new preview. A zero-row result cannot be saved.
+
+Wide → Long: select ID columns and measurement columns. ID values repeat for each measurement, and the measurement header becomes the variable value. Name the variable/value columns. With no selected IDs, an automatic row ID is added. Missing measurements retain their rows. Long → Wide: select ID, variable and value columns; missing combinations become blank. Duplicate pairs default to an error; first/last/sum/mean are explicit alternatives. Sum/mean use finite numeric nonblank values. A text prefix allows numeric variable levels to become column headers.
+
+Recode variable: enter one literal old value, new value mapping per line; <missing> matches a blank cell. Alternatively, use increasing numeric cut points and replacement values (lower bound included, upper bound excluded). Choose how unmatched values are handled and whether to append a column or replace the source column. Create derived variable: use column names (x, y, z, x4, ...) or valid header identifiers in a row-wise numeric formula; a column shown as test (x) accepts test or x, for example weight/(height/100)^2. Arithmetic, comparisons, sqrt, abs, exp, log (optional base), ln, log10, trigonometric functions in radians, floor, ceil, round, min, max, sum, mean and lazy if(condition,a,b) are supported. Numerical evaluation uses floating-point arithmetic; missing operands or nonfinite/domain-invalid results produce blank cells, with their count shown in the preview. Preview shows the first six output rows. Editing data or options invalidates Apply; preview again before applying. Changes affect the current draft; use Save to save the dataset.
+
+Data preparation: Add group column classifies one numeric source column using comma-separated, strictly increasing cut points. A cut point of 10 gives x < 10 and x ≥ 10; multiple cuts give lower-inclusive, upper-exclusive intervals. Group values default to 0,1 (or 0,1,2,... for more intervals) and can be customized. Choose the new column header and inspect interval counts before adding. Original cells and row order are retained; missing/nonfinite/nonnumeric source cells receive a blank group value. Without a header, column names are added above the existing data. In Table editor, click any column name to set or change its header. Use Save to save the modified dataset.
+
+Scatter: choose X column and Y column from any dataset with at least two columns. With three or more columns, choose a group column under Plot grouping to color points by group and show a legend with sample counts; None draws one series. Group labels remain categorical. X, Y and group use distinct columns; rows missing either coordinate or a selected group label are omitted. Axis choices are saved. A fitted regression curve is shown only for its original predictor/response axes.
+
+Plots: Bar on List data places each distinct numeric value on the x-axis and its frequency on the y-axis (five observations of 3 give a bar at x=3 with height 5). With x,y data, x supplies the names and y supplies the heights: A,5 / B,8 / C,3 gives heights 5,8,3. With more columns, the first column supplies names and the remaining numeric columns are adjacent series. Select a group column under Plot grouping to draw groups side by side; the first remaining column supplies names and the other numeric columns supply heights. Row order and repeated names are retained; missing/nonfinite heights are omitted, and negative heights extend below zero.
+
+`stats(list)` — Summary statistics of a list.
+Example: stats([1,2,3,4])
+
+`mode(list)` — All values with the highest frequency, returned as a sorted list. Ties include every matching value; if all values occur once, all are returned.
+Example: mode([1,1,2,2,3]) → [1,2]
+`skewness(list[,correction])` — Adjusted Fisher–Pearson sample skewness by default (correction=1), requiring at least three finite real values with variation. correction=0 uses the uncorrected central-moment coefficient. Positive values indicate a longer/heavier right tail.
+Example: skewness([1,2,3,4,5]) → 0
+`kurtosis(list[,correction])` — Sample-corrected excess kurtosis by default (correction=1), requiring at least four finite real values with variation. The normal reference is 0. correction=0 uses the uncorrected fourth standardized moment minus 3.
+Example: kurtosis([1,2,3,4,5]) → -6/5
+Summary statistics also shows mode(s), sample-corrected skewness and sample-corrected excess kurtosis. Undefined shape statistics for constant data or insufficient sample sizes are displayed as NaN.
+
+`mean(list)` — Arithmetic mean.
+Example: mean([1,2,3,4])
+`median(list)` — Median.
+Example: median([3,1,2])
+`variance(list)` — Sample variance by default (division by n−1; ddof=1), requiring at least two values. An optional second argument selects ddof=0 or 1.
+Example: variance([1,2,3,4])
+`variance(list,0)` — Population variance (division by n).
+Example: variance([1,2,3],0) → 2/3
+`stdev(list)` — Sample standard deviation by default (ddof=1), requiring at least two values. stats(list) shows both population and sample values.
+Example: stdev([1,2,3]) → 1
+`stdev(list,0)` — Population standard deviation (ddof=0).
+Example: stdev([2,4,4,4,5,5,7,9],0) → 2
+`quartiles(list)` — Q1, median and Q3 using inclusive interpolation.
+Example: quartiles([1,2,3,4,5])
+`sumdata(list)` — Sum of the data values.
+Example: sumdata([1,2,3,4])
+`regression(data,model)` — Regression fit; model is linear, quadratic, logarithmic, exponential or power. For a custom nonlinear model, use `regression(data,custom,expression,variable[,initials])`, where `expression` is the right-hand side of y. Parameters are all symbols other than the independent variable. Format: [[parameter1, initial, lower, upper], [parameter2, initial, lower, upper]]; upper bound can be omitted.
+Example: regression([[1,2],[2,4],[3,6]],linear)
+Example (y = S(b)/S₀): regression([[0,1],[100,0.9],[200,0.81]],custom,exp(-b*ADC),b)
+Example (exponential decay): regression([[0,4],[1,2.8],[2,2.1],[3,1.6]],custom,A*exp(-k*x)+C,x)
+`covariance(x,y)` — Sample covariance by default (division by n−1; ddof=1), requiring at least two pairs. An optional third argument selects ddof=0 or 1.
+Example: covariance([1,2,3],[2,4,6])
+`covariance(x,y,0)` — Population covariance (division by n).
+Example: covariance([1,2,3],[2,4,6],0) → 4/3
+`correlation(x,y)` — Correlation coefficient of two paired lists.
+Example: correlation([1,2,3],[2,4,6])
+`qty(value,unit)` — Quantity with a unit, for example qty(2,m).
+Example: qty(2,m)+qty(30,cm)
+`convert(value,from,to)` — Unit conversion, for example convert(2,m,cm).
+Example: convert(32,degF,degC)
+
+## Distributions
+
+`normpdf(x)` — Standard normal density at x.
+Example: normpdf(0)
+`normpdf(x,μ,σ)` — Normal density with mean μ and standard deviation σ.
+Example: normpdf(70,70,10)
+`normcdf(x)` — Standard normal cumulative probability P(Z ≤ x).
+Example: normcdf(1.96)
+`normcdf(low,high)` — P(low < Z < high) for the standard normal; -oo and oo are accepted bounds.
+Example: normcdf(-1.96,1.96)
+`normcdf(low,high,μ,σ)` — Normal probability for the interval with mean μ and standard deviation σ.
+Example: normcdf(-oo,60,70,10)
+`invnorm(p)` — Standard normal quantile: the x with P(Z ≤ x) = p.
+Example: invnorm(0.975)
+`invnorm(p,μ,σ)` — Quantile of the normal distribution with mean μ and standard deviation σ.
+Example: invnorm(0.9,70,10)
+`tpdf(x,df)` — Student t density.
+Example: tpdf(0,10)
+`tcdf(x,df)` — P(T ≤ x) for the t distribution with df degrees of freedom.
+Example: tcdf(2.228,10)
+`tcdf(low,high,df)` — P(low < T < high).
+Example: tcdf(-2.228,2.228,10)
+`invt(p,df)` — Student t quantile: the x with P(T ≤ x) = p.
+Example: invt(0.975,10)
+`chi2pdf(x,df)` — χ² density.
+Example: chi2pdf(2,2)
+`chi2cdf(x,df)` — P(X ≤ x) for the χ² distribution with df degrees of freedom.
+Example: chi2cdf(3.8415,1)
+`chi2cdf(low,high,df)` — P(low < X < high).
+Example: chi2cdf(2,4,3)
+`fpdf(x,df1,df2)` — F density with the two degrees of freedom.
+Example: fpdf(1,2,4)
+`fcdf(x,df1,df2)` — P(F ≤ x).
+Example: fcdf(3,2,4)
+`fcdf(low,high,df1,df2)` — P(low < F < high).
+Example: fcdf(1,3,2,4)
+`binompdf(n,p,k)` — Binomial probability P(X = k) for n trials with success probability p.
+Example: binompdf(10,1/2,5)
+`binompdf(n,p)` — List of the binomial probabilities for k = 0 to n (n ≤ 100).
+Example: binompdf(4,1/2)
+`binomcdf(n,p,k)` — Binomial cumulative probability P(X ≤ k).
+Example: binomcdf(10,1/2,5)
+`poissonpdf(μ,k)` — Poisson probability P(X = k) with mean μ.
+Example: poissonpdf(2,3)
+`poissoncdf(μ,k)` — Poisson cumulative probability P(X ≤ k).
+Example: poissoncdf(2,3)
+`geometpdf(p,k)` — Geometric probability P(X = k) = (1−p)^(k−1)·p.
+Example: geometpdf(1/2,3)
+`geometcdf(p,k)` — Geometric cumulative probability P(X ≤ k) = 1 − (1−p)^k.
+Example: geometcdf(1/2,3)
+`exppdf(x,λ)` — Exponential density with rate λ; λ defaults to 1.
+Example: exppdf(1)
+`expcdf(x,λ)` — Exponential cumulative probability P(X ≤ x).
+Example: expcdf(1)
+`unifpdf(x,a,b)` — Uniform density on [a,b]; the default interval is [0,1].
+Example: unifpdf(0.5)
+`unifcdf(x,a,b)` — Uniform cumulative probability P(X ≤ x).
+Example: unifcdf(0.5)
+`gammapdf(x,k,θ)` — Gamma density with shape k and scale θ; θ defaults to 1.
+Example: gammapdf(1,1)
+`gammacdf(x,k,θ)` — Gamma cumulative probability P(X ≤ x).
+Example: gammacdf(1,1)
+`betapdf(x,α,β)` — Beta density on 0 ≤ x ≤ 1.
+Example: betapdf(0.5,2,3)
+`betacdf(x,α,β)` — Beta cumulative probability P(X ≤ x).
+Example: betacdf(0.5,2,3)
+`lognormpdf(x,μ,σ)` — Log-normal density; μ and σ default to 0 and 1.
+Example: lognormpdf(1)
+`lognormcdf(x,μ,σ)` — Log-normal cumulative probability P(X ≤ x).
+Example: lognormcdf(1)
+
+`hgeompdf(N,K,n,k)` — Hypergeometric probability mass. Use integers N ≤ 10000 and 0 ≤ K,n ≤ N.
+Example: hgeompdf(10,2,2,2)
+`hgeomcdf(N,K,n,k)` — Cumulative probability of at most k successes in draws without replacement.
+Example: hgeomcdf(10,2,2,1)
+`nbinompdf(r,p,k)` — Mass for k failures before the r-th success. Failures start at 0; total trials = k+r. Use 1 ≤ r ≤ 100000 and 0 < p ≤ 1.
+Example: nbinompdf(3,0.5,2)
+`nbinomcdf(r,p,k)` — Cumulative probability of at most k failures before the r-th success.
+Example: nbinomcdf(3,0.5,2)
+`weibullpdf(x,k,λ)` — Weibull density with positive shape k and scale λ (default 1). λ is a scale, not a rate.
+Example: weibullpdf(3,2,3)
+`weibullcdf(x,k,λ)` — Weibull cumulative probability P(X ≤ x).
+Example: weibullcdf(3,2,3)
+
+`cauchypdf(x)` / `cauchypdf(x,x₀,γ)` — Cauchy density, with default location 0 and scale 1. Require finite x₀ and positive finite γ. The mean and variance are undefined.
+Example: cauchypdf(0,0,1)
+`cauchycdf(x)` / `cauchycdf(x,x₀,γ)` — Cauchy cumulative probability P(X ≤ x).
+Example: cauchycdf(1,0,1)
+`cauchycdf(low,high)` / `cauchycdf(low,high,x₀,γ)` — Cauchy interval probability. Infinite bounds are allowed.
+Example: cauchycdf(-1,1,0,1)
+`invcauchy(q)` / `invcauchy(q,x₀,γ)` — Cauchy quantile for 0 ≤ q ≤ 1. Endpoints return −∞ and ∞; q=0.5 returns the location (median).
+Example: invcauchy(0.75,0,1)
+
+## Statistical tests
+
+`ttest(μ0,[...])` — Compare one sample mean with a target, such as average score against 70. One-sample t test of the sample mean against μ0.
+Example: ttest(0,[1,2,3,4])
+`ttest(μ0,x̄,s,n)` — Compare one sample mean with a target, such as average score against 70. The same test from the summary statistics.
+Example: ttest(0,2.5,1.291,4)
+`ztest(μ0,σ,[...])` — Compare a mean with a target only when population SD is known. One-sample z test with the known standard deviation σ.
+Example: ztest(0,2,[1,2,3,4])
+`ztest(μ0,σ,x̄,n)` — Compare a mean with a target only when population SD is known. The same test from the summary statistics.
+Example: ztest(0,2,2.5,4)
+`chi2test(observed,expected)` — Compare nonnegative integer observed counts with positive expected frequencies having the same total. Review small expected counts. Compare observed category frequencies with specified expected frequencies. χ² goodness-of-fit test of observed counts against expected counts.
+Example: chi2test([10,20,30],[15,20,25])
+`anova([...],[...],...)` — Compare means across independent groups; review normal errors and equal variances. One-way analysis of variance over two or more data lists.
+Example: anova([1,2,3],[4,5,6])
+`ttest2(delta, A, B, student)` — Compare means of two unrelated groups; Welch allows unequal variances. Pooled Student t; the three-argument default remains Welch.
+
+`welchanova(A, B, ...)` — Compare independent group means with unequal variances; automatically includes Games–Howell comparisons. Unequal-variance one-way ANOVA with automatic Games–Howell.
+
+`gameshowell(A, B, ...)` — Compare each pair of independent group means without equal variances, with adjusted p values and simultaneous intervals. Pairwise unequal-variance comparisons and simultaneous 95% intervals.
+
+`tukey([...],[...],...)` — Identify which group means differ after ANOVA, with familywise multiplicity correction. Tukey–Kramer pairwise mean comparisons with adjusted p values; supports unequal group sizes.
+Example: tukey([1,2,3],[4,5,6],[7,8,9])
+`ttest2(Δ0,x,y)` — Compare means of two unrelated groups; Welch allows unequal variances. Two-sample t test of two independent samples (Welch).
+Example: ttest2(0,[1,2,3],[2,4,5])
+`ttestpaired(Δ0,x,y)` — Compare before/after measurements or matched pairs; analyze A−B differences. Paired t test on matched rows.
+Example: ttestpaired(0,[1,2,3],[2,3,5])
+`ztest2(Δ0,σx,σy,x,y)` — Compare two independent means when both population SDs are known. Two-sample z test with the known standard deviations.
+Example: ztest2(0,1,1,[1,2,3],[2,4,5])
+`chi2independence(x,y[,correction])` — Test association between two independent categorical variables. χ² test of independence for two category columns. Yates continuity correction defaults to 1 (on) for 2×2 tables; use 0 for uncorrected Pearson χ². Other table sizes are always uncorrected. The result reports whether correction was applied.
+Example: chi2independence([1,1,2,2],[1,2,1,2])
+`fisherexact(x,y)` — Test association in a 2×2 table, especially with small expected counts. Fisher exact test for two categories in each column.
+Example: fisherexact([1,1,1,1,1,1,2,2],[1,1,1,2,2,2,1,2])
+`shapiro(list)` — Check evidence against normality; interpret with Q–Q plots, not as a pass/fail gate. Shapiro-Wilk normality test (3 to 5000 values).
+Example: shapiro([1,2,3,4,5])
+`tinterval(level,[...])` — Estimate a mean with uncertainty when population SD is unknown. t confidence interval for the mean; the level is a fraction (0.95) or a percentage (95).
+Example: tinterval(0.95,[1,2,3,4])
+`tinterval(level,x̄,s,n)` — Estimate a mean with uncertainty when population SD is unknown. The same interval from the summary statistics.
+Example: tinterval(95,2.5,1.291,4)
+`zinterval(level,σ,[...])` — Estimate a mean interval when population SD is known. z confidence interval with the known standard deviation σ.
+Example: zinterval(0.95,2,[1,2,3,4])
+`zinterval(level,σ,x̄,n)` — Estimate a mean interval when population SD is known. The same interval from the summary statistics.
+Example: zinterval(95,2,2.5,4)
+- One-sample tests return two-tailed p values by default; append left or right for a one-sided test.
+
+## Finance
+
+`tvmfv(n,i,pv,pmt)` — Future value after n periods with the rate i per period.
+Example: tvmfv(12,0.05/12,-1000,-100)
+`tvmpv(n,i,pmt,fv)` — Present value of n payments and a final value.
+Example: tvmpv(10,0.05,100,0)
+`tvmpmt(n,i,pv,fv)` — Payment per period that clears pv against fv.
+Example: tvmpmt(360,0.05/12,250000,0)
+`tvmn(i,pv,pmt,fv)` — Number of periods.
+Example: tvmn(0.05,0,100,-1000)
+`tvmrate(n,pv,pmt,fv)` — Interest rate per period, found numerically.
+Example: tvmrate(10,1000,-150,0)
+`npv(rate,[...])` — Net present value of a cash-flow list; the first flow is at time 0.
+Example: npv(0.1,[-1000,300,400,500])
+`npv(rate,cf0,[...])` — The same with the initial flow given separately.
+Example: npv(0.1,-1000,[300,400,500])
+`irr([...])` — Internal rate of return that makes the net present value zero.
+Example: irr([-1000,300,400,500])
+`irr(cf0,[...])` — The same with the initial flow given separately.
+Example: irr(-1000,[500,500,500])
+`amort(i,pv,n)` — Payment and totals of a fully amortized loan; add k to stop after k payments.
+Example: amort(0.005,200000,360)
+`cagr(start,end,n)` — Compound annual growth rate from a starting value to an ending value over n periods.
+Example: cagr(1000,2000,5)
+- TVM values follow the cash-flow convention: money received is positive and money paid is negative. Add begin as the last argument for payments at the beginning of each period; the default is end. Rates are per payment period.
+
+## Distribution functions matching Probability mode
+
+Discrete CDFs include integer masses up to the real threshold; discrete PDFs return 0 for nonintegers.
+
+Probability mode's **Normal parameter solver** finds μ or σ from P(X≤x)=q or P(X≥x)=q and the known parameter. Require 0<q<1 and positive σ. When q=0.5 and x=μ, σ is not uniquely determined.
+
+## Regression inference and rank tests
+
+`regression(data,polynomial,degree)` — Polynomial least squares, degrees 1–10.
+Example: regression([[0,1],[1,3],[2,9],[3,25],[4,57]],polynomial,3)
+`regression(data,multiple)` — Multiple linear regression with an intercept. Last column is response; preceding columns are predictors (up to eight). The x,y,z workspace uses x and y to predict z; the formula names them x1 and x2.
+Example: regression([[0,0,1],[1,0,3],[0,1,4],[1,1,7],[2,1,8]],multiple)
+`regression(data,logistic)` — Binomial logistic regression with an intercept and binary 0/1 response in the last column. Reports probability, coefficient/odds-ratio intervals, McFadden R², deviance, AIC and likelihood-ratio p. Complete separation automatically triggers Firth bias reduction; `regression(data,logistic,firth)` always applies Firth with profile penalized-likelihood intervals. Singular designs are rejected.
+Example: regression([[-3,0],[-2,0],[-1,1],[0,0],[0,1],[1,0],[2,1],[3,1]],logistic)
+`wilcoxon(differences)` — Compare paired differences using ranks when a symmetric location-shift model is appropriate. Signed-rank test against zero; zeros omitted. Also accepts paired x,y lists. Exact conditional sign permutation through 50 nonzero differences (including ties), otherwise tie-corrected normal approximation with continuity correction.
+Example: wilcoxon([1,2,3,4,5])
+`mannwhitney(x,y)` — Compare distributions of two independent groups using ranks; a median interpretation needs similar shapes. Independent rank test. Exact distribution for untied samples with min(nx,ny)≤8 and total n≤100; otherwise tie-corrected normal approximation with continuity correction. Tests distributions; a location interpretation requires comparable distribution shapes.
+Example: mannwhitney([1,2,3],[4,5,6])
+`kruskal(group1,group2,...)` — Compare distributions of independent groups using ranks; normality is not required. Tie-corrected Kruskal–Wallis H and chi-square p. The approximation is more reliable with at least five observations per group.
+Example: kruskal([1,2,3,4,5],[4,5,6,7,8],[7,8,9,10,11])
+
+Wilcoxon and Mann–Whitney accept `left` or `right`; default is two-sided. Wilcoxon tests symmetric differences about zero; Mann–Whitney compares the first sample against the second.
+
+In **n columns** mode, **Auto columns** sets the count from the widest CSV/TSV row, including headers and blank cells (1–100 columns). The option is saved. Turn it off to set the count manually.
+
+Heat maps support raw values, row-wise and column-wise z scores, and pairwise Pearson, Spearman, or Kendall correlation. Correlation mode lets you select variables for the x and y axes; selecting a variable on one axis removes it from the other. Optional hierarchical clustering reorders rows and columns and draws dendrograms. Detected CSV headers label the columns. Missing cells are excluded from each pair; constant inputs and pairs with fewer than two complete observations show —.
+
+Statistics visualization includes **Violin + points** and **Heat map**. Box and violin plots support **Horizontal** and **Vertical** orientation; the selected orientation is saved and applies to all grouped panels. Violin plots use Gaussian KDE with Scott's bandwidth, scaled to equal maximum width, with every finite observation overlaid as a Beeswarm at its original value. Only the category-axis position changes to avoid overlaps; dense groups use smaller markers to fit all observations within the group width. Singletons and constant groups show points only. Raw heat maps preserve input rows and columns; first/last grouping uses that column as row labels.
+
+Statistics regression results show R², adjusted R², RMSE, residual SE, coefficient SE/p/95% t intervals and expandable residual diagnostics (plot, standardized residuals, leverage, Cook's D, Shapiro p, and Durbin–Watson in input order). Residual CSV includes every complete observation; the on-screen table previews 100 rows. For exponential/power fits inference uses log(y); amplitude SE uses the delta method and its CI is exponentiated. R²/RMSE and raw residuals remain in original y units. Custom nonlinear inference uses the local Jacobian and is approximate. Independent, constant-variance errors are assumed; bounded fits suppress ordinary inference, insufficient residual degrees of freedom leave inference unavailable, and constant responses leave R² undefined. Diagnostic p values for fitted residuals are exploratory.
+
+Python: `import symvacas_catalog as calc; report = calc.regression_report([[1,2],[2,4],[3,5],[4,4],[5,5],[6,7]], "linear")` returns the same inference and full residual dictionary. Arguments match regression, including polynomial degree and custom model/options.
+
+In Statistics mode, multiple regression lets you choose the dependent column among x/y/z; logistic regression supports x/y and x/y/z. The other columns are predictors; the logistic response must contain both 0 and 1. The default is the last column. The input table stays in its original order, and fitted formulas and scatter axes use the chosen column names. Odds ratio and OR 95% CI labels remain English in either language.
+
+Logistic regression also reports C-statistic (ROC AUC) and an ROC graph (FPR versus sensitivity/TPR). Tied scores receive half credit; the diagonal is the chance reference (AUC=0.5). ROC/AUC use the fitted observations with positive class 1 and are apparent training performance.
+
+Bayesian regression: select **Bayesian linear regression** (`bayeslinear`) or **Bayesian logistic regression** (`bayeslogistic`). Both support any dependent column, at least 2 complete rows, up to 5000 observations and 20 predictors, including collinear/constant predictors with proper priors. The logistic response must contain both 0 and 1. Priors are zero-mean on centered, RMS-standardized predictors and include the intercept; reported coefficients are in original units. Prior SD defaults to 2.5 (range 0.000001–1000000); equal-tailed credible level defaults to 0.95 (strictly between 0 and 1).
+
+`regression(data,bayeslinear,[priorSD,level,shape,scale])` uses beta|sigma² ~ Normal(0, priorSD² sigma² I), sigma² ~ inverse-gamma(shape,scale); defaults [2.5,0.95,2,1]. Coefficient marginal posteriors and new-observation predictive intervals are exact Student-t distributions. Posterior SD differs from the Student-t scale. `regression(data,bayeslogistic,[priorSD,level])` uses beta ~ Normal(0,priorSD² I) with a Gaussian Laplace approximation at the MAP. Results show posterior estimates/SD, credible intervals, P(beta>0), logistic odds ratios and ROC/AUC. Predictions and training metrics evaluate the coefficient point estimate, rather than averaging predictions over the posterior. These intervals are Bayesian credible intervals, not frequentist confidence intervals; p values are not reported.
+
+Regularized regression: choose None, Ridge, LASSO, or Elastic Net under linear/multiple or logistic regression. Predictors are standardized to zero mean and unit population SD; the intercept is unpenalized and displayed coefficients use original units. Alpha must be positive and L1 ratio is 0–1. The linear objective is SSE/(2n) + alpha[(1−ratio)||beta||²/2 + ratio||beta||₁]; logistic uses mean log loss instead of SSE/(2n). Ridge uses ratio 0 and LASSO uses ratio 1. Ridge alpha therefore differs in scale from libraries minimizing SSE + alpha||beta||².
+Use `regression(data,ridge,alpha)`, `regression(data,lasso,alpha)`, or `regression(data,elasticnet,[alpha,l1_ratio])`. Logistic modes are `logisticridge`, `logisticlasso`, and `logisticelasticnet`; the response must contain both 0 and 1. Defaults: alpha 0.1, L1 ratio 0.5. The last column is response; Statistics allows selecting another column. Up to 5000 rows and 100 predictors are supported, with incomplete rows excluded by the workspace. Results include training fit, coefficients, residuals, and logistic AUC/ROC/log loss/accuracy. Ordinary OLS/Wald inference is unavailable. These models use 64-bit floating point arithmetic.
+Example: regression([[0,1],[1,3],[2,5],[3,7]],lasso,0.1)
+Example: regression([[-2,0],[-1,0],[1,1],[2,1]],logisticelasticnet,[0.1,0.5])
+`regression(data,randomforest,[trees,max_depth,seed])` — Random Forest regression. Defaults [100,10,0]; 1–200 trees, depth 1–20, seed 0–2147483647. Averages bootstrap CART squared-error trees, trying sqrt(predictor count) features per node and additional features if sampled features cannot split. Fixed seeds reproduce results. Reports training R²/RMSE, OOB R²/RMSE and coverage, impurity feature importance, and OOB permutation importance (decrease in R²). Permutation importance averages three shuffles on at most 200 OOB observations and may be negative; a constant OOB response leaves it undefined. Forests cannot be transferred as an algebraic graph expression; x,y data displays a prediction curve.
+Example: regression([[0,0],[1,1],[2,4],[3,9],[4,16]],randomforest,[100,10,0])
+Python: `calc.regression_report(data,"elasticnet",[0.1,0.5])` or `calc.regression_report(data,"randomforest",[100,10,0])` returns the report dictionary.
+
+Random Forest classification: the default task is Auto. A 0/1 response selects binary classification; other responses select regression. Classification requires both classes, with positive class 1. You can also select Regression or Binary classification explicitly, or use `regression(data,randomforestclassifier,[trees,depth,seed])` / `randomforestregressor`. Binary squared-error splits are equivalent to Gini splits; probabilities average the class-1 fraction in each tree leaf. ROC/AUC uses these probabilities, and C-statistic equals AUC. Probability ≥0.5 predicts class 1. Confusion matrix rows are observed 0/1 and columns predicted 0/1: [[TN,FP],[FN,TP]]. Sensitivity=TP/(TP+FN), specificity=TN/(TN+FP), accuracy=(TP+TN)/n. Training and OOB metrics, ROC curves, and confusion matrices are separate. Rows without OOB predictions are excluded from OOB evaluation, and absent classes leave the corresponding ratios/AUC unavailable. Classification permutation importance measures decrease in OOB AUC.
+Example: regression([[-3,0],[-2,0],[-1,0],[1,1],[2,1],[3,1]],randomforestclassifier,[100,10,0])
+
+Regularized logistic regression (Ridge/LASSO/Elastic Net) also reports predictor Odds ratio=exp(beta), using original-unit coefficients for a one-unit predictor increase with other predictors held fixed. A coefficient shrunk to zero by LASSO has OR=1. The intercept is not shown as a predictor OR. Ordinary Wald OR confidence intervals are unavailable for penalized estimates.
+
+Unregularized logistic regression automatically applies Firth bias reduction (log L + 0.5 log|X′WX|) when a strictly separating coefficient vector certifies complete separation; ordinary datasets retain MLE. Passing `firth` as the third argument applies the same estimator to ordinary datasets. Results explicitly identify Firth and include finite coefficients, OR, probabilities and ROC/AUC. Coefficient/OR 95% intervals come from the profile penalized likelihood; p values remain Wald. Ordinary MLE AIC and likelihood-ratio tests are omitted for Firth fits. Constant responses and singular designs remain invalid; Ridge/LASSO/Elastic Net keep their selected penalty, and `cv` selects the penalty alpha by five-fold cross-validation.
+Logistic residual diagnostics and full CSV include leverage and Cook's distance. The one-step GLM approximation uses hᵢ=wᵢxᵢ′(X′WX)⁻¹xᵢ and Cook Dᵢ=Pearsonᵢ²hᵢ/[p(1−hᵢ)²]. Firth uses Fisher information at the bias-reduced fit. Penalized models use a local active-predictor design including the intercept and the L2 Hessian, holding predictor selection fixed. Singular active designs or h=1 leave unavailable diagnostics empty.
+
+NUTS: choose NUTS under Inference method. Prior options: linear `[2.5,0.95,2,1,[nuts,500,500,8,0,2]]`, logistic `[2.5,0.95,[nuts,500,500,8,0,2]]`. Sampler order: samples,warmup,maxDepth,seed,chains. Check R-hat, ESS, MCSE, divergences and depth-limit hits. A fixed seed reproduces draws.
+
+## Advanced statistics
+
+Choose current data, example parameters or an editable analysis expression. Paired comparisons use complete pairs and support subject-ID matching. Enter complete subject rows for repeated measurements; impute treats missing cells as NA.
+
+### Data preparation
+
+`impute` — Prepare incomplete data by single imputation; subsequent inference omits imputation uncertainty. NA for missing cells; mean / median / mode / regression / knn with neighbours (default 5). Single imputation.
+Example: impute([[1,NA],[2,4],[NA,6],[4,8]],mean)
+
+### Categorical data
+
+`propztest` — Compare one binary success proportion with a target using a null-based z test. propztest(p0,data) or propztest(p0,successes,trials); binary 0/1 data or [[successes,trials],...]. Optional both / left / right. Null-based standard error, no continuity correction; independent observations and adequate expected counts are required.
+Example: propztest(0.5,[[60,100]])
+
+`propztest2` — Compare two independent success proportions using a pooled z test. propztest2(A,B) or propztest2(successesA,trialsA,successesB,trialsB). H0: pA=pB; pooled standard error, no continuity correction. Optional both / left / right for A−B. Independent binary samples; paired outcomes require McNemar.
+Example: propztest2(60,100,45,100)
+
+`mcnemar` — Compare paired binary outcomes, such as yes/no before and after. Paired 2×2 count table; exact / corrected / asymptotic.
+Example: mcnemar([[20,8],[2,15]],exact)
+
+`cramerv` — Cramér’s V. Nonnegative integer contingency counts; uncorrected Pearson χ² and Cramér’s V. Independent observations; sparse counts can invalidate χ² p values.
+Example: cramerv([[20,5],[7,18]])
+
+`phi` — Phi coefficient. Signed phi for a 2×2 integer count table; swapping one category order reverses its sign. No Yates correction.
+Example: phi([[20,5],[7,18]])
+
+`cohenkappa` — Cohen’s κ agreement. Two-rater square count table with common category order. Unweighted, linear or quadratic kappa; multinomial delta-method SE and asymptotic Wald CI. Weighted categories must be ordered. Observed/expected agreement use the selected weights; exact agreement is also reported.
+Example: cohenkappa([[25,4,2],[3,20,5],[1,6,24]],unweighted)
+
+### Reliability
+
+`cronbach` — Cronbach α reliability. Rows are subjects, columns are items; raw or standardized alpha. Reverse-code items first. Returns corrected item-total correlations and alpha if deleted. Alpha measures internal consistency.
+Example: cronbach([[1.987,2.255,1.895,1.448,2.702,2.043],[3.103,3.653,2.588,3.608,3.265,3.866],[5.16,4.181,6.042,4.848,4.128,5.317],[1.995,2.767,1.417,-0.304,-1.529,-0.2],[1.802,1.7,2.56,2.591,4.452,3.681],[5.242,3.886,4.375,5.082,5.152,4.701],[3.057,2.704,2.315,2.034,0.528,0.659],[4.576,5.304,4.688,5.573,4.66,5.626],[5.08,3.257,4.251,3.415,3.076,4.508],[2.502,2.733,2.919,3.058,3.403,2.427],[4.23,3.357,4.235,4.595,5.16,5.999],[2.86,3.515,2.619,0.955,1.766,0.26],[3.16,2.893,2.37,2.341,1.676,2.201],[1.101,3.477,2.018,2.67,2.235,3.664],[3.503,4.223,4.268,2.178,3.518,1.656],[3.623,3.309,4.28,2.605,3.676,3.647],[4.285,5.139,6.064,4.069,4.097,4.629],[3.301,2.767,3.271,2.832,3.249,3.621],[2.857,2.677,2.348,3.272,2.696,3.272],[0.449,1.323,0.652,3.013,3.114,1.652],[3.447,3.14,2.42,2.311,3.202,2.063],[2.401,2.196,3.998,1.025,2.349,1.691],[3.54,5.121,3.878,2.99,2.849,3.135],[3.67,4.081,4.264,3.472,3.458,4.419]],raw)
+
+### Distribution & variance
+
+`shapiro` — Check evidence against normality; interpret with Q–Q plots, not as a pass/fail gate. Normality test for 3 to 5000 observations; interpret with Q–Q plots.
+Example: shapiro([1,2,3,4,5])
+
+`kstest` — Compare continuous distributions or a sample with a fully specified distribution. Two sample lists, or kstest(data,normal,mu,sigma) / kstest(data,uniform,lower,width). Continuous null; one-sample p is asymptotic.
+Example: kstest([1,2,4,5],[2,3,5,8])
+
+`levene` — Check equality of group variances; median-centered Brown–Forsythe is less sensitive to non-normality. Separate group lists; median-centered equal-variance test.
+Example: levene([1,2,4,5],[2,3,5,8])
+
+`bartlett` — Check equal variances when group distributions are reasonably normal. Separate group lists; normality assumption.
+Example: bartlett([1,2,4,5],[2,3,5,8])
+
+### Post-hoc comparisons
+
+`tukey` — Identify which group means differ after ANOVA, with familywise multiplicity correction. All pairwise mean comparisons for independent groups with equal variances.
+Example: tukey([1,2,4,5],[2,3,5,8])
+
+`gameshowell` — Compare each pair of independent group means without equal variances, with adjusted p values and simultaneous intervals. All pairwise mean comparisons for independent groups with unequal variances.
+Example: gameshowell([1,2,4,5],[2,3,5,8])
+
+`dunn` — Dunn post-hoc test. List of independent sample lists, then holm (default), bonferroni, fdr or none. Pooled midranks, tie correction, two-sided normal p values. Retains the Kruskal–Wallis pooled rank scale.
+Example: dunn([[1,2,4],[2,3,6],[3,5,8],[4,7,9]],holm)
+
+### Group comparisons
+
+`twowayanova` — Compare independent observations across two factors, testing both main effects and their interaction. Independent observations, two categorical factors and a numeric response. Type III F tests with sum contrasts; interaction 1 (default) or additive 0. Normal errors and common residual variance; replication and a full-rank design are required.
+Example: twowayanova([[1,1,2],[1,1,4],[1,2,5],[1,2,6],[2,1,4],[2,1,5],[2,2,8],[2,2,10]],1)
+
+`ancova` — Compare group means while adjusting for numeric covariates. Rows: numeric group ID, one or more covariates, response; confidence level (default .95); slope homogeneity check 0/1 (default 1). One factor, common slopes, Type II F tests and adjusted means at pooled covariate means.
+Example: ancova([[1,1,3],[1,2,5],[1,3,4],[1,4,8],[2,2,6],[2,3,7],[2,4,9],[2,5,8],[3,1,5],[3,3,8],[3,4,10],[3,6,11]],0.95,1)
+
+`manova` — MANOVA. One-way: group column followed by response columns. Factorial: manova(data,factorial,factor count,interaction order), categorical factors first; Type III tests with sum contrasts. Repeated: manova(wide data,repeated,occasions), one subject per row and equal-sized response blocks in occasion order. Tests mean equality across occasions using within-subject contrasts. Reports Pillai, Wilks Rao, Hotelling–Lawley F and Roy upper-bound F. Use complete data and nonsingular residual covariance; independent subjects and normal errors are assumed, with equal group covariance for independent-group designs.
+Example: manova([[1,1.987,1.448],[1,3.103,3.608],[1,5.16,4.848],[1,1.995,-0.304],[1,1.802,2.591],[1,5.242,5.082],[1,3.057,2.034],[1,4.576,5.573],[2,5.08,3.415],[2,2.502,3.058],[2,4.23,4.595],[2,2.86,0.955],[2,3.16,2.341],[2,1.101,2.67],[2,3.503,2.178],[2,3.623,2.605],[3,4.285,4.069],[3,3.301,2.832],[3,2.857,3.272],[3,0.449,3.013],[3,3.447,2.311],[3,2.401,1.025],[3,3.54,2.99],[3,3.67,3.472]])
+
+`repeatedanova` — Compare repeated conditions within the same subjects in a balanced design. Rows=subjects, columns=conditions. Second-factor levels: 1 = one-way, 2+ = two-way (first factor slowest); GG corrections.
+Example: repeatedanova([[2,4,5],[3,4,7],[4,7,8],[2,3,6],[5,6,7]],1)
+
+`friedman` — Compare three or more matched conditions by within-subject ranks; chi-square approximation with tie correction. Rows are independent subjects; columns are at least three repeated conditions. Complete matched rows, midranks and tie correction. Chi-square approximation; small samples or few conditions can give inaccurate p values. Reports Kendall W.
+Example: friedman([[2,4,5],[3,4,7],[4,7,8],[2,3,6],[5,6,7]])
+
+### Effect sizes & multiple testing
+
+`cohend` — Describe the standardized mean difference between two independent or paired samples. Two samples; independent (pooled d) or paired (dz).
+Example: cohend([1,2,4,5],[2,3,5,8],independent)
+
+`eta2` — Describe the proportion of total variation associated with group differences. Independent groups as separate lists.
+Example: eta2([1,2,4,5],[2,3,5,8])
+
+`padjust` — Correct a family of p values when several hypotheses are tested together. p values; method bonferroni / holm / fdr (BH) / by; alpha.
+Example: padjust([0.01,0.04,0.03,0.2],holm,0.05)
+
+### Confidence intervals
+
+`tinterval` — Estimate a mean with uncertainty when population SD is unknown. Mean confidence interval with unknown population SD: tinterval(level,data) or tinterval(level,mean,SD,n).
+Example: tinterval(95,[1,2,3,4,5])
+
+`zinterval` — Estimate a mean interval when population SD is known. Mean confidence interval with known population SD: zinterval(level,sigma,data) or zinterval(level,sigma,mean,n).
+Example: zinterval(95,2,[1,2,3,4,5])
+
+### Generalized regression
+
+`linearmodel` — Fit numeric and categorical predictors with automatic interactions and Type II/III joint term F tests; supports one, two, three or more factors. General OLS with numeric and categorical predictors. Categorical positions are one-based; interaction order, Type II/III, sum/treatment coding. Uses joint partial F tests for each term. Three-way and higher interactions require enough replicated observations and identifiable columns.
+Example: linearmodel([[1,1,2],[1,1,4],[1,2,5],[1,2,6],[2,1,4],[2,1,5],[2,2,8],[2,2,10]],[1,2],2,3,sum)
+
+`glm` — Model a response using a family and link suited to its distribution. Rows: predictors, response; family gaussian / binomial (0/1) / poisson / gamma / inversegaussian / nbinom; link auto or a supported link; NB2 alpha: positive fixed value (default 1) or estimate for joint ML; optional offset/exposure vector and mode. Default links: identity, logit, log, log, log, log. Model-based Wald z 95% intervals; Pearson dispersion for Gaussian/Gamma/inverse Gaussian. Use estimate as the fourth argument to estimate NB2 alpha jointly with coefficients; its uncertainty enters the observed-information covariance. Numeric alpha retains the fixed-alpha model.
+Example: glm([[0,2],[1,4],[2,4],[3,7],[4,8],[5,9]],gaussian,auto,1)
+
+`poissonreg` — Model event counts, optionally accounting for exposure. Rows: predictors, integer count response. Log link. Optional second argument row-aligned offset/exposure list; third argument offset (default) or exposure (positive, log transformed).
+Example: poissonreg([[0,1],[0,0],[1,3],[1,1],[2,2],[2,5],[3,4],[3,8],[4,6],[4,10]])
+
+`nbreg` — Model counts with extra variation beyond a Poisson model. Rows: predictors, integer count response. NB2 with estimated dispersion. Optional offset/exposure list and offset (default) / exposure mode.
+Example: nbreg([[0,0],[0,0],[0,1],[0,8],[1,0],[1,1],[1,3],[1,15],[2,0],[2,2],[2,5],[2,23],[3,1],[3,3],[3,10],[3,35]])
+
+`zeroinflated` — Zero-inflated regression (ZIP/ZINB). Rows: predictors, integer counts. Poisson or estimated-alpha NB2 count mixture with logit structural zeros; inflation intercept or same predictors. Joint ML Wald inference.
+Example: zeroinflated([[0,0],[0,0],[0,0],[0,1],[0,2],[0,3],[1,0],[1,0],[1,1],[1,2],[1,3],[1,5],[2,0],[2,0],[2,1],[2,3],[2,5],[2,8],[3,0],[3,0],[3,2],[3,4],[3,7],[3,10]],poisson,intercept)
+
+`tobit` — Tobit censored regression. Rows: predictors, observed response; lower bound (default 0), upper bound (default none). Type-I normal censoring, joint ML coefficient/sigma inference. Values at bounds are censored; coefficients refer to the latent response.
+Example: tobit([[0,0],[1,0],[2,1],[3,3],[4,3],[5,6],[6,5],[7,8],[8,9],[9,8],[10,11],[11,12]],0,none)
+
+`quantreg` — Quantile regression. Rows: predictors, response; quantile in (0,1). IRLS with subgradient optimality check; asymptotic Gaussian-kernel sandwich / Hall–Sheather bandwidth if residual density supports inference.
+Example: quantreg([[0,2],[1,4],[2,3],[3,8],[4,7],[5,9],[6,10],[7,12],[8,11],[9,15],[10,17],[11,16]],0.5)
+
+`multinomial` — Predict unordered numeric categories from predictors. Rows: predictors, numeric category response. Smallest category is reference.
+Example: multinomial([[-2,0],[-2,1],[-1,0],[-1,2],[0,0],[0,1],[0,2],[1,1],[1,2],[2,1],[2,2],[2,0]])
+
+`ordinal` — Predict ordered categories under a proportional-odds model. Rows: predictors, ordered numeric response. Proportional-odds cumulative logit.
+Example: ordinal([[-2,0],[-2,1],[-1,0],[-1,2],[0,0],[0,1],[0,2],[1,1],[1,2],[2,1],[2,2],[2,0]])
+
+### Mediation & moderation
+
+`mediation` — Mediation analysis. Rows: X, M, optional covariates, Y. Single continuous mediator; adjusted OLS direct, total and indirect a×b effects, seeded row-bootstrap percentile CI and Sobel approximation.
+Example: mediation([[-2.191,-1.014,-0.857],[-0.662,0.471,0.662],[1.567,1.183,3.061],[2.013,1.591,3.248],[-1.857,-0.593,-0.9],[-0.348,1.302,0.7],[2.702,1.566,3.688],[-0.934,-0.125,-1.06],[-1.674,-0.681,-1.092],[-0.145,-0.168,1.046],[0.818,0.995,2.032],[0.809,1.054,1.548],[1.027,-0.185,-0.448],[-0.783,-0.785,0.117],[-1.612,-1.911,-1.425],[0.26,0.246,-0.084],[1.802,2.034,2.866],[-0.316,-0.156,0.409],[-0.667,-1.464,-1.077],[-0.268,-0.145,-0.343],[0.58,1.473,1.633],[2.444,1.513,2.462],[0.308,0.001,0.363],[1.209,0.904,0.926]],2000,0)
+
+`moderation` — Moderation analysis. Rows: X, W, optional covariates, Y. Centered X/W and X×W interaction; conditional slopes at W mean ± SD with full covariance t inference. Continuous moderator, independent OLS errors.
+Example: moderation([[-2.191,-1.014,-0.857],[-0.662,0.471,0.662],[1.567,1.183,3.061],[2.013,1.591,3.248],[-1.857,-0.593,-0.9],[-0.348,1.302,0.7],[2.702,1.566,3.688],[-0.934,-0.125,-1.06],[-1.674,-0.681,-1.092],[-0.145,-0.168,1.046],[0.818,0.995,2.032],[0.809,1.054,1.548],[1.027,-0.185,-0.448],[-0.783,-0.785,0.117],[-1.612,-1.911,-1.425],[0.26,0.246,-0.084],[1.802,2.034,2.866],[-0.316,-0.156,0.409],[-0.667,-1.464,-1.077],[-0.268,-0.145,-0.343],[0.58,1.473,1.633],[2.444,1.513,2.462],[0.308,0.001,0.363],[1.209,0.904,0.926]])
+
+### Repeated & clustered data
+
+`mixedmodel` — Model continuous responses with repeated subjects or clusters and random effects. Rows: subject ID, predictors, response. Gaussian random intercept with up to three random slopes (0 none, a predictor position, or [1,2]); third argument reml (default) or ml; up to 5000 rows. Includes subject BLUPs, slope correlations and singular-fit diagnostics; random-slope ICC is at x=0; asymptotic Wald z inference. Optional fourth argument: profile (ML fixed-effect profile CI) or [bootstrap,200,0] (parametric fixed-effect percentile CI); alternative CI omit Wald p-values. Reports logLik/AIC/BIC; compare REML criteria only with identical fixed effects and data. Nonconverged fits withhold Wald inference.
+Example: mixedmodel([[1,0,2],[1,1,4],[1,2,4],[2,0,3],[2,1,4],[2,2,6],[3,0,1],[3,1,3],[3,2,4],[4,0,4],[4,1,5],[4,2,8]],0,reml)
+
+`glmm` — Model clustered binary or count outcomes with subject-specific random effects. Rows: subject ID, predictors, response. Random intercept, optionally one correlated random slope (seventh argument: selected predictor position, 0 = none). Slopes use two-dimensional Laplace (third argument 1), use [],offset,likelihood before the slope position. Covariance and conditional modes are reported in original units. Random intercept: binomial (0/1, logit), poisson or nbinom (NB2, log). ML adaptive Gauss-Hermite quadrature: 15 points default, 1 = Laplace, otherwise 7-31. Optional fourth argument offset vector, fifth offset / exposure. Limit 1500 rows, 8 fixed coefficients. Subject-specific effects; joint marginal observed information by central differences; asymptotic Wald inference. Few-subject Wald inference may be unreliable. Integration checks compare likelihood at another point count, including Laplace/31 points; optional sixth argument refit compares coefficients and suppresses CI/p if shifts exceed 0.1 SE. To omit offsets use [],offset before refit.
+Example: glmm([[1,0,0],[1,1,0],[1,2,1],[2,0,0],[2,1,1],[2,2,1],[3,0,0],[3,1,0],[3,2,0],[4,0,1],[4,1,1],[4,2,1],[5,0,1],[5,1,0],[5,2,1],[6,0,0],[6,1,1],[6,2,0]],binomial,15)
+
+`gee` — Estimate population-average effects for repeated or clustered outcomes. Rows: cluster ID, predictors, response. gaussian / binomial / poisson; working correlation independence / exchangeable / ar1; fourth argument [i,j] interaction pairs; sandwich SE. Pearson dispersion-adjusted correlation; AR(1) uses row order and equal spacing. Few-cluster Wald inference may be unreliable. Optional fifth argument small adds Mancl-DeRouen covariance and t inference with clusters minus coefficient count df; use [] as the fourth argument when there are no interactions. Review the cluster count when interpreting intervals.
+Example: gee([[1,0,2],[1,1,4],[1,2,4],[2,0,3],[2,1,4],[2,2,6],[3,0,1],[3,1,3],[3,2,4],[4,0,4],[4,1,5],[4,2,8]],gaussian,independence)
+
+### Model validation
+
+`crossvalidate` — Assess predictive performance on held-out observations. Rows: predictors, response; folds, seed; split random (default) / blocked / stratified; model linear (default) / ridge / lasso / elasticnet / logistic; penalty alpha or [alpha,l1 ratio].
+Example: crossvalidate([[0,1],[1,3],[2,4],[3,7],[4,8],[5,11],[6,12],[7,15],[8,16]],3,0)
+
+`modelcompare` — Compare baseline and expanded models using valid family-specific fit tests and paired prediction differences. Select an analysis family, baseline predictors and added predictors. Both models use common complete rows. Linear: partial F, ΔR²/AIC; logistic, count and Cox: ML likelihood-ratio comparisons; LMM automatically uses ML; GLMM boundary/diagnostic failures suppress ordinary LRT. GEE has no likelihood-ratio test. Prediction families use shared holdout, selected validation data or folds and paired bootstrap differences. Training-data logistic comparisons show nominal DeLong/McNemar p values and fixed-prediction bootstrap intervals as descriptive reference results. Select individual candidates for separate additions with Holm-adjusted training tests. CFA/SEM keep the same indicators and add paths, cross-loadings or residual covariances; adjusted WLSMV chi-square values are not subtracted. Candidate selection remains exploratory; validate the chosen model separately.
+Example: modelcompare([[0.0,0.0,2.0],[0.1,0.3333333333333333,3.691664810452469],[0.2,0.6666666666666666,3.144458897973169],[0.3,1.0,3.174185317672267],[0.4,1.3333333333333333,5.294113351138608],[0.5,1.6666666666666667,6.298487112623491],[0.6,2.0,5.500125312406458],[0.7,0.0,2.7818628877629665],[0.8,0.3333333333333333,4.959161814856495],[0.9,0.6666666666666666,5.196740573130613],[1.0,1.0,4.5386025081204435],[1.1,1.3333333333333333,6.0510009741858015],[1.2,1.6666666666666667,7.899792900142669],[1.3,2.0,7.491363404575924],[1.4,0.0,3.8282015542561365],[1.5,0.3333333333333333,5.859058354022168],[1.6,0.6666666666666666,7.079273061650724],[1.7,1.0,6.314362660025703],[1.8,1.3333333333333333,6.871639232168404],[1.9,1.6666666666666667,9.07332788956622],[2.0,2.0,9.529082686120024],[2.1,0.0,5.290333328166475],[2.2,0.3333333333333333,6.605328398499743],[2.3,0.6666666666666666,8.585600298790633],[2.4,1.0,8.340693257349866],[2.5,1.3333333333333333,8.003913496880406],[2.6,1.6666666666666667,9.915987266188216],[2.7,2.0,11.340428962947007],[2.8,0.0,7.141674545508234],[2.9,0.3333333333333333,7.477676459866509],[3.0,0.6666666666666666,9.670229175843374],[3.1,1.0,10.3496128616862],[3.2,1.3333333333333333,9.562372742852972],[3.3,1.6666666666666667,10.666234459024317],[3.4,2.0,12.749403860686702],[3.5,0.0,9.18911462035089],[3.6,0.3333333333333333,8.701863384067297],[3.7,0.6666666666666666,10.468094194684499],[3.8,1.0,12.080589491775534],[3.9,1.3333333333333333,11.479218690956856],[4.0,1.6666666666666667,11.60207231931071],[4.1,2.0,13.75216738490788],[4.2,0.0,11.155640225739422],[4.3,0.3333333333333333,10.353112449582623],[4.4,0.6666666666666666,11.236824471718883],[4.5,1.0,13.392011682699371],[4.6,1.3333333333333333,13.53331393995491],[4.7,1.6666666666666667,12.922096985230352]],1,linear,crossvalidation,5,0.95,100,0,[[excludedrows,0]],0)
+
+`logisticcompare` — Compare added predictor contribution, paired validation discrimination and calibration. Select a binary response, Model A predictors and added Model B predictors. A selected validation dataset, stratified holdout or stratified cross-validation. Compare unpenalized MLE fit (LRT, AIC/BIC) and paired validation AUC, accuracy, log loss, Brier score and calibration. Differences are B minus A.
+Example: logisticcompare([[-2,0,0],[-2,1,0],[-1,0,0],[-1,1,1],[0,0,0],[0,1,1],[1,0,1],[1,1,1],[2,0,1],[2,1,1],[-1,1,0],[1,0,0],[0,1,0],[0,0,1],[2,0,0],[-2,1,1],[-2,0,0],[-2,1,0],[-1,0,0],[-1,1,1],[0,0,0],[0,1,1],[1,0,1],[1,1,1],[2,0,1],[2,1,1],[-1,1,0],[1,0,0],[0,1,0],[0,0,1],[2,0,0],[-2,1,1],[-2,0,0],[-2,1,0],[-1,0,0],[-1,1,1],[0,0,0],[0,1,1],[1,0,1],[1,1,1],[2,0,1],[2,1,1],[-1,1,0],[1,0,0],[0,1,0],[0,0,1],[2,0,0],[-2,1,1]],1,crossvalidation,5,0.5,0.95,200,0,[48,0])
+
+### Bayesian inference
+
+`bayesmean` — Estimate a normal mean with a chosen prior and predictive interval. Normal sample, unknown variance; prior mu0,kappa0,alpha0,beta0; credible level; threshold. Variance ~ InvGamma(alpha0,beta0), mean | variance ~ Normal(mu0,variance/kappa0). Defaults 0,1,2,1 are proper, scale-dependent priors. Returns Student-t mean interval and next-observation predictive interval.
+Example: bayesmean([1,2,3,4,5],0,1,2,1,0.95,0)
+
+`bayescompare` — Compare two independent normal means with posterior differences and Bayes factors. Two independent normal samples (at least 2 each); variance equal / unequal; mu0,kappa0,alpha0,beta0; credible level; IID posterior draws (2000-100000), seed. H1: independent Normal(mu0,variance/kappa0) means with shared (equal) or independent (unequal) InvGamma(alpha0,beta0) variances. H0: B-A=0 with nuisance prior conditioned from H1. BF10/BF01 use the Savage-Dickey density ratio. Reports B-A mean, equal-tailed credible interval, P(muB>muA), and posterior effect (B-A)/sqrt((varianceA+varianceB)/2). Equal-mode difference summaries and BF are analytic; unequal BF uses numerical t convolution, unequal intervals/probability and effect intervals use simulation. MCSE, draws and seed are reported. Defaults are proper but unit-dependent; choose priors before inspecting outcomes.
+Example: bayescompare([10,11,9,10,12],[13,14,12,15,13],equal,0,0.01,2,1,0.95,20000,0)
+
+`bayesproportion` — Estimate a binary success proportion using a Beta prior. Binary 0/1 list or [[successes,trials],...]; Beta prior alpha, beta (default 1,1); credible level; threshold p0 in (0,1). Returns equal-tailed interval, P(p>p0), next-success probability and BF10 (Beta alternative / point null p=p0).
+Example: bayesproportion([1,1,0,1,0,1,1,1,0,1],1,1,0.95,0.5)
+
+`bayesrate` — Estimate a Poisson event rate using counts and exposure. Count list (one exposure unit each) or [[count,exposure],...]; Gamma prior shape, rate (inverse scale, default 1,1); credible level; nonnegative threshold. Equal-tailed rate interval and predictive count mean/SD for one exposure unit.
+Example: bayesrate([0,2,1,3,2],1,1,0.95,1)
+
+### Resampling
+
+`bootstrapci` — Estimate an IID statistic interval by resampling observed values. Statistic mean / median / stdev, confidence level, resamples, seed. Percentile IID bootstrap.
+Example: bootstrapci([1,2,3,4,5,8],mean,0.95,2000,0)
+
+`bayesbootstrap` — Quantify posterior uncertainty in statistics using random weights on observations. Dirichlet(1,…,1) weights on IID observed values; mean / median / variance / stdev, credible level, draws, seed. Median estimate uses the ordinary sample median (average the two middle values for even n); posterior draws use the Lower weighted quantile (smallest value with weighted CDF >= 0.5); variance/SD use population weights. Equal-tailed simulated posterior interval and histogram. Two samples: bayesbootstrap(A,B,mean,0.95,10000,0,independent); paired uses shared row weights. Comparison is statistic(B) - statistic(A).
+Example: bayesbootstrap([1,2,3,4,5,8],mean,0.95,10000,0)
+
+### Measurement & structural models
+
+`efa` — Exploratory factor analysis (EFA). Select numeric item columns. Extraction: pa (principal axis, default), ml (normal maximum likelihood common factors), or pca (principal components). Enter a factor count or parallel for automatic selection. Rotations: oblimin (default, delta 0), varimax, none or promax (power 4). Arguments: data,count,rotation,extraction,parallel simulations,seed,percentile. Parallel simulations: 0 = off; automatic selection defaults to 100, percentile 0.95. Reports KMO, Bartlett, communalities, pattern and structure loadings, factor correlations and regression scores. PA/ML factor counts use SMC-reduced common roots for parallel analysis; PCA uses correlation eigenvalues. For correlated factors, interpret communalities with the factor correlations. Loading plots show selected rotated components/factors with selectable axes and item labels. PA/PCA explained variance (%) and cumulative explained variance (%) use extraction eigenvalues / standardized item count; ML uses unrotated common squared-loading sums / item count; Varimax also reports rotated squared-loading shares. Oblique pattern squared-loading sums are not additive variance shares. Run CFA transfers the analyzed data and column order, assigning each indicator to its largest absolute rotated loading. Review/edit memberships; model df and the fitted information matrix determine identification. Cross-loading detection uses secondary absolute rotated pattern loadings ≥ 0.30 by default. Change the cutoff, disable automatic inclusion or uncheck individual candidates before CFA. This is a screening rule, not a significance test. ML assumes multivariate normal complete data and fits positive uniquenesses by normal likelihood. ML variance percentages use unrotated common squared-loading sums / item count; ML χ² uses the Bartlett correction and reports model df/p. Boundary uniqueness or unidentified factor counts require revising the model.
+Example: efa([[1.987,2.255,1.895,1.448,2.702,2.043],[3.103,3.653,2.588,3.608,3.265,3.866],[5.16,4.181,6.042,4.848,4.128,5.317],[1.995,2.767,1.417,-0.304,-1.529,-0.2],[1.802,1.7,2.56,2.591,4.452,3.681],[5.242,3.886,4.375,5.082,5.152,4.701],[3.057,2.704,2.315,2.034,0.528,0.659],[4.576,5.304,4.688,5.573,4.66,5.626],[5.08,3.257,4.251,3.415,3.076,4.508],[2.502,2.733,2.919,3.058,3.403,2.427],[4.23,3.357,4.235,4.595,5.16,5.999],[2.86,3.515,2.619,0.955,1.766,0.26],[3.16,2.893,2.37,2.341,1.676,2.201],[1.101,3.477,2.018,2.67,2.235,3.664],[3.503,4.223,4.268,2.178,3.518,1.656],[3.623,3.309,4.28,2.605,3.676,3.647],[4.285,5.139,6.064,4.069,4.097,4.629],[3.301,2.767,3.271,2.832,3.249,3.621],[2.857,2.677,2.348,3.272,2.696,3.272],[0.449,1.323,0.652,3.013,3.114,1.652],[3.447,3.14,2.42,2.311,3.202,2.063],[2.401,2.196,3.998,1.025,2.349,1.691],[3.54,5.121,3.878,2.99,2.849,3.135],[3.67,4.081,4.264,3.472,3.458,4.419],[3.341,3.341,2.722,2.088,2.846,3.371],[2.491,2.816,1.44,1.192,2.551,1.975],[3.002,2.66,3.754,3.345,5.413,3.962],[2.893,3.409,3.316,3.336,3.614,4.426],[1.843,1.939,2.024,5.012,4.963,5.395],[4.404,3.051,4.195,4.157,2.983,3.546],[3.252,2.804,3.346,2.695,4.096,3.254],[3.384,3.477,4.064,1.625,1.051,0.949],[3.04,2.869,2.962,2.556,1.997,0.53],[2.398,2.777,2.227,3.809,3.915,4.636],[3.253,3.538,4.357,3.697,3.035,3.881],[2.896,2.958,0.826,0.678,1.802,0.825],[1.423,1.154,1.884,3.063,3.992,3.001],[3.389,3.692,2.134,3.7,4.094,4.75],[2.75,3.546,3.742,3.853,3.204,5.14],[3.966,2.911,2.755,2.152,3.222,1.657],[2.267,1.875,2.087,1.343,3.21,3.064],[4.436,4.095,5.016,4.363,3.93,4.141],[-0.224,1.681,0.508,1.922,1.822,2.534],[2.844,2.896,3.813,4.436,2.472,3.68],[2.548,3.279,1.79,2.175,1.88,1.092],[2.624,2.491,2.819,3.493,3.617,2.98],[3.027,3.869,2.073,2.693,2.873,3.391],[2.524,3.183,1.987,3.333,2.888,3.225]],2,oblimin,pa,0,0,0.95)
+
+`cfa` — Confirmatory factor analysis (CFA). Choose ML for continuous indicators or WLSMV for numeric ordinal category codes (ordered numerically). No fixed minimum indicator count per factor; identification is checked using model df and the information matrix. The first pure primary indicator (otherwise the first primary indicator) fixes its primary loading at 1. Cross-loadings use [indicator,factor] pairs and may also be added on marker indicators. ML supports complete rows or FIML under MCAR/MAR. WLSMV requires complete rows and uses probit thresholds/polychoric correlations, DWLS, full influence-covariance sandwich SEs and scaled-shifted mean/variance-adjusted T3. Measurement invariance: configural (group free), metric (equal loadings), scalar (also equal intercepts for ML or response thresholds for WLSMV), strict (also equal residual variances). Scalar/strict estimate other-group latent means, fixing reference means to zero. Multi-group scalar/strict WLSMV requires the same observed categories in each group, at least three per indicator; reference residual variances are 1, scalar frees them in other groups and strict fixes all to 1. Reports chi-square, df, p, CFI, TLI, RMSEA and complete-data SRMR. WLSMV fit indices use adjusted tests; adjusted chi-squares cannot be subtracted for difference testing. Arguments: data,factors,cross-loadings,complete/fiml,group IDs,configural/metric/scalar/strict,ml/wlsmv. Reports fully standardized loadings and paths with delta-method 95% Wald confidence intervals, including standardized marker uncertainty. The diagram uses ellipses for latent factors, rectangles for indicators, standardized coefficients with intervals, and latent R² = 1 − disturbance variance / total latent variance for endogenous factors (not applicable to exogenous factors). Multi-group diagrams are selectable by group; WLSMV loadings describe underlying probit responses. Use Fit diagram to screen to scale the whole diagram to the available width and height; Original size restores scrolling. Model diagnostics show convergence, maximum absolute gradient, local identification and the minimum residual variance ratio. Numerical checks do not establish model validity; review fit indices, residuals, intervals and study design together. Fit assessment is unavailable with zero model degrees of freedom. Run SEM keeps the fitted measurement model, cross-loadings, data, group IDs and estimation options. Enter acyclic latent paths before execution; structural direction is not inferred from CFA. Indicator R² reports variance explained by the latent factors in each observed indicator, including factor covariance for cross-loadings; WLSMV uses the underlying probit response. Indicator R² is displayed in both tables and diagrams. Optional arguments after estimator: residual covariance pairs [[2,3],[5,6]], modification indices 0 (Off, default) / 1 (On), bootstrap count 0 (default), seed 0. Pairs refer to selected indicator positions; strict invariance shares their raw covariances. MI/EPC list single additional cross-loadings, residual covariances and acyclic paths. ML uses expected-information efficient scores; WLSMV uses robust DWLS scores, not a difference of adjusted T3 tests. Review theory before adding parameters. Residual covariances and options transfer from CFA to SEM.
+Example: cfa([[1.987,2.255,1.895,1.448,2.702,2.043],[3.103,3.653,2.588,3.608,3.265,3.866],[5.16,4.181,6.042,4.848,4.128,5.317],[1.995,2.767,1.417,-0.304,-1.529,-0.2],[1.802,1.7,2.56,2.591,4.452,3.681],[5.242,3.886,4.375,5.082,5.152,4.701],[3.057,2.704,2.315,2.034,0.528,0.659],[4.576,5.304,4.688,5.573,4.66,5.626],[5.08,3.257,4.251,3.415,3.076,4.508],[2.502,2.733,2.919,3.058,3.403,2.427],[4.23,3.357,4.235,4.595,5.16,5.999],[2.86,3.515,2.619,0.955,1.766,0.26],[3.16,2.893,2.37,2.341,1.676,2.201],[1.101,3.477,2.018,2.67,2.235,3.664],[3.503,4.223,4.268,2.178,3.518,1.656],[3.623,3.309,4.28,2.605,3.676,3.647],[4.285,5.139,6.064,4.069,4.097,4.629],[3.301,2.767,3.271,2.832,3.249,3.621],[2.857,2.677,2.348,3.272,2.696,3.272],[0.449,1.323,0.652,3.013,3.114,1.652],[3.447,3.14,2.42,2.311,3.202,2.063],[2.401,2.196,3.998,1.025,2.349,1.691],[3.54,5.121,3.878,2.99,2.849,3.135],[3.67,4.081,4.264,3.472,3.458,4.419],[3.341,3.341,2.722,2.088,2.846,3.371],[2.491,2.816,1.44,1.192,2.551,1.975],[3.002,2.66,3.754,3.345,5.413,3.962],[2.893,3.409,3.316,3.336,3.614,4.426],[1.843,1.939,2.024,5.012,4.963,5.395],[4.404,3.051,4.195,4.157,2.983,3.546],[3.252,2.804,3.346,2.695,4.096,3.254],[3.384,3.477,4.064,1.625,1.051,0.949],[3.04,2.869,2.962,2.556,1.997,0.53],[2.398,2.777,2.227,3.809,3.915,4.636],[3.253,3.538,4.357,3.697,3.035,3.881],[2.896,2.958,0.826,0.678,1.802,0.825],[1.423,1.154,1.884,3.063,3.992,3.001],[3.389,3.692,2.134,3.7,4.094,4.75],[2.75,3.546,3.742,3.853,3.204,5.14],[3.966,2.911,2.755,2.152,3.222,1.657],[2.267,1.875,2.087,1.343,3.21,3.064],[4.436,4.095,5.016,4.363,3.93,4.141],[-0.224,1.681,0.508,1.922,1.822,2.534],[2.844,2.896,3.813,4.436,2.472,3.68],[2.548,3.279,1.79,2.175,1.88,1.092],[2.624,2.491,2.819,3.493,3.617,2.98],[3.027,3.869,2.073,2.693,2.873,3.391],[2.524,3.183,1.987,3.333,2.888,3.225]],[1,1,1,2,2,2])
+
+`sem` — Structural equation model (SEM). Choose ML for continuous indicators or WLSMV for numeric ordinal category codes (ordered numerically). No fixed minimum indicator count per factor; identification is checked using model df and the information matrix. The first pure primary indicator (otherwise the first primary indicator) fixes its primary loading at 1. Cross-loadings use [indicator,factor] pairs and may also be added on marker indicators. ML supports complete rows or FIML under MCAR/MAR. WLSMV requires complete rows and uses probit thresholds/polychoric correlations, DWLS, full influence-covariance sandwich SEs and scaled-shifted mean/variance-adjusted T3. Measurement invariance: configural (group free), metric (equal loadings), scalar (also equal intercepts for ML or response thresholds for WLSMV), strict (also equal residual variances). Scalar/strict estimate other-group latent means, fixing reference means to zero. Multi-group scalar/strict WLSMV requires the same observed categories in each group, at least three per indicator; reference residual variances are 1, scalar frees them in other groups and strict fixes all to 1. Reports chi-square, df, p, CFI, TLI, RMSEA and complete-data SRMR. WLSMV fit indices use adjusted tests; adjusted chi-squares cannot be subtracted for difference testing. Add acyclic latent paths [source,target]; exogenous factors may covary, endogenous disturbances and indicator errors are independent. Arguments: data,factors,paths,cross-loadings,complete/fiml,group IDs,configural/metric/scalar/strict,ml/wlsmv. Reports fully standardized loadings and paths with delta-method 95% Wald confidence intervals, including standardized marker uncertainty. The diagram uses ellipses for latent factors, rectangles for indicators, standardized coefficients with intervals, and latent R² = 1 − disturbance variance / total latent variance for endogenous factors (not applicable to exogenous factors). Multi-group diagrams are selectable by group; WLSMV loadings describe underlying probit responses. Use Fit diagram to screen to scale the whole diagram to the available width and height; Original size restores scrolling. Model diagnostics show convergence, maximum absolute gradient, local identification and the minimum residual variance ratio. Numerical checks do not establish model validity; review fit indices, residuals, intervals and study design together. Fit assessment is unavailable with zero model degrees of freedom. Indicator R² reports variance explained by the latent factors in each observed indicator, including factor covariance for cross-loadings; WLSMV uses the underlying probit response. Indicator R² is displayed in both tables and diagrams. Optional arguments after estimator: residual covariance pairs [[2,3],[5,6]], modification indices 0 (Off, default) / 1 (On), bootstrap count 0 (default), seed 0. Pairs refer to selected indicator positions; strict invariance shares their raw covariances. MI/EPC list single additional cross-loadings, residual covariances and acyclic paths. ML uses expected-information efficient scores; WLSMV uses robust DWLS scores, not a difference of adjusted T3 tests. Review theory before adding parameters. Residual covariances and options transfer from CFA to SEM. Direct, total indirect and total latent effects sum products over all specified directed paths, with raw/standardized delta-method 95% Wald intervals. Bootstrap count: 0 = off, otherwise at least 20 (1000 or more recommended for final inference). Stratified case resampling refits the full model each draw; seeded 95% percentile CIs are shown separately. Execution time/work budgets scale with the requested refits; manual cancellation remains available. Failed refits are counted; CI requires at least 20 and 80% successful draws. Coefficient products alone do not establish causal mediation.
+Example: sem([[1.987,2.255,1.895,1.448,2.702,2.043],[3.103,3.653,2.588,3.608,3.265,3.866],[5.16,4.181,6.042,4.848,4.128,5.317],[1.995,2.767,1.417,-0.304,-1.529,-0.2],[1.802,1.7,2.56,2.591,4.452,3.681],[5.242,3.886,4.375,5.082,5.152,4.701],[3.057,2.704,2.315,2.034,0.528,0.659],[4.576,5.304,4.688,5.573,4.66,5.626],[5.08,3.257,4.251,3.415,3.076,4.508],[2.502,2.733,2.919,3.058,3.403,2.427],[4.23,3.357,4.235,4.595,5.16,5.999],[2.86,3.515,2.619,0.955,1.766,0.26],[3.16,2.893,2.37,2.341,1.676,2.201],[1.101,3.477,2.018,2.67,2.235,3.664],[3.503,4.223,4.268,2.178,3.518,1.656],[3.623,3.309,4.28,2.605,3.676,3.647],[4.285,5.139,6.064,4.069,4.097,4.629],[3.301,2.767,3.271,2.832,3.249,3.621],[2.857,2.677,2.348,3.272,2.696,3.272],[0.449,1.323,0.652,3.013,3.114,1.652],[3.447,3.14,2.42,2.311,3.202,2.063],[2.401,2.196,3.998,1.025,2.349,1.691],[3.54,5.121,3.878,2.99,2.849,3.135],[3.67,4.081,4.264,3.472,3.458,4.419],[3.341,3.341,2.722,2.088,2.846,3.371],[2.491,2.816,1.44,1.192,2.551,1.975],[3.002,2.66,3.754,3.345,5.413,3.962],[2.893,3.409,3.316,3.336,3.614,4.426],[1.843,1.939,2.024,5.012,4.963,5.395],[4.404,3.051,4.195,4.157,2.983,3.546],[3.252,2.804,3.346,2.695,4.096,3.254],[3.384,3.477,4.064,1.625,1.051,0.949],[3.04,2.869,2.962,2.556,1.997,0.53],[2.398,2.777,2.227,3.809,3.915,4.636],[3.253,3.538,4.357,3.697,3.035,3.881],[2.896,2.958,0.826,0.678,1.802,0.825],[1.423,1.154,1.884,3.063,3.992,3.001],[3.389,3.692,2.134,3.7,4.094,4.75],[2.75,3.546,3.742,3.853,3.204,5.14],[3.966,2.911,2.755,2.152,3.222,1.657],[2.267,1.875,2.087,1.343,3.21,3.064],[4.436,4.095,5.016,4.363,3.93,4.141],[-0.224,1.681,0.508,1.922,1.822,2.534],[2.844,2.896,3.813,4.436,2.472,3.68],[2.548,3.279,1.79,2.175,1.88,1.092],[2.624,2.491,2.819,3.493,3.617,2.98],[3.027,3.869,2.073,2.693,2.873,3.391],[2.524,3.183,1.987,3.333,2.888,3.225]],[1,1,1,2,2,2],[[1,2]])
+
+### Multivariate analysis
+
+`pca` — Summarize correlated numeric features using fewer components. Rows=observations, columns=features; components, standardize 1/0.
+Example: pca([[1,2],[2,1],[3,4],[4,3],[5,7]],2,1)
+
+`discriminantanalysis` — Discriminant analysis (LDA/QDA). Rows: features, class. LDA pooled / QDA separate unbiased covariances; empirical/equal priors. Optional fourth argument: new feature rows. Training confusion and accuracy use the fitted sample.
+Example: discriminantanalysis([[1,2,1],[2,1,1],[1,1,1],[2,3,1],[4,5,2],[5,4,2],[4,4,2],[5,6,2]],lda,empirical)
+
+`kmeans` — Group observations by numeric-feature similarity; check feature scales first. Numeric feature rows; k, seed. Euclidean distance, 10 restarts, raw feature scale.
+Example: kmeans([[1,1],[1,2],[2,1],[8,8],[8,9],[9,8]],2,0)
+
+`hcluster` — Hierarchical clustering. Independent agglomerative analysis; clusters, single/complete/average/Ward Euclidean linkage, standardize 1/0. Returns all merges, heights, sizes and cut assignments. Leaves 1…n, merge nodes n+1…2n−1.
+Example: hcluster([[1,1],[1,2],[2,1],[8,8],[8,9],[9,8]],2,ward,1)
+
+### Time series & forecasting
+
+`arima` — Forecast equally spaced time-series observations. Choose one numeric column in time order (oldest first), with equal spacing and no missing values. Set [p,d,q], forecast horizon and prediction level (0–1). Auto compares valid models with/without an intercept (no differencing) or drift (one ordinary or seasonal difference), using conditional AICc and keeping the selected orders. Two or more total differences omit drift; none/constant explicitly force the choice. Conditional Gaussian estimation enforces stationary AR and invertible MA. Near-boundary fits show diagnostics and forecasts instead of stopping. Results include selected intercept/drift, candidate AICc, coefficients, conditional AIC/AICc/BIC, forecasts, prediction intervals, observed/fitted/forecast graph and residual ACF/Ljung–Box diagnostics. Intervals exclude parameter uncertainty. Drift is the mean change per observation, distinct from the differenced ARMA intercept. Its SE, two-sided 95% Gaussian Wald interval and p value for zero drift use joint AR/MA/intercept covariance and the delta method, conditional on the selected model. Near-boundary Wald inference can be unreliable; singular covariance is reported as unavailable. Date/value CSV accepts YYYY-MM-DD dates or integer years, with a header such as date,value. The value column defaults to the last column; date labels are detected automatically for two or more columns. Choose date and value columns separately. Dates must increase regularly; calendar years/months preserve leap years and month ends. Forecast tables and plots retain dates. Expressions accept an optional final date list: years or [[year,month,day],...]. Quoted thousands-grouped numeric values (e.g. "166,682") are accepted; signs, decimals and scientific notation are preserved.
+Example: arima([12,15,14,18,13,17,16,21,15,19,18,24,17,22,20,27,19,24,23,30,21,27,25,33,24,29,28,36,26,32,30,39],[1,1,0],12,0.95,auto)
+
+`sarima` — Forecast equally spaced time-series observations. Choose one numeric column in time order (oldest first), with equal spacing and no missing values. Set [p,d,q], forecast horizon and prediction level (0–1). Auto compares valid models with/without an intercept (no differencing) or drift (one ordinary or seasonal difference), using conditional AICc and keeping the selected orders. Two or more total differences omit drift; none/constant explicitly force the choice. Conditional Gaussian estimation enforces stationary AR and invertible MA. Near-boundary fits show diagnostics and forecasts instead of stopping. Results include selected intercept/drift, candidate AICc, coefficients, conditional AIC/AICc/BIC, forecasts, prediction intervals, observed/fitted/forecast graph and residual ACF/Ljung–Box diagnostics. Intervals exclude parameter uncertainty. Drift is the mean change per observation, distinct from the differenced ARMA intercept. Its SE, two-sided 95% Gaussian Wald interval and p value for zero drift use joint AR/MA/intercept covariance and the delta method, conditional on the selected model. Near-boundary Wald inference can be unreliable; singular covariance is reported as unavailable. Seasonal [P,D,Q,s] adds seasonal AR/differencing/MA and period s; at least two complete periods are required. Date/value CSV accepts YYYY-MM-DD dates or integer years, with a header such as date,value. The value column defaults to the last column; date labels are detected automatically for two or more columns. Choose date and value columns separately. Dates must increase regularly; calendar years/months preserve leap years and month ends. Forecast tables and plots retain dates. Expressions accept an optional final date list: years or [[year,month,day],...]. Quoted thousands-grouped numeric values (e.g. "166,682") are accepted; signs, decimals and scientific notation are preserved.
+Example: sarima([12,15,14,18,13,17,16,21,15,19,18,24,17,22,20,27,19,24,23,30,21,27,25,33,24,29,28,36,26,32,30,39],[1,0,0],[0,1,1,4],8,0.95,auto)
+
+### Survival analysis
+
+`survivalanalysis` — Analyze censored time-to-event data as a Kaplan–Meier, log-rank and optional Cox set. Rows: time, event (0/1), group ID, optional Cox predictors; Cox 0=off, 1=on; then ties and the PH check.
+Example: survivalanalysis([[1,1,1],[2,1,2],[3,0,1],[4,1,2],[5,1,1],[6,0,2],[7,1,2],[8,1,1]],0,efron,-1,1)
+
+`kaplanmeier` — Estimate survival over time while accounting for censoring. Rows: time, event (1=event, 0=censored); confidence level.
+Example: kaplanmeier([[1,1],[2,0],[3,1],[4,1],[5,0],[6,1]],0.95)
+
+`logrank` — Compare survival between two groups without adjusting for predictors. Two time/event tables. Current data: time, event, group (exactly two groups).
+Example: logrank([[1,1],[3,1],[4,0],[6,1]],[[2,0],[4,1],[5,1],[7,0]])
+
+`cox` — Relate predictors to event hazard; review proportional hazards. Rows: time, event 0/1, predictors. Ties efron (default) or breslow; entry column for left truncation (-1 none); PH check 0/1.
+Example: cox([[1,1,0],[2,1,1],[3,0,0],[4,1,1],[5,1,0],[6,0,1],[7,1,1],[8,1,0]],efron,-1,1)
+
+### Power & sample size
+
+`testpower` — Evaluate power for a planned t-test design and effect size. Cohen d, n per group/pairs, alpha, independent / paired / onesample, alternative two (default) / greater / less. Exact noncentral-t power.
+Example: testpower(0.5,64,0.05,independent)
+
+`samplesize` — Plan the sample size needed for a target t-test power. Cohen d, target power, alpha, design, alternative. Exact noncentral-t power.
+Example: samplesize(0.5,0.8,0.05,independent)
