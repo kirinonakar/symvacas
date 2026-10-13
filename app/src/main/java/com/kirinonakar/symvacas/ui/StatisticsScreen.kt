@@ -313,6 +313,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
     Box(Modifier.fillMaxSize()) {
     Panel("Data & statistics","",panelScroll) {
         CompositionLocalProvider(LocalStatisticsCollapseRequest provides collapseRequest,LocalStatisticsExplanationModel provides m) {
+        Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)) {
         if(names.isNotEmpty())Choices(names,activeName,{name->m.clearRegression();selected=name;isNew=false;m.dataSets.optJSONObject(name)?.let {item->datasetName=name;data=item.optString("csv");selectedDataKind=item.optString("kind","list");columnCount=if(selectedDataKind.startsWith("columns:"))statisticsColumnCount(selectedDataKind).toString() else "4";plotType=if(selectedDataKind=="xy")"Scatter" else "Histogram"}})
         Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp),verticalAlignment=Alignment.CenterVertically) {
             Field(datasetName,"Dataset name",Modifier.width(120.dp)){datasetName=it}
@@ -415,6 +416,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                     }
                 }
             }
+        }
         }
         StatisticsSectionToggle("Summary & preperation",summaryExpanded,"statistics-summary-toggle") {m.setStatisticsSectionExpanded("summary",!summaryExpanded)}
         if(summaryExpanded)Column(verticalArrangement=Arrangement.spacedBy(2.dp)) {
