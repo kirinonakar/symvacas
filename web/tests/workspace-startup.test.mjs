@@ -84,6 +84,42 @@ test('summary action sends the selected categorical column and its literal label
   assert.deepEqual(errors,[]);
 });
 
+test('Overall is the first Summary action and sends all columns before switching back to a column summary',async context=>{
+  const requests=[],item=JSON.parse(readFileSync(new URL('../../tests/fixtures/statistics_summary.json',import.meta.url),'utf8')).overallCases[0];
+  const {window,errors}=fixture(context,{fields:{mode:'statistics','statistics-data':item.source,'statistics-kind':item.kind}},
+    {ready:true,execute:async request=>{requests.push(request);return {ok:true};}});
+  const document=window.document,overall=document.getElementById('statistics-summary-overall');
+  assert.equal(document.querySelector('#statistics-summary button'),overall);
+  await overall.onclick();
+  assert.equal(requests.length,1);
+  const request=requests[0];assert.equal(request.tree.args[1].value,'overall');
+  assert.deepEqual(request.statisticsDatasets[request.tree.args[0].value],[['20','30'],['0','1','1'],['0','1','0'],[],['8']]);
+  assert.deepEqual(request.statisticsTermLabels,item.labels);
+  document.querySelector('[data-run="statistics-summary"]').click();
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(requests.length,2);assert.equal(requests[1].tree.args.length,1);
+  assert.deepEqual(requests[1].statisticsTermLabels,{'sample:1':'age (x)'});
+  assert.deepEqual(errors,[]);
+});
+
+test('grouped t test value checkboxes send selected columns and persist a single-column fallback',async context=>{
+  const requests=[],item=JSON.parse(readFileSync(new URL('../../tests/fixtures/statistics_t_columns.json',import.meta.url),'utf8')).cases[0];
+  const {window,errors}=fixture(context,{fields:{mode:'statistics','statistics-data':item.source,'statistics-kind':'columns','statistics-columns':'4','statistics-op':'ttest2','statistics-grouping':'groups','statistics-t-columns-choice':'1,2,3'}},
+    {ready:true,execute:async request=>{requests.push(request);return {ok:true};}});
+  const document=window.document,checks=()=>[...document.querySelectorAll('#statistics-t-columns input')];
+  assert.equal(document.getElementById('statistics-t-columns').hidden,false);
+  assert.deepEqual(checks().map(input=>input.value),['1','2','3']);assert.ok(checks().every(input=>input.checked));
+  await document.querySelector('[data-run="statistics"]').onclick();
+  assert.equal(requests[0].tree.args[3].value,'batch');assert.deepEqual(requests[0].statisticsTermLabels,item.labels);
+  for(const value of ['2','3']){const input=checks().find(input=>input.value===value);input.checked=false;input.onchange();}
+  assert.equal(document.getElementById('statistics-t-columns-choice').value,'1');
+  await document.querySelector('[data-run="statistics"]').onclick();
+  assert.equal(requests[1].tree.args.length,3);
+  const group=document.getElementById('statistics-group-column');group.value='1';group.onchange();
+  assert.ok(checks().every(input=>input.value!=='1'));
+  assert.deepEqual(errors,[]);
+});
+
 test('statistics paste handlers filter Markdown headings in selection replacements and table cells',async context=>{
   const {window,errors}=fixture(context,{fields:{mode:'statistics','statistics-data':'12\n34','statistics-kind':'list'}});
   const document=window.document,field=document.getElementById('statistics-data');

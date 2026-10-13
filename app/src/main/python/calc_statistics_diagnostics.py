@@ -42,6 +42,8 @@ def normal_views(values, label):
 
 
 def companion_report(report, name, value, inputs, precision, labels=None, residuals=None):
+    if name in ('ttest2', 'ttestpaired') and isinstance(value, dict) and 'Comparisons' in value:
+        return report
     labels=labels or {}
     proxy=SimpleNamespace(precision=precision,note='',request={'statisticsTermLabels':labels})
     args=inputs[1] if inputs and inputs[0]==name else []

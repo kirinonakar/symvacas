@@ -54,6 +54,7 @@ internal fun statisticsDetailText(detail:JSONObject,translate:(String)->String):
 internal fun statisticsResultMarkdown(result:JSONObject,formatCell:(JSONObject)->String,regressionEquation:String?=null,translate:(String)->String):String {
     val report=result.optJSONObject("statisticsReport") ?: result.optJSONObject("statisticsCopyReport") ?: return formatCell(result)
     val blocks=mutableListOf("## "+markdownCell(translate(report.optString("title"))))
+    report.optString("context").takeIf(String::isNotBlank)?.let {blocks.add(markdownCell(it))}
     if(regressionEquation!=null) {
         val fence="`".repeat(maxOf(3,(Regex("`+").findAll(regressionEquation).maxOfOrNull {it.value.length} ?: 0)+1))
         blocks.add("### "+translate("Regression equation")+"\n\n"+fence+"text\n"+regressionEquation+"\n"+fence)
@@ -64,7 +65,7 @@ internal fun statisticsResultMarkdown(result:JSONObject,formatCell:(JSONObject)-
         val columns=section.getJSONArray("columns")
         val rows=section.optJSONArray("copyRows") ?: section.getJSONArray("rows")
         fun line(values:List<String>)="| "+values.joinToString(" | ")+" |"
-        val table=mutableListOf(line(List(columns.length()){markdownCell(translate(columns.getString(it)))}),line(List(columns.length()){ "---" }))
+        val table=mutableListOf(line(List(columns.length()){markdownCell(if(section.optBoolean("literalColumns"))columns.getString(it) else translate(columns.getString(it)))}),line(List(columns.length()){ "---" }))
         for(rowIndex in 0 until rows.length()) {
             val row=rows.getJSONArray(rowIndex)
             if(regressionEquation!=null&&columns.optString(0)=="Metric"&&row.optString(0)=="Fitted expression")continue

@@ -14,7 +14,7 @@ from calc_shared import (CONSTANTS, UNITS, MathError, canonical_function_name,
                          initial_conditions, inverse_mellin_transform,
                          inverse_z_transform, matrix, mellin_transform,
                          numeric_derivative, numeric_integral, ode_equation, require, sexagesimal_value, z_transform)
-from calc_statistics import distribution_value, fit_custom_regression, fit_regression, pearson_correlation, statistical_test, shape_statistics, summary_frequencies
+from calc_statistics import distribution_value, fit_custom_regression, fit_regression, pearson_correlation, statistical_test, shape_statistics, summary_frequencies, binary_summary, overall_summary
 from calc_advanced_statistics import FUNCTIONS as ADVANCED_STATISTICS, advanced
 from calc_finance import finance_value
 from calc_integrals import rational_trig_primitive, log_arctan_primitive
@@ -129,7 +129,7 @@ class Engine:
         require(within_limit(abs(number.p).bit_length(), max_bits) and within_limit(number.q.bit_length(), max_bits), "Number size limit")
         return number
 
-    def prepare_statistics_dataset(self, node):
+    def prepare_statistics_dataset(self, node, column_major=False):
         """Cache numeric vectors/tables and separately parsed, guarded cell ASTs."""
         packed = self.request.get('statisticsDatasets', {})
         if node.get('kind') == 'symbol' and node.get('value') in packed:
@@ -138,7 +138,8 @@ class Engine:
             require(isinstance(rows,list), 'Numeric statistics dataset expected')
             table = bool(rows) and all(isinstance(row,list) for row in rows)
             cells = rows if table else [rows]
-            require(within_limit(len(rows),5000) and (not table or all(within_limit(len(row),101) for row in cells)),
+            require(within_limit(len(rows),101 if column_major else 5000) and
+                    (not table or all(within_limit(len(row),5000 if column_major else 101) for row in cells)),
                     'Statistics dataset limit: 5000 rows and 101 columns')
             require(all(isinstance(cell,str) or isinstance(cell,dict) and isinstance(cell.get('kind'),str) and isinstance(cell.get('args',[]),list) for row in cells for cell in row),
                     'Numeric statistics dataset expected')
@@ -162,7 +163,8 @@ class Engine:
                     and len(cell.get("args", [])) == 1 and cell["args"][0].get("kind") == "number")
         if not all(literal(cell) for row in cells for cell in row):
             return
-        require(within_limit(len(rows),5000) and (not table or all(within_limit(len(row),101) for row in cells)),
+        require(within_limit(len(rows),101 if column_major else 5000) and
+                (not table or all(within_limit(len(row),5000 if column_major else 101) for row in cells)),
                 "Statistics dataset limit: 5000 rows and 101 columns")
         def value(cell):
             if cell["kind"] == "number": return self.number(cell["value"])
@@ -319,7 +321,10 @@ class Engine:
                 self.bindings["NA"] = self.symbol("NA")
             if value not in self.functions and value in BASIC_STATISTICS | ADVANCED_STATISTICS | {"regression"}:
                 for index,argument in enumerate(args):
-                    if value!='modelcompare' or index not in (2,3,8):self.prepare_statistics_dataset(argument)
+                    if value!='modelcompare' or index not in (2,3,8):
+                        column_major = value == 'stats' and index == 0 and len(args) == 3 and args[1].get('kind') == 'symbol' and args[1].get('value') == 'overall'
+                        column_major = column_major or value in ('ttest2', 'ttestpaired') and index in (1, 2) and len(args) >= 4 and args[3].get('kind') == 'symbol' and args[3].get('value') == 'batch'
+                        self.prepare_statistics_dataset(argument, column_major=column_major)
             if value == "regression" and len(args) > 1 and args[1].get("kind") == "symbol" and args[1].get("value") == "custom":
                 require(len(args) in (4, 5), "Use regression(data,custom,model,x,initials)")
                 constants = {"pi": s.pi, "e": s.E, "i": s.I, "I": s.I}
@@ -816,6 +821,13 @@ class Engine:
             require(value is not s.nan, name+" requires variation"+(" and at least "+("3" if name=="skewness" else "4")+" values" if correction else ""))
             return value
         if name in ("mean", "median", "mode", "variance", "stdev", "sumdata", "quartiles", "stats"):
+            if name == 'stats' and len(a) == 3 and nodes[1].get('kind') == 'symbol' and nodes[1].get('value') == 'overall':
+                summary = overall_summary(a[0], a[2])
+                self.statistics_full_tables = summary
+                result = {key: rows[:50] for key, rows in summary.items()}
+                if any(len(rows) > 50 for rows in summary.values()):
+                    result['Output note'] = 'Plain Output previews up to 50 rows per table; the formatted report and Copy include all rows.'
+                return result
             dispersion = name in ("variance", "stdev")
             require(len(a) in ((1,2) if dispersion or name=="stats" else (1,)), name+" expects a data list"+(" and optional ddof (0 or 1)" if dispersion else ""))
             data = flatten(a[0]); n = len(data)
@@ -823,7 +835,7 @@ class Engine:
             if name=="stats":
                 if len(a)==2:
                     require(nodes[1].get('kind')=='symbol' and nodes[1].get('value')=='categorical', "stats option must be categorical")
-                if len(a)==2:
+                if len(a)==2 or binary_summary(data):
                     self.statistics_summary_frequencies=summary_frequencies(data)
                     return {"n":s.Integer(n), "Category count":s.Integer(len(self.statistics_summary_frequencies))}
             ddof = a[1] if dispersion and len(a)==2 else s.Integer(1 if dispersion else 0)

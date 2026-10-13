@@ -61,6 +61,22 @@ internal fun statisticsCategoryLabels(pairs:List<Pair<String,String>>,first:Stri
 internal fun statisticsCategories(values:List<String>,numeric:Boolean):List<String> =
     if(numeric)values.distinctBy {it.toBigDecimal().stripTrailingZeros()}.sortedBy {it.toBigDecimal()} else values.distinct()
 
+internal fun statisticsGroupedTTestPlan(rows:List<List<String>>,kind:String,labels:List<String>,columns:String,
+    groupColumn:Int=0,valueColumn:Int=1,firstGroup:String="",secondGroup:String="",paired:Boolean=false,
+    matching:String="order",subjectColumn:Int=0,mu0:String="0",tail:String="Two-sided",method:String="welch"):StatisticsSummaryPlan {
+    val width=statisticsColumnCount(kind)
+    val selected=if(columns=="single")listOf(valueColumn) else columns.split(',').filter(String::isNotBlank).map {it.toIntOrNull() ?: -1}
+    require(selected.isNotEmpty()&&selected.distinct().size==selected.size&&selected.all {it in 0 until width&&it!=groupColumn&&!(paired&&matching=="subject"&&it==subjectColumn)}) {"Choose distinct value columns excluding group and subject roles"}
+    require(mu0.toDoubleOrNull()?.isFinite()==true) {"The hypothesized difference must be real"}
+    val plans=selected.map {column->statisticsComparisonData(rows,mapOf("grouping" to "groups","group" to groupColumn.toString(),"value" to column.toString(),"firstGroup" to firstGroup,"secondGroup" to secondGroup,"matching" to matching,"subject" to subjectColumn.toString()),paired=paired)}
+    fun vector(values:List<String>)=values.joinToString(",","[","]") {it.statisticsNumericCell()}
+    val batch=plans.size>1
+    fun sample(index:Int)=if(batch)plans.joinToString(",","[","]") {vector(it.samples[index])} else vector(plans.first().samples[index])
+    val alternative=when(tail){"Left"->",left";"Right"->",right";else->""}
+    val command="${if(paired)"ttestpaired" else "ttest2"}($mu0,${sample(0)},${sample(1)}${if(batch)",batch" else ""}${if(!paired&&method=="student")",student" else ""}$alternative)"
+    return StatisticsSummaryPlan(command,mapOf("sample:1" to plans.first().labels[0],"sample:2" to plans.first().labels[1])+selected.mapIndexed {index,column->"batch:column:$index" to labels[column]})
+}
+
 /** Build a test from the visible data table, never from a second copy of its values. */
 internal fun statisticsTestCommand(
     procedure: String,

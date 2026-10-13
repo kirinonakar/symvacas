@@ -298,9 +298,36 @@ def statistics_report(name, value, precision, labels=None):
         plots.append({'kind':'calibration-comparison','title':'Calibration comparison','series':[{'label':row[0],'points':[[float(x),float(y),int(n)] for x,y,n in points]} for row,points in zip(validation,calibration)],'evaluation':str(value['Validation method'])})
         delta=differences[0]
         if all(finite(v) is not None for v in delta[1:4]):interval_plot('ΔAUC (B − A)',[['Model B − Model A',*delta[1:4]]],0)
-    visit('Summary' if isinstance(value, dict) else TITLES.get(name, name), value)
+    overall = name == 'stats' and isinstance(value, dict) and 'Numeric data' in value and 'Categorical data' in value
+    batch_t = name in ('ttest2', 'ttestpaired') and isinstance(value, dict) and 'Comparisons' in value
+    if batch_t:
+        keys = ['mean1', 'mean2', 'diff', 'p-value', 'n', 'Significant', 'normality', 'equal var']
+        label = lambda index: table_labels.get('batch:column:'+str(index), str(index+1))
+        section = add('Summary', ['Column']+keys,
+                      [[label(row['Column'])]+[row[key] for key in keys] for row in value['Comparisons']])
+        section['literalColumns'] = True
+        checks = value['Assumption checks']
+        add('Detailed assumption checks', ['Column', 'Check', 'Sample', 'p-value', 'Result'],
+            [[label(row['Column']), row['Check'], table_labels.get('sample:'+row['Sample'], row['Sample']),
+              row['p-value'], row['Result']] for row in checks])
+        for row in checks+value['Unavailable comparisons']:
+            if row.get('Reason'): details.append({'section':label(row['Column']), 'label':row.get('Check', 'Unavailable comparison'), 'text':row['Reason']})
+    elif overall:
+        metrics = ['mean', 'sd', 'min', 'max', 'valid.n']
+        add('Numeric data', ['Column']+metrics,
+            [[table_labels.get('overall:column:'+str(row['Column']), str(row['Column']+1))]+
+             [row[key] for key in metrics] for row in value['Numeric data']])
+        add('Categorical data', ['Column', 'Category', 'numb (%)'],
+            [[table_labels.get('overall:column:'+str(row['Column']), str(row['Column']+1)),
+              table_labels.get('overall:category:'+str(row['Column'])+':'+str(row['Category']), row['Category']),
+              f"{row['Count']} ({float(row['Percentage (%)']):.2f}%)"] for row in value['Categorical data']])
+        for section in sections: section['literalColumns'] = True
+    else:
+        visit('Summary' if isinstance(value, dict) else TITLES.get(name, name), value)
     priority=['Cronbach α','Cohen κ',"Cramér’s V",'phi','Indirect effect a×b','CFI','RMSEA','KMO','p value','p','mean difference','posterior mean','Posterior Mean Difference (B - A)','Posterior Effect Size','BF10','P(μB > μA)','estimate','power','achieved power','n per group / pairs','R²','Adjusted R²','Kendall W','eta2','Cohen d','Cohen dz','RMSE','R2','inertia']
-    report_title=TITLES.get(name,name)
+    report_title='Overall' if overall else TITLES.get(name,name)
+    if batch_t:
+        report_title='Paired t tests' if name == 'ttestpaired' else 'Student t tests' if value['Method'] == 'student' else 'Welch t tests'
     if name=='mcnemar' and isinstance(value,dict):
         priority=['discordant pairs','p']
         report_title={'asymptotic':'McNemar','exact':'Exact McNemar','corrected':'McNemar (continuity correction)'}.get(value.get('method'),report_title)
@@ -312,6 +339,11 @@ def statistics_report(name, value, precision, labels=None):
     report = {'analysis': name, 'title': report_title, 'sections': sections,'highlights':highlights,'plots':plots}
     if name=='stats' and isinstance(value,dict) and 'Category frequencies' in value:
         report['notes']=['Percentages use nonmissing values in the selected column.']
+    if overall:
+        report['notes']=['SD is the sample standard deviation. Missing cells are excluded separately for each column; percentages use valid values in that column. Columns containing only 0/1 values are categorical.']
+    if batch_t:
+        report['context']='mean1 = '+table_labels.get('sample:1', '1')+'; mean2 = '+table_labels.get('sample:2', '2')+'; diff = mean1 − mean2.'
+        report['notes']=['Significant: yes when the selected t-test p-value is below 0.05. Normality: yes when Shapiro–Wilk does not reject normality at 0.05 in both groups (paired tests check differences). Equal var: yes when Brown–Forsythe does not reject equal variances at 0.05; not applicable to paired tests. Unavailable checks are not classified as yes or no. n is the total valid count in independent groups, or the complete-pair count in paired tests. Missing values are handled separately for each column. P-values are unadjusted across columns; yes does not prove an assumption.']
     if assumptions: report['assumptions'] = assumptions
     if details: report['details'] = details
     return report

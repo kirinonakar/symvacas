@@ -479,6 +479,8 @@ Choose by purpose, measurement scale and study design. Use Welch for unequal-var
 
 Raw-data t tests, t intervals, ANOVA and Tukey include sample summaries, assumption checks, Q–Q plots and distributions. t tests add effect sizes and two-sided 95% mean intervals; ANOVA adds η² and automatic post-hoc comparisons; Tukey/Games–Howell add overall ANOVA. Paired t checks differences; ANCOVA and factorial linear models check residuals. Enter raw observations for normality checks.
 
+For group/value t tests, select multiple value columns to show one row per column. mean1 and mean2 refer to the selected first and second groups; diff = mean1−mean2. Significant is yes at p<0.05; normality is yes when Shapiro–Wilk does not reject either group at 0.05; equal var is yes when Brown–Forsythe does not reject at 0.05. n is the total valid sample count, or complete-pair count for paired tests. Paired normality checks differences; equal variance is not applicable. Unavailable checks remain unavailable. P-values are unadjusted across columns.
+
 ### Normal-model methods (parametric)
 - One-sample t / t intervals: normal population for exact small-sample inference. Paired t: normally distributed within-pair differences. Inspect Q–Q plots, skewness and outliers.
 - Welch t / Welch ANOVA / Games–Howell: independent group means with unequal variances. Student t / classic ANOVA / Tukey: equal variances.
@@ -522,7 +524,7 @@ Scatter: choose X column and Y column from any dataset with at least two columns
 
 Plots: Bar on List data places each distinct numeric value on the x-axis and its frequency on the y-axis (five observations of 3 give a bar at x=3 with height 5). With x,y data, x supplies the names and y supplies the heights: A,5 / B,8 / C,3 gives heights 5,8,3. With more columns, the first column supplies names and the remaining numeric columns are adjacent series. Select a group column under Plot grouping to draw groups side by side; the first remaining column supplies names and the other numeric columns supply heights. Row order and repeated names are retained; missing/nonfinite heights are omitted, and negative heights extend below zero.
 
-`stats(list)` — Summary statistics, with counts and percentages when there are fewer than 10 distinct numeric values. Empty cells are omitted by the Statistics workspace; percentages use the remaining observations. `stats(list,categorical)` shows counts and percentages without numeric means or variances for category codes.
+`stats(list)` — Summary statistics, with counts and percentages when there are fewer than 10 distinct numeric values. Columns containing only 0/1 values are categorical. Empty cells are omitted by the Statistics workspace; percentages use the remaining observations. `stats(list,categorical)` shows counts and percentages without numeric means or variances for category codes. Summary → Overall summarizes all columns: numeric variables as rows with mean, sample SD, min, max and valid.n; categorical variables below as counts (percentages). `stats(columns,overall,flags)` accepts column lists and one flag per column (0=numeric, 1=categorical); 0/1-only columns are automatically categorical.
 Example: stats([1,2,3,4])
 
 `mode(list)` — All values with the highest frequency, returned as a sorted list. Ties include every matching value; if all values occur once, all are returned.

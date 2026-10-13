@@ -332,19 +332,34 @@ internal fun statisticsNumericRows(rows:List<List<String>>,dateAxis:StatisticsDa
     (dateAxis?.numericRows(rows)?:rows).map {row->row.map(String::statisticsNumericCell)}
 
 internal data class StatisticsSummaryPlan(val source:String,val termLabels:Map<String,String>)
+private data class StatisticsSummaryColumn(val values:List<String>,val categorical:Boolean,val labels:List<String> = emptyList())
+private fun statisticsSummaryColumn(rows:List<List<String>>,numeric:List<List<String>>,column:Int):StatisticsSummaryColumn {
+    val values=numeric.mapNotNull {it.getOrNull(column)?.takeIf(String::isNotBlank)}
+    val constants=setOf("pi","π","e","E","tau","τ","∞")
+    val isNumeric=values.all {value->runCatching {Parser(LatexInput.convert(value)?:value).parse().nodes().none {it.kind=="symbol"&&it.value !in constants}}.getOrDefault(false)}
+    if(isNumeric)return StatisticsSummaryColumn(values,false)
+    val categories=rows.mapNotNull {it.getOrNull(column)?.takeIf(String::isNotBlank)}
+    val labels=categories.distinct();val indices=labels.withIndex().associate {it.value to it.index}
+    return StatisticsSummaryColumn(categories.map {indices.getValue(it).toString()},true,labels)
+}
 internal fun statisticsSummaryPlan(source:String,kind:String,column:Int=0):StatisticsSummaryPlan {
     val rows=statisticsRows(source)
     val numeric=statisticsNumericRows(rows,if(statisticsColumnCount(kind)>1)statisticsDateAxis(rows) else null)
-    val values=numeric.mapNotNull {it.getOrNull(column)?.takeIf(String::isNotBlank)}
-    require(values.isNotEmpty()) {"Enter at least one data value"}
-    val label=statisticsColumnLabels(source,kind)[column]
-    val constants=setOf("pi","π","e","E","tau","τ","∞")
-    val isNumeric=values.all {value->runCatching {Parser(LatexInput.convert(value)?:value).parse().nodes().none {it.kind=="symbol"&&it.value !in constants}}.getOrDefault(false)}
-    if(isNumeric)return StatisticsSummaryPlan(values.joinToString(",","stats([","])"),mapOf("sample:1" to label))
-    val categories=rows.mapNotNull {it.getOrNull(column)?.takeIf(String::isNotBlank)}
-    val labels=categories.distinct();val indices=labels.withIndex().associate {it.value to it.index}
-    return StatisticsSummaryPlan(categories.joinToString(",","stats([","],categorical)"){indices.getValue(it).toString()},
-        mapOf("sample:1" to label)+labels.mapIndexed {index,value->"summary:category:$index" to value})
+    val data=statisticsSummaryColumn(rows,numeric,column)
+    require(data.values.isNotEmpty()) {"Enter at least one data value"}
+    return StatisticsSummaryPlan(data.values.joinToString(",","stats([",if(data.categorical)"],categorical)" else "])"),
+        mapOf("sample:1" to statisticsColumnLabels(source,kind)[column])+data.labels.mapIndexed {index,value->"summary:category:$index" to value})
+}
+internal fun statisticsOverallPlan(source:String,kind:String):StatisticsSummaryPlan {
+    val rows=statisticsRows(source)
+    val numeric=statisticsNumericRows(rows,if(statisticsColumnCount(kind)>1)statisticsDateAxis(rows) else null)
+    val labels=statisticsColumnLabels(source,kind)
+    val columns=labels.indices.map {statisticsSummaryColumn(rows,numeric,it)}
+    require(columns.any {it.values.isNotEmpty()}) {"Enter at least one data value"}
+    val lists=columns.joinToString(",","[","]") {it.values.joinToString(",","[","]")}
+    val flags=columns.joinToString(",","[","]") {if(it.categorical)"1" else "0"}
+    val terms=columns.flatMapIndexed {index,column->listOf("overall:column:$index" to labels[index])+column.labels.mapIndexed {category,value->"overall:category:$index:$category" to value}}
+    return StatisticsSummaryPlan("stats($lists,overall,$flags)",terms.toMap())
 }
 
 internal data class StatisticsDateAxis(val origin:LocalDate) {

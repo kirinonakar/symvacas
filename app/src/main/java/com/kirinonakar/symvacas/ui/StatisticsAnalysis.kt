@@ -43,6 +43,7 @@ import org.json.JSONArray
     var anovaMethod by rememberSaveable {mutableStateOf("Welch (unequal variances)")}
     var groupColumn by rememberSaveable {mutableStateOf("x")}
     var valueColumn by rememberSaveable {mutableStateOf("y")}
+    var tValueColumns by rememberSaveable {mutableStateOf("single")}
     var subjectColumn by rememberSaveable {mutableStateOf("x")}
     var matching by rememberSaveable {mutableStateOf("Row order within each group")}
     var pairedComparison by rememberSaveable {mutableStateOf(false)}
@@ -54,6 +55,8 @@ import org.json.JSONArray
     val groupIndex=dataColumns.indexOf(groupColumn).coerceAtLeast(0)
     val valueIndex=dataColumns.indexOf(valueColumn).takeIf {it>=0} ?: minOf(1,dataColumns.lastIndex)
     val subjectIndex=dataColumns.indexOf(subjectColumn).coerceAtLeast(0)
+    val eligibleTColumns=dataColumns.indices.filter {it!=groupIndex&&!(pairedComparison&&matching=="Subject ID"&&it==subjectIndex)}
+    val selectedTColumns=if(tValueColumns=="single")listOf(valueIndex.takeIf {it in eligibleTColumns} ?: eligibleTColumns.firstOrNull()).filterNotNull() else tValueColumns.split(',').mapNotNull(String::toIntOrNull).filter {it in eligibleTColumns}
     val categorySelection=test in listOf("χ² test","Fisher exact")&&dataColumns.size>1
     val categoryFirst=firstColumn.takeIf {it in dataColumns} ?: dataColumns.first()
     val categorySecond=secondColumn.takeIf {it in dataColumns&&it!=categoryFirst} ?: dataColumns.firstOrNull {it!=categoryFirst}.orEmpty()
@@ -77,7 +80,7 @@ import org.json.JSONArray
     val numericCategories=categoricalPairs.all {it.first.toBigDecimalOrNull()!=null&&it.second.toBigDecimalOrNull()!=null}
     val xCategories=statisticsCategories(categoricalPairs.map {it.first},numericCategories)
     val yCategories=statisticsCategories(categoricalPairs.map {it.second},numericCategories)
-    val groupNames=groupedValues.map {it.first}
+    val groupNames=if(test=="t test"&&groupedMode)rawRows.mapNotNull {it.getOrNull(groupIndex)?.trim()?.takeIf(String::isNotBlank)}.distinct() else groupedValues.map {it.first}
     val activeFirst=firstGroup.takeIf {it in groupNames} ?: groupNames.firstOrNull().orEmpty()
     val activeSecond=secondGroup.takeIf {it in groupNames&&it!=activeFirst} ?: groupNames.firstOrNull {it!=activeFirst}.orEmpty()
     val rankColumns=dataColumns.takeIf {it.size>1} ?: listOf("x","y")
@@ -94,7 +97,8 @@ import org.json.JSONArray
     val twoSample=groupedTwoSample||!groupedMode&&dataColumns.size>1&&activeColumn=="x-y"&&test in listOf("t test","z test")
     val pairedTest=kind!="list"&&(test=="Wilcoxon"||groupedMode&&pairedComparison&&test=="t test"||dataColumns.size>1&&!groupedMode&&activeColumn=="paired"&&test=="t test")
     val rankSelection=!groupedMode&&kind!="list"&&(test in listOf("Mann–Whitney","Wilcoxon")||test in listOf("t test","z test")&&activeColumn in listOf("x-y","paired"))
-    val command=statisticsTestCommand(test,if(categorySelection||groupedMode)rawRows else rows,kind,activeColumn,tail,mu0,sigma,level,sigmaY,if(groupedMode)"group-value" else "columns",if(categorySelection)categoryFirst else if(rankSelection)rankFirst else activeFirst,if(categorySelection)categorySecond else if(rankSelection)rankSecond else activeSecond,yatesCorrection,if(anovaMethod.startsWith("Welch"))"welch" else "classic",groupIndex,valueIndex,if(matching=="Subject ID")"subject" else "order",subjectIndex,pairedComparison,if(independentMethod.startsWith("Welch"))"welch" else "student",groupColumns)
+    val groupedTPlan=if(test=="t test"&&groupedMode)runCatching {statisticsGroupedTTestPlan(rawRows,kind,columnLabels,selectedTColumns.joinToString(","),groupIndex,valueIndex,activeFirst,activeSecond,pairedComparison,if(matching=="Subject ID")"subject" else "order",subjectIndex,mu0,tail,if(independentMethod.startsWith("Welch"))"welch" else "student")} else null
+    val command=if(groupedTPlan!=null)groupedTPlan.getOrNull()?.source else statisticsTestCommand(test,if(categorySelection||groupedMode)rawRows else rows,kind,activeColumn,tail,mu0,sigma,level,sigmaY,if(groupedMode)"group-value" else "columns",if(categorySelection)categoryFirst else if(rankSelection)rankFirst else activeFirst,if(categorySelection)categorySecond else if(rankSelection)rankSecond else activeSecond,yatesCorrection,if(anovaMethod.startsWith("Welch"))"welch" else "classic",groupIndex,valueIndex,if(matching=="Subject ID")"subject" else "order",subjectIndex,pairedComparison,if(independentMethod.startsWith("Welch"))"welch" else "student",groupColumns)
     val categoryLabels=if(categorySelection)statisticsCategoryLabels(categoricalPairs,columnLabels[firstIndex],columnLabels[secondIndex]) else emptyMap()
     val sampleNames=when {
         groupedComparison->groupNames
@@ -105,7 +109,7 @@ import org.json.JSONArray
         twoSample||pairedTest->columnLabels.take(2)
         else->listOf(columnLabels[dataColumns.indexOf(activeColumn).coerceAtLeast(0)])
     }
-    val termLabels=categoryLabels+sampleNames.mapIndexed {i,label->"sample:${i+1}" to label}.toMap()
+    val termLabels=groupedTPlan?.getOrNull()?.termLabels ?: (categoryLabels+sampleNames.mapIndexed {i,label->"sample:${i+1}" to label}.toMap())
     HorizontalDivider()
     StatisticsSectionToggle("General analysis",expanded,"statistics-analysis-toggle") {m.setStatisticsSectionExpanded("analysis",!expanded)}
     if(!expanded)return
@@ -151,13 +155,19 @@ import org.json.JSONArray
         }
         if(groupedMode) {
             StatisticsSelectionTitle("Group column");Choices(columnLabels,columnLabels[groupIndex],{groupColumn=dataColumns[columnLabels.indexOf(it)]},translate=false)
-            StatisticsSelectionTitle("Value column");Choices(columnLabels,columnLabels[valueIndex],{valueColumn=dataColumns[columnLabels.indexOf(it)]},translate=false)
+            if(test=="t test") {
+                StatisticsSelectionTitle("Value columns")
+                Row(Modifier.horizontalScroll(rememberScrollState()).testTag("statistics-t-columns")) {eligibleTColumns.forEach {index->Row(verticalAlignment=Alignment.CenterVertically) {
+                    Checkbox(index in selectedTColumns,{checked->tValueColumns=(if(checked)selectedTColumns+index else selectedTColumns-index).sorted().joinToString(",")});Text(columnLabels[index],fontSize=12.sp)
+                }}}
+                groupedTPlan?.exceptionOrNull()?.message?.let {Text(tr(it),fontSize=11.sp,color=MaterialTheme.colorScheme.error)}
+            } else {StatisticsSelectionTitle("Value column");Choices(columnLabels,columnLabels[valueIndex],{valueColumn=dataColumns[columnLabels.indexOf(it)]},translate=false)}
             if(test=="t test")Choices(listOf("Independent samples","Paired samples"),if(pairedComparison)"Paired samples" else "Independent samples",{pairedComparison=it=="Paired samples"})
             if(test=="Wilcoxon"||test=="t test"&&pairedComparison) {
                 StatisticsSelectionTitle("Pair matching");Choices(listOf("Row order within each group","Subject ID"),matching,{matching=it})
                 if(matching=="Subject ID"){StatisticsSelectionTitle("Subject column");Choices(columnLabels,columnLabels[subjectIndex],{subjectColumn=dataColumns[columnLabels.indexOf(it)]},translate=false)}
                 else StatisticsExplanation("Usage notes",tr("Row order pairing requires the same subject order in each group. Missing values require subject-ID matching."),"statistics-pairing-help")
-                pairedPlan.exceptionOrNull()?.message?.let {Text(tr(it),fontSize=11.sp,color=MaterialTheme.colorScheme.error)}
+                if(test!="t test")pairedPlan.exceptionOrNull()?.message?.let {Text(tr(it),fontSize=11.sp,color=MaterialTheme.colorScheme.error)}
             }
         }
         if(!groupedMode&&meanTest&&dataColumns.size>1){
@@ -248,12 +258,15 @@ import org.json.JSONArray
     }
     if(command==null)Text(dataStatus,fontSize=12.sp,color=c.muted)
     else {
-        val counts=if(pairedTest)tr("Complete pairs")+": $pairCount" else sampleNames.mapIndexed {index,name->
+        val counts=if(groupedTPlan!=null)selectedTColumns.mapNotNull {at->runCatching {
+            val plan=statisticsComparisonData(rawRows,mapOf("grouping" to "groups","group" to groupIndex.toString(),"value" to at.toString(),"firstGroup" to activeFirst,"secondGroup" to activeSecond,"matching" to if(matching=="Subject ID")"subject" else "order","subject" to subjectIndex.toString()),paired=pairedComparison)
+            columnLabels[at]+": "+plan.labels.mapIndexed {index,label->"$label (n=${plan.samples[index].size})"}.joinToString(" ↔ ")
+        }.getOrNull()}.joinToString(" · ") else if(pairedTest)tr("Complete pairs")+": $pairCount" else sampleNames.mapIndexed {index,name->
             val count=if(groupedMode)groupedValues.firstOrNull {it.first==name}?.second?.size ?: 0 else if(rankSelection)values(dataColumns.indexOf(if(index==0)rankFirst else rankSecond)).size else if(groupComparison)values(selectedGroupColumns[index]).size else sample?.size ?: 0
             "$name (n=$count)"
         }.joinToString(" · ")
         Text(counts,fontSize=12.sp,color=c.muted)
-        if(groupedMode&&pairedTest&&(pairedPlan.getOrNull()?.omitted ?: 0)>0)Text(tr("Incomplete pairs omitted")+": ${pairedPlan.getOrNull()?.omitted}",fontSize=11.sp,color=c.muted)
+        if(groupedMode&&pairedTest&&groupedTPlan==null&&(pairedPlan.getOrNull()?.omitted ?: 0)>0)Text(tr("Incomplete pairs omitted")+": ${pairedPlan.getOrNull()?.omitted}",fontSize=11.sp,color=c.muted)
     }
     if(groupedComparison&&test=="Tukey HSD")Text(groupedValues.mapIndexed {index,(name,_)->"${listOf("x","y","z").getOrNull(index) ?: "group ${index+1}"} = $name"}.joinToString(" · "),fontSize=11.sp,color=c.muted)
     if(categorySelection)Text("${columnLabels[firstIndex]}: ${xCategories.joinToString(", ")} · ${columnLabels[secondIndex]}: ${yCategories.joinToString(", ")}",fontSize=11.sp,color=c.muted)

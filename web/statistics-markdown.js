@@ -39,6 +39,7 @@ export function statisticsResultMarkdown(result,options={}){
   const report=result.statisticsReport||result.statisticsCopyReport;
   if(!report)return resultText(result,options);
   const blocks=['## '+markdownCell(t(report.title))],line=values=>'| '+values.join(' | ')+' |';
+  if(report.context)blocks.push(markdownCell(report.context));
   const equation=regressionEquationCopyText(result,options);
   if(equation){
     const fence='`'.repeat(Math.max(3,...[...equation.matchAll(/`+/g)].map(match=>match[0].length+1)));
@@ -46,7 +47,7 @@ export function statisticsResultMarkdown(result,options={}){
   }
   const dedicated=report===result.statisticsCopyReport,settings=dedicated?{...options,notation:'off',grouping:false}:options;
   for(const section of report.sections){
-    const table=[line(section.columns.map(label=>markdownCell(t(label)))),line(section.columns.map(()=> '---'))];
+    const table=[line(section.columns.map(label=>markdownCell(section.literalColumns?label:t(label)))),line(section.columns.map(()=> '---'))];
     for(const [rowIndex,row] of (section.copyRows||section.rows).entries()){
       if(equation&&section.columns[0]==='Metric'&&row[0]==='Fitted expression')continue;
       table.push(line(section.columns.map((column,index)=>{

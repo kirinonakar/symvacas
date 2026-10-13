@@ -1,0 +1,161 @@
+{
+  "reference": "SciPy ttest_ind, ttest_rel, shapiro and median-centered levene",
+  "cases": [
+    {
+      "name": "welch two",
+      "source": "group,a,b,c\nm,1,1,1\nm,2,2,2\nm,3,3,3\nm,4,4,4\nm,5,5,5\nf,8,10,1\nf,9,20,1\nf,10,30,1\nf,11,40,1\nf,12,50,50",
+      "settings": {
+        "op": "ttest2",
+        "kind": "columns:4",
+        "groupColumn": 0,
+        "valueColumn": 1,
+        "valueColumns": "1,2,3",
+        "firstGroup": "m",
+        "secondGroup": "f",
+        "independentMethod": "welch",
+        "tail": "two",
+        "extra": "0"
+      },
+      "command": "ttest2(0,[[1,2,3,4,5],[1,2,3,4,5],[1,2,3,4,5]],[[8,9,10,11,12],[10,20,30,40,50],[1,1,1,1,50]],batch)",
+      "labels": {
+        "sample:1": "m",
+        "sample:2": "f",
+        "batch:column:0": "a (y)",
+        "batch:column:1": "b (z)",
+        "batch:column:2": "c (x4)"
+      },
+      "expected": [
+        {
+          "mean1": 3.0,
+          "mean2": 10.0,
+          "diff": -7.0,
+          "p-value": 0.00011263854912686906,
+          "n": 10,
+          "Significant": "yes",
+          "normality": "yes",
+          "equal var": "yes"
+        },
+        {
+          "mean1": 3.0,
+          "mean2": 30.0,
+          "diff": -27.0,
+          "p-value": 0.018430858997467017,
+          "n": 10,
+          "Significant": "yes",
+          "normality": "yes",
+          "equal var": "no"
+        },
+        {
+          "mean1": 3.0,
+          "mean2": 10.8,
+          "diff": -7.800000000000001,
+          "p-value": 0.47128647624645736,
+          "n": 10,
+          "Significant": "no",
+          "normality": "no",
+          "equal var": "yes"
+        }
+      ]
+    },
+    {
+      "name": "student right",
+      "source": "group,a,b,c\nm,1,1,1\nm,2,2,2\nm,3,3,3\nm,4,4,4\nm,5,5,5\nf,8,10,1\nf,9,20,1\nf,10,30,1\nf,11,40,1\nf,12,50,50",
+      "settings": {
+        "op": "ttest2",
+        "kind": "columns:4",
+        "groupColumn": 0,
+        "valueColumn": 1,
+        "valueColumns": "1,2,3",
+        "firstGroup": "f",
+        "secondGroup": "m",
+        "independentMethod": "student",
+        "tail": "right",
+        "extra": "0"
+      },
+      "command": "ttest2(0,[[8,9,10,11,12],[10,20,30,40,50],[1,1,1,1,50]],[[1,2,3,4,5],[1,2,3,4,5],[1,2,3,4,5]],batch,student,right)",
+      "labels": {
+        "sample:1": "f",
+        "sample:2": "m",
+        "batch:column:0": "a (y)",
+        "batch:column:1": "b (z)",
+        "batch:column:2": "c (x4)"
+      },
+      "expected": [
+        {
+          "mean1": 10.0,
+          "mean2": 3.0,
+          "diff": 7.0,
+          "p-value": 5.631927456343453e-05,
+          "n": 10,
+          "Significant": "yes",
+          "normality": "yes",
+          "equal var": "yes"
+        },
+        {
+          "mean1": 30.0,
+          "mean2": 3.0,
+          "diff": 27.0,
+          "p-value": 0.0026204702584894323,
+          "n": 10,
+          "Significant": "yes",
+          "normality": "yes",
+          "equal var": "no"
+        },
+        {
+          "mean1": 10.8,
+          "mean2": 3.0,
+          "diff": 7.800000000000001,
+          "p-value": 0.22509177505984754,
+          "n": 10,
+          "Significant": "no",
+          "normality": "no",
+          "equal var": "yes"
+        }
+      ]
+    },
+    {
+      "name": "paired subject-specific complete pairs",
+      "source": "group,id,a,b\nm,1,10,2\nm,2,12,3\nm,3,13,4\nm,4,15,5\nm,5,17,6\nf,3,15,5\nf,1,11,3\nf,5,19,8\nf,2,,5\nf,4,16,",
+      "settings": {
+        "op": "ttestpaired",
+        "kind": "columns:4",
+        "groupColumn": 0,
+        "valueColumn": 2,
+        "valueColumns": "2,3",
+        "firstGroup": "m",
+        "secondGroup": "f",
+        "matching": "subject",
+        "subjectColumn": 1
+      },
+      "command": "ttestpaired(0,[[10,13,15,17],[2,3,4,6]],[[11,15,16,19],[3,5,5,8]],batch)",
+      "labels": {
+        "sample:1": "m",
+        "sample:2": "f",
+        "batch:column:0": "a (z)",
+        "batch:column:1": "b (x4)"
+      },
+      "expected": [
+        {
+          "mean1": 13.75,
+          "mean2": 15.25,
+          "diff": -1.5,
+          "p-value": 0.013846832988859045,
+          "n": 4,
+          "Significant": "yes",
+          "normality": "no",
+          "equal var": "Not applicable"
+        },
+        {
+          "mean1": 3.75,
+          "mean2": 5.25,
+          "diff": -1.5,
+          "p-value": 0.013846832988859045,
+          "n": 4,
+          "Significant": "yes",
+          "normality": "no",
+          "equal var": "Not applicable"
+        }
+      ]
+    }
+  ]
+}

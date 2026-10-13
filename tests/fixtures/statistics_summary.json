@@ -1,6 +1,6 @@
 {
   "cases": [
-    {"source":"0\n1\n1\n0\n1","kind":"list","column":0,"command":"stats([0,1,1,0,1])","labels":{"sample:1":"x"},"categories":["0","1"],"counts":[2,3],"percentages":[40,60]},
+    {"source":"0\n1\n1\n0\n1","kind":"list","column":0,"command":"stats([0,1,1,0,1])","labels":{"sample:1":"x"},"categorical":true,"categories":["0","1"],"counts":[2,3],"percentages":[40,60]},
     {"source":"a\nb\na","kind":"list","column":0,"command":"stats([0,1,0],categorical)","labels":{"sample:1":"x","summary:category:0":"a","summary:category:1":"b"},"categories":["a","b"],"counts":[2,1],"percentages":[66.66666666666667,33.333333333333336]},
     {"source":"m\nf\nm","kind":"list","column":0,"command":"stats([0,1,0],categorical)","labels":{"sample:1":"x","summary:category:0":"m","summary:category:1":"f"},"categories":["m","f"],"counts":[2,1],"percentages":[66.66666666666667,33.333333333333336]},
     {"source":"event,sex,group\n0,m,a\n1,f,b\n1,m,a\n,f,b\n0,,a","kind":"xyz","column":1,"command":"stats([0,1,0,1],categorical)","labels":{"sample:1":"sex (y)","summary:category:0":"m","summary:category:1":"f"},"categories":["m","f"],"counts":[2,2],"percentages":[50,50]},
@@ -8,5 +8,11 @@
     {"source":"\"A,B\"\n\"Total\"\n\"say \"\"hello\"\"\"\n\"A,B\"\n\"\"","kind":"list","column":0,"command":"stats([0,1,2,0],categorical)","labels":{"sample:1":"x","summary:category:0":"A,B","summary:category:1":"Total","summary:category:2":"say \"hello\""},"categories":["A,B","Total","say \"hello\""],"counts":[2,1,1],"percentages":[50,25,25]},
     {"source":"sqrt(4)\n2\n2.0","kind":"list","column":0,"command":"stats([sqrt(4),2,2.0])","labels":{"sample:1":"x"},"categories":["2.0"],"counts":[3],"percentages":[100]},
     {"source":"\"1,234\"\n1234\n2","kind":"list","column":0,"command":"stats([1234,1234,2])","labels":{"sample:1":"x"},"categories":["2","1234"],"counts":[1,2],"percentages":[33.333333333333336,66.66666666666667]}
+  ],
+  "overallCases": [
+    {"source":"age,event,sex,empty,single\n20,0,m,,8\n30,1,f,,\n,1,m,,","kind":"columns:5","command":"stats([[20,30],[0,1,1],[0,1,0],[],[8]],overall,[0,0,1,0,0])","labels":{"overall:column:0":"age (x)","overall:column:1":"event (y)","overall:column:2":"sex (z)","overall:column:3":"empty (x4)","overall:column:4":"single (x5)","overall:category:2:0":"m","overall:category:2:1":"f"},"numeric":[["age (x)",25,7.0710678118654755,20,30,2],["empty (x4)",null,null,null,null,0],["single (x5)",8,null,8,8,1]],"categorical":[["event (y)","0","1 (33.33%)"],["event (y)","1","2 (66.67%)"],["sex (z)","m","2 (66.67%)"],["sex (z)","f","1 (33.33%)"]]},
+    {"source":"0.0\n+1\n1e0","kind":"list","command":"stats([[0.0,+1,1e0]],overall,[0])","labels":{"overall:column:0":"x"},"numeric":[],"categorical":[["x","0","1 (33.33%)"],["x","1","2 (66.67%)"]]},
+    {"source":"sqrt(4)\n2\n2.0","kind":"list","command":"stats([[sqrt(4),2,2.0]],overall,[0])","labels":{"overall:column:0":"x"},"numeric":[["x",2,0,2,2,3]],"categorical":[]},
+    {"source":"\"A,B\"\n\"Total\"\n\"say \"\"hello\"\"\"\n\"A,B\"\n\"\"","kind":"list","command":"stats([[0,1,2,0]],overall,[1])","labels":{"overall:column:0":"x","overall:category:0:0":"A,B","overall:category:0:1":"Total","overall:category:0:2":"say \"hello\""},"numeric":[],"categorical":[["x","A,B","2 (50.00%)"],["x","Total","1 (25.00%)"],["x","say \"hello\"","1 (25.00%)"]]}
   ]
 }

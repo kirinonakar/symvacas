@@ -88,6 +88,7 @@ internal fun statisticsCellText(m:CalculatorModel,cell:JSONObject)=ResultDisplay
             TextButton(onClick={m.statisticsResult?.let {clipboard.setText(AnnotatedString(statisticsResultCopyText(m,it,language)))}}){Text(tr("Copy"),fontSize=12.sp)}
             TextButton(onClick={m.clearStatisticsResult()},enabled=!m.busy&&!m.regressionBusy,modifier=Modifier.testTag("statistics-result-clear")){Text(tr("Clear"),fontSize=12.sp)}
         }
+        report.optString("context").takeIf(String::isNotBlank)?.let {Text(it,fontSize=12.sp,color=c.muted)}
         if(onModelWorkflow!=null)report.optJSONObject("modelWorkflow")?.let {StatisticsModelWorkflow(it,!m.busy&&!m.regressionBusy,onModelWorkflow)}
         report.optJSONArray("highlights")?.let {highlights->
             for(start in 0 until highlights.length() step 2)Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -108,7 +109,7 @@ internal fun statisticsCellText(m:CalculatorModel,cell:JSONObject)=ResultDisplay
                 if(notesExpanded)for(index in 0 until notes.length())Text(tr(notes.getString(index)),fontSize=12.sp,color=c.muted)
             }
         }
-        val primary=setOf("Summary","ANOVA","Overall model","Overall ANOVA","Overall Welch ANOVA",report.getString("title"))
+        val primary=setOf("Summary","ANOVA","Overall model","Overall ANOVA","Overall Welch ANOVA",report.getString("title"))+if(report.optString("title")=="Overall")setOf("Numeric data","Categorical data") else emptySet()
         val prominent=primary+setOf("Model diagnostics","Indicator R²","Explained variance","Latent R²","Summary","Sample summaries","Assumption checks","Effect size","Mean confidence interval (95%, two-sided)","Overall ANOVA","Expected-count diagnostics")
         val ordered=(0 until sections.length()).sortedBy {when(sections.getJSONObject(it).getString("title")){in primary->0;in prominent->1;else->2}}
         var plotsShown=false
@@ -123,7 +124,7 @@ internal fun statisticsCellText(m:CalculatorModel,cell:JSONObject)=ResultDisplay
             if(collapsible)TextButton(onClick={expanded=!expanded}){Text("${if(expanded)"▾" else "▸"} ${tr(section.getString("title"))} (${section.optInt("totalRows")})")}
             else Text(tr(section.getString("title")),fontSize=13.sp,fontWeight=FontWeight.SemiBold,color=c.ink)
             if(!expanded)continue
-            StatisticsTextTable(List(columns.length()){tr(columns.getString(it))},List(rows.length()){rowIndex->
+            StatisticsTextTable(List(columns.length()){if(section.optBoolean("literalColumns"))columns.getString(it) else tr(columns.getString(it))},List(rows.length()){rowIndex->
                 val row=rows.getJSONArray(rowIndex)
                 List(columns.length()){column->
                     row.optJSONObject(column)?.let {statisticsCellText(m,it)}

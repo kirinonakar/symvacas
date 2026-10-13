@@ -1,6 +1,6 @@
 import {advancedStatisticsSchema} from './advanced-statistics-schema.js';
 import {element,control} from './app-ui.js';
-import {t} from './i18n.js';
+import {t,setText} from './i18n.js';
 import {resultDisplayTree,resultMathDisplay} from './result-display.js';
 import {renderStatisticsVisualizations} from './statistics-visualization.js';
 import {appendStatisticsModelWorkflow} from './statistics-model-workflow.js';
@@ -21,6 +21,7 @@ export function renderStatisticsReport(container,report,{digits=10,onCopy,onClea
   const heading=element('div','','statistics-result-heading');heading.append(element('h3',t(report.title)));
   if(onCopy)heading.append(control('Copy',onCopy));
   if(onClear)heading.append(control('Clear',onClear));panel.append(heading);
+  if(report.context){const context=element('p','','statistics-interpretation');context.textContent=report.context;context.setAttribute('translate','no');panel.append(context);}
   appendStatisticsModelWorkflow(panel,report.modelWorkflow,onModelWorkflow,{isBusy});
   if(report.highlights?.length){
     const cards=element('div','','statistics-highlights');
@@ -28,7 +29,7 @@ export function renderStatisticsReport(container,report,{digits=10,onCopy,onClea
     panel.append(cards);
   }
   if(report.notes?.length){const notes=element('details','','statistics-result-details');notes.append(element('summary',t('Interpretation & assumptions')));for(const note of report.notes)notes.append(element('p',t(note),'statistics-interpretation'));panel.append(notes);}
-  const primary=['Summary','ANOVA','Overall model','Overall ANOVA','Overall Welch ANOVA',report.title];
+  const primary=['Summary','ANOVA','Overall model','Overall ANOVA','Overall Welch ANOVA',report.title,...(report.title==='Overall'?['Numeric data','Categorical data']:[])];
   const prominent=section=>primary.includes(section.title)||['Model diagnostics','Indicator R²','Explained variance','Latent R²','Summary','Sample summaries','Assumption checks','Effect size','Mean confidence interval (95%, two-sided)','Overall ANOVA','Expected-count diagnostics'].includes(section.title);
   const sections=[...report.sections.filter(prominent).sort((a,b)=>Number(!primary.includes(a.title))-Number(!primary.includes(b.title))),...report.sections.filter(section=>!prominent(section))];
   let plotsShown=false;
@@ -41,13 +42,14 @@ export function renderStatisticsReport(container,report,{digits=10,onCopy,onClea
     const table=element('table');
     table.append(element('caption',t(section.title)));
     const head=element('thead'),header=element('tr');
-    for(const label of section.columns){const th=element('th',t(label));th.scope='col';header.append(th);}
+    for(const label of section.columns){const th=element('th');if(section.literalColumns){th.textContent=label;th.setAttribute('translate','no');}else setText(th,label);th.scope='col';header.append(th);}
     head.append(header);table.append(head);
     const body=element('tbody');
     for(const [rowIndex,values] of section.rows.entries()){
       const row=element('tr');
       for(const [index,value] of values.entries()){
         const td=element('td');
+        if(section.literalColumns)td.setAttribute('translate','no');
         if(value&&typeof value==='object')td.append(resultMathDisplay(resultDisplayTree(value,{decimal:true,mixed:false}),digits,true,options));
         else td.textContent=index===0&&rowIndex===section.totalRow||['Metric','Check','Interpretation','Sample','Role','R²','Kind','Effect','Intercept / drift','Status'].includes(section.columns[index])||section.columns[index]==='Parameter'&&['arima','sarima'].includes(report.analysis)||section.columns[index]==='Value'&&['Intercept / drift','Fit status'].includes(values[0])?t(String(value)):String(value);
         row.append(td);

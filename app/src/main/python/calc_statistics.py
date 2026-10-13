@@ -17,6 +17,35 @@ def summary_frequencies(data):
              'Percentage (%)': s.Rational(100*count, len(data))}
             for value, count in sorted(counts.items(), key=lambda item: s.default_sort_key(item[0]))]
 
+
+def binary_summary(data):
+    """A column containing only 0/1 values is categorical, even if constant."""
+    return bool(data) and all(value.is_zero is True or (value-1).is_zero is True for value in data)
+
+
+def overall_summary(columns, categorical):
+    require(isinstance(columns, (list, tuple)) and columns and
+            all(isinstance(column, (list, tuple)) for column in columns),
+            "Overall expects a list of columns")
+    require(isinstance(categorical, (list, tuple)) and len(categorical) == len(columns) and
+            all(flag in (0, 1) for flag in categorical), "Choose numeric or categorical for each column")
+    require(any(columns), "Enter at least one data value")
+    numeric_rows, category_rows = [], []
+    for index, (data, flag) in enumerate(zip(columns, categorical)):
+        require(all(getattr(value, 'is_real', False) is True and
+                    getattr(value, 'is_finite', False) is True for value in data),
+                "Overall requires finite real numbers or category codes")
+        if flag or binary_summary(data):
+            category_rows.extend({'Column': s.Integer(index), **row} for row in summary_frequencies(data))
+        else:
+            n = len(data)
+            mean = s.Add(*data)/n if n else s.nan
+            sd = s.sqrt(s.Add(*[(value-mean)**2 for value in data])/(n-1)) if n > 1 else s.nan
+            numeric_rows.append({'Column': s.Integer(index), 'mean': mean, 'sd': sd,
+                                 'min': min(data) if n else s.nan, 'max': max(data) if n else s.nan,
+                                 'valid.n': s.Integer(n)})
+    return {'Numeric data': numeric_rows, 'Categorical data': category_rows}
+
 def shape_statistics(data, corrected=True):
     """Adjusted Fisher-Pearson skewness and Fisher excess kurtosis.
 
@@ -577,6 +606,9 @@ def distribution_value(engine, name, a):
 def statistical_test(engine, name, a, nodes):
     digits = engine.precision
     tail, args = _tail_argument(a, nodes)
+    if name in ('ttest2', 'ttestpaired') and len(args) >= 4 and nodes[3].get('kind') == 'symbol' and nodes[3].get('value') == 'batch':
+        from calc_statistics_ttests import column_t_tests
+        return column_t_tests(engine, name, args, tail)
     if name in ("wilcoxon", "mannwhitney", "kruskal"):
         from calc_inference import rank_test
         return rank_test(engine, name, args, tail)

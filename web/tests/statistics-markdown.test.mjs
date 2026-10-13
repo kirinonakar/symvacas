@@ -5,6 +5,26 @@ import {setLanguage,t} from '../i18n.js';
 import {renderStatisticsReport} from '../statistics-report.js';
 
 const cell=value=>({exact:value,decimal:value,decimalTree:{kind:'number',value}});
+
+test('Overall keeps both tables open in numeric then categorical order and preserves requested column names',context=>{
+  class Node{constructor(tag){this.tag=tag;this.children=[];}append(...nodes){this.children.push(...nodes);}replaceChildren(...nodes){this.children=[...nodes];}setAttribute(){} }
+  const previous=globalThis.document;context.after(()=>{globalThis.document=previous;setLanguage('en');});
+  globalThis.document={createElement:tag=>new Node(tag)};setLanguage('ko');
+  const report={title:'Overall',sections:[{title:'Numeric data',columns:['Column','mean','sd','min','max','valid.n'],literalColumns:true,
+    rows:[['age (x)','25','7.071','20','30','2']],totalRows:1},
+    {title:'Categorical data',columns:['Column','Category','numb (%)'],literalColumns:true,
+    rows:Array.from({length:14},()=>['sex (y)','Total','2 (66.67%)']),totalRows:14}],plots:[]};
+  const copied=statisticsResultMarkdown({statisticsReport:report});
+  assert.ok(copied.includes('| Column | mean | sd | min | max | valid.n |'));
+  assert.ok(copied.includes('| Column | Category | numb (%) |'));
+  assert.ok(copied.includes('| sex (y) | Total | 2 (66.67%) |'));
+  const container=new Node('div');renderStatisticsReport(container,report);
+  const sections=container.children[0].children.filter(node=>node.tag==='section');
+  assert.equal(sections.length,2);
+  const tables=sections.map(section=>section.children[0].children[0]);
+  assert.deepEqual(tables.map(table=>table.children[0].textContent),['숫자형 자료','범주형 자료']);
+  assert.deepEqual(tables[0].children[1].children[0].children.map(th=>th.textContent),report.sections[0].columns);
+});
 test('contingency totals localize in tables and copy while a category named Total stays literal',context=>{
   class Node{constructor(tag){this.tag=tag;this.children=[];}append(...nodes){this.children.push(...nodes);}replaceChildren(...nodes){this.children=[...nodes];}setAttribute(){} }
   const previous=globalThis.document;context.after(()=>{globalThis.document=previous;setLanguage('en');});

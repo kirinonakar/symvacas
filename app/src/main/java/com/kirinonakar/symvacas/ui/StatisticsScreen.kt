@@ -420,6 +420,11 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
         }
         StatisticsSectionToggle("Summary & preperation",summaryExpanded,"statistics-summary-toggle") {m.setStatisticsSectionExpanded("summary",!summaryExpanded)}
         if(summaryExpanded)Column(verticalArrangement=Arrangement.spacedBy(2.dp)) {
+            SmallAction("Overall",translate=false,modifier=Modifier.testTag("statistics-summary-overall")) {
+                runCatching {statisticsOverallPlan(data,dataKind)}.onSuccess {plan->
+                    m.calculationAction="statistics-summary";m.calculateStatistics(plan.source,statisticsTermLabels=plan.termLabels)
+                }.onFailure {m.error=it.message.orEmpty()}
+            }
             Row(Modifier.horizontalScroll(rememberScrollState())) {
                 fun summarize(command:String,columnIndex:Int=0) {m.calculationAction="statistics-summary";m.calculateStatistics(command,statisticsTermLabels=mapOf("sample:1" to statisticsColumnLabels(data,dataKind)[columnIndex]))}
                 dataColumns.indices.forEach {column->SmallAction(statisticsColumnLabels(data,dataKind)[column],translate=false){
