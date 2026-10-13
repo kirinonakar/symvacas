@@ -63,17 +63,18 @@ def statistics_report(name, value, precision, labels=None):
             sections.append(section)
             return section
 
-    def count_table(title, headers, values):
+    def count_table(title, headers, values, row_heading=None, row_names=None):
         counts = [[s.sympify(v) for v in row] for row in values]
         row_totals = [sum(row) for row in counts]
         column_totals = [sum(column) for column in zip(*counts)]
         total = sum(row_totals)
         margins = [row+[row_total] for row,row_total in zip(counts,row_totals)]+[column_totals+[total]]
-        row_labels = [table_labels.get('table:row:'+str(i+1),str(i+1)) for i in range(len(counts))]+['Total']
-        columns = [table_labels.get('table:row','Row')]+headers+['Total']
+        row_labels = (row_names if row_names is not None else [table_labels.get('table:row:'+str(i+1),str(i+1)) for i in range(len(counts))])+['Total']
+        columns = [row_heading if row_heading is not None else table_labels.get('table:row','Row')]+headers+['Total']
         def table(heading, rows):
             section = add(heading, columns, [[label]+row for label,row in zip(row_labels,rows)])
             section['totalRow'] = len(counts)
+            section.update({'contingencyGroup':'table','contingencyTitle':'Contingency table','contingencyExpanded':True})
         table(title, margins)
         if title == 'observed':
             def percent(count, denominator):
@@ -300,7 +301,46 @@ def statistics_report(name, value, precision, labels=None):
         if all(finite(v) is not None for v in delta[1:4]):interval_plot('ΔAUC (B − A)',[['Model B − Model A',*delta[1:4]]],0)
     overall = name == 'stats' and isinstance(value, dict) and 'Numeric data' in value and 'Categorical data' in value
     batch_t = name in ('ttest2', 'ttestpaired') and isinstance(value, dict) and 'Comparisons' in value
-    if batch_t:
+    column_batch = isinstance(value,dict) and 'Column comparisons' in value
+    if column_batch:
+        label = lambda index: table_labels.get('batch:column:'+str(index),str(index+1))
+        group_count = int(value['Group count'])
+        rows = value['Column comparisons']
+        category_label = lambda index,category: table_labels.get('batch:category:'+str(index)+':'+str(category),category)
+        suffix = ['p-value','n','Significant']
+        if value['Categorical']:
+            show_category = any(not row['Binary'] for row in rows)
+            headings = ['Column']+(['Category'] if show_category else [])+['numb ('+table_labels.get('sample:'+str(at+1),str(at+1))+') (%)' for at in range(group_count)]+(['diff (%)'] if group_count==2 else ['diff (1-'+str(at+1)+') (%)' for at in range(1,group_count)])+suffix
+            def count_percent(amount,percent):
+                return str(amount)+' ('+(f'{float(percent):.2f}%' if finite(percent) is not None else 'unavailable')+')'
+            formatted=[]
+            for row in rows:
+                formatted.append([label(row['Column'])]+([category_label(row['Column'],row['Category'])] if show_category else [])+
+                    [count_percent(row['count'+str(at+1)],row['percent'+str(at+1)]) for at in range(group_count)]+
+                    [count_percent(row['count diff'+str(at+1)],row['percent diff'+str(at+1)]) for at in range(1,group_count)]+[row[key] for key in suffix])
+            section=add('Summary',headings,formatted)
+            for table in value['Contingency tables']:
+                headings=[str(category_label(table['Column'],category)) for category in table['Categories']]
+                names=[table_labels.get('sample:'+str(at+1),str(at+1)) for at in range(len(table['Observed']))]
+                for key,title in [('Observed','observed'),('Expected','expected')]:
+                    start=len(sections)
+                    count_table(title,headings,table[key],row_heading='Group',row_names=names)
+                    for added in sections[start:]:
+                        added['title']=label(table['Column'])+' · '+added['title']
+                        added.update({'contingencyGroup':'column:'+str(table['Column']), 'contingencyLabel':label(table['Column']),
+                                      'contingencyExpanded':len(value['Contingency tables'])==1})
+            checks=value['Column checks']
+            add('Expected-count diagnostics',['Column','Minimum expected','Cells below 5','Cells below 1','Cells'],
+                [[label(row['Column'])]+[row[key] for key in ['Minimum expected','Cells below 5','Cells below 1','Cells']] for row in checks])
+        else:
+            headings=['Column']+['mean'+str(at+1) for at in range(group_count)]+(['diff'] if group_count==2 else ['diff (1-'+str(at+1)+')' for at in range(1,group_count)])+suffix+['normality','equal var']
+            section=add('Summary',headings,[[label(row['Column'])]+[row['mean'+str(at+1)] for at in range(group_count)]+
+                [row['diff'+str(at+1)] for at in range(1,group_count)]+[row[key] for key in suffix+['normality','equal var']] for row in rows])
+            add('Detailed assumption checks',['Column','Check','Sample','p-value','Result'],
+                [[label(row['Column']),row['Check'],table_labels.get('sample:'+row['Sample'],row['Sample']),row['p-value'],row['Result']] for row in value['Column checks']])
+        if section:section['literalColumns']=True
+        for row in value['Column details']:details.append({'section':label(row['Column']),'label':'Note','text':row['Reason']})
+    elif batch_t:
         keys = ['mean1', 'mean2', 'diff', 'p-value', 'n', 'Significant', 'normality', 'equal var']
         label = lambda index: table_labels.get('batch:column:'+str(index), str(index+1))
         section = add('Summary', ['Column']+keys,
@@ -344,6 +384,14 @@ def statistics_report(name, value, precision, labels=None):
     if batch_t:
         report['context']='mean1 = '+table_labels.get('sample:1', '1')+'; mean2 = '+table_labels.get('sample:2', '2')+'; diff = mean1 − mean2.'
         report['notes']=['Significant: yes when the selected t-test p-value is below 0.05. Normality: yes when Shapiro–Wilk does not reject normality at 0.05 in both groups (paired tests check differences). Equal var: yes when Brown–Forsythe does not reject equal variances at 0.05; not applicable to paired tests. Unavailable checks are not classified as yes or no. n is the total valid count in independent groups, or the complete-pair count in paired tests. Missing values are handled separately for each column. P-values are unadjusted across columns; yes does not prove an assumption.']
+    if column_batch:
+        report['context']='; '.join('group'+str(at+1)+' = '+table_labels.get('sample:'+str(at+1),str(at+1)) for at in range(int(value['Group count'])))
+        report['notes']=['Significant: yes at p < 0.05. Missing values are omitted separately for each column. P-values are unadjusted across columns.']
+        if value['Categorical']:
+            report['notes'].append('Counts and percentages use valid values within each group. Binary columns show category 1; other columns show every category. diff (%) is the count difference (percentage-point difference), group 1 minus the compared group. The p-value tests the whole column, and is repeated for its categories.')
+            report['warnings']=[{'label':label(row['Column']),'text':row['Text']} for row in value['Column warnings']]
+        else:
+            report['notes'].append('Means describe each group. diff is group 1 minus the compared group. n is the total valid count, or the complete-pair count for paired tests. Nonparametric p-values test ranks, not differences in means. Assumption checks use 0.05; yes means not rejected, not proven.')
     if assumptions: report['assumptions'] = assumptions
     if details: report['details'] = details
     return report

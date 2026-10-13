@@ -148,6 +148,13 @@ def _dispatch(payload, control=None):
                     if inputs and inputs[0]==tree['value']:
                         report_value={**report_value,'observed':inputs[1][0]}
                 result['statisticsReport']=statistics_report(tree['value'],report_value,engine.precision,request.get('statisticsTermLabels', {}))
+                for supplement in getattr(engine,'statistics_column_reports',[]):
+                    label=request.get('statisticsTermLabels',{}).get('batch:column:'+str(supplement['Column']),str(supplement['Column']+1))
+                    for section in supplement['report']['sections']:
+                        if section['title'] not in ('Summary','Sample summaries','Assumption checks'):
+                            result['statisticsReport']['sections'].append({**section,'title':label+' · '+section['title']})
+                    for plot in supplement['report']['plots']:
+                        result['statisticsReport']['plots'].append({**plot,'title':label+' · '+plot['title']})
                 if hasattr(engine,'statistics_plots'):
                     result['statisticsReport']['plots']=engine.statistics_plots+result['statisticsReport']['plots']
                 companion_report(result['statisticsReport'],tree['value'],shown_value,getattr(engine,'statistics_inputs',None),engine.precision,request.get('statisticsTermLabels',{}),getattr(engine,'statistics_residuals',None))

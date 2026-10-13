@@ -219,13 +219,33 @@ export function statisticsDatasetSource(source,kind){
   const rows=numericStatisticsRows(statisticsDataRows(source,kind));
   return vector(statisticsColumnCount(kind)===1?rows.map(row=>row[0]).filter(Boolean):rows.filter(row=>row.every(Boolean)).map(vector));
 }
-export function statisticsGroupedTTestData(source,{op='ttest2',valueColumns='single',valueColumn=1,groupColumn=0,firstGroup='',secondGroup='',matching='order',subjectColumn=0,kind}={}){
-  const rows=statisticsDataRows(source,kind),labels=statisticsColumnLabels(source,kind),paired=op==='ttestpaired';
+export const statisticsGroupedColumnTests=new Set(['ttest2','ttestpaired','ztest2','chi2independence','fisherexact','mannwhitney','wilcoxon','kruskal','anova','welchanova']);
+export function statisticsGroupedTestData(source,{op='ttest2',valueColumns='single',valueColumn=1,groupColumn=0,firstGroup='',secondGroup='',matching='order',subjectColumn=0,kind}={}){
+  const rows=statisticsDataRows(source,kind),labels=statisticsColumnLabels(source,kind),paired=['ttestpaired','wilcoxon'].includes(op),all=['kruskal','anova','welchanova','chi2independence'].includes(op),categorical=['chi2independence','fisherexact'].includes(op);
   const columns=valueColumns==='single'?[Number(valueColumn)]:String(valueColumns).split(',').filter(Boolean).map(Number);
   if(!columns.length||new Set(columns).size!==columns.length||columns.some(index=>!Number.isInteger(index)||index<0||index>=labels.length||index===Number(groupColumn)||paired&&matching==='subject'&&index===Number(subjectColumn)))throw new Error('Choose distinct value columns excluding group and subject roles');
-  const comparisons=columns.map(column=>({column,label:labels[column],...statisticsComparisonData(rows,{grouping:'groups',group:groupColumn,value:column,firstGroup,secondGroup,matching,subject:subjectColumn},{paired})}));
-  const termLabels={'sample:1':comparisons[0].labels[0],'sample:2':comparisons[0].labels[1],...Object.fromEntries(comparisons.map((item,index)=>[`batch:column:${index}`,item.label]))};
-  return {comparisons,termLabels,paired};
+  const comparisons=columns.map(column=>({column,label:labels[column],...statisticsComparisonData(rows,{grouping:'groups',group:groupColumn,value:column,firstGroup,secondGroup,matching,subject:subjectColumn},{paired,all})}));
+  const termLabels={...Object.fromEntries(comparisons[0].labels.map((label,i)=>[`sample:${i+1}`,label])),...Object.fromEntries(comparisons.map((item,index)=>[`batch:column:${index}`,item.label]))};
+  if(categorical)for(const [index,item] of comparisons.entries()){
+    const valid=rows.filter(row=>item.labels.includes(String(row[groupColumn]||'').trim())&&String(row[item.column]||'').trim());
+    const values=valid.map(row=>row[item.column].trim()),binary=values.length>0&&values.every(value=>{const numeric=Number(statisticsNumericCell(value));return numeric===0||numeric===1;});
+    const categories=[...new Set(values.map(value=>binary?String(Number(statisticsNumericCell(value))):value))];
+    const codes=new Map(categories.map((value,at)=>[value,binary?Number(value):at]));
+    item.groupCodes=valid.map(row=>item.labels.indexOf(row[groupColumn].trim()));item.categoryCodes=valid.map(row=>codes.get(binary?String(Number(statisticsNumericCell(row[item.column]))):row[item.column].trim()));
+    termLabels[`batch:binary:${index}`]=binary?'yes':'no';
+    for(const category of categories)termLabels[`batch:category:${index}:${codes.get(category)}`]=category;
+  }
+  return {comparisons,termLabels,paired,categorical};
+}
+export const statisticsGroupedTTestData=statisticsGroupedTestData;
+export function statisticsGroupedTestPlan(source,settings={}){
+  const {op='ttest2',extra='0',tail='two',sigma='1',sigmaY='1',yatesCorrection=true,anovaMethod='welch'}=settings;
+  if(['ttest2','ttestpaired'].includes(op))return statisticsGroupedTTestPlan(source,settings);
+  const data=statisticsGroupedTestData(source,settings),vector=values=>'['+values.map(statisticsNumericCell).join(',')+']',batch=data.comparisons.length>1||data.categorical;
+  const samples=data.categorical?[data.comparisons.map(item=>item.groupCodes),data.comparisons.map(item=>item.categoryCodes)]:data.comparisons[0].labels.map((_,at)=>data.comparisons.map(item=>item.samples[at]));
+  const argumentsSource=samples.map(columns=>batch?'['+columns.map(vector).join(',')+']':vector(columns[0]));
+  const name=op==='anova'&&anovaMethod!=='classic'?'welchanova':op;
+  return {source:`${name}(${op==='ztest2'?`${extra},${sigma},${sigmaY},`:''}${argumentsSource.join(',')}${batch?',batch':''}${op==='chi2independence'?','+(yatesCorrection?1:0):''}${!['kruskal','anova','welchanova','chi2independence'].includes(op)&&tail!=='two'?','+tail:''})`,termLabels:data.termLabels};
 }
 export function statisticsGroupedTTestPlan(source,settings={}){
   const data=statisticsGroupedTTestData(source,settings),{op='ttest2',extra='0',tail='two',independentMethod='welch'}=settings;
@@ -237,9 +257,9 @@ export function statisticsGroupedTTestPlan(source,settings={}){
   return {source:`${op}(${extra},${left},${right}${batch?',batch':''}${op==='ttest2'&&independentMethod==='student'?',student':''}${tail==='two'?'':','+tail})`,termLabels:data.termLabels};
 }
 export function statisticsAnalysisData(source,{op='stats',column=0,grouping='columns',groupColumns='auto',firstGroup='',secondGroup='',groupColumn=0,valueColumn=1,valueColumns,matching='order',subjectColumn=0,kind}={}){
-  if(grouping==='groups'&&['ttest2','ttestpaired'].includes(op)&&valueColumns!==undefined){
-    const data=statisticsGroupedTTestData(source,{op,valueColumns,valueColumn,groupColumn,firstGroup,secondGroup,matching,subjectColumn,kind}),first=data.comparisons[0];
-    return {...data,rows:statisticsDataRows(source,kind),groups:new Map(first.labels.map((label,i)=>[label,first.samples[i]])),pairs:first.matrix,categorical:false,first:0,second:1,omitted:first.omitted,samples:first.labels.map((label,i)=>({label,values:first.samples[i]}))};
+  if(grouping==='groups'&&statisticsGroupedColumnTests.has(op)&&valueColumns!==undefined){
+    const data=statisticsGroupedTestData(source,{op,valueColumns,valueColumn,groupColumn,firstGroup,secondGroup,matching,subjectColumn,kind}),first=data.comparisons[0];
+    return {...data,rows:statisticsDataRows(source,kind),groups:new Map(first.labels.map((label,i)=>[label,first.samples[i]])),pairs:first.matrix,first:0,second:1,omitted:first.omitted,samples:first.labels.map((label,i)=>({label,values:first.samples[i]}))};
   }
   const paired=['regression','correlation','ttestpaired','wilcoxon','chi2independence','fisherexact'].includes(op)&&!(op==='wilcoxon'&&statisticsColumnCount(kind)===1);
   const categorical=['chi2independence','fisherexact'].includes(op);
@@ -263,7 +283,7 @@ export function statisticsCategoryLabels(pairs,first,second,shared=false){
   return {'table:row':first,'table:column':second,...Object.fromEntries(left.map((label,i)=>[`table:row:${i+1}`,label])),...Object.fromEntries(right.map((label,i)=>[`table:column:${i+1}`,label]))};
 }
 export function statisticsCommand(source,{op='stats',column=0,extra='0',tail='two',sigma='1',sigmaY='1',yatesCorrection=true,regression='linear',firth='auto',degree='3',alpha='0.1',l1Ratio='0.5',trees='100',maxDepth='10',seed='0',priorSD='2.5',credibleLevel='0.95',varianceShape='2',varianceScale='1',bayesianMethod='analytic',nutsSamples='500',nutsWarmup='500',nutsMaxDepth='8',nutsSeed='0',nutsChains='2',responseColumn,formula='A*exp(-k*x)+C',variable='x',initials='',grouping='columns',groupColumns='auto',firstGroup='',secondGroup='',groupColumn=0,valueColumn=1,valueColumns,matching='order',subjectColumn=0,anovaMethod='welch',independentMethod='welch',kind}={}){
-  if(grouping==='groups'&&['ttest2','ttestpaired'].includes(op)&&valueColumns!==undefined)return statisticsGroupedTTestPlan(source,{op,extra,tail,independentMethod,groupColumn,valueColumn,valueColumns,firstGroup,secondGroup,matching,subjectColumn,kind}).source;
+  if(grouping==='groups'&&statisticsGroupedColumnTests.has(op)&&valueColumns!==undefined)return statisticsGroupedTestPlan(source,{op,extra,tail,sigma,sigmaY,yatesCorrection,anovaMethod,independentMethod,groupColumn,valueColumn,valueColumns,firstGroup,secondGroup,matching,subjectColumn,kind}).source;
   if(op==='regression'&&kind&&kind!=='xy'&&!(statisticsColumnCount(kind)>1&&['multiple','logistic','ridge','lasso','elasticnet','logisticridge','logisticlasso','logisticelasticnet','randomforest','randomforestclassifier','randomforestregressor','bayeslinear','bayeslogistic'].includes(regression)))throw new Error('Regression needs x,y data');
   const {rows,groups,pairs,categorical,first,second,samples:activeSamples}=statisticsAnalysisData(source,{op,column,grouping,groupColumns,firstGroup,secondGroup,groupColumn,valueColumn,matching,subjectColumn,kind});
   const samples=activeSamples.map(sample=>sample.values),data=samples[0];

@@ -609,6 +609,13 @@ def statistical_test(engine, name, a, nodes):
     if name in ('ttest2', 'ttestpaired') and len(args) >= 4 and nodes[3].get('kind') == 'symbol' and nodes[3].get('value') == 'batch':
         from calc_statistics_ttests import column_t_tests
         return column_t_tests(engine, name, args, tail)
+    from calc_statistics_columns import BATCH_TESTS
+    if name in BATCH_TESTS:
+        markers = [index for index,node in enumerate(nodes[:len(args)]) if node.get('kind') == 'symbol' and node.get('value') == 'batch']
+        if markers:
+            require(len(markers) == 1, 'Use one batch option')
+            from calc_statistics_columns import column_tests
+            return column_tests(engine, name, args, nodes, tail, markers[0])
     if name in ("wilcoxon", "mannwhitney", "kruskal"):
         from calc_inference import rank_test
         return rank_test(engine, name, args, tail)

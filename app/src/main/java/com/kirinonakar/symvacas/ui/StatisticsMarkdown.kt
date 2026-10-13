@@ -55,6 +55,10 @@ internal fun statisticsResultMarkdown(result:JSONObject,formatCell:(JSONObject)-
     val report=result.optJSONObject("statisticsReport") ?: result.optJSONObject("statisticsCopyReport") ?: return formatCell(result)
     val blocks=mutableListOf("## "+markdownCell(translate(report.optString("title"))))
     report.optString("context").takeIf(String::isNotBlank)?.let {blocks.add(markdownCell(it))}
+    report.optJSONArray("warnings")?.let {warnings->for(index in 0 until warnings.length()) {
+        val warning=warnings.optJSONObject(index)
+        blocks.add(markdownCell((warning?.optString("label")?.takeIf(String::isNotBlank)?.let {"$it: "} ?: "")+translate(warning?.optString("text") ?: warnings.optString(index))))
+    }}
     if(regressionEquation!=null) {
         val fence="`".repeat(maxOf(3,(Regex("`+").findAll(regressionEquation).maxOfOrNull {it.value.length} ?: 0)+1))
         blocks.add("### "+translate("Regression equation")+"\n\n"+fence+"text\n"+regressionEquation+"\n"+fence)

@@ -6,6 +6,34 @@ import {renderStatisticsReport} from '../statistics-report.js';
 
 const cell=value=>({exact:value,decimal:value,decimalTree:{kind:'number',value}});
 
+test('contingency tables share one toggle per column, default open for one analysis and closed for several, and copy all percentages',context=>{
+  class Node{constructor(tag){this.tag=tag;this.children=[];}append(...nodes){this.children.push(...nodes);}replaceChildren(...nodes){this.children=[...nodes];}setAttribute(){} }
+  const previous=globalThis.document;context.after(()=>globalThis.document=previous);globalThis.document={createElement:tag=>new Node(tag)};
+  for(const count of [1,2]){
+    const report={title:'χ² independence test',plots:[],sections:Array.from({length:count},(_,index)=>['observed','Row percentages (%)','Column percentages (%)','expected'].map(title=>({title:`col${index} · ${title}`,columns:['Group','0','1','Total'],rows:[['m','1','2','3']],totalRows:1,contingencyGroup:`column:${index}`,contingencyLabel:`col${index}`,contingencyTitle:'Contingency table',contingencyExpanded:count===1}))).flat()};
+    const container=new Node('div');renderStatisticsReport(container,report);
+    const groups=container.children[0].children.filter(node=>node.className==='statistics-result-details statistics-contingency-group');
+    assert.equal(groups.length,count);
+    assert.ok(groups.every(group=>group.open===(count===1)&&group.children.filter(node=>node.tag==='section').length===4));
+    const copied=statisticsResultMarkdown({statisticsReport:report});
+    assert.ok(copied.includes('Row percentages (%)')&&copied.includes('Column percentages (%)'));
+  }
+});
+
+test('categorical group headers and count-percentage differences copy literally while chi warnings stay visible',context=>{
+  class Node{constructor(tag){this.tag=tag;this.children=[];}append(...nodes){this.children.push(...nodes);}replaceChildren(...nodes){this.children=[...nodes];}setAttribute(){} }
+  const previous=globalThis.document;context.after(()=>{globalThis.document=previous;setLanguage('en');});
+  globalThis.document={createElement:tag=>new Node(tag)};setLanguage('en');
+  const report={title:'χ² independence test',context:'group1 = m; group2 = f',warnings:[{label:'event (y)',text:'Some expected counts are below 5; the chi-square approximation may be inaccurate.'},{label:'event (y)',text:'Consider Fisher exact for this 2×2 table.'}],
+    sections:[{title:'Summary',columns:['Column','numb (m) (%)','numb (f) (%)','diff (%)','p-value','n','Significant'],literalColumns:true,rows:[['event (y)','2 (66.67%)','1 (33.33%)','1 (33.33%)','1','6','no']],totalRows:1}],plots:[]};
+  const copied=statisticsResultMarkdown({statisticsReport:report});
+  assert.ok(copied.includes('| Column | numb (m) (%) | numb (f) (%) | diff (%) | p-value | n | Significant |'));
+  assert.ok(copied.includes('1 (33.33%)'));assert.ok(copied.includes('Consider Fisher exact'));
+  const container=new Node('div');renderStatisticsReport(container,report);
+  const warnings=container.children[0].children.filter(node=>node.className==='statistics-warning');
+  assert.equal(warnings.length,2);assert.ok(warnings[1].textContent.includes('Fisher exact'));
+});
+
 test('Overall keeps both tables open in numeric then categorical order and preserves requested column names',context=>{
   class Node{constructor(tag){this.tag=tag;this.children=[];}append(...nodes){this.children.push(...nodes);}replaceChildren(...nodes){this.children=[...nodes];}setAttribute(){} }
   const previous=globalThis.document;context.after(()=>{globalThis.document=previous;setLanguage('en');});

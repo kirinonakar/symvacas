@@ -17,7 +17,7 @@ import {roundNumber} from './display-format.js';
 import {renderRegressionReport,regressionResidualCSV,regressionParameterLabels,regressionParameterName} from './regression-report.js';
 import {statisticsResultMarkdown} from './statistics-markdown.js';
 import {statisticsAddColumn} from './workspace-commands.js';
-import {statisticsSummaryPlan,statisticsOverallPlan} from './workspace-commands.js';
+import {statisticsSummaryPlan,statisticsOverallPlan,statisticsGroupedColumnTests} from './workspace-commands.js';
 import {statisticsRenameColumn} from './workspace-commands.js';
 import {createPreparationTools} from './statistics-preparation-tools.js';
 import {registerStatisticsHeader} from './statistics-headers.js';
@@ -203,7 +203,7 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
     const columnLabels=statisticsColumnLabels(value('statistics-data'),kind);
     updateGroupColumn(columnLabels);
     preparationTools?.update();
-    for(const [id,fallback]of [['statistics-group-column',0],['statistics-value-column',1],['statistics-subject-column',0]]){const select=$(id),previous=select.value;select.replaceChildren(...columnLabels.map((label,i)=>{const option=element('option',label);option.value=String(i);return option;}));select.value=previous&&Number(previous)<columns?previous:String(Math.min(fallback,columns-1));}
+    for(const [id,fallback]of [['statistics-group-column',0],['statistics-value-column',1],['statistics-subject-column',0]]){const select=$(id),previous=select.value||String(state.fields[id]??'');select.replaceChildren(...columnLabels.map((label,i)=>{const option=element('option',label);option.value=String(i);return option;}));select.value=previous&&Number(previous)<columns?previous:String(Math.min(fallback,columns-1));}
     const summaryAt=Number(value('statistics-summary-column'));$('statistics-summary-column').replaceChildren(...columnLabels.map((label,i)=>{const option=element('option',label);option.value=String(i);return option;}));$('statistics-summary-column').value=String(Math.min(summaryAt,columns-1));$('statistics-summary-correlation').hidden=columns!==2;
     const groupColumns=$('statistics-group-columns'),selection=value('statistics-group-columns-choice');groupColumns.hidden=!all||grouped;
     const chosen=selection==='auto'?columnLabels.map((_,i)=>i):selection.split(',').filter(Boolean).map(Number);groupColumns.replaceChildren();
@@ -220,25 +220,26 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
       $(id).replaceChildren(...choices.map(choice=>{const option=element('option',choice.label);option.value=String(choice.value);return option;}));$(id).value=String(selected);
     }
     const groupAt=Number(value('statistics-group-column'));
-    const groupedT=grouped&&['ttest2','ttestpaired'].includes(op),tColumns=$('statistics-t-columns');
+    const groupedT=grouped&&statisticsGroupedColumnTests.has(op),tColumns=$('statistics-t-columns');
     tColumns.hidden=!groupedT;$('statistics-value-column').closest('label').hidden=groupedT;
     tColumns.replaceChildren(element('legend','Value columns'));
-    const eligible=columnLabels.map((_,i)=>i).filter(i=>i!==groupAt&&!(op==='ttestpaired'&&value('statistics-pair-matching')==='subject'&&i===Number(value('statistics-subject-column'))));
+    const eligible=columnLabels.map((_,i)=>i).filter(i=>i!==groupAt&&!( ['ttestpaired','wilcoxon'].includes(op)&&value('statistics-pair-matching')==='subject'&&i===Number(value('statistics-subject-column'))));
     if(groupedT&&!eligible.includes(Number(value('statistics-value-column'))))$('statistics-value-column').value=String(eligible[0]??'');
     const tSelection=value('statistics-t-columns-choice'),tChosen=tSelection==='single'?[Number(value('statistics-value-column'))]:tSelection.split(',').filter(Boolean).map(Number).filter(i=>eligible.includes(i));
     if(groupedT&&tSelection!=='single')$('statistics-t-columns-choice').value=tChosen.join(',');
     for(const i of eligible){const label=element('label',columnLabels[i],'check'),check=element('input');check.type='checkbox';check.checked=tChosen.includes(i);check.value=String(i);check.onchange=()=>{$('statistics-t-columns-choice').value=[...tColumns.querySelectorAll('input:checked')].map(input=>input.value).join(',');statisticsControls();refreshWorkspaceMath();persist();};label.append(check);tColumns.append(label);}
-    const names=grouped&&!categorical?[...new Set(rows.map(row=>row[groupAt]).filter(Boolean))]:paired&&!selectablePairs?['x','y']:statisticsColumnNames(columns);
+    const groupedSamples=grouped&&(!categorical||groupedT);
+    const names=groupedSamples?[...new Set(rows.map(row=>row[groupAt]).filter(Boolean))]:paired&&!selectablePairs?['x','y']:statisticsColumnNames(columns);
     const selectedColumn=value('statistics-column');$('statistics-column').replaceChildren(...columnLabels.map((name,i)=>{const option=element('option',name);option.value=String(i);return option;}));$('statistics-column').value=Number(selectedColumn)<columns?selectedColumn:'0';
     for(const [id,fallback] of [['statistics-first-group',0],['statistics-second-group',1]]){
       const select=$(id),previous=select.value,choices=(multi||selectablePairs)&&id==='statistics-second-group'?names.filter(name=>name!==value('statistics-first-group')):names;
-      select.replaceChildren(...choices.map(name=>{const option=element('option',grouped&&!categorical?name:columnLabels[statisticsColumnNames(columns).indexOf(name)]||name);option.value=name;return option;}));
+      select.replaceChildren(...choices.map(name=>{const option=element('option',groupedSamples?name:columnLabels[statisticsColumnNames(columns).indexOf(name)]||name);option.value=name;return option;}));
       select.value=paired&&!selectablePairs&&!grouped?names[fallback]:choices.includes(previous)?previous:choices.includes(names[fallback])?names[fallback]:choices[0]||'';
       const label=select.closest('label');if(label.firstChild.nodeType===3)label.replaceChild(element('span'),label.firstChild);
-      setText(label.firstChild,categorical?(fallback===0?'First column':'Second column'):(fallback===0?'First group':'Second group'));
+      setText(label.firstChild,categorical&&!groupedT?(fallback===0?'First column':'Second column'):(fallback===0?'First group':'Second group'));
     }
-    $('statistics-first-group').closest('label').hidden=all||grouped&&categorical||!paired&&!multi&&!grouped;
-    $('statistics-second-group').closest('label').hidden=all||grouped&&categorical||!paired&&!multi;
+    $('statistics-first-group').closest('label').hidden=all||grouped&&categorical&&op!=='fisherexact'||!paired&&!multi&&!grouped;
+    $('statistics-second-group').closest('label').hidden=all||grouped&&categorical&&op!=='fisherexact'||!paired&&!multi;
     $('statistics-grouping').disabled=columns<2;
     $('statistics-column').disabled=paired||multi||all||grouped||columns===1;
     $('statistics-first-group').disabled=paired&&!selectablePairs&&!grouped||all||!multi&&!grouped&&!selectablePairs||columns===1;

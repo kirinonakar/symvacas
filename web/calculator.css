@@ -22,6 +22,7 @@ math{font-family:"SymvaCAS Math","Cambria Math",math;font-weight:400;font-synthe
 .statistics-result-report tbody tr:last-child td{border-bottom:0}
 .statistics-result-report tbody tr:nth-child(even){background:var(--panel)}
 .statistics-result-report td:first-child{font-weight:500}
+.statistics-warning{padding:10px 12px;border-left:3px solid var(--danger);background:var(--panel);color:var(--danger);font-size:.85rem;white-space:normal;overflow-wrap:anywhere}
 .statistics-result-report .result-flow{font-size:14px}
 .statistics-result-report .result-part{padding:.12em 0}
 .statistics-result-report table .result-flow{width:max-content;max-width:none;flex-wrap:nowrap}

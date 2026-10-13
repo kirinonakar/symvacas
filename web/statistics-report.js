@@ -22,6 +22,7 @@ export function renderStatisticsReport(container,report,{digits=10,onCopy,onClea
   if(onCopy)heading.append(control('Copy',onCopy));
   if(onClear)heading.append(control('Clear',onClear));panel.append(heading);
   if(report.context){const context=element('p','','statistics-interpretation');context.textContent=report.context;context.setAttribute('translate','no');panel.append(context);}
+  for(const warning of report.warnings||[]){const note=element('p','','statistics-warning');note.textContent=(warning.label?warning.label+': ':'')+t(warning.text||warning);note.setAttribute('role','status');panel.append(note);}
   appendStatisticsModelWorkflow(panel,report.modelWorkflow,onModelWorkflow,{isBusy});
   if(report.highlights?.length){
     const cards=element('div','','statistics-highlights');
@@ -33,9 +34,19 @@ export function renderStatisticsReport(container,report,{digits=10,onCopy,onClea
   const prominent=section=>primary.includes(section.title)||['Model diagnostics','Indicator R²','Explained variance','Latent R²','Summary','Sample summaries','Assumption checks','Effect size','Mean confidence interval (95%, two-sided)','Overall ANOVA','Expected-count diagnostics'].includes(section.title);
   const sections=[...report.sections.filter(prominent).sort((a,b)=>Number(!primary.includes(a.title))-Number(!primary.includes(b.title))),...report.sections.filter(section=>!prominent(section))];
   let plotsShown=false;
+  const contingencyGroups=new Map();
   for(const section of sections){
     if(!prominent(section)&&!plotsShown){renderStatisticsVisualizations(panel,report.plots);plotsShown=true;}
-    const collapsible=section.totalRows>12&&!prominent(section),block=element(collapsible?'details':'section');
+    let target=panel;
+    if(section.contingencyGroup){
+      if(!contingencyGroups.has(section.contingencyGroup)){
+        const group=element('details','','statistics-result-details statistics-contingency-group'),heading=element('summary');
+        heading.textContent=(section.contingencyLabel?section.contingencyLabel+' · ':'')+t(section.contingencyTitle||'Contingency table');
+        group.open=section.contingencyExpanded!==false;group.append(heading);panel.append(group);contingencyGroups.set(section.contingencyGroup,group);
+      }
+      target=contingencyGroups.get(section.contingencyGroup);
+    }
+    const collapsible=section.totalRows>12&&!prominent(section)&&!section.contingencyGroup,block=element(collapsible?'details':'section');
     if(collapsible){block.className='statistics-result-details';block.append(element('summary',`${t(section.title)} (${section.totalRows})`));}
     const scroll=element('div','','statistics-result-scroll');
     scroll.tabIndex=0;scroll.setAttribute('role','region');scroll.setAttribute('aria-label',t(section.title));
@@ -58,7 +69,7 @@ export function renderStatisticsReport(container,report,{digits=10,onCopy,onClea
     }
     table.append(body);scroll.append(table);block.append(scroll);
     if(section.totalRows>section.rows.length)block.append(element('p',`${section.rows.length} / ${section.totalRows} · ${t('Copy result includes all rows.')}`,'hint'));
-    panel.append(block);
+    target.append(block);
   }
   if(!plotsShown)renderStatisticsVisualizations(panel,report.plots);
   if(report.details?.length){

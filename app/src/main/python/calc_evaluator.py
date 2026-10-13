@@ -324,6 +324,9 @@ class Engine:
                     if value!='modelcompare' or index not in (2,3,8):
                         column_major = value == 'stats' and index == 0 and len(args) == 3 and args[1].get('kind') == 'symbol' and args[1].get('value') == 'overall'
                         column_major = column_major or value in ('ttest2', 'ttestpaired') and index in (1, 2) and len(args) >= 4 and args[3].get('kind') == 'symbol' and args[3].get('value') == 'batch'
+                        if value in ('ztest2','chi2independence','fisherexact','mannwhitney','wilcoxon','kruskal','anova','welchanova'):
+                            markers=[at for at,item in enumerate(args) if item.get('kind')=='symbol' and item.get('value')=='batch']
+                            column_major=column_major or bool(markers) and (index>=3 if value=='ztest2' else True) and index<markers[0]
                         self.prepare_statistics_dataset(argument, column_major=column_major)
             if value == "regression" and len(args) > 1 and args[1].get("kind") == "symbol" and args[1].get("value") == "custom":
                 require(len(args) in (4, 5), "Use regression(data,custom,model,x,initials)")

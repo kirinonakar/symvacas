@@ -1,0 +1,569 @@
+{
+  "reference": "SciPy rank, contingency, ANOVA and normal-tail references",
+  "cases": [
+    {
+      "name": "mannwhitney",
+      "source": "group,a,b,c\nm,1,1,1\nm,2,2,2\nm,3,3,3\nm,4,4,4\nm,5,5,5\nf,8,10,1\nf,9,20,1\nf,10,30,1\nf,11,40,1\nf,12,50,50",
+      "settings": {
+        "op": "mannwhitney",
+        "kind": "columns:4",
+        "groupColumn": 0,
+        "valueColumn": 1,
+        "valueColumns": "1,2,3",
+        "firstGroup": "m",
+        "secondGroup": "f",
+        "independentMethod": "welch",
+        "tail": "two",
+        "extra": "0",
+        "sigma": "2",
+        "sigmaY": "3",
+        "anovaMethod": "classic"
+      },
+      "command": "mannwhitney([[1,2,3,4,5],[1,2,3,4,5],[1,2,3,4,5]],[[8,9,10,11,12],[10,20,30,40,50],[1,1,1,1,50]],batch)",
+      "labels": {
+        "sample:1": "m",
+        "sample:2": "f",
+        "batch:column:0": "a (y)",
+        "batch:column:1": "b (z)",
+        "batch:column:2": "c (x4)"
+      },
+      "expected": [
+        {
+          "means": [
+            3.0,
+            10.0
+          ],
+          "diffs": [
+            -7.0
+          ],
+          "p-value": 0.007936507936507936,
+          "n": 10
+        },
+        {
+          "means": [
+            3.0,
+            30.0
+          ],
+          "diffs": [
+            -27.0
+          ],
+          "p-value": 0.007936507936507936,
+          "n": 10
+        },
+        {
+          "means": [
+            3.0,
+            10.8
+          ],
+          "diffs": [
+            -7.800000000000001
+          ],
+          "p-value": 0.26520539259150755,
+          "n": 10
+        }
+      ]
+    },
+    {
+      "name": "kruskal",
+      "source": "group,a,b,c\nm,1,1,1\nm,2,2,2\nm,3,3,3\nm,4,4,4\nm,5,5,5\nf,8,10,1\nf,9,20,1\nf,10,30,1\nf,11,40,1\nf,12,50,50",
+      "settings": {
+        "op": "kruskal",
+        "kind": "columns:4",
+        "groupColumn": 0,
+        "valueColumn": 1,
+        "valueColumns": "1,2,3",
+        "firstGroup": "m",
+        "secondGroup": "f",
+        "independentMethod": "welch",
+        "tail": "two",
+        "extra": "0",
+        "sigma": "2",
+        "sigmaY": "3",
+        "anovaMethod": "classic"
+      },
+      "command": "kruskal([[1,2,3,4,5],[1,2,3,4,5],[1,2,3,4,5]],[[8,9,10,11,12],[10,20,30,40,50],[1,1,1,1,50]],batch)",
+      "labels": {
+        "sample:1": "m",
+        "sample:2": "f",
+        "batch:column:0": "a (y)",
+        "batch:column:1": "b (z)",
+        "batch:column:2": "c (x4)"
+      },
+      "expected": [
+        {
+          "means": [
+            3.0,
+            10.0
+          ],
+          "diffs": [
+            -7.0
+          ],
+          "p-value": 0.009023438818080334,
+          "n": 10
+        },
+        {
+          "means": [
+            3.0,
+            30.0
+          ],
+          "diffs": [
+            -27.0
+          ],
+          "p-value": 0.009023438818080334,
+          "n": 10
+        },
+        {
+          "means": [
+            3.0,
+            10.8
+          ],
+          "diffs": [
+            -7.800000000000001
+          ],
+          "p-value": 0.22035329203025303,
+          "n": 10
+        }
+      ]
+    },
+    {
+      "name": "anova",
+      "source": "group,a,b,c\nm,1,1,1\nm,2,2,2\nm,3,3,3\nm,4,4,4\nm,5,5,5\nf,8,10,1\nf,9,20,1\nf,10,30,1\nf,11,40,1\nf,12,50,50",
+      "settings": {
+        "op": "anova",
+        "kind": "columns:4",
+        "groupColumn": 0,
+        "valueColumn": 1,
+        "valueColumns": "1,2,3",
+        "firstGroup": "m",
+        "secondGroup": "f",
+        "independentMethod": "welch",
+        "tail": "two",
+        "extra": "0",
+        "sigma": "2",
+        "sigmaY": "3",
+        "anovaMethod": "classic"
+      },
+      "command": "anova([[1,2,3,4,5],[1,2,3,4,5],[1,2,3,4,5]],[[8,9,10,11,12],[10,20,30,40,50],[1,1,1,1,50]],batch)",
+      "labels": {
+        "sample:1": "m",
+        "sample:2": "f",
+        "batch:column:0": "a (y)",
+        "batch:column:1": "b (z)",
+        "batch:column:2": "c (x4)"
+      },
+      "expected": [
+        {
+          "means": [
+            3.0,
+            10.0
+          ],
+          "diffs": [
+            -7.0
+          ],
+          "p-value": 0.00011263854912686906,
+          "n": 10
+        },
+        {
+          "means": [
+            3.0,
+            30.0
+          ],
+          "diffs": [
+            -27.0
+          ],
+          "p-value": 0.005240940516978868,
+          "n": 10
+        },
+        {
+          "means": [
+            3.0,
+            10.8
+          ],
+          "diffs": [
+            -7.800000000000001
+          ],
+          "p-value": 0.4501835501196952,
+          "n": 10
+        }
+      ]
+    },
+    {
+      "name": "ztest2",
+      "source": "group,a,b,c\nm,1,1,1\nm,2,2,2\nm,3,3,3\nm,4,4,4\nm,5,5,5\nf,8,10,1\nf,9,20,1\nf,10,30,1\nf,11,40,1\nf,12,50,50",
+      "settings": {
+        "op": "ztest2",
+        "kind": "columns:4",
+        "groupColumn": 0,
+        "valueColumn": 1,
+        "valueColumns": "1,2,3",
+        "firstGroup": "m",
+        "secondGroup": "f",
+        "independentMethod": "welch",
+        "tail": "two",
+        "extra": "0",
+        "sigma": "2",
+        "sigmaY": "3",
+        "anovaMethod": "classic"
+      },
+      "command": "ztest2(0,2,3,[[1,2,3,4,5],[1,2,3,4,5],[1,2,3,4,5]],[[8,9,10,11,12],[10,20,30,40,50],[1,1,1,1,50]],batch)",
+      "labels": {
+        "sample:1": "m",
+        "sample:2": "f",
+        "batch:column:0": "a (y)",
+        "batch:column:1": "b (z)",
+        "batch:column:2": "c (x4)"
+      },
+      "expected": [
+        {
+          "means": [
+            3.0,
+            10.0
+          ],
+          "diffs": [
+            -7.0
+          ],
+          "p-value": 1.416965280686327e-05,
+          "n": 10
+        },
+        {
+          "means": [
+            3.0,
+            30.0
+          ],
+          "diffs": [
+            -27.0
+          ],
+          "p-value": 6.191301947305173e-63,
+          "n": 10
+        },
+        {
+          "means": [
+            3.0,
+            10.8
+          ],
+          "diffs": [
+            -7.800000000000001
+          ],
+          "p-value": 1.3157853737986917e-06,
+          "n": 10
+        }
+      ]
+    },
+    {
+      "name": "paired Wilcoxon",
+      "source": "group,id,a,b\nm,1,10,2\nm,2,12,3\nm,3,13,4\nm,4,15,5\nm,5,17,6\nf,3,15,5\nf,1,11,3\nf,5,19,8\nf,2,,5\nf,4,16,",
+      "settings": {
+        "op": "wilcoxon",
+        "kind": "columns:4",
+        "groupColumn": 0,
+        "valueColumn": 2,
+        "valueColumns": "2,3",
+        "firstGroup": "m",
+        "secondGroup": "f",
+        "matching": "subject",
+        "subjectColumn": 1
+      },
+      "command": "wilcoxon([[10,13,15,17],[2,3,4,6]],[[11,15,16,19],[3,5,5,8]],batch)",
+      "labels": {
+        "sample:1": "m",
+        "sample:2": "f",
+        "batch:column:0": "a (z)",
+        "batch:column:1": "b (x4)"
+      },
+      "expected": [
+        {
+          "means": [
+            13.75,
+            15.25
+          ],
+          "diffs": [
+            -1.5
+          ],
+          "p-value": 0.125,
+          "n": 4
+        },
+        {
+          "means": [
+            3.75,
+            5.25
+          ],
+          "diffs": [
+            -1.5
+          ],
+          "p-value": 0.125,
+          "n": 4
+        }
+      ]
+    },
+    {
+      "name": "chi2independence",
+      "source": "group,event,color\nm,1,red\nm,1,blue\nm,0,red\nf,0,blue\nf,1,red\nf,0,blue\nf,,red",
+      "settings": {
+        "op": "chi2independence",
+        "kind": "xyz",
+        "valueColumns": "1,2",
+        "firstGroup": "m",
+        "secondGroup": "f"
+      },
+      "command": "chi2independence([[0,0,0,1,1,1],[0,0,0,1,1,1,1]],[[1,1,0,0,1,0],[0,1,0,1,0,1,0]],batch,1)",
+      "labels": {
+        "sample:1": "m",
+        "sample:2": "f",
+        "batch:column:0": "event (y)",
+        "batch:column:1": "color (z)",
+        "batch:binary:0": "yes",
+        "batch:category:0:0": "0",
+        "batch:category:0:1": "1",
+        "batch:binary:1": "no",
+        "batch:category:1:0": "red",
+        "batch:category:1:1": "blue"
+      },
+      "categorical": true,
+      "expected": [
+        {
+          "column": "event (y)",
+          "category": "1",
+          "counts": [
+            "2 (66.67%)",
+            "1 (33.33%)"
+          ],
+          "diffs": [
+            "1 (33.33%)"
+          ],
+          "p-value": 1.0,
+          "n": 6
+        },
+        {
+          "column": "color (z)",
+          "category": "red",
+          "counts": [
+            "2 (66.67%)",
+            "2 (50.00%)"
+          ],
+          "diffs": [
+            "0 (16.67%)"
+          ],
+          "p-value": 1.0,
+          "n": 7
+        },
+        {
+          "column": "color (z)",
+          "category": "blue",
+          "counts": [
+            "1 (33.33%)",
+            "2 (50.00%)"
+          ],
+          "diffs": [
+            "-1 (-16.67%)"
+          ],
+          "p-value": 1.0,
+          "n": 7
+        }
+      ]
+    },
+    {
+      "name": "fisherexact",
+      "source": "group,event,color\nm,1,red\nm,1,blue\nm,0,red\nf,0,blue\nf,1,red\nf,0,blue\nf,,red",
+      "settings": {
+        "op": "fisherexact",
+        "kind": "xyz",
+        "valueColumns": "1,2",
+        "firstGroup": "m",
+        "secondGroup": "f"
+      },
+      "command": "fisherexact([[0,0,0,1,1,1],[0,0,0,1,1,1,1]],[[1,1,0,0,1,0],[0,1,0,1,0,1,0]],batch)",
+      "labels": {
+        "sample:1": "m",
+        "sample:2": "f",
+        "batch:column:0": "event (y)",
+        "batch:column:1": "color (z)",
+        "batch:binary:0": "yes",
+        "batch:category:0:0": "0",
+        "batch:category:0:1": "1",
+        "batch:binary:1": "no",
+        "batch:category:1:0": "red",
+        "batch:category:1:1": "blue"
+      },
+      "categorical": true,
+      "expected": [
+        {
+          "column": "event (y)",
+          "category": "1",
+          "counts": [
+            "2 (66.67%)",
+            "1 (33.33%)"
+          ],
+          "diffs": [
+            "1 (33.33%)"
+          ],
+          "p-value": 1.0,
+          "n": 6
+        },
+        {
+          "column": "color (z)",
+          "category": "red",
+          "counts": [
+            "2 (66.67%)",
+            "2 (50.00%)"
+          ],
+          "diffs": [
+            "0 (16.67%)"
+          ],
+          "p-value": 1.0,
+          "n": 7
+        },
+        {
+          "column": "color (z)",
+          "category": "blue",
+          "counts": [
+            "1 (33.33%)",
+            "2 (50.00%)"
+          ],
+          "diffs": [
+            "-1 (-16.67%)"
+          ],
+          "p-value": 1.0,
+          "n": 7
+        }
+      ]
+    },
+    {
+      "name": "three groups kruskal",
+      "source": "group,a,b\nA,1,2\nA,2,3\nA,3,4\nB,4,6\nB,5,7\nB,6,8\nC,7,12\nC,8,13\nC,9,14",
+      "settings": {
+        "op": "kruskal",
+        "kind": "xyz",
+        "valueColumns": "1,2",
+        "anovaMethod": "classic"
+      },
+      "command": "kruskal([[1,2,3],[2,3,4]],[[4,5,6],[6,7,8]],[[7,8,9],[12,13,14]],batch)",
+      "labels": {
+        "sample:1": "A",
+        "sample:2": "B",
+        "sample:3": "C",
+        "batch:column:0": "a (y)",
+        "batch:column:1": "b (z)"
+      },
+      "expected": [
+        {
+          "means": [
+            2.0,
+            5.0,
+            8.0
+          ],
+          "diffs": [
+            -3.0,
+            -6.0
+          ],
+          "p-value": 0.02732372244729252,
+          "n": 9
+        },
+        {
+          "means": [
+            3.0,
+            7.0,
+            13.0
+          ],
+          "diffs": [
+            -4.0,
+            -10.0
+          ],
+          "p-value": 0.02732372244729252,
+          "n": 9
+        }
+      ]
+    },
+    {
+      "name": "three groups anova",
+      "source": "group,a,b\nA,1,2\nA,2,3\nA,3,4\nB,4,6\nB,5,7\nB,6,8\nC,7,12\nC,8,13\nC,9,14",
+      "settings": {
+        "op": "anova",
+        "kind": "xyz",
+        "valueColumns": "1,2",
+        "anovaMethod": "classic"
+      },
+      "command": "anova([[1,2,3],[2,3,4]],[[4,5,6],[6,7,8]],[[7,8,9],[12,13,14]],batch)",
+      "labels": {
+        "sample:1": "A",
+        "sample:2": "B",
+        "sample:3": "C",
+        "batch:column:0": "a (y)",
+        "batch:column:1": "b (z)"
+      },
+      "expected": [
+        {
+          "means": [
+            2.0,
+            5.0,
+            8.0
+          ],
+          "diffs": [
+            -3.0,
+            -6.0
+          ],
+          "p-value": 0.0010000000000000002,
+          "n": 9
+        },
+        {
+          "means": [
+            3.0,
+            7.0,
+            13.0
+          ],
+          "diffs": [
+            -4.0,
+            -10.0
+          ],
+          "p-value": 5.4762402162912064e-05,
+          "n": 9
+        }
+      ]
+    },
+    {
+      "name": "three groups welchanova",
+      "source": "group,a,b\nA,1,2\nA,2,3\nA,3,4\nB,4,6\nB,5,7\nB,6,8\nC,7,12\nC,8,13\nC,9,14",
+      "settings": {
+        "op": "welchanova",
+        "kind": "xyz",
+        "valueColumns": "1,2",
+        "anovaMethod": "classic"
+      },
+      "command": "welchanova([[1,2,3],[2,3,4]],[[4,5,6],[6,7,8]],[[7,8,9],[12,13,14]],batch)",
+      "labels": {
+        "sample:1": "A",
+        "sample:2": "B",
+        "sample:3": "C",
+        "batch:column:0": "a (y)",
+        "batch:column:1": "b (z)"
+      },
+      "expected": [
+        {
+          "means": [
+            2.0,
+            5.0,
+            8.0
+          ],
+          "diffs": [
+            -3.0,
+            -6.0
+          ],
+          "p-value": 0.006327479338842975,
+          "n": 9
+        },
+        {
+          "means": [
+            3.0,
+            7.0,
+            13.0
+          ],
+          "diffs": [
+            -4.0,
+            -10.0
+          ],
+          "p-value": 0.0008872793119058398,
+          "n": 9
+        }
+      ]
+    }
+  ]
+}

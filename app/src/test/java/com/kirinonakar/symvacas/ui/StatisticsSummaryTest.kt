@@ -37,4 +37,17 @@ class StatisticsSummaryTest {
             assertEquals(item.getString("command"),plan.source);assertEquals(labels,plan.termLabels)
         }
     }
+    @Test fun groupedRankCategoricalAnovaAndZPlansMatchWeb() {
+        val cases=JSONObject(File("../tests/fixtures/statistics_grouped_columns.json").readText()).getJSONArray("cases")
+        for(index in 0 until cases.length()) {
+            val item=cases.getJSONObject(index);val settings=item.getJSONObject("settings");val kind=settings.getString("kind")
+            val procedure=when(settings.getString("op")){"ztest2"->"z test";"chi2independence"->"χ² test";"fisherexact"->"Fisher exact";"wilcoxon"->"Wilcoxon";"mannwhitney"->"Mann–Whitney";"kruskal"->"Kruskal–Wallis";else->"ANOVA"}
+            val plan=statisticsGroupedTestPlan(statisticsRows(item.getString("source")),kind,statisticsColumnLabels(item.getString("source"),kind),settings.getString("valueColumns"),procedure,
+                settings.optInt("groupColumn",0),settings.optInt("valueColumn",1),settings.optString("firstGroup"),settings.optString("secondGroup"),
+                matching=settings.optString("matching","order"),subjectColumn=settings.optInt("subjectColumn",0),mu0=settings.optString("extra","0"),sigma=settings.optString("sigma","1"),sigmaY=settings.optString("sigmaY","1"),
+                anovaMethod=if(settings.getString("op")=="welchanova")"welch" else settings.optString("anovaMethod","welch"))
+            val labels=item.getJSONObject("labels").let {value->value.keys().asSequence().associateWith {value.getString(it)}}
+            assertEquals(item.getString("command"),plan.source);assertEquals(labels,plan.termLabels)
+        }
+    }
 }

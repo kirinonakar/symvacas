@@ -77,6 +77,41 @@ internal fun statisticsGroupedTTestPlan(rows:List<List<String>>,kind:String,labe
     return StatisticsSummaryPlan(command,mapOf("sample:1" to plans.first().labels[0],"sample:2" to plans.first().labels[1])+selected.mapIndexed {index,column->"batch:column:$index" to labels[column]})
 }
 
+internal fun statisticsGroupedTestPlan(rows:List<List<String>>,kind:String,labels:List<String>,columns:String,procedure:String,
+    groupColumn:Int=0,valueColumn:Int=1,firstGroup:String="",secondGroup:String="",paired:Boolean=false,
+    matching:String="order",subjectColumn:Int=0,mu0:String="0",tail:String="Two-sided",method:String="welch",
+    sigma:String="1",sigmaY:String="1",yates:Boolean=true,anovaMethod:String="welch"):StatisticsSummaryPlan {
+    if(procedure=="t test")return statisticsGroupedTTestPlan(rows,kind,labels,columns,groupColumn,valueColumn,firstGroup,secondGroup,paired,matching,subjectColumn,mu0,tail,method)
+    val op=when(procedure){"z test"->"ztest2";"χ² test"->"chi2independence";"Fisher exact"->"fisherexact";"Wilcoxon"->"wilcoxon";"Mann–Whitney"->"mannwhitney";"Kruskal–Wallis"->"kruskal";"ANOVA"->if(anovaMethod=="classic")"anova" else "welchanova";else->error("Choose a supported grouped test")}
+    val categorical=op in listOf("chi2independence","fisherexact")
+    val pairedTest=op=="wilcoxon"
+    val all=op in listOf("kruskal","anova","welchanova","chi2independence")
+    val selected=if(columns=="single")listOf(valueColumn) else columns.split(',').filter(String::isNotBlank).map {it.toIntOrNull() ?: -1}
+    require(selected.isNotEmpty()&&selected.distinct().size==selected.size&&selected.all {it in 0 until statisticsColumnCount(kind)&&it!=groupColumn&&!(pairedTest&&matching=="subject"&&it==subjectColumn)}) {"Choose distinct value columns excluding group and subject roles"}
+    val plans=selected.map {at->statisticsComparisonData(rows,mapOf("grouping" to "groups","group" to groupColumn.toString(),"value" to at.toString(),"firstGroup" to firstGroup,"secondGroup" to secondGroup,"matching" to matching,"subject" to subjectColumn.toString()),all=all,paired=pairedTest)}
+    val terms=(plans.first().labels.mapIndexed {index,label->"sample:${index+1}" to label}+selected.mapIndexed {index,at->"batch:column:$index" to labels[at]}).toMap().toMutableMap()
+    fun vector(values:List<String>)=values.joinToString(",","[","]") {it.statisticsNumericCell()}
+    val batch=selected.size>1||categorical
+    val samples=if(categorical) {
+        val groups=mutableListOf<List<String>>();val values=mutableListOf<List<String>>()
+        selected.forEachIndexed {index,at->
+            val valid=rows.filter {it.getOrNull(groupColumn)?.trim() in plans[index].labels&&it.getOrNull(at)?.isNotBlank()==true}
+            val raw=valid.map {it[at].trim()}
+            val binary=raw.isNotEmpty()&&raw.all {it.statisticsNumericCell().toDoubleOrNull() in listOf(0.0,1.0)}
+            val normalized=raw.map {if(binary)it.statisticsNumericCell().toDouble().toInt().toString() else it}
+            val categories=normalized.distinct();val codes=categories.withIndex().associate {it.value to if(binary)it.value.toInt() else it.index}
+            groups.add(valid.map {plans[index].labels.indexOf(it[groupColumn].trim()).toString()});values.add(normalized.map {codes.getValue(it).toString()})
+            terms["batch:binary:$index"]=if(binary)"yes" else "no"
+            categories.forEach {terms["batch:category:$index:${codes.getValue(it)}"]=it}
+        }
+        listOf(groups,values)
+    } else plans.first().labels.indices.map {at->plans.map {it.samples[at]}}
+    val arguments=samples.map {sample->if(batch)sample.joinToString(",","[","]",transform=::vector) else vector(sample.first())}
+    val alternative=if(op in listOf("chi2independence","kruskal","anova","welchanova"))"" else when(tail){"Left"->",left";"Right"->",right";else->""}
+    val command="$op(${if(op=="ztest2")"$mu0,$sigma,$sigmaY," else ""}${arguments.joinToString(",")}${if(batch)",batch" else ""}${if(op=="chi2independence")",${if(yates)1 else 0}" else ""}$alternative)"
+    return StatisticsSummaryPlan(command,terms)
+}
+
 /** Build a test from the visible data table, never from a second copy of its values. */
 internal fun statisticsTestCommand(
     procedure: String,

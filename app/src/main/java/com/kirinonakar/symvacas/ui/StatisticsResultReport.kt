@@ -76,6 +76,26 @@ internal fun statisticsCellText(m:CalculatorModel,cell:JSONObject)=ResultDisplay
     }
 }
 
+@Composable private fun StatisticsReportSection(m:CalculatorModel,report:JSONObject,section:JSONObject,collapsible:Boolean) {
+    val c=LocalInstrument.current
+    val collapseRequest=LocalStatisticsCollapseRequest.current
+    val columns=section.getJSONArray("columns")
+    val rows=section.getJSONArray("rows")
+    var expanded by remember(report,section) {mutableStateOf(!collapsible)}
+    LaunchedEffect(collapseRequest){if(collapseRequest>0&&collapsible)expanded=false}
+    if(collapsible)TextButton(onClick={expanded=!expanded}){Text("${if(expanded)"▾" else "▸"} ${tr(section.getString("title"))} (${section.optInt("totalRows")})")}
+    else Text(tr(section.getString("title")),fontSize=13.sp,fontWeight=FontWeight.SemiBold,color=c.ink)
+    if(!expanded)return
+    StatisticsTextTable(List(columns.length()){if(section.optBoolean("literalColumns"))columns.getString(it) else tr(columns.getString(it))},List(rows.length()){rowIndex->
+        val row=rows.getJSONArray(rowIndex)
+        List(columns.length()){column->
+            row.optJSONObject(column)?.let {statisticsCellText(m,it)}
+                ?: if(column==0&&rowIndex==section.optInt("totalRow",-1)||columns.optString(column) in listOf("Metric","Check","Interpretation","Sample","Role","R²","Kind","Effect","Intercept / drift","Status")||columns.optString(column)=="Parameter"&&report.optString("analysis") in listOf("arima","sarima")||columns.optString(column)=="Value"&&row.optString(0) in listOf("Intercept / drift","Fit status"))tr(row.optString(column)) else row.optString(column)
+        }
+    })
+    if(section.optInt("totalRows")>rows.length())Text("${rows.length()} / ${section.optInt("totalRows")} · ${tr("Copy result includes all rows.")}",fontSize=11.sp,color=c.muted)
+}
+
 @Composable internal fun StatisticsResultReport(m:CalculatorModel,report:JSONObject,onModelWorkflow:((StatisticsModelWorkflowPlan)->Unit)?=null) {
     val c=LocalInstrument.current
     val clipboard=LocalClipboardManager.current
@@ -89,6 +109,10 @@ internal fun statisticsCellText(m:CalculatorModel,cell:JSONObject)=ResultDisplay
             TextButton(onClick={m.clearStatisticsResult()},enabled=!m.busy&&!m.regressionBusy,modifier=Modifier.testTag("statistics-result-clear")){Text(tr("Clear"),fontSize=12.sp)}
         }
         report.optString("context").takeIf(String::isNotBlank)?.let {Text(it,fontSize=12.sp,color=c.muted)}
+        report.optJSONArray("warnings")?.let {warnings->for(index in 0 until warnings.length()) {
+            val warning=warnings.optJSONObject(index)
+            Text((warning?.optString("label")?.takeIf(String::isNotBlank)?.let {"$it: "} ?: "")+tr(warning?.optString("text") ?: warnings.optString(index)),fontSize=12.sp,color=MaterialTheme.colorScheme.error)
+        }}
         if(onModelWorkflow!=null)report.optJSONObject("modelWorkflow")?.let {StatisticsModelWorkflow(it,!m.busy&&!m.regressionBusy,onModelWorkflow)}
         report.optJSONArray("highlights")?.let {highlights->
             for(start in 0 until highlights.length() step 2)Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -113,25 +137,22 @@ internal fun statisticsCellText(m:CalculatorModel,cell:JSONObject)=ResultDisplay
         val prominent=primary+setOf("Model diagnostics","Indicator R²","Explained variance","Latent R²","Summary","Sample summaries","Assumption checks","Effect size","Mean confidence interval (95%, two-sided)","Overall ANOVA","Expected-count diagnostics")
         val ordered=(0 until sections.length()).sortedBy {when(sections.getJSONObject(it).getString("title")){in primary->0;in prominent->1;else->2}}
         var plotsShown=false
+        val shownGroups=mutableSetOf<String>()
         for(index in ordered) {
             val section=sections.getJSONObject(index)
             if(section.getString("title") !in prominent&&!plotsShown){StatisticsVisualizations(report.optJSONArray("plots"));plotsShown=true}
-            val columns=section.getJSONArray("columns")
-            val rows=section.getJSONArray("rows")
-            val collapsible=section.optInt("totalRows")>12&&section.getString("title") !in prominent
-            var expanded by remember(report,index) {mutableStateOf(!collapsible)}
-            LaunchedEffect(collapseRequest){if(collapseRequest>0&&collapsible)expanded=false}
-            if(collapsible)TextButton(onClick={expanded=!expanded}){Text("${if(expanded)"▾" else "▸"} ${tr(section.getString("title"))} (${section.optInt("totalRows")})")}
-            else Text(tr(section.getString("title")),fontSize=13.sp,fontWeight=FontWeight.SemiBold,color=c.ink)
-            if(!expanded)continue
-            StatisticsTextTable(List(columns.length()){if(section.optBoolean("literalColumns"))columns.getString(it) else tr(columns.getString(it))},List(rows.length()){rowIndex->
-                val row=rows.getJSONArray(rowIndex)
-                List(columns.length()){column->
-                    row.optJSONObject(column)?.let {statisticsCellText(m,it)}
-                        ?: if(column==0&&rowIndex==section.optInt("totalRow",-1)||columns.optString(column) in listOf("Metric","Check","Interpretation","Sample","Role","R²","Kind","Effect","Intercept / drift","Status")||columns.optString(column)=="Parameter"&&report.optString("analysis") in listOf("arima","sarima")||columns.optString(column)=="Value"&&row.optString(0) in listOf("Intercept / drift","Fit status"))tr(row.optString(column)) else row.optString(column)
+            val group=section.optString("contingencyGroup")
+            if(group.isNotBlank()) {
+                if(!shownGroups.add(group))continue
+                var expanded by remember(report,group) {mutableStateOf(section.optBoolean("contingencyExpanded",true))}
+                var lastCollapseRequest by remember(report,group) {mutableStateOf(collapseRequest)}
+                LaunchedEffect(collapseRequest){if(collapseRequest!=lastCollapseRequest){expanded=false;lastCollapseRequest=collapseRequest}}
+                val title=section.optString("contingencyLabel").takeIf(String::isNotBlank)?.let {"$it · "}.orEmpty()+tr(section.optString("contingencyTitle","Contingency table"))
+                Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick={expanded=!expanded},modifier=Modifier.testTag("statistics-contingency-$group")){Text((if(expanded)"▾ " else "▸ ")+title)}
+                    if(expanded)for(member in ordered){val grouped=sections.getJSONObject(member);if(grouped.optString("contingencyGroup")==group)StatisticsReportSection(m,report,grouped,false)}
                 }
-            })
-            if(section.optInt("totalRows")>rows.length())Text("${rows.length()} / ${section.optInt("totalRows")} · ${tr("Copy result includes all rows.")}",fontSize=11.sp,color=c.muted)
+            } else StatisticsReportSection(m,report,section,section.optInt("totalRows")>12&&section.getString("title") !in prominent)
         }
         if(!plotsShown)StatisticsVisualizations(report.optJSONArray("plots"))
         report.optJSONArray("details")?.takeIf {it.length()>0}?.let {details->

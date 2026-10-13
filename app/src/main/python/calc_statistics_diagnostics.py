@@ -42,6 +42,7 @@ def normal_views(values, label):
 
 
 def companion_report(report, name, value, inputs, precision, labels=None, residuals=None):
+    if isinstance(value, dict) and 'Column comparisons' in value: return report
     if name in ('ttest2', 'ttestpaired') and isinstance(value, dict) and 'Comparisons' in value:
         return report
     labels=labels or {}
@@ -170,10 +171,19 @@ def companion_report(report, name, value, inputs, precision, labels=None, residu
         extras.append(('Mean confidence interval (95%, two-sided)',{'estimate':center,'lower':float(center)-critical*se,'upper':float(center)+critical*se}))
     if name in ('chi2test','chi2independence') and isinstance(value,dict):
         expected=value.get('expected',args[1] if name=='chi2test' and len(args)>1 else [])
+        if name=='chi2independence' and not expected and value.get('observed'):
+            counts=value['observed'];total=sum(sum(row) for row in counts)
+            margins=[sum(column) for column in zip(*counts)]
+            expected=[[s.sympify(sum(row))*margin/total for margin in margins] for row in counts]
+            report['sections'].extend(statistics_report(name,{'expected':expected},precision,labels)['sections'])
         flat=[float(v) for row in expected for v in (row if isinstance(row,(list,tuple)) else [row])]
         if flat:
             extras.append(('Expected-count diagnostics',{'minimum expected count':min(flat),'cells below 5':sum(v<5 for v in flat),'cells below 1':sum(v<1 for v in flat),'fraction below 5':sum(v<5 for v in flat)/len(flat)}))
             notes.append('Small expected counts can make the χ² approximation unreliable. For a sparse 2×2 table, consider Fisher exact. Independence must follow from the study design.')
+            if name=='chi2independence' and any(v<5 for v in flat):
+                report.setdefault('warnings',[]).append({'text':'Some expected counts are below 5; the chi-square approximation may be inaccurate.'})
+                if len(expected)==2 and len(expected[0])==2:
+                    report['warnings'].append({'text':'Consider Fisher exact for this 2×2 table.'})
         if name=='chi2independence' and expected:
             n=sum(flat); df=min(len(expected)-1,len(expected[0])-1)
             if n>0 and df>0:

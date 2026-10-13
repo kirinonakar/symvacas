@@ -481,6 +481,8 @@ Example: svd([[1,0],[0,2]])
 
 그룹·값 형식의 t 검정에서는 값 컬럼을 여러 개 선택할 수 있습니다. 여러 컬럼이면 각 컬럼을 한 행으로 표시하며 mean1·mean2는 선택한 첫째·둘째 그룹 평균, diff는 mean1−mean2입니다. Significant는 p<0.05이면 yes, normality는 두 그룹의 Shapiro–Wilk 검정에서 정규성이 기각되지 않으면 yes, equal var는 Brown–Forsythe 검정에서 등분산성이 기각되지 않으면 yes입니다. n은 유효 표본 수 합계이며 대응 검정은 완전한 쌍 수입니다. 대응 검정의 정규성은 차이값을 검사하고 등분산성은 해당 없음으로 표시합니다. 검정 불가는 unavailable로 표시하며 p값은 컬럼 간 다중 검정에 대해 보정하지 않습니다.
 
+그룹·값 형식의 χ²·Fisher·Mann–Whitney·Wilcoxon·Kruskal–Wallis·ANOVA·독립 z 검정도 값 컬럼을 여러 개 선택할 수 있습니다. χ²·Kruskal–Wallis·ANOVA는 모든 그룹, Fisher·Mann–Whitney·Wilcoxon·독립 z는 선택한 두 그룹을 비교합니다. 범주형 표는 numb (그룹명) (%)로 개수·그룹 내 비율을 표시하고 diff (%)는 그룹 1−비교 그룹의 개수차(퍼센트포인트 차이)입니다. 0/1 컬럼은 1만, 다른 범주형은 범주값별로 표시합니다. 범주형에서는 숫자형 요약·정규성·등분산 열을 표시하지 않습니다. 교차표는 관측·기대빈도와 행·열 백분율·합계를 포함하며 한 컬럼 분석은 기본 펼침, 여러 컬럼 분석은 기본 접힘입니다. χ² 기대빈도가 5 미만이면 경고하며 2×2 표는 Fisher exact를 제안합니다.
+
 ### 정규 모형 방법 (parametric)
 - 일표본 t·t 구간: 정확한 소표본 추론은 모집단의 정규성을 가정합니다. 대응 t는 대상별 차이값의 정규성을 점검합니다. Q–Q plot·왜도·이상값을 함께 확인하세요.
 - Welch t·Welch ANOVA·Games–Howell: 이분산 독립 그룹의 평균 비교. Student t·일반 ANOVA·Tukey: 등분산 가정.

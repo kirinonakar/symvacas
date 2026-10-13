@@ -40,6 +40,7 @@ export function statisticsResultMarkdown(result,options={}){
   if(!report)return resultText(result,options);
   const blocks=['## '+markdownCell(t(report.title))],line=values=>'| '+values.join(' | ')+' |';
   if(report.context)blocks.push(markdownCell(report.context));
+  for(const warning of report.warnings||[])blocks.push(markdownCell((warning.label?warning.label+': ':'')+t(warning.text||warning)));
   const equation=regressionEquationCopyText(result,options);
   if(equation){
     const fence='`'.repeat(Math.max(3,...[...equation.matchAll(/`+/g)].map(match=>match[0].length+1)));

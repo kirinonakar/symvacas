@@ -481,6 +481,8 @@ Raw-data t tests, t intervals, ANOVA and Tukey include sample summaries, assumpt
 
 For group/value t tests, select multiple value columns to show one row per column. mean1 and mean2 refer to the selected first and second groups; diff = mean1−mean2. Significant is yes at p<0.05; normality is yes when Shapiro–Wilk does not reject either group at 0.05; equal var is yes when Brown–Forsythe does not reject at 0.05. n is the total valid sample count, or complete-pair count for paired tests. Paired normality checks differences; equal variance is not applicable. Unavailable checks remain unavailable. P-values are unadjusted across columns.
 
+Group/value χ², Fisher, Mann–Whitney, Wilcoxon, Kruskal–Wallis, ANOVA and independent z tests also accept multiple value columns. χ², Kruskal–Wallis and ANOVA compare all groups; the other tests compare two selected groups. Categorical summaries use numb (group name) (%) for counts and within-group percentages; diff (%) is group 1 minus the compared group as count difference (percentage-point difference). Binary columns show category 1; other categories have separate rows. Numeric summary and assumption columns are omitted for categorical tests. Contingency tables include observed/expected counts, row/column percentages and totals, default open for one column and closed for several. χ² expected counts below 5 show a warning; 2×2 tables suggest Fisher exact.
+
 ### Normal-model methods (parametric)
 - One-sample t / t intervals: normal population for exact small-sample inference. Paired t: normally distributed within-pair differences. Inspect Q–Q plots, skewness and outliers.
 - Welch t / Welch ANOVA / Games–Howell: independent group means with unequal variances. Student t / classic ANOVA / Tukey: equal variances.

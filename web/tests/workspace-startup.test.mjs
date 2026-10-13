@@ -120,6 +120,22 @@ test('grouped t test value checkboxes send selected columns and persist a single
   assert.deepEqual(errors,[]);
 });
 
+for(const op of ['chi2independence','fisherexact','mannwhitney','wilcoxon','kruskal','anova','ztest2'])test(`${op} exposes grouped value-column checkboxes and executes the combined request`,async context=>{
+  const requests=[],item=JSON.parse(readFileSync(new URL('../../tests/fixtures/statistics_grouped_columns.json',import.meta.url),'utf8')).cases.find(item=>item.settings.op===op);
+  const settings=item.settings,columns=settings.kind==='xyz'?3:Number(settings.kind.split(':')[1]);
+  const {window,errors}=fixture(context,{fields:{mode:'statistics','statistics-data':item.source,'statistics-kind':'columns','statistics-columns':String(columns),'statistics-op':op,'statistics-grouping':'groups',
+    'statistics-t-columns-choice':settings.valueColumns,'statistics-pair-matching':settings.matching||'order','statistics-subject-column':String(settings.subjectColumn||0),'statistics-anova-method':settings.anovaMethod||'welch','statistics-sigma':settings.sigma||'1','statistics-sigma-y':settings.sigmaY||'1'}},
+    {ready:true,execute:async request=>{requests.push(request);return {ok:true};}});
+  const document=window.document;
+  assert.equal(document.getElementById('statistics-t-columns').hidden,false);
+  assert.ok([...document.querySelectorAll('#statistics-t-columns input:checked')].length>1);
+  if(op==='fisherexact')assert.deepEqual([...document.getElementById('statistics-first-group').options].map(option=>option.value),['m','f']);
+  await document.querySelector('[data-run="statistics"]').onclick();
+  assert.equal(requests.length,1);assert.ok(requests[0].tree.args.some(node=>node.value==='batch'));
+  assert.deepEqual(requests[0].statisticsTermLabels,item.labels);
+  assert.deepEqual(errors,[]);
+});
+
 test('statistics paste handlers filter Markdown headings in selection replacements and table cells',async context=>{
   const {window,errors}=fixture(context,{fields:{mode:'statistics','statistics-data':'12\n34','statistics-kind':'list'}});
   const document=window.document,field=document.getElementById('statistics-data');
