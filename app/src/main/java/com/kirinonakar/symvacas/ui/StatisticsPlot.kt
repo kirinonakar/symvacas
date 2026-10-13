@@ -49,15 +49,43 @@ import kotlin.math.abs
         val left=(if(vertical)70 else if(type=="Histogram"&&histogramKde)80 else if(type in listOf("Bar","Histogram"))56 else 38).dp.toPx();val right=12.dp.toPx();val top=14.dp.toPx();val bottom=(if(vertical)48 else if(namedBars!=null)56 else if(type=="Scatter")46 else if(type=="Bar")42 else 28).dp.toPx()
         val width=size.width-left-right;val height=size.height-top-bottom
         val text=Paint(Paint.ANTI_ALIAS_FLAG).apply {color=c.muted.toArgb();textSize=10.sp.toPx()}
-        drawLine(c.grid,Offset(left,top+height),Offset(left+width,top+height),1.dp.toPx())
-        drawLine(c.grid,Offset(left,top),Offset(left,top+height),1.dp.toPx())
+        if(type!="Scatter") {
+            drawLine(c.grid,Offset(left,top+height),Offset(left+width,top+height),1.dp.toPx())
+            drawLine(c.grid,Offset(left,top),Offset(left,top+height),1.dp.toPx())
+        }
         if(type=="Scatter") {
             if(points.isEmpty())return@ExportableGraphCanvas
             val range=if(curve.isEmpty())points else points+curve
             var x0=range.minOf {it.first};var x1=range.maxOf {it.first};var y0=range.minOf {it.second};var y1=range.maxOf {it.second}
             if(x0==x1){x0-=1;x1+=1};if(y0==y1){y0-=1;y1+=1}
-            fun px(x:Double)=left+((x-x0)/(x1-x0)).toFloat()*width
+            val yTicks=(0..4).map {index->val fraction=index/4.0;val value=y0*(1-fraction)+y1*fraction;value to graphDisplayNumber(value,displayDigits)}
+            val scatterLeft=max(left,yTicks.maxOf {text.measureText(it.second)}+8.dp.toPx())
+            val scatterWidth=size.width-scatterLeft-right
+            fun px(x:Double)=scatterLeft+((x-x0)/(x1-x0)).toFloat()*scatterWidth
             fun py(y:Double)=top+height-((y-y0)/(y1-y0)).toFloat()*height
+            yTicks.forEach {(value,label)->
+                val y=py(value)
+                drawLine(c.grid,Offset(scatterLeft,y),Offset(scatterLeft+scatterWidth,y),1.dp.toPx())
+                drawLine(c.muted,Offset(scatterLeft-3.dp.toPx(),y),Offset(scatterLeft,y),1.dp.toPx())
+                drawContext.canvas.nativeCanvas.drawText(label,scatterLeft-text.measureText(label)-6.dp.toPx(),y+3.dp.toPx(),text)
+            }
+            val widestX=if(xDateOrigin!=null)text.measureText("2000-12-31") else max(text.measureText(graphDisplayNumber(x0,displayDigits)),text.measureText(graphDisplayNumber(x1,displayDigits)))
+            val divisions=(scatterWidth/(widestX+12.dp.toPx())).toInt().coerceIn(1,4)
+            val xTicks=(0..divisions).map {index->
+                val fraction=index.toDouble()/divisions
+                if(xDateOrigin==null)x0*(1-fraction)+x1*fraction else (ceil(x0)*(1-fraction)+floor(x1)*fraction).roundToLong().toDouble()
+            }.distinct()
+            xTicks.forEach {value->
+                val x=px(value)
+                val label=xDateOrigin?.let {origin->runCatching {origin.plusDays(value.roundToLong()).toString()}.getOrNull()} ?: graphDisplayNumber(value,displayDigits)
+                drawLine(c.grid,Offset(x,top),Offset(x,top+height),1.dp.toPx())
+                drawLine(c.muted,Offset(x,top+height),Offset(x,top+height+3.dp.toPx()),1.dp.toPx())
+                val labelWidth=text.measureText(label)
+                val labelX=(x-labelWidth/2).coerceIn(scatterLeft,max(scatterLeft,scatterLeft+scatterWidth-labelWidth))
+                drawContext.canvas.nativeCanvas.drawText(label,labelX,top+height+16.dp.toPx(),text)
+            }
+            drawLine(c.muted,Offset(scatterLeft,top),Offset(scatterLeft,top+height),1.dp.toPx())
+            drawLine(c.muted,Offset(scatterLeft,top+height),Offset(scatterLeft+scatterWidth,top+height),1.dp.toPx())
             if(curve.size>1) {
                 val path=androidx.compose.ui.graphics.Path()
                 curve.forEachIndexed {index,point->val at=Offset(px(point.first),py(point.second));if(index==0)path.moveTo(at.x,at.y) else path.lineTo(at.x,at.y)}
@@ -65,12 +93,8 @@ import kotlin.math.abs
             }
             if(scatterSeries==null)points.forEach {drawCircle(c.accent,4.dp.toPx(),Offset(px(it.first),py(it.second)))}
             else scatterSeries.forEachIndexed {index,entry->entry.points.forEach {drawCircle(c.curves[index%c.curves.size],4.dp.toPx(),Offset(px(it.first),py(it.second)))}}
-            if(xDateOrigin==null)drawContext.canvas.nativeCanvas.drawText(xAxisLabel,left+width-text.measureText(xAxisLabel),top+height+36.dp.toPx(),text)
-            drawContext.canvas.nativeCanvas.drawText(yAxisLabel,5.dp.toPx(),top+12.dp.toPx(),text)
-            val firstTick=xDateOrigin?.let {origin->runCatching {origin.plusDays(x0.roundToLong()).toString()}.getOrNull()} ?: "%.4g".format(x0)
-            val lastTick=xDateOrigin?.let {origin->runCatching {origin.plusDays(x1.roundToLong()).toString()}.getOrNull()} ?: "%.4g".format(x1)
-            drawContext.canvas.nativeCanvas.drawText(firstTick,left,top+height+16.dp.toPx(),text)
-            drawContext.canvas.nativeCanvas.drawText(lastTick,left+width-text.measureText(lastTick),top+height+16.dp.toPx(),text)
+            if(xDateOrigin==null)drawContext.canvas.nativeCanvas.drawText(xAxisLabel,scatterLeft+scatterWidth-text.measureText(xAxisLabel),top+height+36.dp.toPx(),text)
+            drawContext.canvas.nativeCanvas.drawText(yAxisLabel,scatterLeft,top-3.dp.toPx(),text)
         } else if(series.isEmpty()) {
             drawContext.canvas.nativeCanvas.drawText("Add finite numeric observations to plot",left,top+20.dp.toPx(),text)
         } else if(type=="Bar"&&namedBars!=null) {

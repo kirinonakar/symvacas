@@ -35,6 +35,35 @@ test('fresh page constructs and initializes every workspace without a cached dat
   assert.deepEqual(errors,[]);
 });
 
+for(const dated of [false,true])test(`regression visualization retains a visible fitted line and ${dated?'date':'numeric'} X ticks after redraw`,async context=>{
+  const requests=[],data=dated?'date,y\n2026-10-01,3\n2026-10-02,5\n2026-10-03,7':'1,3\n2,5\n3,7';
+  const {window,workspaces,errors}=fixture(context,{fields:{mode:'statistics','statistics-kind':'xy','statistics-data':data,'statistics-plot-type':'scatter','regression-kind':'linear'}},
+    {ready:true,execute:async request=>{requests.push(request);return {ok:true,exact:'2*x+1',decimal:'2*x+1',curve:[[1,3],[2,5],[3,7]]};}});
+  const document=window.document,get=id=>document.getElementById(id);
+  await document.querySelector('[data-run="regression"]').onclick();
+  assert.deepEqual(requests[0].statisticsDatasets[requests[0].tree.args[0].value],[['1','3'],['2','5'],['3','7']]);
+  function check(){
+    const curve=document.querySelector('#statistics-plot path[data-curve="1"]');
+    assert.ok(curve);assert.equal(curve.getAttribute('stroke'),'var(--danger)');assert.match(curve.getAttribute('d'),/^M.*L.*L/);
+    assert.equal(document.querySelectorAll('#statistics-plot circle').length,3);
+    const labels=[...document.querySelectorAll('#statistics-plot text[data-axis="x"]')].map(node=>node.textContent);
+    if(dated)assert.deepEqual(labels,['2026-10-01','2026-10-02','2026-10-03']);
+    else assert.ok(labels.every(label=>!label.includes('2026-')));
+  }
+  check();get('statistics-plot-run').click();check();workspaces.render();check();
+  const style=document.createElement('style');style.textContent=readFileSync(new URL('../calculator.css',import.meta.url),'utf8');document.head.append(style);
+  for(const [theme,color] of [['light','#aa3438'],['dark','#ffa29d']]){
+    document.documentElement.dataset.theme=theme;
+    assert.equal(window.getComputedStyle(document.documentElement).getPropertyValue('--danger').trim(),color);
+  }
+  if(!dated){
+    get('statistics-scatter-x').value='1';get('statistics-scatter-x').onchange();
+    assert.equal(document.querySelector('#statistics-plot path[data-curve]'),null);
+    get('statistics-scatter-x').value='0';get('statistics-scatter-x').onchange();check();
+  }
+  assert.deepEqual(errors,[]);
+});
+
 test('saved guided statistics menu is restored after its handlers and caches initialize',context=>{
   const {window,errors}=fixture(context,{fields:{mode:'statistics','statistics-op':'mcnemar','statistics-data':'20,8\n2,15','statistics-kind':'xy'}});
   assert.equal(window.document.getElementById('statistics-general-kind').value,'mcnemar');

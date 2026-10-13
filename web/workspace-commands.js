@@ -168,9 +168,27 @@ export function statisticsNumericCell(cell){
   const text=String(cell??'').trim();
   return /^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(text)?text.replace(/,/g,''):text;
 }
-export function numericStatisticsRows(rows){
-  const dates=rows.map(row=>{const match=/^(\d{4})([-/.])(\d{1,2})\2(\d{1,2})$/.exec(row[0]);if(!match)return null;const at=Date.UTC(Number(match[1]),Number(match[3])-1,Number(match[4])),date=new Date(at);return date.getUTCFullYear()===Number(match[1])&&date.getUTCMonth()===Number(match[3])-1&&date.getUTCDate()===Number(match[4])?at:null;}),valid=dates.filter(n=>n!==null),origin=valid.length?Math.min(...valid)-86400000:null;
-  return rows.map((row,i)=>row.map((cell,j)=>j===0&&origin!==null?dates[i]===null?'':String((dates[i]-origin)/86400000):statisticsNumericCell(cell)));
+function statisticsDate(value){
+  const match=/^(\d{4})([-/.])(\d{1,2})\2(\d{1,2})$/.exec(String(value??'').trim());if(!match)return null;
+  const year=Number(match[1]),month=Number(match[3])-1,day=Number(match[4]),date=new Date(0);
+  date.setUTCFullYear(year,month,day);
+  return date.getUTCFullYear()===year&&date.getUTCMonth()===month&&date.getUTCDate()===day?date.getTime():null;
+}
+export function statisticsDateAxis(rows){
+  const values=rows.map(row=>String(row[0]??'').trim()).filter(Boolean),dates=values.map(statisticsDate).filter(at=>at!==null);
+  const numericCount=values.filter(value=>Number.isFinite(Number(statisticsNumericCell(value)))).length;
+  if(!dates.length||dates.length<numericCount)return null;
+  return {origin:dates.reduce((low,at)=>Math.min(low,at),Infinity)-86400000};
+}
+export function statisticsDateLabel(origin,value){
+  const date=new Date(origin+Math.floor(value+.5)*86400000);
+  return Number.isFinite(date.getTime())?date.toISOString().slice(0,10):'';
+}
+export function numericStatisticsRows(rows,dateAxis=statisticsDateAxis(rows)){
+  return rows.map(row=>row.map((cell,j)=>{
+    if(j!==0||!dateAxis)return statisticsNumericCell(cell);
+    const at=statisticsDate(cell);return at===null?'':String((at-dateAxis.origin)/86400000);
+  }));
 }
 export function statisticsSummaryPlan(source,kind,column=0){
   const rows=statisticsDataRows(source,kind),numeric=numericStatisticsRows(rows);

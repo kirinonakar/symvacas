@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {statisticsHeatMapData,statisticsCorrelationHeatMap,statisticsFrequencyData,statisticsNamedBarData,statisticsHistogramData,histogramDensityNumber,beeswarmLayout,heatMapColor} from '../statistics-plot-data.js';
 import {readFileSync} from 'node:fs';
-import {statisticsDataRows,statisticsColumnCount} from '../workspace-commands.js';
+import {statisticsDataRows,statisticsColumnCount,numericStatisticsRows,statisticsDateLabel} from '../workspace-commands.js';
 import {statisticsScatterData,statisticsScatterColumns} from '../statistics-plot-data.js';
 
 test('scatter uses selected axes, categorical groups and complete row pairs identically on both platforms',()=>{
@@ -14,6 +14,13 @@ test('scatter uses selected axes, categorical groups and complete row pairs iden
   }
   assert.deepEqual(statisticsScatterColumns(3,'column:1',0,0),{groupColumn:1,xColumn:0,yColumn:2});
   assert.deepEqual(statisticsScatterColumns(2,'column:9',8,8),{groupColumn:-1,xColumn:0,yColumn:1});
+  const rows=[['A','2024/2/28','1'],['B','2024-02-29','2'],['A','2024.3.2','3'],['A','2024-02-30','4'],['B','','5']];
+  const dates=statisticsScatterData(rows,{columnCount:3,grouping:'first',xColumn:1,yColumn:2});
+  assert.deepEqual(dates.series,[{label:'A',points:[[1,1],[4,3]]},{label:'B',points:[[2,2]]}]);
+  assert.equal(statisticsDateLabel(dates.dateAxis.origin,2),'2024-02-29');
+  assert.equal(statisticsDateLabel(dates.dateAxis.origin,4),'2024-03-02');
+  assert.deepEqual(numericStatisticsRows(rows.map(row=>row.slice(1))),[['1','1'],['2','2'],['4','3'],['','4'],['','5']]);
+  assert.equal(statisticsScatterData([['1','2'],['2','3'],['2024-02-29','4']]).dateAxis,undefined,'a numeric majority retains the numeric X axis');
 });
 
 test('density histograms have unit area per series and match independent Gaussian Scott KDE reference points',()=>{

@@ -1,5 +1,5 @@
 import {plot,dataBounds} from './plot.js';
-import {numericStatisticsRows,statisticsColumnNames} from './workspace-commands.js';
+import {numericStatisticsRows,statisticsColumnNames,statisticsDateLabel} from './workspace-commands.js';
 import {displayNumber} from './display-format.js';
 import {t} from './i18n.js';
 import {statisticsPlotGroupingColumn,statisticsPlotNumber,statisticsFrequencyData,statisticsHistogramData,histogramDensityNumber,violinDensity,beeswarmLayout,statisticsHeatMapData,statisticsCorrelationHeatMap,heatMapColor} from './statistics-plot-data.js';
@@ -57,7 +57,9 @@ function drawStatisticsPlot(container,rows,{type='scatter',digits=10,curve=[],xA
     const data=scatterData||statisticsScatterData(rows),points=data.series.flatMap(entry=>entry.points);
     if(!points.length){container.replaceChildren();return;}
     const colors=data.series.map((_,i)=>data.groupColumn<0?'var(--accent)':defaultGraphColors[i%defaultGraphColors.length]);
-    plot(container,{curves:[...data.series.map(entry=>entry.points),...(curve.length?[curve]:[])]},dataBounds([...points,...curve]),{scatterCurves:data.series.map((_,i)=>i),colors:[...colors,'var(--danger)'],digits,xAxisLabel,yAxisLabel});
+    const bounds=dataBounds([...points,...curve]);
+    const dateTicks=data.dateAxis?[...new Set(Array.from({length:5},(_,i)=>Math.round(Math.ceil(bounds.xmin)+(Math.floor(bounds.xmax)-Math.ceil(bounds.xmin))*i/4)))]:null;
+    plot(container,{curves:[...data.series.map(entry=>entry.points),...(curve.length?[curve]:[])]},bounds,{scatterCurves:data.series.map((_,i)=>i),colors:[...colors,'var(--danger)'],digits,xAxisLabel,yAxisLabel,xTickValues:dateTicks,xTickLabel:data.dateAxis?value=>statisticsDateLabel(data.dateAxis.origin,value):null});
     if(data.groupColumn>=0){
       const legend=document.createElement('div');legend.className='statistics-plot-legend';
       data.series.forEach((entry,i)=>{const label=document.createElement('span');label.textContent=`${entry.label} (n=${entry.points.length})`;label.style.color=colors[i];legend.append(label);});

@@ -10,7 +10,7 @@ function svgElement(tag,attributes={},text='') {
   if (text) el.textContent = text;
   return el;
 }
-export function plot(container,result,bounds,{colors=defaultGraphColors,dots=false,scatterCurves=[],digits=10,analysis=null,trace=null,selected=0,integral=null,radianAxis=false,xAxisLabel=null,yAxisLabel=null,surfaceView={rotation:35,elevation:32,zoom:1}}={}) {
+export function plot(container,result,bounds,{colors=defaultGraphColors,dots=false,scatterCurves=[],digits=10,analysis=null,trace=null,selected=0,integral=null,radianAxis=false,xAxisLabel=null,yAxisLabel=null,xTickValues=null,xTickLabel=null,surfaceView={rotation:35,elevation:32,zoom:1}}={}) {
   const {xmin,xmax,ymin,ymax} = bounds;
   if (![xmin,xmax,ymin,ymax].every(Number.isFinite) || xmax<=xmin || ymax<=ymin) throw new Error('그래프 범위를 확인해 주세요.');
   if(result.surface)return plotSurface(container,result,bounds,{digits,...surfaceView});
@@ -22,11 +22,11 @@ export function plot(container,result,bounds,{colors=defaultGraphColors,dots=fal
   clip.append(svgElement('rect',{x:pad,y:pad,width:innerW,height:innerH})); defs.append(clip); svg.append(defs);
   const x = v => pad+(v-xmin)/(xmax-xmin)*innerW, y = v => h-pad-(v-ymin)/(ymax-ymin)*innerH;
   const group = svgElement('g',{'clip-path':`url(#clip-${container.id})`});
-  const xTicks=radianAxis?piTicks(xmin,xmax):Array.from({length:11},(_,i)=>xmin+(xmax-xmin)*i/10);
+  const xTicks=xTickValues||(radianAxis?piTicks(xmin,xmax):Array.from({length:11},(_,i)=>xmin+(xmax-xmin)*i/10));
   for(const [i,number] of xTicks.entries()) {
     const at=x(number);
     svg.append(svgElement('line',{x1:at,y1:pad,x2:at,y2:h-pad,stroke:'#a4b8ab',opacity:.25}));
-    if (radianAxis||i%2===0) svg.append(svgElement('text',{x:at,y:h-14,fill:'var(--muted)','font-size':12,'text-anchor':'middle','data-axis':'x'},radianAxis?piLabel(number,digits):displayNumber(number,digits)));
+    if (xTickValues||radianAxis||i%2===0) svg.append(svgElement('text',{x:at,y:h-14,fill:'var(--muted)','font-size':12,'text-anchor':'middle','data-axis':'x'},xTickLabel?xTickLabel(number):radianAxis?piLabel(number,digits):displayNumber(number,digits)));
   }
   for(let i=0;i<=8;i++) {
     const at=pad+innerH*i/8;

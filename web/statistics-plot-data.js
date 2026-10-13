@@ -1,4 +1,4 @@
-import {statisticsColumnNames,numericStatisticsRows} from './workspace-commands.js';
+import {statisticsColumnNames,numericStatisticsRows,statisticsDateAxis} from './workspace-commands.js';
 
 export function statisticsPlotGroupingColumn(grouping,count){const at=grouping==='first'?0:grouping==='last'?count-1:/^(?:column:)?\d+$/.test(grouping)?Number(grouping.replace('column:','')):-1;return count>1&&at>=0&&at<count?at:-1;}
 
@@ -19,7 +19,8 @@ export function statisticsScatterColumns(columnCount,grouping='columns',xColumn=
 // Keep group labels categorical and filter complete x/y pairs on the same row.
 export function statisticsScatterData(rows,{columnCount=rows[0]?.length||2,grouping='columns',xColumn=0,yColumn=1}={}){
   const columns=statisticsScatterColumns(columnCount,grouping,xColumn,yColumn),groups=new Map();
-  const pairs=numericStatisticsRows(rows.map(row=>[row[columns.xColumn]??'',row[columns.yColumn]??'']));
+  const rawPairs=rows.map(row=>[row[columns.xColumn]??'',row[columns.yColumn]??'']),dateAxis=statisticsDateAxis(rawPairs);
+  const pairs=numericStatisticsRows(rawPairs,dateAxis);
   pairs.forEach((row,index)=>{
     const x=statisticsPlotNumber(row[0]),y=statisticsPlotNumber(row[1]);
     const label=columns.groupColumn<0?'':String(rows[index][columns.groupColumn]??'').trim();
@@ -27,7 +28,7 @@ export function statisticsScatterData(rows,{columnCount=rows[0]?.length||2,group
     if(!groups.has(label))groups.set(label,{label,points:[]});
     groups.get(label).points.push([x,y]);
   });
-  return {...columns,series:[...groups.values()]};
+  return {...columns,series:[...groups.values()],...(dateAxis?{dateAxis}:{})};
 }
 
 // Density is stored per normalized x unit so extreme finite units cannot overflow
