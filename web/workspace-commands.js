@@ -172,6 +172,19 @@ export function numericStatisticsRows(rows){
   const dates=rows.map(row=>{const match=/^(\d{4})([-/.])(\d{1,2})\2(\d{1,2})$/.exec(row[0]);if(!match)return null;const at=Date.UTC(Number(match[1]),Number(match[3])-1,Number(match[4])),date=new Date(at);return date.getUTCFullYear()===Number(match[1])&&date.getUTCMonth()===Number(match[3])-1&&date.getUTCDate()===Number(match[4])?at:null;}),valid=dates.filter(n=>n!==null),origin=valid.length?Math.min(...valid)-86400000:null;
   return rows.map((row,i)=>row.map((cell,j)=>j===0&&origin!==null?dates[i]===null?'':String((dates[i]-origin)/86400000):statisticsNumericCell(cell)));
 }
+export function statisticsSummaryPlan(source,kind,column=0){
+  const rows=statisticsDataRows(source,kind),numeric=numericStatisticsRows(rows);
+  const values=numeric.map(row=>row[column]||'').filter(Boolean),label=statisticsColumnLabels(source,kind)[column];
+  if(!values.length)throw new Error('Enter at least one data value');
+  const constants=new Set(['pi','π','e','E','tau','τ','∞']);
+  function numericValue(value){
+    try{const numeric=node=>(node.kind!=='symbol'||constants.has(node.value))&&node.args.every(numeric);return numeric(parse(latexInput(value)));}catch{return false;}
+  }
+  if(values.every(numericValue))return {source:`stats([${values.join(',')}])`,termLabels:{'sample:1':label}};
+  const labels=[...new Set(rows.map(row=>row[column]||'').filter(Boolean))],indices=new Map(labels.map((value,index)=>[value,index]));
+  return {source:`stats([${rows.map(row=>row[column]||'').filter(Boolean).map(value=>indices.get(value)).join(',')}],categorical)`,
+    termLabels:{'sample:1':label,...Object.fromEntries(labels.map((value,index)=>[`summary:category:${index}`,value]))}};
+}
 const vector=values=>'['+values.join(',')+']';
 export function statisticsDatasetSource(source,kind){
   const rows=numericStatisticsRows(statisticsDataRows(source,kind));

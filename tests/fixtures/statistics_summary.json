@@ -1,0 +1,12 @@
+{
+  "cases": [
+    {"source":"0\n1\n1\n0\n1","kind":"list","column":0,"command":"stats([0,1,1,0,1])","labels":{"sample:1":"x"},"categories":["0","1"],"counts":[2,3],"percentages":[40,60]},
+    {"source":"a\nb\na","kind":"list","column":0,"command":"stats([0,1,0],categorical)","labels":{"sample:1":"x","summary:category:0":"a","summary:category:1":"b"},"categories":["a","b"],"counts":[2,1],"percentages":[66.66666666666667,33.333333333333336]},
+    {"source":"m\nf\nm","kind":"list","column":0,"command":"stats([0,1,0],categorical)","labels":{"sample:1":"x","summary:category:0":"m","summary:category:1":"f"},"categories":["m","f"],"counts":[2,1],"percentages":[66.66666666666667,33.333333333333336]},
+    {"source":"event,sex,group\n0,m,a\n1,f,b\n1,m,a\n,f,b\n0,,a","kind":"xyz","column":1,"command":"stats([0,1,0,1],categorical)","labels":{"sample:1":"sex (y)","summary:category:0":"m","summary:category:1":"f"},"categories":["m","f"],"counts":[2,2],"percentages":[50,50]},
+    {"source":"event,sex,group\n0,m,a\n1,f,b\n1,m,a\n,f,b\n0,,a","kind":"xyz","column":2,"command":"stats([0,1,0,1,0],categorical)","labels":{"sample:1":"group (z)","summary:category:0":"a","summary:category:1":"b"},"categories":["a","b"],"counts":[3,2],"percentages":[60,40]},
+    {"source":"\"A,B\"\n\"Total\"\n\"say \"\"hello\"\"\"\n\"A,B\"\n\"\"","kind":"list","column":0,"command":"stats([0,1,2,0],categorical)","labels":{"sample:1":"x","summary:category:0":"A,B","summary:category:1":"Total","summary:category:2":"say \"hello\""},"categories":["A,B","Total","say \"hello\""],"counts":[2,1,1],"percentages":[50,25,25]},
+    {"source":"sqrt(4)\n2\n2.0","kind":"list","column":0,"command":"stats([sqrt(4),2,2.0])","labels":{"sample:1":"x"},"categories":["2.0"],"counts":[3],"percentages":[100]},
+    {"source":"\"1,234\"\n1234\n2","kind":"list","column":0,"command":"stats([1234,1234,2])","labels":{"sample:1":"x"},"categories":["2","1234"],"counts":[1,2],"percentages":[33.333333333333336,66.66666666666667]}
+  ]
+}

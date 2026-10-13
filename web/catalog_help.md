@@ -522,7 +522,7 @@ Scatter: choose X column and Y column from any dataset with at least two columns
 
 Plots: Bar on List data places each distinct numeric value on the x-axis and its frequency on the y-axis (five observations of 3 give a bar at x=3 with height 5). With x,y data, x supplies the names and y supplies the heights: A,5 / B,8 / C,3 gives heights 5,8,3. With more columns, the first column supplies names and the remaining numeric columns are adjacent series. Select a group column under Plot grouping to draw groups side by side; the first remaining column supplies names and the other numeric columns supply heights. Row order and repeated names are retained; missing/nonfinite heights are omitted, and negative heights extend below zero.
 
-`stats(list)` — Summary statistics of a list.
+`stats(list)` — Summary statistics, with counts and percentages when there are fewer than 10 distinct numeric values. Empty cells are omitted by the Statistics workspace; percentages use the remaining observations. `stats(list,categorical)` shows counts and percentages without numeric means or variances for category codes.
 Example: stats([1,2,3,4])
 
 `mode(list)` — All values with the highest frequency, returned as a sorted list. Ties include every matching value; if all values occur once, all are returned.

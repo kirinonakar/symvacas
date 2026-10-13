@@ -155,6 +155,12 @@ def statistics_report(name, value, precision, labels=None):
             for key, item in remaining.items(): visit(key, item)
         elif isinstance(v, (list, tuple)):
             if not v: return
+            if name=='stats' and title=='Category frequencies':
+                rows=[[table_labels.get('summary:category:'+str(row['Category']), row['Category']), row['Count'], row['Percentage (%)']] for row in v]
+                rows.append(['Total', sum(row['Count'] for row in v), s.Integer(100)])
+                section=add(title,['Category','Count','Percentage (%)'],rows)
+                section['totalRow']=len(v)
+                return
             if all(isinstance(row, dict) for row in v):
                 intervals=[]; expanded=[]
                 for row_index, raw in enumerate(v):
@@ -304,6 +310,8 @@ def statistics_report(name, value, precision, labels=None):
     if name=='modelcompare':priority=['F','LRT χ²','Difference χ²','p','ΔR² (B − A)','ΔAUC (B − A)','ΔC-index (B − A)','ΔRMSE (B − A)','ΔAIC (B − A)']
     highlights=[{'label':('χ² p' if name in ('cfa','sem') else 'p value') if key=='p' and name in ('cfa','sem','mcnemar') else key,'value':cell(value[key])} for key in priority if isinstance(value,dict) and key in value and finite(value[key]) is not None][:4]
     report = {'analysis': name, 'title': report_title, 'sections': sections,'highlights':highlights,'plots':plots}
+    if name=='stats' and isinstance(value,dict) and 'Category frequencies' in value:
+        report['notes']=['Percentages use nonmissing values in the selected column.']
     if assumptions: report['assumptions'] = assumptions
     if details: report['details'] = details
     return report

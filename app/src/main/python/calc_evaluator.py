@@ -14,7 +14,7 @@ from calc_shared import (CONSTANTS, UNITS, MathError, canonical_function_name,
                          initial_conditions, inverse_mellin_transform,
                          inverse_z_transform, matrix, mellin_transform,
                          numeric_derivative, numeric_integral, ode_equation, require, sexagesimal_value, z_transform)
-from calc_statistics import distribution_value, fit_custom_regression, fit_regression, pearson_correlation, statistical_test, shape_statistics
+from calc_statistics import distribution_value, fit_custom_regression, fit_regression, pearson_correlation, statistical_test, shape_statistics, summary_frequencies
 from calc_advanced_statistics import FUNCTIONS as ADVANCED_STATISTICS, advanced
 from calc_finance import finance_value
 from calc_integrals import rational_trig_primitive, log_arctan_primitive
@@ -817,9 +817,15 @@ class Engine:
             return value
         if name in ("mean", "median", "mode", "variance", "stdev", "sumdata", "quartiles", "stats"):
             dispersion = name in ("variance", "stdev")
-            require(len(a) in ((1,2) if dispersion else (1,)), name+" expects a data list"+(" and optional ddof (0 or 1)" if dispersion else ""))
+            require(len(a) in ((1,2) if dispersion or name=="stats" else (1,)), name+" expects a data list"+(" and optional ddof (0 or 1)" if dispersion else ""))
             data = flatten(a[0]); n = len(data)
             require(n>0,"Enter at least one data value")
+            if name=="stats":
+                if len(a)==2:
+                    require(nodes[1].get('kind')=='symbol' and nodes[1].get('value')=='categorical', "stats option must be categorical")
+                if len(a)==2:
+                    self.statistics_summary_frequencies=summary_frequencies(data)
+                    return {"n":s.Integer(n), "Category count":s.Integer(len(self.statistics_summary_frequencies))}
             ddof = a[1] if dispersion and len(a)==2 else s.Integer(1 if dispersion else 0)
             require(getattr(ddof,"is_Integer",False) and ddof in (0,1), "ddof must be 0 (population) or 1 (sample)")
             require(n>ddof,"Sample variance and standard deviation require at least two data values")
@@ -836,6 +842,10 @@ class Engine:
                 frequency = max(counts.values())
                 modes = sorted(representatives[value] for value, count in counts.items() if count==frequency)
                 if name == "mode": return modes
+                # The existing mode computation identifies distinct numeric values.
+                # Do not compute a categorical frequency/percentage table at 10 or more.
+                if len(counts)<10:self.statistics_summary_frequencies=summary_frequencies(data)
+                elif hasattr(self,'statistics_summary_frequencies'):del self.statistics_summary_frequencies
             if name == "variance": return var
             if name == "stdev": return s.sqrt(var)
             if name == "sumdata": return sum(data)

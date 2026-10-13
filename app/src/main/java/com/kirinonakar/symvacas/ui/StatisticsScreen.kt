@@ -419,8 +419,11 @@ internal val LocalStatisticsCollapseRequest=staticCompositionLocalOf {0}
         if(summaryExpanded)Column(verticalArrangement=Arrangement.spacedBy(2.dp)) {
             Row(Modifier.horizontalScroll(rememberScrollState())) {
                 fun summarize(command:String,columnIndex:Int=0) {m.calculationAction="statistics-summary";m.calculateStatistics(command,statisticsTermLabels=mapOf("sample:1" to statisticsColumnLabels(data,dataKind)[columnIndex]))}
-                SmallAction(statisticsColumnLabels(data,dataKind)[0],translate=false){val values=vector(0);if(values!="[]")summarize("stats($values)")}
-                dataColumns.drop(1).forEachIndexed {index,name->SmallAction(statisticsColumnLabels(data,dataKind)[index+1],translate=false){val values=vector(index+1);if(values!="[]")summarize("stats($values)",index+1)}}
+                dataColumns.indices.forEach {column->SmallAction(statisticsColumnLabels(data,dataKind)[column],translate=false){
+                    runCatching {statisticsSummaryPlan(data,dataKind,column)}.onSuccess {plan->
+                        m.calculationAction="statistics-summary";m.calculateStatistics(plan.source,statisticsTermLabels=plan.termLabels)
+                    }.onFailure {m.error=it.message.orEmpty()}
+                }}
                 val correlationCommand=statisticsCorrelationCommand(numericRows,dataKind)
                 if(dataKind=="xy")SmallAction("correlation",active=if(correlationCommand==null)false else null,translate=false,modifier=Modifier.testTag("statistics-correlation")){correlationCommand?.let {summarize(it)}}
             }

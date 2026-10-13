@@ -202,6 +202,8 @@ private val korean = mapOf(
     "Interpretation & assumptions" to "해석·가정 안내", "Statistic" to "검정통계량", "unavailable" to "계산 불가",
     "Within-group variation is required" to "그룹 내 변동이 필요합니다.", "Shapiro-Wilk needs 3 to 5000 values" to "Shapiro–Wilk에는 3~5000개 값이 필요합니다.",
     "Visualize" to "시각화", "Summarize" to "요약", "Analyzed variables" to "분석 변수",
+    "Category frequencies" to "범주별 빈도", "Category" to "범주", "Category count" to "범주 수", "Percentage (%)" to "비율 (%)",
+    "Percentages use nonmissing values in the selected column." to "비율은 선택한 열에서 빈 값을 제외한 관측값 수를 기준으로 계산합니다.",
     "Apply to current data" to "현재 데이터에 적용", "Missing values applied to current data" to "현재 데이터의 결측값을 대체했습니다.",
     "Apply replaces only missing cells in the current data; observed values and headers are retained. Reanalyze after editing data." to "적용하면 현재 데이터의 결측 셀만 대체하며 관측값·헤더는 유지합니다. 데이터를 편집했으면 다시 분석하세요.",
     "Imputation result does not match the current data" to "대체 결과가 현재 데이터와 일치하지 않습니다.", "Imputed values must be finite numbers" to "대체 값은 유한한 숫자여야 합니다.",

@@ -1,12 +1,21 @@
 """Probability distributions, statistical tests, and regression."""
 from calc_limits import within_limit
 import math
+from collections import Counter
 from functools import lru_cache
 from statistics import NormalDist
 import mpmath as mp
 import sympy as s
 from sympy.core.relational import Relational
 from calc_shared import MathError, flatten, require
+
+def summary_frequencies(data):
+    keys = [s.Rational(str(value)) if getattr(value, 'is_Float', False) else value for value in data]
+    counts = Counter(keys)
+    representatives = dict(zip(keys, data))
+    return [{'Category': representatives[value], 'Count': s.Integer(count),
+             'Percentage (%)': s.Rational(100*count, len(data))}
+            for value, count in sorted(counts.items(), key=lambda item: s.default_sort_key(item[0]))]
 
 def shape_statistics(data, corrected=True):
     """Adjusted Fisher-Pearson skewness and Fisher excess kurtosis.

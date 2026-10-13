@@ -140,6 +140,8 @@ def _dispatch(payload, control=None):
             result["decimalTree"]=display_tree(decimal_value)
             if tree.get('kind')=='call' and tree.get('value') in BASIC_STATISTICS | (ADVANCED_STATISTICS-{'survivalanalysis'}):
                 report_value = {**shown_value, **engine.statistics_full_tables} if hasattr(engine,'statistics_full_tables') and isinstance(shown_value,dict) else shown_value
+                if tree['value']=='stats' and hasattr(engine,'statistics_summary_frequencies'):
+                    report_value={**report_value,'Category frequencies':engine.statistics_summary_frequencies}
                 if tree['value'] in ('mcnemar','cramerv','phi','cohenkappa') and isinstance(report_value,dict):
                     # Include input counts in the presentation without changing Ans.
                     inputs=getattr(engine,'statistics_inputs',None)

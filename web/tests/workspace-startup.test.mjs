@@ -10,7 +10,7 @@ import {setComputationLimitsRemoved} from '../computation-limits.js';
 // Exercise production workspace construction against the real page HTML.
 // This runs in a DOM emulator, not in the user's browser or a browser automation tool.
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-function fixture(context,saved={}){
+function fixture(context,saved={},engine={ready:false}){
   const dom=new JSDOM(html,{url:'http://localhost:8080/',pretendToBeVisual:true}),window=dom.window;
   const globals={window,document:window.document,navigator:window.navigator,localStorage:window.localStorage,Event:window.Event,
     getComputedStyle:window.getComputedStyle.bind(window),requestAnimationFrame:window.requestAnimationFrame.bind(window),cancelAnimationFrame:window.cancelAnimationFrame.bind(window)};
@@ -20,7 +20,7 @@ function fixture(context,saved={}){
   window.HTMLElement.prototype.scrollIntoView=()=>{};
   const state=createAppState(saved);setLanguage(state.language);setComputationLimitsRemoved(state.removeComputationLimit);restoreFields(state);
   const noop=()=>{},errors=[];
-  const workspaces=createWorkspaces({state,engine:{ready:false},ui:{toast:noop,pickFile:noop,openDialog:noop,clipboard:noop},persist:noop,
+  const workspaces=createWorkspaces({state,engine,ui:{toast:noop,pickFile:noop,openDialog:noop,clipboard:noop},persist:noop,
     restoreSelect:id=>restoreSelect(state,id),requestOptions:()=>({}),isBusy:()=>false,error:message=>errors.push(message),changeMode:noop,replaceInput:noop,insert:noop,evaluate:noop,showResult:noop,showStatisticsResult:noop,clearResult:noop,
     graphs:{render:noop,run:noop}});
   workspaces.initialize();
@@ -39,6 +39,19 @@ test('saved guided statistics menu is restored after its handlers and caches ini
   const {window,errors}=fixture(context,{fields:{mode:'statistics','statistics-op':'mcnemar','statistics-data':'20,8\n2,15','statistics-kind':'xy'}});
   assert.equal(window.document.getElementById('statistics-general-kind').value,'mcnemar');
   assert.ok(window.document.getElementById('statistics-general-kind').onchange);
+  assert.deepEqual(errors,[]);
+});
+
+test('summary action sends the selected categorical column and its literal labels to the engine',async context=>{
+  const requests=[];
+  const {window,errors}=fixture(context,{fields:{mode:'statistics','statistics-data':'event,sex\n0,m\n1,f\n,m','statistics-kind':'xy'}},
+    {ready:true,execute:async request=>{requests.push(request);return {ok:true};}});
+  window.document.getElementById('statistics-summary-column').value='1';
+  await window.document.querySelector('[data-run="statistics-summary"]').onclick();
+  assert.equal(requests.length,1);
+  const request=requests[0];assert.equal(request.tree.value,'stats');assert.equal(request.tree.args[1].value,'categorical');
+  assert.deepEqual(request.statisticsDatasets[request.tree.args[0].value],['0','1','0']);
+  assert.deepEqual(request.statisticsTermLabels,{'sample:1':'sex (y)','summary:category:0':'m','summary:category:1':'f'});
   assert.deepEqual(errors,[]);
 });
 
