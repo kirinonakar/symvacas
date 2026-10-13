@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import com.kirinonakar.symvacas.R
 import com.kirinonakar.symvacas.calculator.CalculatorModel
 import com.kirinonakar.symvacas.calculator.FunctionTransfer
 import com.kirinonakar.symvacas.calculator.ResultDisplayMode
@@ -257,8 +258,10 @@ import org.json.JSONArray
             val preview=runCatching{JSONObject(Parser(body,true).parse().json())}.getOrNull()
             if(preview!=null)Box(Modifier.horizontalScroll(rememberScrollState())){MathNode(preview,m.inputFont)}
             Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                Button(onClick={m.define(name.trim(),parameters,body,showResult=false);message=if(m.error.isEmpty())"Saved ${name.trim()}($parameters)" else ""}){Text(tr("Save function"))}
-                SmallAction("Clear"){name="";parameters="";body="";message="";m.error=""}
+                Row(horizontalArrangement=Arrangement.spacedBy(0.dp)) {
+                    StatisticsIconAction("Save function",R.drawable.ic_statistics_save){m.define(name.trim(),parameters,body,showResult=false);message=if(m.error.isEmpty())"Saved ${name.trim()}($parameters)" else ""}
+                    StatisticsIconAction("Clear",R.drawable.ic_statistics_delete){name="";parameters="";body="";message="";m.error=""}
+                }
                 SmallAction("Export"){if(m.functions.length()==0)message="No custom functions to export" else exportFile.launch("symvacas-functions.json")}
                 SmallAction("Import"){importFile.launch(arrayOf("application/json","text/plain","application/octet-stream"))}
             }

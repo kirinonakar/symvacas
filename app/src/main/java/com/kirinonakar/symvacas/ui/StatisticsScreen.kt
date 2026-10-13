@@ -161,7 +161,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
     }
 }
 
-@Composable private fun StatisticsIconAction(label:String,icon:Int,modifier:Modifier=Modifier,enabled:Boolean=true,onClick:()->Unit) {
+@Composable internal fun StatisticsIconAction(label:String,icon:Int,modifier:Modifier=Modifier,enabled:Boolean=true,onClick:()->Unit) {
     val c=LocalInstrument.current
     val description=tr(label)
     IconButton(onClick=onClick,enabled=enabled,modifier=modifier.semantics {contentDescription=description}) {

@@ -389,7 +389,7 @@ input:disabled,select:disabled{opacity:.45;cursor:default}
   touch-action:manipulation;
   transition:background-color 140ms ease,color 140ms ease,border-color 140ms ease;
 }
-.workspace[data-mode]:not([data-mode="scientific"]) button:where([data-run],[data-model-workflow-run],#statistics-plot-run,#graph-analysis-run,#function-save){
+.workspace[data-mode]:not([data-mode="scientific"]) button:where([data-run],[data-model-workflow-run],#statistics-plot-run,#graph-analysis-run){
   --workspace-button-bg:var(--accent);
   --workspace-button-hover:color-mix(in srgb,var(--accent) 88%,var(--ink));
   --workspace-button-active:color-mix(in srgb,var(--accent) 76%,var(--ink));
