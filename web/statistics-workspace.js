@@ -435,8 +435,13 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
     const grid=$('statistics-grid'),tableMode=grid.hidden;
     if(tableMode)try{statisticsGrid();}catch(exc){error(exc.message);return;}
     grid.hidden=!tableMode;$('statistics-data').closest('.statistics-direct-input').hidden=tableMode;
-    setText($('statistics-table-toggle'),tableMode?'Direct input':'Table editor');
-    $('statistics-table-toggle').setAttribute('aria-pressed',String(tableMode));
+    const toggle=$('statistics-table-toggle'),label=tableMode?'Direct input':'Table editor';
+    toggle.querySelector('path').setAttribute('d',tableMode
+      ?'M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 0 0 0-1.41L17.37 3.3a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.84z'
+      :'M3 3h18v18H3V3zm2 2v3h4V5H5zm6 0v3h8V5h-8zM5 10v4h4v-4H5zm6 0v4h8v-4h-8zM5 16v3h4v-3H5zm6 0v3h8v-3h-8z');
+    toggle.dataset.i18narialabel=toggle.dataset.i18ntitle=label;
+    toggle.setAttribute('aria-label',t(label));toggle.title=t(label);
+    toggle.setAttribute('aria-pressed',String(tableMode));
   };
   $('statistics-add-row').onclick=()=>{try{const rows=editorRows(),columns=Math.max(dataColumns(),rows[0]?.length||0);rows.push(Array(columns).fill(''));writeRows(rows);if(!$('statistics-grid').hidden)statisticsGrid();}catch(exc){error(exc.message);}};
   $('statistics-add-column').onclick=()=>{

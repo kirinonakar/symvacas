@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -41,6 +42,7 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
 import kotlin.math.max
+import com.kirinonakar.symvacas.R
 
 @Composable private fun StatHeader(text:String,modifier:Modifier) { val c=LocalInstrument.current; Box(modifier.fillMaxHeight(),contentAlignment=Alignment.Center){Text(text,Modifier.padding(horizontal=4.dp),fontSize=11.sp,color=c.muted,fontWeight=FontWeight.SemiBold,maxLines=1,overflow=TextOverflow.Ellipsis)} }
 @Composable private fun HeatMapAxisPicker(title:String,columns:List<Pair<Int,String>>,selected:Set<Int>,onToggle:(Int)->Unit) {
@@ -149,6 +151,15 @@ internal val LocalStatisticsCollapseRequest=staticCompositionLocalOf {0}
     val c=LocalInstrument.current
     Box(modifier.fillMaxHeight().clickable(enabled=enabled,onClick=onClick).semantics {contentDescription=description},contentAlignment=Alignment.Center) {
         Text(label,fontSize=13.sp,color=if(enabled)c.ink else c.muted.copy(alpha=.35f))
+    }
+}
+
+@Composable private fun StatisticsIconAction(label:String,icon:Int,modifier:Modifier=Modifier,enabled:Boolean=true,onClick:()->Unit) {
+    val c=LocalInstrument.current
+    val description=tr(label)
+    IconButton(onClick=onClick,enabled=enabled,modifier=modifier.semantics {contentDescription=description}) {
+        Icon(painterResource(icon),contentDescription=null,modifier=Modifier.size(20.dp),
+            tint=if(enabled)c.ink else c.muted.copy(alpha=.35f))
     }
 }
 
@@ -298,8 +309,10 @@ internal val LocalStatisticsCollapseRequest=staticCompositionLocalOf {0}
         if(names.isNotEmpty())Choices(names,activeName,{name->m.clearRegression();selected=name;isNew=false;m.dataSets.optJSONObject(name)?.let {item->datasetName=name;data=item.optString("csv");selectedDataKind=item.optString("kind","list");columnCount=if(selectedDataKind.startsWith("columns:"))statisticsColumnCount(selectedDataKind).toString() else "4";plotType=if(selectedDataKind=="xy")"Scatter" else "Histogram"}})
         Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp),verticalAlignment=Alignment.CenterVertically) {
             Field(datasetName,"Dataset name",Modifier.width(120.dp)){datasetName=it}
-            SmallAction("Save"){m.saveDataSet(datasetName,data,dataKind);selected=datasetName;isNew=false}
-            SmallAction("Delete"){if(activeName.isNotBlank()){m.deleteDataSet(activeName);selected="";isNew=true;startNew()}}
+            Row(horizontalArrangement=Arrangement.spacedBy(0.dp)) {
+                StatisticsIconAction("Save dataset",R.drawable.ic_statistics_save){m.saveDataSet(datasetName,data,dataKind);selected=datasetName;isNew=false}
+                StatisticsIconAction("Delete dataset",R.drawable.ic_statistics_delete){if(activeName.isNotBlank()){m.deleteDataSet(activeName);selected="";isNew=true;startNew()}}
+            }
             SmallAction("Import"){importCsv.launch(arrayOf("text/csv","text/comma-separated-values","text/plain","application/vnd.ms-excel","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))}
             SmallAction("Export"){exportCsv.launch("${datasetName.ifBlank {"dataset"}}.csv")}
         }
@@ -316,8 +329,8 @@ internal val LocalStatisticsCollapseRequest=staticCompositionLocalOf {0}
             if(autoColumns&&detectedColumns.isFailure)Text(tr("Column count must be between 1 and 100"),fontSize=11.sp,color=LocalInstrument.current.danger)
         }
         Row(Modifier.horizontalScroll(rememberScrollState())) {
-            SmallAction("New"){startNew()}
-            SmallAction(if(csv)"Table editor" else "Direct input"){csv=!csv}
+            StatisticsIconAction("New dataset",R.drawable.ic_statistics_new){startNew()}
+            StatisticsIconAction(if(csv)"Table editor" else "Direct input",if(csv)R.drawable.ic_statistics_table else R.drawable.ic_statistics_edit){csv=!csv}
             SmallAction("Add row"){if(parsedRows.size<999)data+="\n"+",".repeat(dataColumns.size-1)}
             SmallAction("Add column",modifier=Modifier.testTag("statistics-add-column"),enabled=maxOf(dataColumns.size,detectedColumns.getOrDefault(dataColumns.size))<100) {
                 val addition=statisticsAddColumn(data,dataColumns.size)

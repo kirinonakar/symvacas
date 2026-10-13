@@ -67,3 +67,4 @@ button[data-run="probability"]{background:var(--accent);color:var(--panel);paddi
 .equation-step>p.step-explanation{font-weight:400;color:var(--muted);line-height:1.6;margin-bottom:8px}.equation-advanced{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}.step-method{font-size:14px;font-weight:600}
 
 .editable-table .table-column-header { width: 100%; min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: inherit; font: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.statistics-icon-action{flex:0 0 42px;width:42px;min-width:42px;padding:8px;display:inline-flex;align-items:center;justify-content:center}.statistics-icon-action svg{display:block;width:20px;height:20px;fill:currentColor}
