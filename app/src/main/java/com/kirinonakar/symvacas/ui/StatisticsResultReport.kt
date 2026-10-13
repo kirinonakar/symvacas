@@ -22,15 +22,21 @@ import com.kirinonakar.symvacas.calculator.CalculatorModel
 import com.kirinonakar.symvacas.ui.theme.LocalInstrument
 import org.json.JSONObject
 
-@Composable internal fun StatisticsExplanation(title:String,text:String,tag:String,resetKey:Any=text) {
-    var expanded by remember(resetKey) {mutableStateOf(false)}
+@Composable internal fun StatisticsExplanation(title:String,text:String,tag:String,resetKey:Any=text,expansionKey:String=tag) {
+    val model=LocalStatisticsExplanationModel.current
+    val stateKey="explanation:$expansionKey"
+    var localExpanded by remember(resetKey) {mutableStateOf(false)}
+    val expanded=model?.statisticsSectionExpanded(stateKey) ?: localExpanded
     val collapseRequest=LocalStatisticsCollapseRequest.current
-    LaunchedEffect(collapseRequest){if(collapseRequest>0)expanded=false}
+    LaunchedEffect(collapseRequest){if(model==null&&collapseRequest>0)localExpanded=false}
     val description=tr(if(expanded)"Expanded" else "Collapsed")
+    val compact=title=="Usage notes"
     Column(Modifier.fillMaxWidth().testTag(tag)) {
-        TextButton(onClick={expanded=!expanded},contentPadding=PaddingValues(horizontal=0.dp,vertical=4.dp),
-            modifier=Modifier.testTag("$tag-toggle").semantics {stateDescription=description}) {
-            Text((if(expanded)"▾ " else "▸ ")+tr(title),fontSize=12.sp,color=LocalInstrument.current.muted)
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides if(compact)0.dp else LocalMinimumInteractiveComponentSize.current) {
+            TextButton(onClick={if(model!=null)model.setStatisticsSectionExpanded(stateKey,!expanded) else localExpanded=!expanded},contentPadding=PaddingValues(horizontal=0.dp,vertical=if(compact)0.dp else 4.dp),
+                modifier=Modifier.then(if(compact)Modifier.heightIn(min=24.dp) else Modifier).testTag("$tag-toggle").semantics {stateDescription=description}) {
+                Text((if(expanded)"▾ " else "▸ ")+tr(title),fontSize=12.sp,color=LocalInstrument.current.muted)
+            }
         }
         if(expanded)SelectionContainer {Text(text,Modifier.fillMaxWidth(),fontSize=11.sp,color=LocalInstrument.current.muted)}
     }

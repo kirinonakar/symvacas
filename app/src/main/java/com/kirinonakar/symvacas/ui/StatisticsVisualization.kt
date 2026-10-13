@@ -149,19 +149,22 @@ private fun plotNumber(value:Double)=String.format(Locale.ROOT,"%.4g",value)
             }
             label(left+w/2,size.height-8.dp.toPx(),xlabel);label(left,14.dp.toPx(),ylabel,Paint.Align.LEFT)
         }
-        if(kind=="scree")Text(tr("Bars: explained variance · line: cumulative variance"),fontSize=11.sp,color=c.muted)
         if(kind=="histogram")Text("${plotNumber(plot.getDouble("level")*100)}% ${tr("credible interval")}: ${plot.getJSONArray("interval").numbers().joinToString(" – ",transform=::plotNumber)} · ${tr("estimate")}: ${plotNumber(plot.getDouble("estimate"))}",fontSize=11.sp,color=c.muted)
-        if(kind=="histogram")Text(tr("Dashed: credible bounds · dotted: estimate")+if(zeroReference)" · ${tr("Solid: zero difference")}" else "",fontSize=11.sp,color=c.muted)
         plot.optJSONArray("groupLabels")?.let {labels->Text("A: ${labels.getString(0)} · B: ${labels.getString(1)} · ${tr("Difference (B − A)")}",fontSize=11.sp,color=c.muted)}
         if(kind=="loadings")plot.optJSONArray("labels")?.let {labels->Text(List(labels.length()){"${it+1}: ${labels.getString(it)}"}.joinToString(" · "),fontSize=11.sp,color=c.muted)}
-        plot.optString("caption").takeIf {it.isNotBlank()}?.let {Text(tr(it),fontSize=11.sp,color=c.muted)}
-        if(kind=="qq")Text(tr("Reference line passes through the first and third quartiles. Curvature or tail departures suggest non-normality; up to 200 ordered points are shown."),fontSize=11.sp,color=c.muted)
+        val explanations=buildList {
+            if(kind=="scree")add(tr("Bars: explained variance · line: cumulative variance"))
+            if(kind=="histogram")add(tr("Dashed: credible bounds · dotted: estimate")+if(zeroReference)" · ${tr("Solid: zero difference")}" else "")
+            plot.optString("caption").takeIf {it.isNotBlank()}?.let {add(tr(it))}
+            if(kind=="qq")add(tr("Reference line passes through the first and third quartiles. Curvature or tail departures suggest non-normality; up to 200 ordered points are shown."))
+            if(kind=="interaction")add(tr("Lines connect fitted cell means; nonparallel lines suggest interaction. Intervals are shown separately. Interpret with the interaction F test."))
+            if(kind=="clusters")add(tr("Colors: cluster membership · crosses: centroids. Axes show original feature values."))
+        }
+        if(explanations.isNotEmpty())StatisticsExplanation("Plot details",explanations.joinToString("\n\n"),"statistics-$kind-plot-help",plot)
         if(kind=="interaction") {
             val labels=plot.getJSONArray("lineLabels")
             Column {for(i in 0 until labels.length())Text("● "+labels.getString(i),fontSize=11.sp,color=c.curves[i%c.curves.size])}
-            Text(tr("Lines connect fitted cell means; nonparallel lines suggest interaction. Intervals are shown separately. Interpret with the interaction F test."),fontSize=11.sp,color=c.muted)
         }
-        if(kind=="clusters")Text(tr("Colors: cluster membership · crosses: centroids. Axes show original feature values."),fontSize=11.sp,color=c.muted)
         if(kind=="clusters")Column {for(i in 0 until plot.getJSONArray("centroids").length())Text("● ${tr("Cluster")} ${i+1}",fontSize=11.sp,color=c.curves[i%c.curves.size])}
         PlotExportActions(exports,"symvacas-$kind")
     }
@@ -202,7 +205,7 @@ private fun plotNumber(value:Double)=String.format(Locale.ROOT,"%.4g",value)
             }
             label(left+w/2,size.height-8.dp.toPx(),xlabel)
         }
-        if(plot.has("secondary"))Text(tr("Bars: adjusted p · dots: raw p · dashed line: α"),fontSize=11.sp,color=c.muted)
+        if(plot.has("secondary"))StatisticsExplanation("Plot details",tr("Bars: adjusted p · dots: raw p · dashed line: α"),"statistics-comparison-plot-help",plot)
         PlotExportActions(exports,"symvacas-${plot.getString("kind")}")
     }
 }

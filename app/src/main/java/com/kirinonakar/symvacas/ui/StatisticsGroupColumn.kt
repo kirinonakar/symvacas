@@ -74,7 +74,7 @@ internal fun statisticsGroupedColumn(source:String,kind:String,column:Int,cutPoi
         Field(cuts,"Numeric cut points",Modifier.fillMaxWidth().testTag("statistics-group-column-cuts")){if(groups==defaultStatisticsGroupValues(cuts))groups=defaultStatisticsGroupValues(it);cuts=it}
         Field(groups,"Group values (comma-separated)",Modifier.fillMaxWidth().testTag("statistics-group-column-values")){groups=it}
         Field(header,"New column header",Modifier.fillMaxWidth().testTag("statistics-group-column-header")){header=it}
-        Text(tr("Separate cut points with commas in increasing order. Groups use < and ≥; boundary values belong to the upper group. Missing or nonnumeric values remain blank."),fontSize=11.sp,color=LocalInstrument.current.muted)
+        StatisticsExplanation("Usage notes",tr("Separate cut points with commas in increasing order. Groups use < and ≥; boundary values belong to the upper group. Missing or nonnumeric values remain blank."),"statistics-group-column-help")
         val options=listOf(selected.toString(),cuts,header,groups)
         val alreadyAdded=added==(data to options)
         val preview=remember(data,kind,selected,cuts,header,groups) {runCatching {statisticsGroupedColumn(data,kind,selected,cuts,header,groups)}}

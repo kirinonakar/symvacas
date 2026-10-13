@@ -229,7 +229,7 @@ internal fun advancedStatisticsFormSettings(analysis:String,input:String,formsTe
                 }
                 if(section=="advanced"&&selected!="survivalanalysis")SmallAction(if(ko)"생존분석" else "Survival analysis"){choose(definitions.first {it.getString("id")=="survivalanalysis"})}
             }
-            StatisticsExplanation("Model details",definition.getString(if(definition.has("controls")&&input!="expression")if(ko)"formHelpKo" else "formHelp" else if(ko)"helpKo" else "help"),"statistics-$section-model-help",selected)
+            StatisticsExplanation(if(section=="general")"Usage notes" else "Model details",definition.getString(if(definition.has("controls")&&input!="expression")if(ko)"formHelpKo" else "formHelp" else if(ko)"helpKo" else "help"),"statistics-$section-model-help",selected,expansionKey=if(section=="general")"general-usage-notes" else "statistics-$section-model-help")
             if(definition.has("controls")) {
                 val ids=if(definition.getString("input")=="none")listOf("example","expression") else listOf("current","example","expression")
                 val inputLabels=ids.map {when(it){"current"->if(ko)"현재 데이터" else "Current data";"example"->if(ko)"예제·직접 설정" else "Example / parameters";else->if(ko)"분석 식" else "Expression"}}
@@ -272,7 +272,7 @@ internal fun advancedStatisticsFormSettings(analysis:String,input:String,formsTe
                 OutlinedButton(enabled=valid,modifier=Modifier.testTag("statistics-imputation-apply"),onClick={
                     runCatching {statisticsImputationCSV(data,values!!,columnLimit)}.onSuccess {updated->imputationData=null;onDataApplied(updated);message=appliedMessage}.onFailure {message=it.message.orEmpty()}
                 }){Text(tr("Apply to current data"))}
-                Text(tr("Apply replaces only missing cells in the current data; observed values and headers are retained. Reanalyze after editing data."),fontSize=11.sp,color=LocalInstrument.current.muted)
+                StatisticsExplanation("Usage notes",tr("Apply replaces only missing cells in the current data; observed values and headers are retained. Reanalyze after editing data."),"statistics-imputation-apply-help",selected)
             }
             if(message.isNotBlank())Text(message,color=MaterialTheme.colorScheme.error,fontSize=12.sp)
             statisticsReportFor(m.statisticsResult,m.statisticsResultSource,setOf(selected,if(selected=="modelcompare")"logisticcompare" else selected))?.let {report->StatisticsResultReport(m,report){plan->

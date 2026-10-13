@@ -82,7 +82,7 @@ internal fun statisticsModelWorkflowPlan(workflow:JSONObject,factors:String,path
     Column(Modifier.fillMaxWidth().testTag("statistics-model-workflow"),verticalArrangement=Arrangement.spacedBy(6.dp)) {
         Text(tr(if(target=="cfa")"CFA from EFA" else "SEM from CFA"),fontSize=14.sp,color=c.ink)
         Field(factors,"Factor IDs in analyzed column order",Modifier.fillMaxWidth(),enabled=target=="cfa"&&enabled){factors=it}
-        if(target=="cfa")Text(tr("Indicators are assigned to the factor with the largest absolute rotated loading. Review or edit the assignments before CFA."),fontSize=11.sp,color=c.muted)
+        if(target=="cfa")StatisticsExplanation("Usage notes",tr("Indicators are assigned to the factor with the largest absolute rotated loading. Review or edit the assignments before CFA."),"statistics-workflow-factor-help",workflow)
         val ids=factors.split(',').map {it.trim().toIntOrNull()};val labels=workflow.getJSONObject("termLabels")
         for(factor in 1..workflow.getInt("factorCount"))Text("${tr("Factor")} $factor: "+ids.mapIndexedNotNull {i,id->if(id==factor)labels.optString("feature:${i+1}","${tr("Feature")} ${i+1}") else null}.joinToString(", "),fontSize=11.sp,color=c.muted)
         if(efa) {
@@ -94,7 +94,7 @@ internal fun statisticsModelWorkflowPlan(workflow:JSONObject,factors:String,path
                 val key=row.indicator to row.factor
                 Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){Checkbox(automatic&&key !in excluded,{checked->excluded=if(checked)excluded-key else excluded+key},enabled=enabled&&automatic);Text("${labels.optString("feature:${row.indicator}")} → ${tr("Factor")} ${row.factor} · ${String.format(java.util.Locale.ROOT,"%.4g",row.loading)}",fontSize=11.sp,color=c.ink)}
             }
-            Text(tr("Detection uses absolute rotated pattern loadings, not statistical significance. Uncheck candidates to exclude them. Model identification is checked during estimation."),fontSize=11.sp,color=c.muted)
+            StatisticsExplanation("Usage notes",tr("Detection uses absolute rotated pattern loadings, not statistical significance. Uncheck candidates to exclude them. Model identification is checked during estimation."),"statistics-workflow-cross-loading-help",workflow)
         }else if(workflow.getJSONArray("cross").length()>0) {
             val pairs=workflow.getJSONArray("cross")
             Text(tr("Cross-loadings")+": "+List(pairs.length()){i->val pair=pairs.getJSONArray(i);"${labels.optString("feature:${pair.getInt(0)}")} → ${tr("Factor")} ${pair.getInt(1)}"}.joinToString("; "),fontSize=11.sp,color=c.muted)
@@ -103,7 +103,7 @@ internal fun statisticsModelWorkflowPlan(workflow:JSONObject,factors:String,path
             Field(paths,"Latent paths: source,target;…",Modifier.fillMaxWidth(),enabled=enabled){paths=it}
             Field(bootstrapSamples,"Effect bootstrap samples (0 = off)",Modifier.fillMaxWidth(),enabled=enabled){bootstrapSamples=it}
             Field(bootstrapSeed,"Bootstrap seed",Modifier.fillMaxWidth(),enabled=enabled){bootstrapSeed=it}
-            Text(tr("CFA transfers the measurement model, data and estimation options. Specify structural paths before running SEM."),fontSize=11.sp,color=c.muted)
+            StatisticsExplanation("Usage notes",tr("CFA transfers the measurement model, data and estimation options. Specify structural paths before running SEM."),"statistics-workflow-sem-help",workflow)
         }
         workflow.optJSONArray("residual")?.takeIf {it.length()>0}?.let {pairs->
             Text(tr("Residual covariances")+": "+List(pairs.length()){i->val pair=pairs.getJSONArray(i);"${labels.optString("feature:${pair.getInt(0)}")} ↔ ${labels.optString("feature:${pair.getInt(1)}")}"}.joinToString("; "),fontSize=11.sp,color=c.muted)

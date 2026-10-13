@@ -58,21 +58,28 @@ class WorkspaceStatesTest {
 
     @Test fun statisticsSectionsDefaultToSummaryAndPersistIncludingHiddenChildren() {
         val prefs=MemoryPreferences()
-        val sections=listOf("summary","visualize","regression","analysis","preparation","models","tests","advanced")
+        val sections=listOf("summary","visualize","regression","analysis","preparation","models","tests","advanced","explanation:general-usage-notes","explanation:statistics-models-model-help")
         val state=com.kirinonakar.symvacas.calculator.StatisticsState(prefs)
         for(section in sections)assertEquals(section=="summary",state.sectionExpanded(section))
         state.setSectionExpanded("summary",false)
         state.setSectionExpanded("regression",true)
         state.setSectionExpanded("models",true)
+        state.setSectionExpanded("explanation:general-usage-notes",true)
+        state.setSectionExpanded("explanation:statistics-models-model-help",true)
         val restored=com.kirinonakar.symvacas.calculator.StatisticsState(prefs)
         assertFalse(restored.sectionExpanded("summary"));assertTrue(restored.sectionExpanded("regression"));assertTrue(restored.sectionExpanded("models"))
+        assertTrue(restored.sectionExpanded("explanation:general-usage-notes"))
+        assertTrue(restored.sectionExpanded("explanation:statistics-models-model-help"))
         restored.collapseSections()
         val collapsed=com.kirinonakar.symvacas.calculator.StatisticsState(prefs)
         for(section in sections)assertFalse(collapsed.sectionExpanded(section))
         collapsed.setSectionExpanded("regression",true)
+        collapsed.setSectionExpanded("explanation:general-usage-notes",true)
         val editor=prefs.edit();collapsed.writeTo(editor);editor.apply()
         val reopened=com.kirinonakar.symvacas.calculator.StatisticsState(prefs)
         assertTrue(reopened.sectionExpanded("regression"));assertFalse(reopened.sectionExpanded("models"))
+        assertTrue(reopened.sectionExpanded("explanation:general-usage-notes"))
+        assertFalse(reopened.sectionExpanded("explanation:statistics-models-model-help"))
     }
 
     @Test fun graphUndoRestoresDeletedInputsAndParametersWithoutRecordingUndo() {

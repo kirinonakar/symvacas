@@ -60,6 +60,7 @@ private fun parseHeatMapSelection(value:String,count:Int,defaults:Set<Int>):Set<
 private fun encodeHeatMapSelection(selection:Set<Int>)=selection.sorted().joinToString(",").ifEmpty {"-"}
 
 internal val LocalStatisticsCollapseRequest=staticCompositionLocalOf {0}
+internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<CalculatorModel?> {null}
 
 @Composable internal fun StatisticsSectionToggle(title:String,expanded:Boolean,tag:String,depth:Int=0,onClick:()->Unit) {
     val description=tr(if(expanded)"Expanded" else "Collapsed")
@@ -311,7 +312,7 @@ internal val LocalStatisticsCollapseRequest=staticCompositionLocalOf {0}
     }
     Box(Modifier.fillMaxSize()) {
     Panel("Data & statistics","",panelScroll) {
-        CompositionLocalProvider(LocalStatisticsCollapseRequest provides collapseRequest) {
+        CompositionLocalProvider(LocalStatisticsCollapseRequest provides collapseRequest,LocalStatisticsExplanationModel provides m) {
         if(names.isNotEmpty())Choices(names,activeName,{name->m.clearRegression();selected=name;isNew=false;m.dataSets.optJSONObject(name)?.let {item->datasetName=name;data=item.optString("csv");selectedDataKind=item.optString("kind","list");columnCount=if(selectedDataKind.startsWith("columns:"))statisticsColumnCount(selectedDataKind).toString() else "4";plotType=if(selectedDataKind=="xy")"Scatter" else "Histogram"}})
         Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp),verticalAlignment=Alignment.CenterVertically) {
             Field(datasetName,"Dataset name",Modifier.width(120.dp)){datasetName=it}
@@ -454,7 +455,7 @@ internal val LocalStatisticsCollapseRequest=staticCompositionLocalOf {0}
         StatisticsSectionToggle("Visualize",visualizeExpanded,"statistics-visualize-toggle") {m.setStatisticsSectionExpanded("visualize",!visualizeExpanded)}
         if(visualizeExpanded) {
             if(dataKind!="list") {
-                Text(if(isKorean())"x 날짜 형식: YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD" else "x date formats: YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD",fontSize=11.sp,color=LocalInstrument.current.muted)
+                StatisticsExplanation("Usage notes",if(isKorean())"x 날짜 형식: YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD" else "x date formats: YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD","statistics-date-input-help")
             }
             Column(verticalArrangement=Arrangement.spacedBy(2.dp)) {
                 Choices(if(dataColumns.size>=2)listOf("Scatter","Bar","Histogram","Box plot","Violin + points","Heat map") else listOf("Bar","Histogram","Box plot","Violin + points","Heat map"),plotType,{plotType=it})
@@ -545,7 +546,7 @@ internal val LocalStatisticsCollapseRequest=staticCompositionLocalOf {0}
                     xAxisLabel=if(fitVisible)fittedVariables["x"] ?: "x" else statisticsColumnLabels(data,dataKind).getOrElse(scatterColumns.xColumn){"x"},yAxisLabel=if(fitVisible)fittedResponseName else statisticsColumnLabels(data,dataKind).getOrElse(scatterColumns.yColumn){"y"},
                     fitPrefix=if(fitVisible&&(m.regressionMode.startsWith("logistic")||m.regressionMode=="bayeslogistic"))"P($fittedResponseName = 1) = " else if(fitVisible)"$fittedResponseName ≈ " else "y ≈ ",fitVariables=if(fitVisible&&m.regressionMode in listOf("logistic","polynomial","ridge","lasso","elasticnet","logisticridge","logisticlasso","logisticelasticnet","randomforest","randomforestclassifier","randomforestregressor","bayeslinear","bayeslogistic"))fittedVariables else emptyMap(),orientation=plotOrientation,namedBars=namedBars,histogramKde=histogramKde,scatterSeries=if(scatterColumns.groupColumn>=0)scatter.series else null)
             }
-            if(scatter.dateAxis!=null&&plotType=="Scatter")Text((if(isKorean())"회귀식의 x: ${scatter.dateAxis.origin.plusDays(1)} = 1일째" else "Regression x: ${scatter.dateAxis.origin.plusDays(1)} = day 1"),fontSize=11.sp,color=LocalInstrument.current.muted)
+            if(scatter.dateAxis!=null&&plotType=="Scatter")StatisticsExplanation("Plot details",if(isKorean())"회귀식의 x: ${scatter.dateAxis.origin.plusDays(1)} = 1일째" else "Regression x: ${scatter.dateAxis.origin.plusDays(1)} = day 1","statistics-date-regression-help")
         }
         StatisticsSectionToggle("Regression & models",regressionExpanded,"statistics-regression-toggle") {m.setStatisticsSectionExpanded("regression",!regressionExpanded)}
         if(regressionExpanded) {
@@ -664,8 +665,8 @@ internal val LocalStatisticsCollapseRequest=staticCompositionLocalOf {0}
                     Field(customFormula,"Model y =",Modifier.fillMaxWidth()){m.clearRegression();customFormula=it}
                     Field(customVariable,"Independent variable",Modifier.fillMaxWidth()){m.clearRegression();customVariable=it}
                     Field(customInitials,"Initial values and bounds (optional)",Modifier.fillMaxWidth()){m.clearRegression();customInitials=it}
-                    Text(if(isKorean())"형식: [[매개변수1, 시작값, 하한, 상한], [매개변수2, 시작값, 하한, 상한]]; 상한은 생략할 수 있습니다."
-                        else "Format: [[parameter1, initial, lower, upper], [parameter2, initial, lower, upper]]; upper bound can be omitted.",fontSize=11.sp,color=LocalInstrument.current.muted)
+                    StatisticsExplanation("Usage notes",if(isKorean())"형식: [[매개변수1, 시작값, 하한, 상한], [매개변수2, 시작값, 하한, 상한]]; 상한은 생략할 수 있습니다."
+                        else "Format: [[parameter1, initial, lower, upper], [parameter2, initial, lower, upper]]; upper bound can be omitted.","statistics-custom-initials-help")
                     CalculationButton("Fit custom model",m.regressionBusy,m.regressionJob ?: m.inputVersion,onCancel={m.cancelRegression()},onClick={
                         val table=numericRows.filter {it.size>=2&&it[0].isNotBlank()&&it[1].isNotBlank()}.joinToString(",","[","]"){it.take(2).joinToString(",","[","]")}
                         val guesses=customInitials.trim().takeIf(String::isNotEmpty)?.let {",$it"}.orEmpty()

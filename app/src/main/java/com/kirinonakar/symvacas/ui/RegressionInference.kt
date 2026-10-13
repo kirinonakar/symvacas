@@ -116,8 +116,9 @@ import kotlin.math.abs
     TextButton(onClick={expanded=!expanded}) {Text(tr("Residual diagnostics"))}
     if(expanded) {
         val binomial=report.optString("fitScale")=="binomial"||report.optString("model").startsWith("logistic")
-        Text(tr(if(binomial)"Deviance residual vs fitted probability." else if(machineLearning)"Residual vs fitted" else "Residual vs fitted; Durbin–Watson uses input row order."),fontSize=11.sp,color=colors.muted)
-        if(binomial)Text(tr("Logistic leverage and Cook's D use a one-step GLM approximation."),fontSize=11.sp,color=colors.muted)
+        val residualHelp=tr(if(binomial)"Deviance residual vs fitted probability." else if(machineLearning)"Residual vs fitted" else "Residual vs fitted; Durbin–Watson uses input row order.")+
+            if(binomial)"\n\n"+tr("Logistic leverage and Cook's D use a one-step GLM approximation.") else ""
+        StatisticsExplanation("Plot details",residualHelp,"statistics-residual-help",report)
         val rows=report.optJSONArray("residuals")
         val residuals=if(rows==null)emptyList() else (0 until rows.length()).mapNotNull {rows.optJSONObject(it)}
         val points=residuals.mapNotNull {row->

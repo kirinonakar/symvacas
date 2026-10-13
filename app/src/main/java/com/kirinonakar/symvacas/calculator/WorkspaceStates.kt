@@ -240,6 +240,7 @@ internal class StatisticsState(private val prefs:SharedPreferences) {
 
     fun collapseSections() {
         val next=JSONObject(sectionExpansion.toString())
+        for(section in next.keys())if(section.startsWith("explanation:"))next.put(section,false)
         for(section in listOf("summary","visualize","regression","analysis","preparation","models","tests","advanced"))next.put(section,false)
         sectionExpansion=next
         prefs.edit().putString("statisticsSectionExpansion",next.toString()).apply()

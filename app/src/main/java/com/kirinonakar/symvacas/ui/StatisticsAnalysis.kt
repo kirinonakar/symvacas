@@ -125,12 +125,18 @@ import org.json.JSONArray
         val analysis=guidedAnalyses.getValue(test)
         key(analysis){AdvancedStatistics(m,data,kind,"general",embedded=true,fixedAnalysis=analysis)}
     } else {
-    Text(if(kind.startsWith("columns:"))tr("Blank cells are omitted. Group comparisons use all columns.") else when(kind){"xy"->"Blank cells are omitted. Paired, χ², and Fisher tests use rows with both values; independent tests use each column separately. Fisher requires exactly two categories per column.";"xyz"->"Blank cells are omitted. ANOVA and Tukey HSD use x, y, and z as three independent groups.";else->"Blank cells are omitted from tests. Choose x,y or x,y,z data for group comparisons."},fontSize=12.sp,color=c.muted)
+    val usageNotes=when(category) {
+        "Mean comparisons"->"Blank cells are omitted. One-sample t and z tests use the selected numeric column. Independent comparisons use each selected column separately; paired t tests use complete pairs. ANOVA compares the selected independent groups. z tests require known population standard deviations."
+        "Rank & nonparametric tests"->"Blank cells are omitted. Wilcoxon uses one sample or complete pairs. Mann–Whitney compares two independent groups; Kruskal–Wallis compares the selected independent groups. For group/value data, choose the group and value columns and the matching rule for paired analyses."
+        "Categorical data"->"χ² and Fisher tests use only rows with values in both selected categorical columns. χ² requires at least two categories per column; Fisher requires exactly two. Category labels are supported."
+        else->"Blank cells are omitted from tests. Choose x,y or x,y,z data for group comparisons."
+    }
+    StatisticsExplanation("Usage notes",tr(usageNotes),"statistics-analysis-data-help",expansionKey="general-usage-notes")
     Column(verticalArrangement=Arrangement.spacedBy(2.dp)) {
         if(test=="ANOVA") {
             StatisticsSelectionTitle("ANOVA method")
             Choices(listOf("Welch (unequal variances)","Classic (equal variances)"),anovaMethod,{anovaMethod=it})
-            Text(tr(if(anovaMethod.startsWith("Welch"))"Set analysis: Welch ANOVA + Games–Howell + assumptions" else "Set analysis: ANOVA + Tukey–Kramer + assumptions"),fontSize=11.sp,color=c.muted)
+            StatisticsExplanation("Usage notes",tr(if(anovaMethod.startsWith("Welch"))"Set analysis: Welch ANOVA + Games–Howell + assumptions" else "Set analysis: ANOVA + Tukey–Kramer + assumptions"),"statistics-anova-help")
         }
         if(test=="t test"&&(groupedMode&&!pairedComparison||!groupedMode&&activeColumn=="x-y")) {
             StatisticsSelectionTitle("Independent t method")
@@ -150,7 +156,7 @@ import org.json.JSONArray
             if(test=="Wilcoxon"||test=="t test"&&pairedComparison) {
                 StatisticsSelectionTitle("Pair matching");Choices(listOf("Row order within each group","Subject ID"),matching,{matching=it})
                 if(matching=="Subject ID"){StatisticsSelectionTitle("Subject column");Choices(columnLabels,columnLabels[subjectIndex],{subjectColumn=dataColumns[columnLabels.indexOf(it)]},translate=false)}
-                else Text(tr("Row order pairing requires the same subject order in each group. Missing values require subject-ID matching."),fontSize=11.sp,color=c.muted)
+                else StatisticsExplanation("Usage notes",tr("Row order pairing requires the same subject order in each group. Missing values require subject-ID matching."),"statistics-pairing-help")
                 pairedPlan.exceptionOrNull()?.message?.let {Text(tr(it),fontSize=11.sp,color=MaterialTheme.colorScheme.error)}
             }
         }
@@ -186,8 +192,8 @@ import org.json.JSONArray
             val names=columnOptions.map {name->dataColumns.indexOf(name).takeIf {it>=0}?.let {columnLabels[it]} ?: tr(name)}
             Choices(names,names[columnOptions.indexOf(activeColumn).coerceAtLeast(0)],{column=columnOptions[names.indexOf(it)]},translate=false)
         }
-        if(categorySelection)Text(tr("Only complete rows in the two selected columns are analyzed."),fontSize=11.sp,color=c.muted)
-        else if(groupedMode)Text(tr("Select group and value columns. Paired analyses use the selected matching rule; ANOVA compares all groups."),fontSize=11.sp,color=c.muted)
+        if(categorySelection)StatisticsExplanation("Usage notes",tr("Only complete rows in the two selected columns are analyzed."),"statistics-category-help")
+        else if(groupedMode)StatisticsExplanation("Usage notes",tr("Select group and value columns. Paired analyses use the selected matching rule; ANOVA compares all groups."),"statistics-grouped-help",test)
         else if(test=="Wilcoxon"&&pairedTest)Text(sampleNames.joinToString(" − ")+" · "+tr("Complete pairs"),fontSize=11.sp,color=c.muted)
         else if(twoSample||pairedTest)Text(sampleNames.joinToString(" − ")+" · "+tr(if(pairedTest)"Complete pairs" else "Independent samples"),fontSize=11.sp,color=c.muted)
     }
@@ -213,7 +219,7 @@ import org.json.JSONArray
             Checkbox(checked=yatesCorrection,onCheckedChange={yatesCorrection=it},modifier=Modifier.testTag("statistics-yates"))
             Text(tr("Yates continuity correction"),fontSize=12.sp)
         }
-        Text(tr("Applies only to 2×2 tables. Turn off for Pearson χ²."),fontSize=11.sp,color=c.muted)
+        StatisticsExplanation("Usage notes",tr("Applies only to 2×2 tables. Turn off for Pearson χ²."),"statistics-yates-help")
     }
     if(test in listOf("Fisher exact","Wilcoxon","Mann–Whitney")) {
         Column(verticalArrangement=Arrangement.spacedBy(2.dp)) {
@@ -258,7 +264,7 @@ import org.json.JSONArray
             onCancel={m.cancel()},onClick={command?.let {m.calculationAction="statistics-analysis";m.calculateStatistics(it,termLabels)}})
     }
     statisticsReportFor(m.statisticsResult,m.statisticsResultSource,statisticsTestAnalyses(test))?.let {StatisticsResultReport(m,it)}
-    Text(if(isKorean())"검정의 기본 대립가설은 양측입니다. 신뢰수준은 0.95 또는 95로 입력할 수 있습니다." else "Tests use a two-sided alternative by default. Confidence levels accept 0.95 or 95.",fontSize=11.sp,color=c.muted)
+    StatisticsExplanation("Usage notes",if(isKorean())"검정의 기본 대립가설은 양측입니다. 신뢰수준은 0.95 또는 95로 입력할 수 있습니다." else "Tests use a two-sided alternative by default. Confidence levels accept 0.95 or 95.","statistics-test-options-help",test)
     }
     AdvancedStatistics(m,data,kind,"tests","More tests & effect sizes")
 }
