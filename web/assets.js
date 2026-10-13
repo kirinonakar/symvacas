@@ -1,4 +1,4 @@
-self.SYMVACAS_CACHE = 'symvacas-static-91addefa5f0a62dc';
+self.SYMVACAS_CACHE = 'symvacas-static-135e1b9a3f79b205';
 self.SYMVACAS_ASSETS = [
   "./",
   "./advanced-statistics-schema.js",
@@ -69,6 +69,7 @@ self.SYMVACAS_ASSETS = [
   "./plot.js",
   "./probability-schema.js",
   "./probability-workspace.js",
+  "./python-action-icons.js",
   "./python-tools.js",
   "./python-workspace.js",
   "./README.md",

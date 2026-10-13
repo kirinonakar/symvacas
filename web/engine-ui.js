@@ -1,18 +1,20 @@
 import {$} from './app-ui.js';
 import {setText} from './i18n.js';
+import {pythonActionIcon} from './python-action-icons.js';
 
 export function createEngineUI({engine,onChange,onReady,cancelPreview}) {
   let busy=false,stopTimer=null,stopVisible=false;
   setText($('stop'),'Cancel');
-  const actions=new Map(['equation','statistics-summary','statistics','statistics-advanced','statistics-preparation','statistics-tests','statistics-models','regression'].map(context=>
+  const actions=new Map(['python','equation','statistics-summary','statistics','statistics-advanced','statistics-preparation','statistics-tests','statistics-models','regression'].map(context=>
     [context,document.querySelector(`[data-run="${context}"]`)]));
   const labels=new Map([...actions].map(([context])=>[context,context==='equation'?'Solve':context==='statistics-summary'?'Summarize':'Analyze']));
   function updateStopButton(){
     const active=engine.pending?.context,visible=stopVisible&&!!engine.pending;
     for(const [context,button] of actions){
-      const cancel=visible&&active===context;
+      const cancel=active===context&&(context==='python'?!!engine.pending&&!engine.pending.background:visible);
       button.dataset.cancelCalculation=String(cancel);
-      setText(button,cancel?'Cancel':labels.get(context));
+      if(context==='python')pythonActionIcon(button,cancel?'Stop':'Run',cancel?'stop':'play');
+      else setText(button,cancel?'Cancel':labels.get(context));
       button.disabled=cancel?false:!engine.ready||busy||button.dataset.invalidAnalysis==='true';
     }
     for(const button of document.querySelectorAll('[data-imputation-apply]'))button.disabled=!engine.ready||busy||button.dataset.invalidAnalysis==='true';

@@ -2,15 +2,28 @@ import {$,value,element,control} from './app-ui.js';
 import {t} from './i18n.js';
 import {downloadFile} from './storage.js';
 import {bindPythonEditor} from './python-tools.js';
+import {pythonActionIcon} from './python-action-icons.js';
 
 export function createPythonWorkspace({engine,ui,persist,requestOptions,error,run}) {
   const {pickFile,clipboard}=ui;
-  $('python-new').onclick=()=>{$('python-source').value='';$('python-output').textContent='';persist();};
-  $('python-open').onclick=()=>pickFile('.py,text/x-python',async file=>{$('python-source').value=await file.text();persist();});
-  $('python-save').onclick=()=>downloadFile('symvacas.py',value('python-source'),'text/x-python');
+  let fileName='symvacas.py';
+  for(const [id,label,icon] of [['new','New','new'],['open','Open .py','open'],['save','Save .py','save'],['save-as','Save as','save_as']])pythonActionIcon($('python-'+id),label,icon);
+  $('python-new').onclick=()=>{fileName='symvacas.py';$('python-source').value='';$('python-output').textContent='';persist();};
+  $('python-open').onclick=()=>pickFile('.py,text/x-python',async file=>{$('python-source').value=await file.text();fileName=file.name;persist();});
+  $('python-save').onclick=()=>downloadFile(fileName,value('python-source'),'text/x-python');
+  $('python-save-as').onclick=()=>{
+    const name=window.prompt(t('Save as'),fileName)?.trim();
+    if(!name)return;
+    fileName=/\.py$/i.test(name)?name:name+'.py';
+    downloadFile(fileName,value('python-source'),'text/x-python');
+  };
   $('python-source').onkeydown=event=>{if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();run('python');}};
-  const pythonToolbar=element('div','','form-row'),pythonSuggestions=element('div','','form-row');$('python-source').closest('label').insertAdjacentElement('afterend',pythonSuggestions);$('python-source').closest('label').insertAdjacentElement('beforebegin',pythonToolbar);
-  bindPythonEditor($('python-source'),{toolbar:pythonToolbar,suggestions:pythonSuggestions,onEdit:persist,copy:clipboard,paste:()=>navigator.clipboard.readText()});
+  const pythonToolbar=$('python-save-as').parentElement,pythonToolsToolbar=element('div','','form-row python-tools-toolbar'),pythonSuggestions=element('div','','form-row');
+  const sourceLabel=$('python-source').closest('label');
+  sourceLabel.insertAdjacentElement('afterend',pythonSuggestions);
+  sourceLabel.insertAdjacentElement('beforebegin',pythonToolsToolbar);
+  bindPythonEditor($('python-source'),{toolbar:pythonToolbar,toolsToolbar:pythonToolsToolbar,suggestions:pythonSuggestions,onEdit:persist,copy:clipboard,paste:()=>navigator.clipboard.readText()});
+  pythonToolbar.append(pythonToolbar.querySelector('[data-run="python"]'));
   function requestInput({prompt,output,signal}) {
     $('python-output').textContent=output+prompt;
     return new Promise(resolve=>{
@@ -31,7 +44,7 @@ export function createPythonWorkspace({engine,ui,persist,requestOptions,error,ru
   }
   async function execute() {
     $('python-output').textContent=t('실행 중…');
-    const result=await engine.execute({...requestOptions(),action:'python',source:value('python-source'),inputs:value('python-input')===''?[]:value('python-input').split(/\r?\n/),filename:'symvacas.py'},{onInput:requestInput});
+    const result=await engine.execute({...requestOptions(),action:'python',source:value('python-source'),inputs:value('python-input')===''?[]:value('python-input').split(/\r?\n/),filename:fileName},{onInput:requestInput,context:'python'});
     $('python-output').textContent=[result.output,result.error&&t(result.error)].filter(Boolean).join('\n')||t('실행 완료');
     if(!result.ok)error(result.error);
   }

@@ -18,6 +18,7 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -26,9 +27,18 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.*
+import com.kirinonakar.symvacas.R
 import com.kirinonakar.symvacas.calculator.CalculatorModel
 import com.kirinonakar.symvacas.math.BracketAutoClose
 import com.kirinonakar.symvacas.ui.theme.LocalInstrument
+
+@Composable private fun PythonIconAction(label:String,icon:Int,enabled:Boolean=true,onClick:()->Unit) {
+    val c=LocalInstrument.current
+    IconButton(onClick=onClick,enabled=enabled) {
+        Icon(painterResource(icon),contentDescription=tr(label),modifier=Modifier.size(20.dp),
+            tint=if(enabled)c.ink else c.muted.copy(alpha=.35f))
+    }
+}
 
 @Composable fun PythonScreen(m:CalculatorModel,imeInsets:WindowInsets=WindowInsets.ime) {
     val context=LocalContext.current
@@ -92,27 +102,29 @@ import com.kirinonakar.symvacas.ui.theme.LocalInstrument
                     Text("PYTHON",style=MaterialTheme.typography.titleMedium,color=c.ink)
                     Text(m.pythonFileName+if(m.pythonDirty) if(isKorean())"  • 저장 안 됨" else "  • unsaved" else "",fontSize=11.sp,color=c.muted,maxLines=1)
                 }
-                Button(onClick={m.runPython()},enabled=!m.pythonBusy,contentPadding=PaddingValues(horizontal=16.dp)) {Text(if(isKorean())"▶ 실행" else "▶ Run")}
-                if(m.pythonBusy)SmallAction("Stop") {m.stopPython()}
+                Button(onClick={if(m.pythonBusy)m.stopPython() else m.runPython()},contentPadding=PaddingValues(12.dp)) {
+                    Icon(painterResource(if(m.pythonBusy)R.drawable.ic_python_stop else R.drawable.ic_python_play),
+                        contentDescription=tr(if(m.pythonBusy)"Stop" else "Run"),modifier=Modifier.size(20.dp))
+                }
             }
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
-                SmallAction("New") {if(m.pythonDirty)confirm="new" else {m.newPythonFile();editor=TextFieldValue("")}}
-                SmallAction("Open .py") {if(m.pythonDirty)confirm="open" else open.launch(arrayOf("*/*"))}
-                SmallAction("Save") {if(m.pythonUri.isBlank())create.launch(m.pythonFileName) else write(Uri.parse(m.pythonUri))}
-                SmallAction("Save as") {create.launch(m.pythonFileName)}
+                PythonIconAction("New",R.drawable.ic_statistics_new) {if(m.pythonDirty)confirm="new" else {m.newPythonFile();editor=TextFieldValue("")}}
+                PythonIconAction("Open .py",R.drawable.ic_python_open) {if(m.pythonDirty)confirm="open" else open.launch(arrayOf("*/*"))}
+                PythonIconAction("Save",R.drawable.ic_statistics_save) {if(m.pythonUri.isBlank())create.launch(m.pythonFileName) else write(Uri.parse(m.pythonUri))}
+                PythonIconAction("Save as",R.drawable.ic_python_save_as) {create.launch(m.pythonFileName)}
                 val hasSelection=editor.selection.min<editor.selection.max
-                TextButton(onClick={
+                PythonIconAction("Cut",R.drawable.ic_python_cut,enabled=hasSelection) {
                     val a=editor.selection.min;val b=editor.selection.max
                     clipboard.setText(AnnotatedString(editor.text.substring(a,b)))
                     apply(PythonEditorTools.replace(editor.text,a,b,""))
-                },enabled=hasSelection,contentPadding=PaddingValues(horizontal=8.dp,vertical=0.dp)) {
-                    Text(tr("Cut"),fontSize=11.sp)
                 }
-                SmallAction("Copy") {
+                PythonIconAction("Copy",R.drawable.ic_python_copy) {
                     val a=editor.selection.min;val b=editor.selection.max
                     clipboard.setText(AnnotatedString(if(a==b)editor.text else editor.text.substring(a,b)))
                 }
-                SmallAction("Paste") {clipboard.getText()?.text?.let {apply(PythonEditorTools.replace(editor.text,editor.selection.min,editor.selection.max,it))}}
+                PythonIconAction("Paste",R.drawable.ic_python_paste) {clipboard.getText()?.text?.let {apply(PythonEditorTools.replace(editor.text,editor.selection.min,editor.selection.max,it))}}
+            }
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
                 Box {
                     SmallAction("Import ▾",translate=false) {importsOpen=true}
                     DropdownMenu(importsOpen,{importsOpen=false}) {PythonEditorTools.imports.forEach {line->DropdownMenuItem(text={Text(line)},onClick={apply(PythonEditorTools.insertImport(editor.text,editor.selection.start,line));importsOpen=false})}}
@@ -121,10 +133,8 @@ import com.kirinonakar.symvacas.ui.theme.LocalInstrument
                     SmallAction("Function ▾",translate=false) {templatesOpen=true}
                     DropdownMenu(templatesOpen,{templatesOpen=false}) {PythonEditorTools.snippets.forEach {snippet->DropdownMenuItem(text={Text(snippet.label)},onClick={apply(PythonEditorTools.insertSnippet(editor.text,editor.selection.min,editor.selection.max,snippet));templatesOpen=false})}}
                 }
-            }
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
-                SmallAction("Indent") {apply(PythonEditorTools.indent(editor.text,editor.selection.start,editor.selection.end))}
-                SmallAction("Outdent") {apply(PythonEditorTools.indent(editor.text,editor.selection.start,editor.selection.end,outdent=true))}
+                PythonIconAction("Indent",R.drawable.ic_python_indent) {apply(PythonEditorTools.indent(editor.text,editor.selection.start,editor.selection.end))}
+                PythonIconAction("Outdent",R.drawable.ic_python_outdent) {apply(PythonEditorTools.indent(editor.text,editor.selection.start,editor.selection.end,outdent=true))}
             }
             Column(Modifier.fillMaxWidth().keepInputVisible(includeDescendants=true,contentKey=editorHeight to suggestions.isNotEmpty()),verticalArrangement=Arrangement.spacedBy(5.dp)) {
                 OutlinedTextField(editor,::typed,Modifier.fillMaxWidth().height(editorHeight).focusRequester(editorFocus).onPreviewKeyEvent {event->

@@ -8,7 +8,7 @@
 header{flex-wrap:wrap}.header-actions{margin-left:auto}.preferences{display:flex;gap:8px}.preferences select{width:auto;font-size:12px;background:transparent;padding:7px 20px 7px 8px}.preferences select#language{min-width:86px}
 @media(max-width:600px){.preferences{width:100%;justify-content:flex-end;border-top:1px solid var(--line);padding-top:8px}.preferences select{padding:4px 20px 4px 8px}header{row-gap:10px}}
 
-button[data-run="python"]{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:800;padding-inline:20px}
+button[data-run="python"]{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:800;padding:8px}
 button[data-run="python"]:hover:not(:disabled){background:#006553;border-color:#006553}
 button[data-run="python"]:active:not(:disabled){transform:translateY(1px)}
 :root[data-theme="dark"] button[data-run="python"]{background:#076c58;border-color:#076c58}
@@ -67,4 +67,5 @@ button[data-run="probability"]{background:var(--accent);color:var(--panel);paddi
 .equation-step>p.step-explanation{font-weight:400;color:var(--muted);line-height:1.6;margin-bottom:8px}.equation-advanced{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}.step-method{font-size:14px;font-weight:600}
 
 .editable-table .table-column-header { width: 100%; min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: inherit; font: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.statistics-icon-action{flex:0 0 42px;width:42px;min-width:42px;padding:8px;display:inline-flex;align-items:center;justify-content:center}.statistics-icon-action svg{display:block;width:20px;height:20px;fill:currentColor}
+.statistics-icon-action,.python-icon-action{flex:0 0 42px;width:42px;min-width:42px;padding:8px;display:inline-flex;align-items:center;justify-content:center}.statistics-icon-action svg,.python-icon-action svg{display:block;width:20px;height:20px;fill:currentColor}
+.python-tools-toolbar{align-items:center}.python-tools-toolbar select{width:88px}
