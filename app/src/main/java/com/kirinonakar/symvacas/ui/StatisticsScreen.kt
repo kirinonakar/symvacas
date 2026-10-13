@@ -730,7 +730,6 @@ internal val LocalStatisticsCollapseRequest=staticCompositionLocalOf {0}
         }
         StatisticsAnalysis(m,numericRows,if(dataColumns.size==1)"list" else dataKind,data,parsedRows)
         AdvancedStatistics(m,data,dataKind)
-        Display(m,requestInitialFocus=false,showInput=false)
         }
     }
     editingHeaderColumn?.let {column->

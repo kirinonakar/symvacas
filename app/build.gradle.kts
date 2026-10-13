@@ -14,8 +14,8 @@ android {
         applicationId = "com.kirinonakar.symvacas"
         minSdk = 26
         targetSdk = 36
-        versionCode = 51
-        versionName = "1.5.1"
+        versionCode = 52
+        versionName = "1.5.2"
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
     }
 

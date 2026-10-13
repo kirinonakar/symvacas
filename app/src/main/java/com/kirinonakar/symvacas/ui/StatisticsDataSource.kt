@@ -196,9 +196,9 @@ private fun markdownStatisticsCells(line:String):List<String> {
 }
 
 internal fun statisticsMarkdownTableCsv(source:String):String? {
-    val lines=source.removePrefix("\uFEFF").trim().split(Regex("\\r\\n|\\n|\\r")).toMutableList()
+    val lines=source.removePrefix("\uFEFF").trim().split(Regex("\\r\\n|\\n|\\r")).filter {it.isNotBlank()}.toMutableList()
     if(lines.firstOrNull()?.startsWith("```")==true&&lines.lastOrNull()?.startsWith("```")==true){lines.removeAt(lines.lastIndex);lines.removeAt(0)}
-    if(lines.size<3||lines.any {!it.contains('|')})return null
+    if(lines.size<2||lines.any {!it.contains('|')})return null
     val header=markdownStatisticsCells(lines[0]);val divider=markdownStatisticsCells(lines[1])
     if(header.isEmpty()||divider.size!=header.size||divider.any {!it.matches(Regex(":?-{3,}:?"))})return null
     val rows=listOf(header)+lines.drop(2).map(::markdownStatisticsCells)
@@ -226,7 +226,30 @@ internal fun normalizeStatisticsPaste(previous:String,updated:String,singleColum
     return candidate.takeIf {it!=updated}
 }
 
-internal fun statisticsPasteCell(raw:String):String {
+internal fun statisticsPasteCell(raw:String):String=statisticsNumericPasteCell(statisticsPasteDataLines(raw))
+
+private val statisticsMarkdownHeading=Regex("^#{1,6} ")
+private fun statisticsPasteDataLines(source:String):String {
+    // Omit blank lines and unindented Markdown headings, preserving quoted CSV values.
+    val result=StringBuilder();var quoted=false;var start=0;var separator="";var hasLine=false
+    while(start<source.length) {
+        var end=start
+        while(end<source.length&&source[end]!='\r'&&source[end]!='\n')end++
+        val line=source.substring(start,end)
+        var next=end
+        if(next<source.length){next++;if(source[end]=='\r'&&source.getOrNull(next)=='\n')next++}
+        val content=line.removePrefix("\uFEFF")
+        if(quoted||content.isNotBlank()&&!statisticsMarkdownHeading.containsMatchIn(content)) {
+            if(hasLine)result.append(separator)
+            result.append(line);hasLine=true;separator=source.substring(end,next)
+            line.forEach {if(it=='"')quoted=!quoted}
+        }
+        start=next
+    }
+    return result.toString()
+}
+
+private fun statisticsNumericPasteCell(raw:String):String {
     val trimmed=raw.trim();val quoted=trimmed.startsWith('"')&&trimmed.endsWith('"')&&trimmed.length>=2
     val value=if(quoted)trimmed.substring(1,trimmed.length-1) else trimmed
     val number=value.statisticsNumericCell()
@@ -244,9 +267,33 @@ private fun statisticsPasteDelimiter(source:String,start:Int):Char {
     return ','
 }
 
+private fun statisticsSpreadsheetCsv(source:String):String? {
+    if(!source.contains('\t'))return null
+    val result=StringBuilder();val cell=StringBuilder();var quoted=false;var hasTab=false;var index=0
+    fun appendCell() {
+        val value=cell.toString();val number=value.statisticsNumericCell()
+        result.append((if(number!=value.trim())value.replace(",","") else value).csvCell());cell.setLength(0)
+    }
+    while(index<source.length) {
+        val ch=source[index]
+        if(ch=='"') {
+            if(quoted&&source.getOrNull(index+1)=='"'){cell.append('"');index++}else quoted=!quoted
+        }else if(!quoted&&ch=='\t') {
+            hasTab=true;appendCell();result.append(',')
+        }else if(!quoted&&(ch=='\n'||ch=='\r')) {
+            appendCell();result.append(ch)
+            if(ch=='\r'&&source.getOrNull(index+1)=='\n'){result.append('\n');index++}
+        }else cell.append(ch)
+        index++
+    }
+    appendCell();return result.toString().takeIf {hasTab&&!quoted}
+}
+
 internal fun statisticsPasteText(source:String,singleColumn:Boolean=false):String {
-    val markdown=statisticsMarkdownTableCsv(source)
-    val text=markdown?:source
+    val filtered=statisticsPasteDataLines(source)
+    val markdown=statisticsMarkdownTableCsv(filtered)
+    if(markdown==null)statisticsSpreadsheetCsv(filtered)?.let {return it}
+    val text=markdown?:filtered
     val lines=text.split(Regex("\r\n|\n|\r"))
     // In List mode a pasted spreadsheet column can contain unquoted grouped numbers.
     val groupedColumn=markdown==null&&singleColumn&&!text.contains('\t')&&lines.any {groupedStatisticNumber.matches(it.trim())}&&
@@ -256,7 +303,7 @@ internal fun statisticsPasteText(source:String,singleColumn:Boolean=false):Strin
     }
     val result=StringBuilder();var start=0;var quoted=false;var delimiter=statisticsPasteDelimiter(text,0)
     fun appendCell(end:Int) {
-        result.append(statisticsPasteCell(text.substring(start,end)))
+        result.append(statisticsNumericPasteCell(text.substring(start,end)))
     }
     text.forEachIndexed {index,ch->
         if(ch=='"')quoted=!quoted

@@ -30,7 +30,7 @@ export function createGraphSvgContext(measure,width,height){
       const anchor=ctx.textAlign==='center'?'middle':['right','end'].includes(ctx.textAlign)?'end':'start';
       emit(`<text x="${x}" y="${y}" fill="${escape(ctx.fillStyle)}" font-size="${size}" font-family="${escape(family)}" text-anchor="${anchor}">${escape(text)}</text>`);
     },
-    document(){return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><defs><clipPath id="viewport"><rect width="${width}" height="${height}"/></clipPath>${definitions.join('')}</defs><g clip-path="url(#viewport)">${elements.join('')}</g></svg>`;}
+    document(){return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><defs><clipPath id="viewport"><rect width="${width}" height="${height}"/></clipPath>${definitions.join('')}</defs><g clip-path="url(#viewport)">${elements.join('')}</g></svg>`.replace(/></g,'>\n<');}
   };
   function emit(element){elements.push(`<g opacity="${ctx.globalAlpha}"${clip?` clip-path="url(#${clip})"`:''}>${element}</g>`);}
   return ctx;

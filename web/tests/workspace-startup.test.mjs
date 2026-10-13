@@ -42,6 +42,40 @@ test('saved guided statistics menu is restored after its handlers and caches ini
   assert.deepEqual(errors,[]);
 });
 
+test('statistics paste handlers filter Markdown headings in selection replacements and table cells',async context=>{
+  const {window,errors}=fixture(context,{fields:{mode:'statistics','statistics-data':'12\n34','statistics-kind':'list'}});
+  const document=window.document,field=document.getElementById('statistics-data');
+  function paste(input,text){
+    const event=new window.Event('paste',{bubbles:true,cancelable:true});
+    Object.defineProperty(event,'clipboardData',{value:{getData:()=>text}});
+    input.dispatchEvent(event);assert.equal(event.defaultPrevented,true);
+  }
+  field.setSelectionRange(0,2);paste(field,'# note\n56\n## skipped\n78');
+  assert.equal(field.value,'56\n78\n34');assert.equal(field.selectionStart,5);
+  document.getElementById('statistics-table-toggle').click();
+  const cell=document.querySelector('#statistics-grid input[data-row="0"][data-column="0"]');
+  cell.select();paste(cell,'# cell note\n"1,234"');
+  assert.equal(cell.value,'1234');assert.equal(field.value,'1234\n78\n34');
+  cell.select();paste(cell,'# only a comment');
+  assert.equal(cell.value,'');assert.equal(field.value,'""\n78\n34');
+  await new Promise(resolve=>setTimeout(resolve,180));
+  assert.deepEqual(errors,[]);
+});
+
+test('statistics data paste converts Excel and Markdown tables to CSV before updating controls',async context=>{
+  const {window,errors}=fixture(context,{fields:{mode:'statistics','statistics-kind':'xy'}});
+  const field=window.document.getElementById('statistics-data');
+  for(const source of ['\r\nx\ty\r\n1\t2\r\n\r\n3\t4\r\n\r\n','## Data\n\n| x | y |\n| --- | --- |\n| 1 | 2 |\n\n| 3 | 4 |\n']){
+    field.setSelectionRange(0,field.value.length);
+    const event=new window.Event('paste',{bubbles:true,cancelable:true});
+    Object.defineProperty(event,'clipboardData',{value:{getData:()=>source}});
+    field.dispatchEvent(event);assert.equal(event.defaultPrevented,true);
+    assert.equal(field.value.replaceAll('\r\n','\n'),'x,y\n1,2\n3,4');
+    assert.equal(field.selectionStart,field.value.length);
+  }
+  await new Promise(resolve=>setTimeout(resolve,180));assert.deepEqual(errors,[]);
+});
+
 test('nested comparison opens Model Comparison with Logistic and the current response and predictors',context=>{
   const {window,state,errors}=fixture(context,{fields:{mode:'statistics',
     'statistics-data':'event,age,marker\n0,20,2\n1,30,3\n0,40,4\n1,50,5',

@@ -47,19 +47,55 @@ export function statisticsImportRows(rows){
   return rows.map((row,index)=>index===0&&header?row:row.map(statisticsNumericCell));
 }
 export function statisticsPasteCell(raw){
+  return statisticsNumericPasteCell(statisticsPasteDataLines(raw));
+}
+function statisticsPasteDataLines(source){
+  // Omit blank lines and unindented Markdown headings, preserving quoted CSV values.
+  const parts=source.split(/(\r\n|\n|\r)/);let quoted=false,result='',separator='',hasLine=false;
+  for(let index=0;index<parts.length;index+=2){
+    const line=parts[index];
+    if(!quoted&&(!line.trim()||/^#{1,6} /.test(line.replace(/^\uFEFF/,''))))continue;
+    result+=(hasLine?separator:'')+line;hasLine=true;separator=parts[index+1]??'';
+    for(const ch of line)if(ch==='"')quoted=!quoted;
+  }
+  return result;
+}
+function statisticsNumericPasteCell(raw){
   const trimmed=raw.trim(),quoted=trimmed.startsWith('"')&&trimmed.endsWith('"'),value=quoted?trimmed.slice(1,-1):trimmed,number=statisticsNumericCell(value);
   if(quoted&&/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(number))return raw.replace(trimmed,number);
   return number!==value.trim()?raw.replace(/,/g,''):raw;
 }
+function statisticsSpreadsheetCsv(source){
+  if(!source.includes('\t'))return null;
+  let cell='',quoted=false,hasTab=false,result='';
+  function appendCell(){
+    const number=statisticsNumericCell(cell);
+    result+=markdownCsvCell(number!==cell.trim()?cell.replace(/,/g,''):cell);cell='';
+  }
+  for(let index=0;index<source.length;index++){
+    const ch=source[index];
+    if(ch==='"'){
+      if(quoted&&source[index+1]==='"'){cell+='"';index++;}else quoted=!quoted;
+    }else if(!quoted&&ch==='\t'){
+      hasTab=true;appendCell();result+=',';
+    }else if(!quoted&&(ch==='\n'||ch==='\r')){
+      appendCell();result+=ch;
+      if(ch==='\r'&&source[index+1]==='\n'){result+='\n';index++;}
+    }else cell+=ch;
+  }
+  appendCell();return hasTab&&!quoted?result:null;
+}
 export function statisticsPasteText(source,{singleColumn=false}={}){
-  const markdown=markdownTableCsv(source),text=markdown??source,lines=text.split(/\r\n|\n|\r/);
+  const filtered=statisticsPasteDataLines(source),markdown=markdownTableCsv(filtered);
+  if(markdown===null){const spreadsheet=statisticsSpreadsheetCsv(filtered);if(spreadsheet!==null)return spreadsheet;}
+  const text=markdown??filtered,lines=text.split(/\r\n|\n|\r/);
   const grouped=cell=>statisticsNumericCell(cell)!==cell.trim();
   // List mode accepts an unquoted spreadsheet column with thousands separators.
   if(markdown===null&&singleColumn&&!text.includes('\t')&&lines.some(grouped)&&lines.every(line=>!line.includes(',')||grouped(line)))
     return text.replace(/[^\r\n]+/g,line=>grouped(line)?line.replace(/,/g,''):line);
   let start=0,quoted=false,delimiter=csvRecordDelimiter(text,0),result='';
   function appendCell(end){
-    result+=statisticsPasteCell(text.slice(start,end));
+    result+=statisticsNumericPasteCell(text.slice(start,end));
   }
   for(let index=0;index<text.length;index++){
     const ch=text[index];if(ch==='"')quoted=!quoted;
@@ -71,9 +107,9 @@ export function statisticsPasteText(source,{singleColumn=false}={}){
   appendCell(text.length);return result;
 }
 export function markdownTableCsv(source){
-  const lines=source.replace(/^\uFEFF/,'').trim().split(/\r\n|\n|\r/);
+  const lines=source.replace(/^\uFEFF/,'').trim().split(/\r\n|\n|\r/).filter(line=>line.trim());
   if(lines[0]?.startsWith('```')&&lines.at(-1)?.startsWith('```')){lines.shift();lines.pop();}
-  if(lines.length<3||lines.some(line=>!line.includes('|')))return null;
+  if(lines.length<2||lines.some(line=>!line.includes('|')))return null;
   const header=markdownCells(lines[0]),separator=markdownCells(lines[1]);
   if(!header.length||separator.length!==header.length||!separator.every(cell=>/^:?-{3,}:?$/.test(cell)))return null;
   const rows=[header,...lines.slice(2).map(markdownCells)];

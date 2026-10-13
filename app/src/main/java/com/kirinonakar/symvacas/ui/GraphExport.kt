@@ -33,7 +33,7 @@ internal class GraphExportState {
 
 internal class GraphExportImage(private val svg:String?,private val picture:Picture?,private val width:Int,private val height:Int) {
     fun writeTo(output:OutputStream) {
-        if(svg!=null)output.write(svg.toByteArray(Charsets.UTF_8))
+        if(svg!=null)output.write(svg.replace("><",">\n<").toByteArray(Charsets.UTF_8))
         else {
             val ratio=minOf(1.0,16384.0/width,16384.0/height,sqrt(16_000_000.0/(width.toDouble()*height)))
             val bitmap=Bitmap.createBitmap((width*ratio).toInt().coerceAtLeast(1),(height*ratio).toInt().coerceAtLeast(1),Bitmap.Config.ARGB_8888)

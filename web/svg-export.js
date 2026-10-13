@@ -31,7 +31,7 @@ export function standalonePlotSvg(svg,{captions=[],scale=null}={}){
     defs.append(gradient);copy.append(defs,node('rect',{x:x+8,y:top,width:Math.max(1,width-16),height:12,fill:'url(#export-color-scale)'}));
     copy.append(node('text',{x:x+8,y:top+33,fill:muted,'font-family':'sans-serif','font-size':14},scale.low),node('text',{x:x+width-8,y:top+33,fill:muted,'text-anchor':'end','font-family':'sans-serif','font-size':14},scale.high));
   }
-  return {text:new window.XMLSerializer().serializeToString(copy),width,height};
+  return {text:new window.XMLSerializer().serializeToString(copy).replace(/></g,'>\n<'),width,height};
 }
 
 export function pngPlotSize(width,height){

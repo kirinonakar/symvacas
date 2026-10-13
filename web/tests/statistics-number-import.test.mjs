@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {csvRows,statisticsImportRows,statisticsPasteText,statisticsDatasetSource,statisticsAddColumn} from '../workspace-commands.js';
+import {csvRows,statisticsImportRows,statisticsPasteText,statisticsPasteCell,statisticsDatasetSource,statisticsAddColumn} from '../workspace-commands.js';
 
 const cases=JSON.parse(readFileSync(new URL('../../tests/fixtures/statistics_number_import.json',import.meta.url),'utf8'));
 test('adding columns preserves headers, values, missing cells and empty drafts on both platforms',()=>{
@@ -22,4 +22,7 @@ test('CSV and worksheet rows remove thousands separators while retaining columns
 });
 test('pastes normalize grouped numbers in CSV, Excel TSV, List and Markdown without merging CSV columns',()=>{
   for(const item of cases.pastes)assert.equal(statisticsPasteText(item.source,{singleColumn:item.singleColumn}),item.expected,item.source);
+});
+test('table-cell pastes remove Markdown headings while retaining indented and literal hash values',()=>{
+  for(const item of cases.cells)assert.equal(statisticsPasteCell(item.source),item.expected,item.source);
 });

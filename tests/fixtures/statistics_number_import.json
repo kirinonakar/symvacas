@@ -17,14 +17,44 @@
     }
   ],
   "pastes": [
-    {"source": "1,234\r\n-12,345.67\r\n", "singleColumn": true, "expected": "1234\r\n-12345.67\r\n"},
+    {"source": "1,234\r\n-12,345.67\r\n", "singleColumn": true, "expected": "1234\r\n-12345.67"},
     {"source": "Value\n1,234\n5", "singleColumn": true, "expected": "Value\n1234\n5"},
     {"source": "1,234\n2,345", "singleColumn": false, "expected": "1,234\n2,345"},
     {"source": "x,y\n1,234", "singleColumn": true, "expected": "x,y\n1,234"},
-    {"source": "date\tamount\tnote\r\n2024-01-01\t 1,234 \tA,B\r\n\t-12,345.6\t\r\n", "expected": "date\tamount\tnote\r\n2024-01-01\t 1234 \tA,B\r\n\t-12345.6\t\r\n"},
+    {"source": "date\tamount\tnote\r\n2024-01-01\t 1,234 \tA,B\r\n\t-12,345.6\t\r\n", "expected": "date,amount,note\r\n2024-01-01, 1234 ,\"A,B\"\r\n,-12345.6,"},
     {"source": "\"1,234\",\"12,345,678\",\"+1,234.5e-2\",\"hello, world\",\"1,23\"", "expected": "1234,12345678,+1234.5e-2,\"hello, world\",\"1,23\""},
     {"source": "\"1234\",\"\",\"-0.50\",\".25\",\"A,B\",\"say \"\"hello\"\"\"", "expected": "1234,\"\",-0.50,.25,\"A,B\",\"say \"\"hello\"\"\""},
     {"source": "\"hello,\n1,234\",\"5,678\"", "expected": "\"hello,\n1,234\",5678"},
-    {"source": "| Name | Amount |\n| --- | --- |\n| A,B | 1,234 |", "expected": "Name,Amount\n\"A,B\",1234"}
+    {"source": "| Name | Amount |\n| --- | --- |\n| A,B | 1,234 |", "expected": "Name,Amount\n\"A,B\",1234"},
+    {"source": "# sample data\nx,y\n1,2\n## skipped \"quote\n3,4\n### end", "expected": "x,y\n1,2\n3,4"},
+    {"source": "\ufeff# heading\r\n1,234\r\n## note\r\n5,678\r\n", "singleColumn": true, "expected": "1234\r\n5678"},
+    {"source": "# heading\rdate\tamount\r2024-01-01\t1,234\r# ignored\r2024-01-02\t5,678", "expected": "date,amount\r2024-01-01,1234\r2024-01-02,5678"},
+    {"source": "# table\n| Name | Amount |\n| --- | --- |\n# skip\n| A | 1,234 |", "expected": "Name,Amount\nA,1234"},
+    {"source": "# heading\nName,Value\n\"first\n# literal text\nlast\",\"1,234\"\nA,#label\n\"#category\",2\nB,3 # inline", "expected": "Name,Value\n\"first\n# literal text\nlast\",1234\nA,#label\n\"#category\",2\nB,3 # inline"},
+    {"source": "# first\r\n## second\n### third\n#### fourth\n##### fifth\n###### last", "expected": ""},
+    {"source": "# note\n\n1\n# middle\n\n2", "expected": "1\n2"},
+    {"source": "# heading\n # indented\n#value\n##value\n#\n###\n####### too many hashes\n1", "expected": " # indented\n#value\n##value\n#\n###\n####### too many hashes\n1"},
+    {"source": "x\ty\n1\t2\n3\t4", "expected": "x,y\n1,2\n3,4"},
+    {"source": "Name\tAmount\tNote\r\n\"A,B\"\t\"1,234\"\t\"say \"\"hello\"\"\"\r\nC\t\t\r\n", "expected": "Name,Amount,Note\r\n\"A,B\",1234,\"say \"\"hello\"\"\"\r\nC,,"},
+    {"source": "\"first\n\n# literal heading\nlast\"\t\"hello\tworld\"\t1,234\n\t\t\nA\tB\tC", "expected": "\"first\n\n# literal heading\nlast\",\"hello\tworld\",1234\nA,B,C"},
+    {"source": "\"hello\tworld\",\"1,234\"", "expected": "\"hello\tworld\",1234"},
+    {"source": "#\ttab", "expected": "#,tab"},
+    {"source": "\"unterminated\tcell", "expected": "\"unterminated\tcell"},
+    {"source": "## Data\n\n```markdown\n\n| Name | Amount | Note |\n| :--- | ---: | --- |\n\n| A\\|B | 1,234 | say \"hello\" |\n| C | | |\n\n```", "expected": "Name,Amount,Note\nA|B,1234,\"say \"\"hello\"\"\"\nC,,"},
+    {"source": "x | y\n--- | ---", "expected": "x,y"},
+    {"source": "\r\n \t \r\nx,y\r\n1,2\r\n\r\n  \r\n3,4\r\n\r\n", "expected": "x,y\r\n1,2\r\n3,4"},
+    {"source": "\n\t \r\n\n", "expected": ""},
+    {"source": "\nName,Note\nA,\"first\n\nlast\"\n\nB,\n", "expected": "Name,Note\nA,\"first\n\nlast\"\nB,"}
+  ],
+  "cells": [
+    {"source": "# note\r\n\"1,234\"", "expected": "1234"},
+    {"source": "## heading", "expected": ""},
+    {"source": " # indented heading", "expected": " # indented heading"},
+    {"source": "\t## indented heading", "expected": "\t## indented heading"},
+    {"source": "#value", "expected": "#value"},
+    {"source": "\"#category\"", "expected": "\"#category\""},
+    {"source": "A#label", "expected": "A#label"},
+    {"source": "\n\n\"1,234\"\n \n", "expected": "1234"},
+    {"source": "\n \n", "expected": ""}
   ]
 }
