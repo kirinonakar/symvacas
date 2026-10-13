@@ -414,7 +414,7 @@ input:disabled,select:disabled{opacity:.45;cursor:default}
 .workspace[data-mode]:not([data-mode="scientific"]) button:not(:where(#statistics-editor button,table button,.graph-source-editor button,#graph-formulas button)):active:not(:disabled){background:var(--workspace-button-active)}
 .workspace[data-mode]:not([data-mode="scientific"]) button:not(:where(#statistics-editor button,table button,.graph-source-editor button,#graph-formulas button)):disabled{opacity:.4;cursor:default}
 .workspace[data-mode]:not([data-mode="scientific"]) :is(.statistics-icon-action,.python-icon-action){padding:8px}
-.workspace[data-mode]:not([data-mode="scientific"]) :is(.statistics-icon-action,.python-icon-action) svg{width:24px;height:24px}
+.workspace[data-mode]:not([data-mode="scientific"]) :is(.statistics-icon-action,.python-icon-action) svg{width:20px;height:20px}
 .workspace[data-mode]:not([data-mode="scientific"]) :is(.graph-toolbar,.probability-actions,.probability-operations,.list-row){column-gap:6px}
 .workspace[data-mode="graph"] :is(#graph-zoom-in,#graph-zoom-out,#graph-left,#graph-right,#graph-up,#graph-down,#graph-animate){width:42px;padding:0;font-size:18px}
 .workspace[data-mode="graph"] #graph-animate svg{width:24px;height:24px}
