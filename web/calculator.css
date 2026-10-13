@@ -351,6 +351,9 @@ input:disabled,select:disabled{opacity:.45;cursor:default}
 .workspace[data-mode="statistics"] .statistics-section .statistics-section{margin:12px 0 12px 8px;padding-left:14px;border-left:1px solid var(--line)}
 .workspace[data-mode="statistics"] .statistics-section .statistics-section>summary{color:var(--ink);font-size:14px;font-weight:600}
 .workspace[data-mode="statistics"] .statistics-section details:not(.statistics-section)>summary{color:var(--ink);font-size:12px;font-weight:400}
+#statistics-summary .statistics-summary-column-label{flex:0 1 auto;flex-direction:row;align-items:center;gap:6px;min-width:0}
+#statistics-summary .statistics-summary-column-label>span{white-space:nowrap}
+#statistics-summary-column{width:auto;min-width:72px;max-width:240px}
 
 #statistics-regression #regression-section>h2{font-size:14px;font-weight:600;color:var(--ink)}
 

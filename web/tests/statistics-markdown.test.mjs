@@ -6,6 +6,19 @@ import {renderStatisticsReport} from '../statistics-report.js';
 
 const cell=value=>({exact:value,decimal:value,decimalTree:{kind:'number',value}});
 
+test('single-column summaries show the existing analyzed-variable table first without changing Overall ordering',context=>{
+  class Node{constructor(tag){this.tag=tag;this.children=[];}append(...nodes){this.children.push(...nodes);}replaceChildren(...nodes){this.children=[...nodes];}setAttribute(){} }
+  const previous=globalThis.document;context.after(()=>{globalThis.document=previous;setLanguage('en');});globalThis.document={createElement:tag=>new Node(tag)};setLanguage('en');
+  const variable={title:'Analyzed variables',columns:['Sample'],rows:[['age (x)']],totalRows:1};
+  const summary={title:'Summary',columns:['Metric','Value'],rows:[['mean','25']],totalRows:1};
+  const container=new Node('div');
+  renderStatisticsReport(container,{analysis:'stats',title:'Descriptive statistics',sections:[summary,variable],plots:[]});
+  const captions=()=>container.children[0].children.filter(node=>node.tag==='section').map(section=>section.children[0].children[0].children[0].textContent);
+  assert.deepEqual(captions(),['Analyzed variables','Summary']);
+  renderStatisticsReport(container,{analysis:'stats',title:'Overall',sections:[variable,{title:'Numeric data',columns:['Column','mean'],rows:[['age (x)','25']],totalRows:1}],plots:[]});
+  assert.deepEqual(captions(),['Numeric data','Analyzed variables']);
+});
+
 test('contingency tables share one toggle per column, default open for one analysis and closed for several, and copy all percentages',context=>{
   class Node{constructor(tag){this.tag=tag;this.children=[];}append(...nodes){this.children.push(...nodes);}replaceChildren(...nodes){this.children=[...nodes];}setAttribute(){} }
   const previous=globalThis.document;context.after(()=>globalThis.document=previous);globalThis.document={createElement:tag=>new Node(tag)};

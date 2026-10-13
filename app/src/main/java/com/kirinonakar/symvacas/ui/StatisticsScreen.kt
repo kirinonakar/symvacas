@@ -420,20 +420,23 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
         }
         StatisticsSectionToggle("Summary & preperation",summaryExpanded,"statistics-summary-toggle") {m.setStatisticsSectionExpanded("summary",!summaryExpanded)}
         if(summaryExpanded)Column(verticalArrangement=Arrangement.spacedBy(2.dp)) {
-            SmallAction("Overall",translate=false,modifier=Modifier.testTag("statistics-summary-overall")) {
-                runCatching {statisticsOverallPlan(data,dataKind)}.onSuccess {plan->
-                    m.calculationAction="statistics-summary";m.calculateStatistics(plan.source,statisticsTermLabels=plan.termLabels)
-                }.onFailure {m.error=it.message.orEmpty()}
-            }
-            Row(Modifier.horizontalScroll(rememberScrollState())) {
-                fun summarize(command:String,columnIndex:Int=0) {m.calculationAction="statistics-summary";m.calculateStatistics(command,statisticsTermLabels=mapOf("sample:1" to statisticsColumnLabels(data,dataKind)[columnIndex]))}
-                dataColumns.indices.forEach {column->SmallAction(statisticsColumnLabels(data,dataKind)[column],translate=false){
-                    runCatching {statisticsSummaryPlan(data,dataKind,column)}.onSuccess {plan->
-                        m.calculationAction="statistics-summary";m.calculateStatistics(plan.source,statisticsTermLabels=plan.termLabels)
-                    }.onFailure {m.error=it.message.orEmpty()}
-                }}
-                val correlationCommand=statisticsCorrelationCommand(numericRows,dataKind)
-                if(dataKind=="xy")SmallAction("correlation",active=if(correlationCommand==null)false else null,translate=false,modifier=Modifier.testTag("statistics-correlation")){correlationCommand?.let {summarize(it)}}
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                Row(Modifier.horizontalScroll(rememberScrollState()),verticalAlignment=Alignment.CenterVertically) {
+                    val summaryActionModifier=Modifier.heightIn(min=28.dp)
+                    SmallAction("Overall",translate=false,modifier=summaryActionModifier.testTag("statistics-summary-overall")) {
+                        runCatching {statisticsOverallPlan(data,dataKind)}.onSuccess {plan->
+                            m.calculationAction="statistics-summary";m.calculateStatistics(plan.source,statisticsTermLabels=plan.termLabels)
+                        }.onFailure {m.error=it.message.orEmpty()}
+                    }
+                    fun summarize(command:String,columnIndex:Int=0) {m.calculationAction="statistics-summary";m.calculateStatistics(command,statisticsTermLabels=mapOf("sample:1" to statisticsColumnLabels(data,dataKind)[columnIndex]))}
+                    dataColumns.indices.forEach {column->SmallAction(statisticsColumnLabels(data,dataKind)[column],translate=false,modifier=summaryActionModifier){
+                        runCatching {statisticsSummaryPlan(data,dataKind,column)}.onSuccess {plan->
+                            m.calculationAction="statistics-summary";m.calculateStatistics(plan.source,statisticsTermLabels=plan.termLabels)
+                        }.onFailure {m.error=it.message.orEmpty()}
+                    }}
+                    val correlationCommand=statisticsCorrelationCommand(numericRows,dataKind)
+                    if(dataKind=="xy")SmallAction("correlation",active=if(correlationCommand==null)false else null,translate=false,modifier=summaryActionModifier.testTag("statistics-correlation")){correlationCommand?.let {summarize(it)}}
+                }
             }
             statisticsReportFor(m.statisticsResult,m.statisticsResultSource,setOf("stats","mean","median","variance","stdev","mode","skewness","kurtosis","sumdata","quartiles","correlation","covariance"))?.let {StatisticsResultReport(m,it)}
         AdvancedStatistics(m,data,dataKind,"preparation","Data preparation",onDataApplied={updated->
