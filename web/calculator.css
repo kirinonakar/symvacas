@@ -356,6 +356,68 @@ input:disabled,select:disabled{opacity:.45;cursor:default}
 .workspace[data-mode="statistics"] select optgroup{font-size:14px;font-weight:600;color:var(--ink)}
 .workspace[data-mode="statistics"] select option{font-size:13px;font-weight:400;color:var(--ink)}
 
-#statistics-collapse-all{position:fixed;top:calc(env(safe-area-inset-top,0px) + 90px);right:calc(max(0px, (100% - 1120px) / 2) + env(safe-area-inset-right,0px) + 16px);z-index:12;background:var(--bar);color:var(--accent);box-shadow:0 3px 12px #0002;border:1px solid var(--line);border-radius:20px;font-size:12px;padding:10px 14px}
+#statistics-collapse-all{position:fixed;top:calc(env(safe-area-inset-top,0px) + 90px);right:calc(max(0px, (100% - 1120px) / 2) + env(safe-area-inset-right,0px) + 16px);z-index:12;font-size:12px;padding:10px 14px}
 @media(max-height:480px) and (max-width:650px){#statistics-collapse-all{top:calc(env(safe-area-inset-top,0px) + 66px)}}
 .workspace[data-mode="statistics"][hidden] #statistics-collapse-all{display:none}
+
+/* Flat statistics actions share the same states across generated and static panels. */
+.workspace[data-mode="statistics"]{
+  --stat-button-bg:color-mix(in srgb,var(--accent) 7%,var(--panel));
+  --stat-button-hover:color-mix(in srgb,var(--accent) 13%,var(--panel));
+  --stat-button-active:color-mix(in srgb,var(--accent) 20%,var(--panel));
+  --stat-button-ink:var(--accent);
+  --stat-button-line:transparent;
+}
+.workspace[data-mode="statistics"] .form-row:has(>button):not(:where(#statistics-editor *,table *)){column-gap:6px}
+.workspace[data-mode="statistics"] button:not(:where(#statistics-editor button,table button)){
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height:42px;
+  min-height:42px;
+  max-width:100%;
+  padding:var(--stat-button-padding,0 10px);
+  border:1px solid var(--stat-button-line);
+  border-radius:6px;
+  background:var(--stat-button-bg);
+  color:var(--stat-button-ink);
+  box-shadow:none;
+  font-size:13px;
+  font-weight:600;
+  line-height:1.4;
+  overflow-wrap:anywhere;
+  touch-action:manipulation;
+  transition:background-color 140ms ease,color 140ms ease,border-color 140ms ease;
+}
+.workspace[data-mode="statistics"] button:where([data-run],[data-model-workflow-run],#statistics-plot-run){
+  --stat-button-bg:var(--accent);
+  --stat-button-hover:color-mix(in srgb,var(--accent) 88%,var(--ink));
+  --stat-button-active:color-mix(in srgb,var(--accent) 76%,var(--ink));
+  --stat-button-ink:var(--panel);
+  --stat-button-padding:0 14px;
+}
+.workspace[data-mode="statistics"] button[aria-pressed="true"]:not(:where(#statistics-editor button,table button)){
+  --stat-button-bg:color-mix(in srgb,var(--accent) 16%,var(--panel));
+  --stat-button-hover:color-mix(in srgb,var(--accent) 22%,var(--panel));
+  --stat-button-active:color-mix(in srgb,var(--accent) 28%,var(--panel));
+  --stat-button-line:var(--accent);
+}
+.workspace[data-mode="statistics"] button:where(#dataset-delete,[data-cancel-calculation="true"]){
+  --stat-button-bg:color-mix(in srgb,var(--danger) 7%,var(--panel));
+  --stat-button-hover:color-mix(in srgb,var(--danger) 14%,var(--panel));
+  --stat-button-active:color-mix(in srgb,var(--danger) 22%,var(--panel));
+  --stat-button-ink:var(--danger);
+}
+@media(hover:hover){
+  .workspace[data-mode="statistics"] button:not(:where(#statistics-editor button,table button)):hover:not(:disabled){background:var(--stat-button-hover)}
+}
+.workspace[data-mode="statistics"] button:not(:where(#statistics-editor button,table button)):active:not(:disabled){background:var(--stat-button-active)}
+.workspace[data-mode="statistics"] button:not(:where(#statistics-editor button,table button)):disabled{opacity:.4;cursor:default}
+.workspace[data-mode="statistics"] .statistics-icon-action{padding:8px}
+.workspace[data-mode="statistics"] .statistics-icon-action svg{width:24px;height:24px}
+.workspace[data-mode="statistics"] .statistics-result-heading{flex-wrap:wrap;column-gap:4px}
+.workspace[data-mode="statistics"] .statistics-result-heading button{padding:0 10px;font-size:12px}
+.workspace[data-mode="statistics"] #statistics-collapse-all{--stat-button-bg:var(--panel);--stat-button-line:var(--line);font-size:12px}
+@media(prefers-reduced-motion:reduce){
+  .workspace[data-mode="statistics"] button:not(:where(#statistics-editor button,table button)){transition:none}
+}
