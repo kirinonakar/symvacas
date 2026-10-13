@@ -135,6 +135,16 @@ export function violinDensity(values){
   return samples.map(([at,density])=>[at,density/peak]);
 }
 
+// Quartiles with Tukey whiskers; outliers remain in the raw-point strip.
+export function raincloudSummary(values){
+  const sorted=values.filter(Number.isFinite).sort((a,b)=>a-b);
+  if(!sorted.length)return null;
+  const q=p=>{const at=(sorted.length-1)*p,lo=Math.floor(at),hi=Math.ceil(at),f=at-lo;return sorted[lo]*(1-f)+sorted[hi]*f;};
+  const q1=q(.25),median=q(.5),q3=q(.75),scale=Math.max(Math.abs(sorted[0]),Math.abs(sorted.at(-1)))||1;
+  const iqr=q3/scale-q1/scale;
+  return {q1,median,q3,low:sorted.find(value=>value/scale>=q1/scale-1.5*iqr),high:sorted.findLast(value=>value/scale<=q3/scale+1.5*iqr)};
+}
+
 // Keep the value-axis coordinates fixed and pack circles nearest the centerline.
 // A dense swarm uses smaller circles rather than losing points or crossing lanes.
 export function beeswarmLayout(axisPositions,preferredRadius,halfWidth){

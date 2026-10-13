@@ -152,6 +152,7 @@ Object.assign(korean,nativeKorean,{
   "Horizontal": "가로",
   "Vertical": "세로",
   "Violin + points": "바이올린 + 원자료",
+  "Raincloud plot": "레인클라우드 플롯",
   "Heat map": "히트맵",
   "Heat map data": "히트맵 자료",
   "Raw values": "원자료",

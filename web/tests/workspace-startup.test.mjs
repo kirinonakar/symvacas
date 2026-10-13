@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {JSDOM} from 'jsdom';
-import {createAppState,restoreFields,restoreSelect} from '../app-state.js';
+import {createAppState,createPersistence,restoreFields,restoreSelect} from '../app-state.js';
 import {createWorkspaces} from '../workspaces.js';
 import {setLanguage} from '../i18n.js';
 import {setComputationLimitsRemoved} from '../computation-limits.js';
@@ -10,7 +10,7 @@ import {setComputationLimitsRemoved} from '../computation-limits.js';
 // Exercise production workspace construction against the real page HTML.
 // This runs in a DOM emulator, not in the user's browser or a browser automation tool.
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-function fixture(context,saved={},engine={ready:false}){
+function fixture(context,saved={},engine={ready:false},usePersistence=false){
   const dom=new JSDOM(html,{url:'http://localhost:8080/',pretendToBeVisual:true}),window=dom.window;
   const globals={window,document:window.document,navigator:window.navigator,localStorage:window.localStorage,Event:window.Event,
     getComputedStyle:window.getComputedStyle.bind(window),requestAnimationFrame:window.requestAnimationFrame.bind(window),cancelAnimationFrame:window.cancelAnimationFrame.bind(window)};
@@ -20,7 +20,9 @@ function fixture(context,saved={},engine={ready:false}){
   window.HTMLElement.prototype.scrollIntoView=()=>{};
   const state=createAppState(saved);setLanguage(state.language);setComputationLimitsRemoved(state.removeComputationLimit);restoreFields(state);
   const noop=()=>{},errors=[];
-  const workspaces=createWorkspaces({state,engine,ui:{toast:noop,pickFile:noop,openDialog:noop,clipboard:noop},persist:noop,
+  const persistence=usePersistence?createPersistence({state,snapshot:()=>({expression:'',graph:{}}),onPersist:noop,toast:noop}):null;
+  context.after(()=>persistence?.dispose());
+  const workspaces=createWorkspaces({state,engine,ui:{toast:noop,pickFile:noop,openDialog:noop,clipboard:noop},persist:persistence?.persist||noop,
     restoreSelect:id=>restoreSelect(state,id),requestOptions:()=>({}),isBusy:()=>false,error:message=>errors.push(message),changeMode:noop,replaceInput:noop,insert:noop,evaluate:noop,showResult:noop,showStatisticsResult:noop,clearResult:noop,
     graphs:{render:noop,run:noop}});
   workspaces.initialize();
@@ -32,6 +34,19 @@ test('fresh page constructs and initializes every workspace without a cached dat
   assert.equal(typeof workspaces.runStatisticsModelWorkflow,'function');
   assert.ok(window.document.getElementById('statistics-models-kind').options.length);
   assert.ok(window.document.getElementById('probability-category').options.length);
+  assert.deepEqual(errors,[]);
+});
+
+test('raincloud menu restores grouping and orientation, redraws and persists orientation changes',context=>{
+  const {window,state,workspaces,errors}=fixture(context,{fields:{mode:'statistics','statistics-kind':'xy','statistics-data':'group,value\nA,1\nA,2\nB,3','statistics-plot-type':'raincloud','statistics-plot-grouping':'first','statistics-plot-orientation':'vertical'}},{ready:false},true);
+  const get=id=>window.document.getElementById(id);
+  assert.equal(get('statistics-plot-type').value,'raincloud');assert.equal(get('statistics-plot-orientation-label').hidden,false);
+  get('statistics-plot-run').click();
+  assert.equal(get('statistics-plot').querySelector('svg').dataset.orientation,'vertical');
+  assert.equal(get('statistics-plot').querySelectorAll('[data-raw-point]').length,3);
+  get('statistics-plot-orientation').value='horizontal';get('statistics-plot-orientation').onchange();
+  assert.equal(state.fields['statistics-plot-orientation'],'horizontal');
+  workspaces.render();assert.equal(get('statistics-plot').querySelector('svg').dataset.orientation,'horizontal');
   assert.deepEqual(errors,[]);
 });
 

@@ -7,6 +7,7 @@ import {clusteredHeatMap} from './statistics-cluster.js';
 import {appendPlotExportButtons} from './svg-export.js';
 import {statisticsScatterData} from './statistics-plot-data.js';
 import {defaultGraphColors} from './graph-colors.js';
+import {raincloudSummary} from './statistics-plot-data.js';
 export function statisticsPlotSeries(rows,{grouping='columns',columnCount=rows[0]?.length||1,columnNames=statisticsColumnNames(columnCount)}={}){
   const names=columnNames;
   const number=statisticsPlotNumber;
@@ -51,7 +52,7 @@ export function statisticsPlot(container,rows,options={}){
 
 function drawStatisticsPlot(container,rows,{type='scatter',digits=10,curve=[],xAxisLabel='x',yAxisLabel='y',scatterData,series=statisticsPlotSeries(rows),namedBars,histogramKde=false,heatMap,heatMapFit=false,orientation='horizontal'}={}){
   if(['heatmap','correlationheatmap','clusteredheatmap'].includes(type)){drawHeatMap(container,heatMap||(type==='correlationheatmap'?statisticsCorrelationHeatMap(rows):type==='clusteredheatmap'?clusteredHeatMap(statisticsHeatMapData(rows)):statisticsHeatMapData(rows)),digits,heatMapFit);return;}
-  if(type==='violin'||type==='box'){drawDistribution(container,series,digits,type,orientation);return;}
+  if(['violin','box','raincloud'].includes(type)){drawDistribution(container,series,digits,type,orientation);return;}
   if(type==='bar'){if(namedBars)drawNamedBars(container,namedBars,digits);else drawFrequencyBars(container,series,digits);return;}
   if(type==='scatter'){
     const data=scatterData||statisticsScatterData(rows),points=data.series.flatMap(entry=>entry.points);
@@ -180,11 +181,13 @@ function drawNamedBars(container,data,digits){
 }
 
 function drawDistribution(container,series,digits,type,orientation){
+  series=series.map(entry=>({...entry,values:entry.values.filter(Number.isFinite)})).filter(entry=>entry.values.length);
   if(!series.some(entry=>entry.values.length)){container.replaceChildren();return;}
+  const raincloud=type==='raincloud';
   const vertical=orientation==='vertical',width=vertical?Math.max(800,series.length*90+130):800,height=vertical?440:Math.max(300,series.length*90+70);
-  const {svg,node}=svgChart(type==='box'?'Box plot':'Violin + points',width,height);
+  const {svg,node}=svgChart(raincloud?'Raincloud plot':type==='box'?'Box plot':'Violin + points',width,height);
   svg.dataset.orientation=vertical?'vertical':'horizontal';
-  if(type==='violin')svg.dataset.rawLayout='beeswarm';
+  if(type==='violin'||raincloud)svg.dataset.rawLayout='beeswarm';
   const all=series.flatMap(entry=>entry.values),scale=all.reduce((a,b)=>Math.max(a,Math.abs(b)),0)||1;
   const minimum=all.reduce((a,b)=>Math.min(a,b)),maximum=all.reduce((a,b)=>Math.max(a,b)),span=maximum/scale-minimum/scale;
   const fraction=value=>span?(value/scale-minimum/scale)/span:.5;
@@ -198,29 +201,30 @@ function drawDistribution(container,series,digits,type,orientation){
     node('text',{x:vertical?100:110+fraction*630,y:vertical?axis(value)+5:height-20,fill:'var(--muted)','text-anchor':vertical?'end':'middle','font-size':14,'data-value-tick':value},displayNumber(value,digits));
   }
   series.forEach((entry,index)=>{
-    const center=lane(index),color=colors[index%colors.length],density=type==='violin'?violinDensity(entry.values):[];
+    const center=lane(index),color=colors[index%colors.length],density=type==='violin'||raincloud?violinDensity(entry.values):[];
     const label=node('text',{x:vertical?center:20,y:vertical?height-52:center+5,fill:'var(--ink)','font-size':14,'text-anchor':vertical?'middle':'start'},entry.label.length>12?`${entry.label.slice(0,11)}…`:entry.label);
     node('title',{},entry.label,label);
     node('text',{x:vertical?center:20,y:vertical?height-32:center+23,fill:'var(--muted)','font-size':12,'text-anchor':vertical?'middle':'start'},`n=${entry.values.length}`);
-    if(type==='box'&&entry.values.length){
+    if((type==='box'||raincloud)&&entry.values.length){
       const values=[...entry.values].sort((a,b)=>a-b),q=p=>{const at=(values.length-1)*p,lo=Math.floor(at),hi=Math.ceil(at),f=at-lo;return values[lo]*(1-f)+values[hi]*f;};
-      const low=values[0],q1=q(.25),median=q(.5),q3=q(.75),high=values.at(-1);
+      const {low,q1,median,q3,high}=raincloud?raincloudSummary(values):{low:values[0],q1:q(.25),median:q(.5),q3:q(.75),high:values.at(-1)};
+      const boxCenter=raincloud?6:0,boxHalf=raincloud?5:20;
       const line=(value1,offset1,value2,offset2,attrs={})=>{const [x1,y1]=position(value1,index,offset1),[x2,y2]=position(value2,index,offset2);return node('line',{x1,y1,x2,y2,stroke:color,'stroke-width':2,...attrs});};
-      line(low,0,high,0);
-      const a=position(q1,index,-20),b=position(q3,index,20);
+      line(low,boxCenter,high,boxCenter);
+      const a=position(q1,index,boxCenter-boxHalf),b=position(q3,index,boxCenter+boxHalf);
       const box=node('rect',{x:Math.min(a[0],b[0]),y:Math.min(a[1],b[1]),width:Math.max(1,Math.abs(b[0]-a[0])),height:Math.max(1,Math.abs(b[1]-a[1])),fill:color,'fill-opacity':.3,stroke:color,'data-box':entry.label});
-      node('title',{},`${entry.label}: min=${displayNumber(low,digits)}, Q1=${displayNumber(q1,digits)}, median=${displayNumber(median,digits)}, Q3=${displayNumber(q3,digits)}, max=${displayNumber(high,digits)}`,box);
-      line(median,-20,median,20,{'stroke-width':3,'data-median':median});for(const at of [low,high])line(at,-12,at,12);
-      const [mx,my]=position(median,index,42);node('text',{x:mx,y:my+4,fill:'var(--ink)','text-anchor':'middle','font-size':12},displayNumber(median,digits));
+      node('title',{},`${entry.label}: ${raincloud?'lower whisker':'min'}=${displayNumber(low,digits)}, Q1=${displayNumber(q1,digits)}, median=${displayNumber(median,digits)}, Q3=${displayNumber(q3,digits)}, ${raincloud?'upper whisker':'max'}=${displayNumber(high,digits)}`,box);
+      line(median,boxCenter-boxHalf,median,boxCenter+boxHalf,{'stroke-width':3,'data-median':median});for(const at of [low,high])line(at,boxCenter-boxHalf*.6,at,boxCenter+boxHalf*.6,{'data-whisker':at});
+      if(!raincloud){const [mx,my]=position(median,index,42);node('text',{x:mx,y:my+4,fill:'var(--ink)','text-anchor':'middle','font-size':12},displayNumber(median,digits));}
     }
     if(density.length){
-      const upper=density.map(([value,width])=>position(value,index,-width*28).join(',')),lower=[...density].reverse().map(([value,width])=>position(value,index,width*28).join(','));
-      node('path',{d:`M${upper.join(' L')} L${lower.join(' L')} Z`,fill:color,'fill-opacity':.24,stroke:color,'stroke-width':1.5,'data-violin':entry.label});
+      const upper=density.map(([value,width])=>position(value,index,(raincloud?-4:0)-width*28).join(',')),lower=[...density].reverse().map(([value,width])=>position(value,index,raincloud?-4:width*28).join(','));
+      node('path',{d:`M${upper.join(' L')} L${lower.join(' L')} Z`,fill:color,'fill-opacity':.24,stroke:color,'stroke-width':1.5,'data-violin':entry.label,...(raincloud?{'data-half-violin':'true'}:{})});
     }
-    if(type==='violin'){
-      const swarm=beeswarmLayout(entry.values.map(axis),3,28);
+    if(type==='violin'||raincloud){
+      const swarm=beeswarmLayout(entry.values.map(axis),3,raincloud?10:28);
       entry.values.forEach((value,i)=>{
-        const [cx,cy]=position(value,index,swarm.offsets[i]),point=node('circle',{cx,cy,r:swarm.radius,fill:color,'fill-opacity':.75,'data-raw-point':entry.label,'data-value':value});
+        const [cx,cy]=position(value,index,(raincloud?26:0)+swarm.offsets[i]),point=node('circle',{cx,cy,r:swarm.radius,fill:color,'fill-opacity':.75,'data-raw-point':entry.label,'data-value':value});
         node('title',{},`${entry.label}: ${displayNumber(value,digits)}`,point);
       });
     }

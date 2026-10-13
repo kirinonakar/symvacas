@@ -901,7 +901,7 @@ private val korean = mapOf(
     "Auto columns" to "열 수 자동", "Column count must be between 1 and 100" to "열 개수는 1~100이어야 합니다",
     "Clustered heatmap" to "군집 히트맵", "Single linkage · Euclidean" to "단일 연결 · 유클리드 거리", "Clustering…" to "군집 계산 중…",
     "Orientation" to "방향", "Horizontal" to "가로", "Vertical" to "세로",
-    "Violin + points" to "바이올린 + 원자료", "Heat map" to "히트맵", "Correlation heat map" to "상관관계 히트맵",
+    "Violin + points" to "바이올린 + 원자료", "Raincloud plot" to "레인클라우드 플롯", "Heat map" to "히트맵", "Correlation heat map" to "상관관계 히트맵",
     "Heat map data" to "히트맵 자료", "Raw values" to "원자료", "Z-score by row" to "행 기준 Z 점수", "Z-score by column" to "열 기준 Z 점수",
     "Correlation" to "상관관계", "Correlation method" to "상관계수 방식", "Pearson (p)" to "Pearson (p)", "Spearman (s)" to "Spearman (s)", "Kendall (k)" to "Kendall (k)",
     "Hierarchical clustering" to "계층 군집", "Fit to screen" to "화면에 맞춤", "X axis variables" to "x축 항목", "Y axis variables" to "y축 항목", "No numeric columns" to "수치 열이 없습니다",

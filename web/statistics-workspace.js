@@ -293,7 +293,7 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
     $('statistics-heatmap-metric').disabled=wardLinkage;
     $('statistics-plot-grouping-label').hidden=scatter?columns<3:correlation||columns<2||value('statistics-plot-type')==='bar'&&columns===2;
     $('statistics-scatter-axes').hidden=!scatter||columns<2;
-    $('statistics-plot-orientation-label').hidden=!['box','violin'].includes(value('statistics-plot-type'));
+    $('statistics-plot-orientation-label').hidden=!['box','violin','raincloud'].includes(value('statistics-plot-type'));
     $('statistics-histogram-kde-label').hidden=value('statistics-plot-type')!=='histogram';
     if(correlation){
       let heatMapRows=[];try{heatMapRows=dataRows();}catch{}

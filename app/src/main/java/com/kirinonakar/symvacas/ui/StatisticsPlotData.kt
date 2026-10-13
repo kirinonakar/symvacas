@@ -133,6 +133,19 @@ internal fun violinDensity(values:List<Double>):List<Pair<Double,Double>> {
 
 internal data class StatisticsBeeswarm(val radius:Double,val offsets:List<Double>)
 
+internal data class StatisticsRaincloudSummary(val low:Double,val q1:Double,val median:Double,val q3:Double,val high:Double)
+
+/** Quartiles with Tukey whiskers; outliers remain visible in the raw-point strip. */
+internal fun raincloudSummary(values:List<Double>):StatisticsRaincloudSummary? {
+    val sorted=values.filter(Double::isFinite).sorted()
+    if(sorted.isEmpty())return null
+    fun q(p:Double):Double {val at=(sorted.size-1)*p;val lo=floor(at).toInt();val hi=ceil(at).toInt();val f=at-lo;return sorted[lo]*(1-f)+sorted[hi]*f}
+    val q1=q(.25);val median=q(.5);val q3=q(.75)
+    val scale=max(abs(sorted.first()),abs(sorted.last())).takeIf {it>0} ?: 1.0
+    val iqr=q3/scale-q1/scale
+    return StatisticsRaincloudSummary(sorted.first {it/scale>=q1/scale-1.5*iqr},q1,median,q3,sorted.last {it/scale<=q3/scale+1.5*iqr})
+}
+
 /** Pack circles along the category axis without changing the value coordinates. */
 internal fun beeswarmLayout(axisPositions:List<Double>,preferredRadius:Double,halfWidth:Double):StatisticsBeeswarm {
     if(axisPositions.isEmpty())return StatisticsBeeswarm(preferredRadius,emptyList())

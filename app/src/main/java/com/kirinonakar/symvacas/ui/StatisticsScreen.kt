@@ -468,12 +468,12 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                 StatisticsExplanation("Usage notes",if(isKorean())"x 날짜 형식: YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD" else "x date formats: YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD","statistics-date-input-help")
             }
             Column(verticalArrangement=Arrangement.spacedBy(2.dp)) {
-                Choices(if(dataColumns.size>=2)listOf("Scatter","Bar","Histogram","Box plot","Violin + points","Heat map") else listOf("Bar","Histogram","Box plot","Violin + points","Heat map"),plotType,{plotType=it})
+                Choices(if(dataColumns.size>=2)listOf("Scatter","Bar","Histogram","Box plot","Violin + points","Raincloud plot","Heat map") else listOf("Bar","Histogram","Box plot","Violin + points","Raincloud plot","Heat map"),plotType,{plotType=it})
                 if(plotType=="Histogram")Row(verticalAlignment=Alignment.CenterVertically) {
                     Checkbox(histogramKde,{histogramKde=it},Modifier.size(38.dp))
                     Text(tr("KDE (kernel density)"),fontSize=12.sp)
                 }
-                if(plotType in listOf("Box plot","Violin + points")) {
+                if(plotType in listOf("Box plot","Violin + points","Raincloud plot")) {
                     StatisticsSelectionTitle("Orientation")
                     Choices(listOf("Horizontal","Vertical"),if(plotOrientation=="vertical")"Vertical" else "Horizontal",{plotOrientation=if(it=="Vertical")"vertical" else "horizontal"})
                 }

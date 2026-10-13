@@ -24,7 +24,9 @@ import kotlin.math.abs
     val exports=remember {GraphExportState()}
     val series=if(type=="Bar"&&namedBars!=null)namedBars.series.mapIndexed {index,entry->Triple(entry.label,entry.values.filterNotNull(),c.curves[index%c.curves.size])} else if(allColumns!=null)allColumns.mapIndexed {index,(name,observations)->Triple(name,observations,c.curves[index%c.curves.size])}.filter {it.second.isNotEmpty()} else (if(secondary.isEmpty()&&tertiary.isEmpty())listOf(Triple("",values,c.accent)) else listOf(Triple("x",values,c.accent),Triple("y",secondary,c.danger),Triple("z",tertiary,c.curves[2]))).filter {it.second.isNotEmpty()}
     val fitEquation=remember(fitLabel,displayDigits,fitVariables) {if(fitLabel.isBlank())null else regressionFormulaDisplayTree(fitLabel,displayDigits,fitVariables)}
-    val densities=remember(type,series.map {it.second}) {if(type=="Violin + points")series.map {violinDensity(it.second)} else emptyList()}
+    val raincloud=type=="Raincloud plot"
+    val densities=remember(type,series.map {it.second}) {if(type=="Violin + points"||raincloud)series.map {violinDensity(it.second)} else emptyList()}
+    val raincloudSummaries=remember(type,series.map {it.second}) {if(raincloud)series.map {raincloudSummary(it.second)} else emptyList()}
     val frequencies=remember(type,namedBars,series.map {it.second}) {if(type=="Bar"&&namedBars==null)statisticsFrequencyData(series.map {it.second}) else null}
     val histogram=remember(type,histogramKde,series.map {it.second}) {if(type=="Histogram")statisticsHistogramData(series.map {it.second},histogramKde) else null}
     val densityLabel=tr("Density");val kdeUnavailable=tr("KDE unavailable for this series")
@@ -35,7 +37,7 @@ import kotlin.math.abs
 
     val countLabel=tr("Count");val valueLabel=tr("Value")
     val namedValueLabel=tr(namedBars?.valueLabel ?: "Value");val namedCategoryLabel=tr(namedBars?.categoryLabel ?: "x")
-    val distribution=type in listOf("Box plot","Violin + points")
+    val distribution=type in listOf("Box plot","Violin + points","Raincloud plot")
     val vertical=distribution&&orientation=="vertical"
     val swarmCache=remember(series.map {it.second},vertical) {mutableMapOf<Int,Pair<Triple<List<Double>,Double,Double>,StatisticsBeeswarm>>()}
     BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -194,31 +196,36 @@ import kotlin.math.abs
             fun position(value:Double,index:Int,offset:Float=0f):Offset=if(vertical)Offset(left+width*(index+.5f)/series.size+offset,top+height*(1-fraction(value))) else Offset(left+width*fraction(value),top+height*(index+.5f)/series.size+offset)
             fun quantile(data:List<Double>,p:Double):Double {val at=(data.size-1)*p;val low=floor(at).toInt();val high=ceil(at).toInt();val f=at-low;return data[low]*(1-f)+data[high]*f}
             series.forEachIndexed {index,entry->
-                val half=minOf(23.dp.toPx(),(if(vertical)width else height)/series.size*.35f)
-                val density=if(type=="Violin + points")densities[index] else emptyList()
-                if(type=="Box plot") {
-                    val sorted=entry.second.sorted();val low=sorted.first();val q1=quantile(sorted,.25);val median=quantile(sorted,.5);val q3=quantile(sorted,.75);val high=sorted.last()
-                    drawLine(c.muted,position(low,index),position(high,index),2.dp.toPx())
-                    for(value in listOf(low,high))drawLine(c.muted,position(value,index,-half*.6f),position(value,index,half*.6f),2.dp.toPx())
-                    val a=position(q1,index,-half);val b=position(q3,index,half)
+                val half=minOf(23.dp.toPx(),(if(vertical)width else height)/series.size*(if(raincloud).3f else .35f))
+                val density=if(type=="Violin + points"||raincloud)densities[index] else emptyList()
+                if(type=="Box plot"||raincloud) {
+                    val sorted=entry.second.sorted();val summary=if(raincloud)raincloudSummaries[index] else null
+                    val low=summary?.low ?: sorted.first();val q1=summary?.q1 ?: quantile(sorted,.25);val median=summary?.median ?: quantile(sorted,.5);val q3=summary?.q3 ?: quantile(sorted,.75);val high=summary?.high ?: sorted.last()
+                    val boxCenter=if(raincloud)half*.3f else 0f;val boxHalf=if(raincloud)half*.18f else half
+                    drawLine(c.muted,position(low,index,boxCenter),position(high,index,boxCenter),2.dp.toPx())
+                    for(value in listOf(low,high))drawLine(c.muted,position(value,index,boxCenter-boxHalf*.6f),position(value,index,boxCenter+boxHalf*.6f),2.dp.toPx())
+                    val a=position(q1,index,boxCenter-boxHalf);val b=position(q3,index,boxCenter+boxHalf)
                     val origin=Offset(minOf(a.x,b.x),minOf(a.y,b.y));val boxSize=androidx.compose.ui.geometry.Size(abs(b.x-a.x).coerceAtLeast(1f),abs(b.y-a.y).coerceAtLeast(1f))
                     drawRect(entry.third.copy(alpha=.24f),origin,boxSize);drawRect(entry.third,origin,boxSize,style=Stroke(1.5.dp.toPx()))
-                    drawLine(c.danger,position(median,index,-half),position(median,index,half),2.dp.toPx())
-                    val at=position(median,index,half+12.dp.toPx());val label="%.4g".format(java.util.Locale.US,median)
-                    drawContext.canvas.nativeCanvas.drawText(label,if(vertical)at.x else at.x-text.measureText(label)/2,at.y+3.dp.toPx(),text)
-                } else if(density.isNotEmpty()) {
+                    drawLine(c.danger,position(median,index,boxCenter-boxHalf),position(median,index,boxCenter+boxHalf),2.dp.toPx())
+                    if(!raincloud) {
+                        val at=position(median,index,half+12.dp.toPx());val label="%.4g".format(java.util.Locale.US,median)
+                        drawContext.canvas.nativeCanvas.drawText(label,if(vertical)at.x else at.x-text.measureText(label)/2,at.y+3.dp.toPx(),text)
+                    }
+                }
+                if(density.isNotEmpty()) {
                     val path=androidx.compose.ui.graphics.Path()
-                    density.forEachIndexed {i,(value,fraction)->val at=position(value,index,-fraction.toFloat()*half);if(i==0)path.moveTo(at.x,at.y) else path.lineTo(at.x,at.y)}
-                    density.asReversed().forEach {(value,fraction)->val at=position(value,index,fraction.toFloat()*half);path.lineTo(at.x,at.y)}
+                    density.forEachIndexed {i,(value,fraction)->val at=position(value,index,(if(raincloud)-half*.2f else 0f)-fraction.toFloat()*half);if(i==0)path.moveTo(at.x,at.y) else path.lineTo(at.x,at.y)}
+                    density.asReversed().forEach {(value,fraction)->val at=position(value,index,if(raincloud)-half*.2f else fraction.toFloat()*half);path.lineTo(at.x,at.y)}
                     path.close();drawPath(path,entry.third.copy(alpha=.24f));drawPath(path,entry.third,style=Stroke(1.dp.toPx()))
                 }
-                if(type=="Violin + points") {
+                if(type=="Violin + points"||raincloud) {
                     val axes=entry.second.map {value->val at=position(value,index);(if(vertical)at.y else at.x).toDouble()}
-                    val key=Triple(axes,2.5.dp.toPx().toDouble(),half.toDouble())
+                    val key=Triple(axes,2.5.dp.toPx().toDouble(),(if(raincloud)half*.38f else half).toDouble())
                     val cached=swarmCache[index]
                     val swarm=if(cached?.first==key)cached.second else beeswarmLayout(axes,key.second,key.third).also {swarmCache[index]=key to it}
                     entry.second.forEachIndexed {i,value->
-                        drawCircle(entry.third.copy(alpha=.75f),swarm.radius.toFloat(),position(value,index,swarm.offsets[i].toFloat()))
+                        drawCircle(entry.third.copy(alpha=.75f),swarm.radius.toFloat(),position(value,index,(if(raincloud)half*1.1f else 0f)+swarm.offsets[i].toFloat()))
                     }
                 }
                 val label="${entry.first.ifBlank {"value"}} (n=${entry.second.size})"
@@ -229,7 +236,7 @@ import kotlin.math.abs
                     if(shown!=entry.first.ifBlank {"value"})shown=shown.dropLast(1)+"…"
                     drawContext.canvas.nativeCanvas.drawText(shown,center-text.measureText(shown)/2,top+height+17.dp.toPx(),text)
                     val count="n=${entry.second.size}";drawContext.canvas.nativeCanvas.drawText(count,center-text.measureText(count)/2,top+height+32.dp.toPx(),text)
-                } else drawContext.canvas.nativeCanvas.drawText(label,left,top+height*(index+.5f)/series.size-half-4.dp.toPx(),text)
+                } else drawContext.canvas.nativeCanvas.drawText(label,left,top+height*(index+.5f)/series.size-half*(if(raincloud)1.2f else 1f)-4.dp.toPx(),text)
             }
             for(index in 0..(if(span==0.0)0 else 4)) {
                 val fraction=if(span==0.0).5 else index/4.0
