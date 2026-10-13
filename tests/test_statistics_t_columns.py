@@ -13,13 +13,13 @@ class ColumnTTestTests(unittest.TestCase):
                 result=json.loads(dispatch(json.dumps({'tree':tree(item['command']),'statisticsTermLabels':item['labels'],'precision':20})))
                 self.assertTrue(result['ok'],result.get('error'))
                 report=result['statisticsReport']; summary=report['sections'][0]
-                self.assertEqual(summary['columns'],['Column','mean1','mean2','diff','p-value','n','Significant','normality','equal var'])
+                self.assertEqual(summary['columns'],['Column',f"mean ({item['labels']['sample:1']})",f"mean ({item['labels']['sample:2']})",'diff','p-value','n','Significant','normality','equal var'])
                 self.assertTrue(summary['literalColumns'])
-                self.assertEqual(report['context'],f"mean1 = {item['labels']['sample:1']}; mean2 = {item['labels']['sample:2']}; diff = mean1 − mean2.")
+                self.assertEqual(report['context'],f"diff = mean ({item['labels']['sample:1']}) − mean ({item['labels']['sample:2']}).")
                 self.assertEqual(len(summary['rows']),len(item['expected']))
                 for index,(row,expected) in enumerate(zip(summary['rows'],item['expected'])):
                     self.assertEqual(row[0],item['labels'][f'batch:column:{index}'])
-                    for column,value in zip(summary['columns'][1:],row[1:]):
+                    for column,value in zip(['mean1','mean2','diff','p-value','n','Significant','normality','equal var'],row[1:]):
                         if isinstance(expected[column],str):self.assertEqual(value,expected[column])
                         else:self.assertAlmostEqual(float(value['decimal']),expected[column],places=12)
                 self.assertEqual(report['plots'],[])

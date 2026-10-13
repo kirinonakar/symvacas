@@ -40,6 +40,7 @@ def statistics_report(name, value, precision, labels=None):
     assumptions = []
     details = []
     table_labels = labels if isinstance(labels, dict) else {}
+    def mean_heading(index): return 'mean ('+table_labels.get('sample:'+str(index),str(index))+')'
     contingency = name in ('chi2independence', 'fisherexact', 'mcnemar','cramerv','phi','cohenkappa')
     categorical = contingency and all(table_labels.get(key) for key in ('table:row', 'table:column'))
 
@@ -333,7 +334,7 @@ def statistics_report(name, value, precision, labels=None):
             add('Expected-count diagnostics',['Column','Minimum expected','Cells below 5','Cells below 1','Cells'],
                 [[label(row['Column'])]+[row[key] for key in ['Minimum expected','Cells below 5','Cells below 1','Cells']] for row in checks])
         else:
-            headings=['Column']+['mean'+str(at+1) for at in range(group_count)]+(['diff'] if group_count==2 else ['diff (1-'+str(at+1)+')' for at in range(1,group_count)])+suffix+['normality','equal var']
+            headings=['Column']+[mean_heading(at+1) for at in range(group_count)]+(['diff'] if group_count==2 else ['diff (1-'+str(at+1)+')' for at in range(1,group_count)])+suffix+['normality','equal var']
             section=add('Summary',headings,[[label(row['Column'])]+[row['mean'+str(at+1)] for at in range(group_count)]+
                 [row['diff'+str(at+1)] for at in range(1,group_count)]+[row[key] for key in suffix+['normality','equal var']] for row in rows])
             add('Detailed assumption checks',['Column','Check','Sample','p-value','Result'],
@@ -343,7 +344,7 @@ def statistics_report(name, value, precision, labels=None):
     elif batch_t:
         keys = ['mean1', 'mean2', 'diff', 'p-value', 'n', 'Significant', 'normality', 'equal var']
         label = lambda index: table_labels.get('batch:column:'+str(index), str(index+1))
-        section = add('Summary', ['Column']+keys,
+        section = add('Summary', ['Column',mean_heading(1),mean_heading(2)]+keys[2:],
                       [[label(row['Column'])]+[row[key] for key in keys] for row in value['Comparisons']])
         section['literalColumns'] = True
         checks = value['Assumption checks']
@@ -382,7 +383,7 @@ def statistics_report(name, value, precision, labels=None):
     if overall:
         report['notes']=['SD is the sample standard deviation. Missing cells are excluded separately for each column; percentages use valid values in that column. Columns containing only 0/1 values are categorical.']
     if batch_t:
-        report['context']='mean1 = '+table_labels.get('sample:1', '1')+'; mean2 = '+table_labels.get('sample:2', '2')+'; diff = mean1 − mean2.'
+        report['context']='diff = '+mean_heading(1)+' − '+mean_heading(2)+'.'
         report['notes']=['Significant: yes when the selected t-test p-value is below 0.05. Normality: yes when Shapiro–Wilk does not reject normality at 0.05 in both groups (paired tests check differences). Equal var: yes when Brown–Forsythe does not reject equal variances at 0.05; not applicable to paired tests. Unavailable checks are not classified as yes or no. n is the total valid count in independent groups, or the complete-pair count in paired tests. Missing values are handled separately for each column. P-values are unadjusted across columns; yes does not prove an assumption.']
     if column_batch:
         report['context']='; '.join('group'+str(at+1)+' = '+table_labels.get('sample:'+str(at+1),str(at+1)) for at in range(int(value['Group count'])))

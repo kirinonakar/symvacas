@@ -6,6 +6,18 @@ import {renderStatisticsReport} from '../statistics-report.js';
 
 const cell=value=>({exact:value,decimal:value,decimalTree:{kind:'number',value}});
 
+test('numeric group means display actual group names literally and copy the same headers',context=>{
+  class Node{constructor(tag){this.tag=tag;this.children=[];}append(...nodes){this.children.push(...nodes);}replaceChildren(...nodes){this.children=[...nodes];}setAttribute(){} }
+  const previous=globalThis.document;context.after(()=>{globalThis.document=previous;setLanguage('en');});globalThis.document={createElement:tag=>new Node(tag)};setLanguage('ko');
+  const report={analysis:'ttest2',title:'Welch t tests',sections:[{title:'Summary',columns:['Column','mean (m)','mean (f)','diff','p-value','n','Significant'],literalColumns:true,rows:[['age (y)','25','30','-5','0.01','10','yes']],totalRows:1}],plots:[]};
+  const container=new Node('div');renderStatisticsReport(container,report);
+  const table=container.children[0].children.find(node=>node.tag==='section').children[0].children[0];
+  assert.deepEqual(table.children[1].children[0].children.map(node=>node.textContent),report.sections[0].columns);
+  const copied=statisticsResultMarkdown({statisticsReport:report});
+  assert.ok(copied.includes('| mean (m) | mean (f) | diff |'));
+  assert.ok(!copied.includes('mean1')&&!copied.includes('mean2'));
+});
+
 test('single-column summaries show the existing analyzed-variable table first without changing Overall ordering',context=>{
   class Node{constructor(tag){this.tag=tag;this.children=[];}append(...nodes){this.children.push(...nodes);}replaceChildren(...nodes){this.children=[...nodes];}setAttribute(){} }
   const previous=globalThis.document;context.after(()=>{globalThis.document=previous;setLanguage('en');});globalThis.document={createElement:tag=>new Node(tag)};setLanguage('en');

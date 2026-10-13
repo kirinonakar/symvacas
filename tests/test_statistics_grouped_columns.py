@@ -25,7 +25,7 @@ class GroupedColumnTests(unittest.TestCase):
                         self.assertEqual(values['diff (%)'],expected['diffs'][0])
                         self.assertTrue(all(column not in summary['columns'] for column in ['mean','mean1','mean2','sd','min','max','normality','equal var']))
                     else:
-                        for at,mean in enumerate(expected['means']):self.assertAlmostEqual(float(values[f'mean{at+1}']['decimal']),mean,places=12)
+                        for at,mean in enumerate(expected['means']):self.assertAlmostEqual(float(values[f"mean ({item['labels'][f'sample:{at+1}']})"]['decimal']),mean,places=12)
                         for at,diff in enumerate(expected['diffs']):self.assertAlmostEqual(float(values['diff' if len(expected['diffs'])==1 else f'diff (1-{at+2})']['decimal']),diff,places=12)
                 if item['settings']['op']=='chi2independence':
                     self.assertTrue(any('Fisher exact' in warning['text'] for warning in report['warnings']))
