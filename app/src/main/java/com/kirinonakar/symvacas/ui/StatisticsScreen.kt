@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
@@ -128,7 +129,12 @@ internal val LocalStatisticsCollapseRequest=staticCompositionLocalOf {0}
                 val minFieldWidth=(maxWidth-16.dp).coerceAtLeast(0.dp)
                 Box(Modifier.fillMaxSize().verticalScroll(vertical)) {
                     Box(Modifier.horizontalScroll(horizontal)) {
-                        BasicTextField(input,onInput,Modifier.widthIn(min=minFieldWidth).keepInputVisible().focusRequester(fieldFocus).onFocusChanged {focused=it.isFocused}.testTag("statistics-direct-input"),
+                        BasicTextField(input,onInput,Modifier.widthIn(min=minFieldWidth).keepInputVisible().focusProperties {
+                            left=FocusRequester.Cancel
+                            right=FocusRequester.Cancel
+                            up=FocusRequester.Cancel
+                            down=FocusRequester.Cancel
+                        }.focusRequester(fieldFocus).onFocusChanged {focused=it.isFocused}.testTag("statistics-direct-input"),
                             textStyle=style,
                             cursorBrush=SolidColor(c.accent),
                             decorationBox={inner->Box(Modifier.padding(horizontal=8.dp,vertical=10.dp)){inner()}})
@@ -372,7 +378,7 @@ internal val LocalStatisticsCollapseRequest=staticCompositionLocalOf {0}
                                     Row(Modifier.weight(1f).fillMaxHeight()) {
                                         StatColumnAction("◀",column>0,tr("Move column left"),Modifier.weight(1f)) {data=statisticsMoveColumn(data,column,-1)}
                                         StatColumnAction("▶",column<tableColumns.lastIndex,tr("Move column right"),Modifier.weight(1f)) {data=statisticsMoveColumn(data,column,1)}
-                                        StatColumnAction("−",true,tr("Delete column"),Modifier.weight(1f)) {
+                                        StatColumnAction("×",true,tr("Delete column"),Modifier.weight(1f)) {
                                             val remaining=tableColumns.size-1
                                             data=statisticsRemoveColumn(data,column)
                                             m.clearRegression()

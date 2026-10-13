@@ -33,7 +33,7 @@ export function editableTable({rows,columns,value,onInput,onDeleteRow,onMoveColu
         cell.append(left,right);
       }
       if(onDeleteColumn){
-        const remove=control('−',()=>onDeleteColumn(col));
+        const remove=control('×',()=>onDeleteColumn(col));
         remove.dataset.column=String(col);remove.dataset.columnAction='delete';remove.setAttribute('aria-label',t('Delete column'));
         cell.append(remove);
       }

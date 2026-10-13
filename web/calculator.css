@@ -66,6 +66,7 @@ math{font-family:"SymvaCAS Math","Cambria Math",math;font-weight:400;font-synthe
 .editable-table .table-row-action button{padding:5px 8px}
 .editable-table .table-column-actions th{padding:2px;white-space:nowrap}
 .editable-table .table-column-actions button{padding:2px 4px;font-size:11px;line-height:1;min-width:0}
+.editable-table .table-column-actions button[data-column-action="delete"]{font-size:15px}
 .editable-table .table-column-actions button+button{margin-left:2px}
 .editable-table .table-column-actions button:disabled{opacity:.35}
 .virtual-table{overflow-anchor:none}
