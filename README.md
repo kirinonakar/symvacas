@@ -66,9 +66,9 @@ Define `f(x)=x^3-8x+7`, then evaluate `f(2)`. In Cartesian graphing, enter one c
 Supported LaTeX pasted into calculator, graph and equation inputs is immediately converted to editable calculator syntax, with or without `$...$`, `$$...$$`, `\(...\)` or `\[...\]` delimiters. Graph curves and equation systems retain one expression per line; pasting into a selection preserves surrounding text:
 
 ```latex
-\frac{x^2+1}{x-1} \\
-\int_{0}^{\infty} e^{-x^2}\cos(2x)\,dx \\
-\lim_{x \to 0} \frac{\sin x}{x} \\
+\frac{x^2+1}{x-1}
+\int_{0}^{\infty} e^{-x^2}\cos(2x)\,dx
+\lim_{x \to 0} \frac{\sin x}{x}
 \begin{bmatrix}1 & 2 \\ 3 & 4\end{bmatrix}
 ```
 
