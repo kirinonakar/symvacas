@@ -19,23 +19,30 @@ internal fun latexTree(tree:JSONObject):String {
     return LatexOutput.render(expr(tree))
 }
 
+private fun latexClipEntry(entry:ClipEntry?):ClipEntry? {
+    val data=entry?.clipData ?: return null
+    if(data.itemCount!=1)return entry
+    val text=data.getItemAt(0).text?.toString() ?: return entry
+    return ClipEntry(ClipData.newPlainText(data.description.label,mathCopyText(text,true)))
+}
+
+/** Selection menus query nativeClipboardManager before offering Paste. */
+internal fun latexClipboard(clipboard:Clipboard):AndroidClipboard = object:AndroidClipboard,Clipboard by clipboard {
+    // Keep the AndroidClipboard contract as well as the delegated Clipboard methods.
+    // A generic Clipboard wrapper fails the platform type check on long-press.
+    override val clipboardManager get()=clipboard.nativeClipboardManager
+    override suspend fun setClipEntry(clipEntry:ClipEntry?)=clipboard.setClipEntry(latexClipEntry(clipEntry))
+}
+
 /** Intercept the platform Copy/Cut used by native math text fields. Reads stay untouched. */
 @Composable internal fun MathClipboard(content:@Composable ()->Unit) {
     if(!LocalCopyAsLatex.current){content();return}
     val clipboard=LocalClipboard.current
     val legacy=LocalClipboardManager.current
-    fun convert(entry:ClipEntry?):ClipEntry? {
-        val data=entry?.clipData ?: return null
-        if(data.itemCount!=1)return entry
-        val text=data.getItemAt(0).text?.toString() ?: return entry
-        return ClipEntry(ClipData.newPlainText(data.description.label,mathCopyText(text,true)))
-    }
-    val wrapped=remember(clipboard){object:Clipboard by clipboard {
-        override suspend fun setClipEntry(clipEntry:ClipEntry?)=clipboard.setClipEntry(convert(clipEntry))
-    }}
+    val wrapped=remember(clipboard){latexClipboard(clipboard)}
     val old=remember(legacy){object:ClipboardManager by legacy {
         override fun setText(annotatedString:AnnotatedString)=legacy.setText(AnnotatedString(mathCopyText(annotatedString.text,true)))
-        override fun setClip(clipEntry:ClipEntry?)=legacy.setClip(convert(clipEntry))
+        override fun setClip(clipEntry:ClipEntry?)=legacy.setClip(latexClipEntry(clipEntry))
     }}
     CompositionLocalProvider(LocalClipboard provides wrapped,LocalClipboardManager provides old,content=content)
 }
