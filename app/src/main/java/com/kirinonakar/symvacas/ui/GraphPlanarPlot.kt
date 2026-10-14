@@ -48,8 +48,10 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
     val asymptoteLines=data.asymptoteLines
     val markers=data.markers
     val latestCurves by rememberUpdatedState(curves)
+    val selectedRowKind=if(selectedDerivativeOrder!=0)"cartesian" else m.graphData?.optJSONArray("curveKinds")?.optString(selected,m.graphKind) ?: m.graphKind
+    val latestSelectedRowKind by rememberUpdatedState(selectedRowKind)
     val activeCurveIndex=graphSelectedCurveIndex(selected,selectedDerivativeOrder,if(derivativeCurve!=null)derivativeIndex else -1,if(secondDerivativeCurve!=null)secondDerivativeIndex else -1)
-    val latestTraceCurve by rememberUpdatedState(allCurves.getOrNull(activeCurveIndex))
+    val latestTraceCurve by rememberUpdatedState(if(selectedDerivativeOrder==0)curves.getOrNull(selected) else if(m.isGraphVisible(selected,if(selectedDerivativeOrder==1)"derivative" else "secondDerivative"))allCurves.getOrNull(activeCurveIndex) else emptyList())
     val transform=Modifier.pointerInput(m.graphKind) {awaitEachGesture {
             awaitFirstDown(requireUnconsumed=false)
             var axis:String?=null
@@ -127,12 +129,12 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
                             if(distance<nearestDistance) {nearestCurve=curveIndex;nearestIndex=pointIndex;nearestDistance=distance;nearestPoint=point}
                         }
                         latestCurves.forEachIndexed {curveIndex,curve->
-                            if(m.graphKind=="cartesian")graphTracePointAtX(curve,target,targetY)?.let {considerPoint(curveIndex,-1,it)}
+                            if(m.graphKind=="cartesian" && m.graphData?.optJSONArray("curveKinds")?.optString(curveIndex,"cartesian") !in listOf("parametric","polar"))graphTracePointAtX(curve,target,targetY)?.let {considerPoint(curveIndex,-1,it)}
                             else curve.forEachIndexed {pointIndex,point->point?.let {considerPoint(curveIndex,pointIndex,it)}}
                         }
                         val point=nearestPoint
                         if(nearestCurve>=0 && point!=null && nearestDistance<=40.dp.toPx()) {
-                            val at=if(m.graphKind=="cartesian")point.first else m.graphData?.optJSONArray("curveParameters")?.optJSONArray(nearestCurve)?.optDouble(nearestIndex,Double.NaN)
+                            val at=if(m.graphKind=="cartesian" && m.graphData?.optJSONArray("curveKinds")?.optString(nearestCurve,"cartesian") !in listOf("parametric","polar"))point.first else m.graphData?.optJSONArray("curveParameters")?.optJSONArray(nearestCurve)?.optDouble(nearestIndex,Double.NaN)
                             if(at!=null && at.isFinite()) {
                                 selected=nearestCurve
                                 if(other==selected)other=(selected+1)%latestCurves.size
@@ -143,7 +145,7 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
                         }
                     }
                     val curve=latestTraceCurve
-                    m.trace=if(m.graphKind=="cartesian")curve?.let {graphTracePointAtX(it,target,targetY)}
+                    m.trace=if(m.graphKind=="cartesian" && latestSelectedRowKind !in listOf("parametric","polar"))curve?.let {graphTracePointAtX(it,target,targetY)}
                     else curve?.filterNotNull()?.minByOrNull { ((it.first-target)/xSpan).pow(2)+((it.second-targetY)/ySpan).pow(2) }
                 } }.semantics { contentDescription="Graph with ${curves.size} curves. Pinch to zoom, drag to pan, tap to trace${if(m.graphAnalysis?.optString("analysis") in listOf("tangent","tangentangle"))" or move the tangent" else ""}. Use Range and Analyze for accessible controls." },c.display,exports) {
             val xlo=m.xMin;val xhi=m.xMax
@@ -182,7 +184,9 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
                 if(0.0 in xlo..xhi)drawLine(c.muted,Offset(px(0.0),0f),Offset(px(0.0),size.height),2f)
                 if(0.0 in m.yMin..m.yMax)drawLine(c.muted,Offset(0f,py(0.0)),Offset(size.width,py(0.0)),2f)
                 shadings.forEachIndexed { si,shading->
-                    val shadeColor=c.curves[si%c.curves.size]
+                    val entry=m.graphData?.optJSONArray("shadings")?.optJSONObject(si)
+                    val colorIndex=if(entry?.has("sourceIndex")==true)entry.optInt("sourceIndex",si) else entry?.optInt("shadeIndex",si) ?: si
+                    val shadeColor=c.curves[colorIndex%c.curves.size]
                     shading.first.forEach { polygon->
                         if(polygon.size>=3) {
                             val path=Path()
@@ -205,12 +209,12 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
                 }
                 curves.forEachIndexed { ci,points ->
                     val color=c.curves[ci%c.curves.size]
-                    drawPath(curvePath(points),color,style=Stroke(if(selectedDerivativeOrder==0 && ci==selected)4.dp.toPx() else 1.5.dp.toPx(),cap=StrokeCap.Round,join=StrokeJoin.Round))
+                    drawPath(curvePath(points),color,style=Stroke(if(selectedDerivativeOrder==0 && ci==selected)4.dp.toPx() else 1.5.dp.toPx(),cap=StrokeCap.Round,join=StrokeJoin.Round,pathEffect=if(m.graphData?.optJSONArray("curveStyles")?.optString(ci)=="dashed")PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(),4.dp.toPx())) else null))
                 }
-                derivativeCurve?.let {points->
+                derivativeCurve?.takeIf {m.graphDerivativeSelected?.let {m.isGraphVisible(it,"derivative")}==true}?.let {points->
                     drawPath(curvePath(points),c.accent,style=Stroke(if(selectedDerivativeOrder==1)4.dp.toPx() else 2.5.dp.toPx(),cap=StrokeCap.Round,join=StrokeJoin.Round,pathEffect=derivativeDash))
                 }
-                secondDerivativeCurve?.let {points->
+                secondDerivativeCurve?.takeIf {m.graphSecondDerivativeSelected?.let {m.isGraphVisible(it,"secondDerivative")}==true}?.let {points->
                     drawPath(curvePath(points),c.accent,style=Stroke(if(selectedDerivativeOrder==2)4.dp.toPx() else 2.5.dp.toPx(),cap=StrokeCap.Round,join=StrokeJoin.Round,pathEffect=PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(),5.dp.toPx()))))
                 }
                 if(m.graphKind=="differential") {

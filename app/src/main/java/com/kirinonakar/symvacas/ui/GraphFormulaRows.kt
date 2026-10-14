@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.*
 import com.kirinonakar.symvacas.calculator.isImplicitSurface
@@ -28,7 +29,7 @@ internal fun graphEquationTree(kind:String,source:String,index:Int,displayDigits
         else->"f${index+1}(x)"
     }
     val parsed=runCatching {Parser(source).parse()}.getOrNull()
-    val equation=if(parsed?.kind=="relation")source else if(kind=="implicit" || kind=="surface" && isImplicitSurface(source) || kind=="cartesian" && parsed?.nodes()?.any {it.kind=="symbol" && it.value=="y"}==true)"$source=0" else "$left=$source"
+    val equation=if(parsed?.kind=="relation")source else if(kind=="implicit" || kind=="surface" && isImplicitSurface(source) || kind=="cartesian" && parsed?.nodes()?.any {it.kind=="symbol" && it.value=="y"}==true)"$source=0" else if(kind=="cartesian" && parsed?.kind in listOf("tuple","list"))"[x(t),y(t)]=$source" else "$left=$source"
     return if(displayDigits==null)decimalFractionFormulaTree(equation) else regressionFormulaDisplayTree(equation,displayDigits)
 }
 
@@ -63,7 +64,7 @@ internal fun graphShadeFormula(source:String,displayDigits:Int?=null):GraphShade
     GraphShadeFormula(expressions,range).takeIf {it.expressions.isNotEmpty()}
 }.getOrNull()
 
-@Composable internal fun GraphFormulas(kind:String,sources:List<String>,selected:Int,derivativeSelected:Int?,derivativeExpression:String,shadeSources:List<String>,onSelect:((Int)->Unit)?,onDerivative:()->Unit,onRemove:(Int,Boolean)->Unit,displayDigits:Int,colors:List<Color>,secondDerivativeSelected:Int?=null,secondDerivativeExpression:String="",onSecondDerivative:()->Unit={},selectedDerivativeOrder:Int=0,onSelectDerivative:(Int)->Unit={}) {
+@Composable internal fun GraphFormulas(kind:String,sources:List<String>,selected:Int,derivativeSelected:Int?,derivativeExpression:String,shadeSources:List<String>,onSelect:((Int)->Unit)?,onDerivative:()->Unit,onRemove:(Int,Boolean)->Unit,displayDigits:Int,colors:List<Color>,secondDerivativeSelected:Int?=null,secondDerivativeExpression:String="",onSecondDerivative:()->Unit={},selectedDerivativeOrder:Int=0,onSelectDerivative:(Int)->Unit={},isVisible:(Int,String)->Boolean={_,_->true},onVisibility:(Int,String)->Unit={_,_->}) {
     val c=LocalInstrument.current
     val equations=remember(kind,sources,displayDigits) {sources.mapIndexed {index,source->graphEquationTree(kind,source,index,displayDigits)}}
     val derivative=remember(derivativeSelected,derivativeExpression,displayDigits) {
@@ -82,23 +83,23 @@ internal fun graphShadeFormula(source:String,displayDigits:Int?=null):GraphShade
                 if(tree!=null)Row(Modifier.background(if(selectedDerivativeOrder==0 && index==selected)c.accent.copy(alpha=.16f) else c.scientific,RoundedCornerShape(8.dp))
                     .then(if(onSelect==null)Modifier else Modifier.clickable {onSelect(index)}.semantics {contentDescription="Select curve ${index+1}"})
                     .padding(horizontal=7.dp,vertical=3.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)) {
-                    MathText(if(selectedDerivativeOrder==0 && index==selected)"●" else "○",11f,Modifier.alignBy(MathAxis),tint=colors[index%colors.size])
+                    GraphEyeButton(isVisible(index,"curve"),"f${index+1}",colors[index%colors.size]) {onVisibility(index,"curve")}
                     Box(Modifier.alignBy(MathAxis)){MathNode(tree,12f)}
-                    GraphRemoveButton((if(isKorean())"그래프 삭제" else "Delete graph")+": f${index+1}") {onRemove(index,false)}
                 }
             }
             listOf(derivative to onDerivative,secondDerivative to onSecondDerivative).forEachIndexed {index,(tree,toggle)->
                 val isSelected=selectedDerivativeOrder==index+1
                 if(tree!=null)Row(Modifier.background(if(isSelected)c.accent.copy(alpha=.16f) else c.scientific,RoundedCornerShape(8.dp)).clickable {onSelectDerivative(index+1)}.semantics {contentDescription="Select derivative curve of order ${index+1}";this.selected=isSelected}
                     .padding(horizontal=7.dp,vertical=3.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)) {
-                    MathText(if(isSelected)"●" else "○",11f,Modifier.alignBy(MathAxis),tint=c.accent)
+                    val sourceIndex=if(index==0)derivativeSelected!! else secondDerivativeSelected!!
+                    val role=if(index==0)"derivative" else "secondDerivative"
+                    GraphEyeButton(isVisible(sourceIndex,role),"f${sourceIndex+1}"+if(index==0)"′" else "″",c.accent) {onVisibility(sourceIndex,role)}
                     Box(Modifier.alignBy(MathAxis)){MathNode(tree,12f)}
-                    GraphRemoveButton((if(isKorean())"도함수 그래프 삭제" else "Delete derivative curve")+if(index==0)" f′" else " f″",toggle)
                 }
             }
             shades.forEach {(index,shade)->
                 Row(Modifier.background(c.scientific,RoundedCornerShape(8.dp)).padding(horizontal=7.dp,vertical=3.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)) {
-                    MathText("▨",11f,Modifier.alignBy(MathAxis),tint=c.muted)
+                    GraphEyeButton(isVisible(index,"shade"),"${index+1}",c.muted) {onVisibility(index,"shade")}
                     shade.expressions.forEachIndexed {index,tree->
                         if(index>0)MathText(",",12f,Modifier.alignBy(MathAxis))
                         Box(Modifier.alignBy(MathAxis)){MathNode(tree,12f)}
@@ -110,18 +111,23 @@ internal fun graphShadeFormula(source:String,displayDigits:Int?=null):GraphShade
                         Box(Modifier.alignBy(MathAxis)){MathNode(high,12f)}
                         MathText(")",12f,Modifier.alignBy(MathAxis))
                     }
-                    GraphRemoveButton((if(isKorean())"음영 삭제" else "Delete shading")+": ${index+1}") {onRemove(index,true)}
                 }
             }
         }
     }
 }
 
-@Composable private fun RowScope.GraphRemoveButton(label:String,onRemove:()->Unit) {
-    MathText("×",14f,
-        modifier=Modifier.alignBy(MathAxis)
-        .clickable(role=Role.Button,onClick=onRemove)
-        .semantics {contentDescription=label}
-        .padding(horizontal=5.dp,vertical=3.dp),
-        tint=LocalInstrument.current.muted)
+@Composable private fun RowScope.GraphEyeButton(visible:Boolean,label:String,color:Color,onToggle:()->Unit) {
+    val description=(if(isKorean()) {if(visible)"그래프 숨기기" else "그래프 표시"} else {if(visible)"Hide graph" else "Show graph"})+": "+label
+    // Canvas has no MathAxis of its own; align its center with the formula axis.
+    Canvas(Modifier.alignBy { it.measuredHeight / 2 }.size(32.dp).clickable(role=Role.Checkbox,onClick=onToggle)
+        .semantics {contentDescription=description;stateDescription=if(visible)"Visible" else "Hidden"}
+        .padding(8.dp)) {
+        val w=size.width;val h=size.height
+        val eye=Path().apply {moveTo(0f,h*.5f);cubicTo(w*.25f,-h*.02f,w*.75f,-h*.02f,w,h*.5f);cubicTo(w*.75f,h*1.02f,w*.25f,h*1.02f,0f,h*.5f);close()}
+        val tint=color.copy(alpha=if(visible)1f else .5f)
+        drawPath(eye,tint,style=androidx.compose.ui.graphics.drawscope.Stroke(1.4.dp.toPx()))
+        drawCircle(tint,w*.14f,Offset(w*.5f,h*.5f))
+        if(!visible)drawLine(tint,Offset(0f,0f),Offset(w,h),1.4.dp.toPx())
+    }
 }

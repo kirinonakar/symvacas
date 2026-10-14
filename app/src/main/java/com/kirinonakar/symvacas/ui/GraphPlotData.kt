@@ -22,7 +22,7 @@ internal data class GraphPlotData(
     }
     val derivativeIndex=m.graphData?.optInt("derivativeCurveIndex",-1) ?: -1
     val secondDerivativeIndex=m.graphData?.optInt("secondDerivativeCurveIndex",-1) ?: -1
-    val curves=allCurves.filterIndexed {index,_->index!=derivativeIndex && index!=secondDerivativeIndex}
+    val curves=allCurves.filterIndexed {index,_->index!=derivativeIndex && index!=secondDerivativeIndex}.mapIndexed {index,curve->if(m.isGraphVisible(index))curve else emptyList()}
     val derivativeSelected=m.graphDerivativeSelected
     val derivativeCurve=allCurves.getOrNull(derivativeIndex)?.takeIf {derivativeSelected==m.graphData?.optInt("derivativeSelected",-1)}
     val derivativeExpression=if(derivativeCurve!=null)m.graphData?.optString("derivativeExpression").orEmpty() else ""
@@ -36,10 +36,11 @@ internal data class GraphPlotData(
             (0 until polygon.length()).mapNotNull {i->polygon.optJSONArray(i)?.let {it.getDouble(0) to it.getDouble(1)}}
         }
     }
-    val shadings=remember(m.graphData) {
+    val shadings=remember(m.graphData,m.graphState.hiddenGraphKeys,m.graphSource,m.graphKind) {
         val array=m.graphData?.optJSONArray("shadings")
         (0 until (array?.length() ?: 0)).mapNotNull { index->
             val entry=array?.optJSONObject(index) ?: return@mapNotNull null
+            if(if(entry.has("sourceIndex"))!m.isGraphVisible(entry.getInt("sourceIndex")) else !m.isGraphVisible(entry.optInt("shadeIndex",index),"shade"))return@mapNotNull emptyList<List<GraphPoint>>() to emptyList<GraphCurve>()
             val fillArray=entry.optJSONArray("fill")
             val fill=(0 until (fillArray?.length() ?: 0)).map { fi->
                 val polygon=fillArray!!.optJSONArray(fi)

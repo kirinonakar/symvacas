@@ -1,6 +1,6 @@
 // Full-precision numeric fields, paired sliders, and range-track interaction.
 import {displayNumber} from './display-format.js';
-import {hasImplicitSurface} from './graph-input.js';
+import {hasImplicitSurface,graphExpressions,graphInputTree,planarTreeKind} from './graph-input.js';
 
 export function createGraphRangeControls({
   $,
@@ -14,9 +14,9 @@ export function createGraphRangeControls({
   state,
   value
 }){
-  const rangeIds=['graph-min','graph-max','graph-ymin','graph-ymax','graph-xmin','graph-xmax','graph-analysis-a','graph-analysis-b','graph-t0','graph-zmin','graph-zmax'];
+  const rangeIds=['graph-theta-min','graph-theta-max','graph-parameter-min','graph-parameter-max','graph-min','graph-max','graph-ymin','graph-ymax','graph-xmin','graph-xmax','graph-analysis-a','graph-analysis-b','graph-t0','graph-zmin','graph-zmax'];
   const sliderIds=rangeIds.filter(id=>id!=='graph-t0');
-  const rangePairs=[['graph-min','graph-max'],['graph-ymin','graph-ymax'],['graph-xmin','graph-xmax'],['graph-zmin','graph-zmax'],['graph-analysis-a','graph-analysis-b']];
+  const rangePairs=[['graph-theta-min','graph-theta-max'],['graph-parameter-min','graph-parameter-max'],['graph-min','graph-max'],['graph-ymin','graph-ymax'],['graph-xmin','graph-xmax'],['graph-zmin','graph-zmax'],['graph-analysis-a','graph-analysis-b']];
   const pairedSliders=new Map();
 
   function fieldNumber(input){return input.value.trim()===''?NaN:Number(input.dataset.displayValue===input.value?input.dataset.fullValue:input.value);}
@@ -27,7 +27,11 @@ export function createGraphRangeControls({
 
   function editField(input){input.onfocus=()=>{if(input.dataset.displayValue===input.value){input.value=input.dataset.fullValue;input.dataset.displayValue=input.value;}};input.onblur=()=>{const number=fieldNumber(input);if(Number.isFinite(number)&&!input.hasAttribute('aria-invalid'))displayField(input,number);};}
 
-  function analysisRange(){return [numeric('graph-min'),numeric('graph-max')];}
+  function analysisRange(){
+    let type=value('graph-kind');
+    if(type==='cartesian')try{type=planarTreeKind(graphInputTree(graphExpressions(value('graph-source'),'cartesian')[Number(value('graph-selected'))||0]||'0'));}catch{}
+    return type==='polar'?[numeric('graph-theta-min'),numeric('graph-theta-max')]:['parametric','space'].includes(type)?[numeric('graph-parameter-min'),numeric('graph-parameter-max')]:[numeric('graph-min'),numeric('graph-max')];
+  }
 
   function syncRangePair(pair){
     const numbers=pair.ids.map(numeric);if(!numbers.every(Number.isFinite))return;
@@ -67,7 +71,7 @@ export function createGraphRangeControls({
   }
 
   function initializeRanges(){
-    for(const id of rangeIds){const field=$(id);editField(field);for(const name of ['input','change'])field.addEventListener(name,()=>{if(field.dataset.displayValue!==field.value)delete field.dataset.displayValue;const pair=pairedSliders.get(id);if(pair)resetRangeDomain(pair);if(['graph-min','graph-max','graph-analysis-a'].includes(id))analysisControls();});}
+    for(const id of rangeIds){const field=$(id);editField(field);for(const name of ['input','change'])field.addEventListener(name,()=>{if(field.dataset.displayValue!==field.value)delete field.dataset.displayValue;const pair=pairedSliders.get(id);if(pair)resetRangeDomain(pair);if(['graph-min','graph-max','graph-parameter-min','graph-parameter-max','graph-theta-min','graph-theta-max','graph-analysis-a'].includes(id))analysisControls();});}
     for(const id of sliderIds){const field=$(id),slider=document.createElement('input'),current=numeric(id);slider.type='range';slider.id=id+'-slider';slider.min=String(Math.min(-30,current-20));slider.max=String(Math.max(30,current+20));slider.step='any';slider.value=String(current);slider.setAttribute('aria-label',field.closest('label').firstChild.textContent.trim());field.insertAdjacentElement('afterend',slider);
       slider.oninput=()=>{
         const number=Number(slider.value),pair=pairedSliders.get(id),partner=pair&&!pair.ids.some(key=>$(key+'-slider').hidden)?pair.ids.find(key=>key!==id):null;

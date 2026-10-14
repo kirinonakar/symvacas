@@ -1,5 +1,6 @@
 package com.kirinonakar.symvacas
 
+import com.kirinonakar.symvacas.calculator.graphRangeAxes
 import com.kirinonakar.symvacas.calculator.loadGraphColors
 import com.kirinonakar.symvacas.calculator.normalizeGraphColors
 import com.kirinonakar.symvacas.ui.graphTracePointAtX
@@ -11,6 +12,15 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class GraphFormulaTest {
+    @Test fun parameterRangesAppearOnlyForCorrespondingCurveKinds() {
+        assertEquals(emptySet<String>(),graphRangeAxes("y=x^2\nx^2+y^2=9","cartesian"))
+        assertEquals(setOf("t"),graphRangeAxes("(cos(t),sin(t))","cartesian"))
+        assertEquals(setOf("theta"),graphRangeAxes("r=2cos(3θ)","cartesian"))
+        assertEquals(setOf("t","theta"),graphRangeAxes("(cos(t),sin(t))\nr=2cos(3θ)","cartesian"))
+        assertEquals(emptySet<String>(),graphRangeAxes("","polar"))
+        assertEquals(setOf("theta"),graphRangeAxes("2cos(3θ)","polar"))
+        assertEquals(setOf("t"),graphRangeAxes("(cos(t),sin(t))","parametric"))
+    }
     @Test fun analysisTargetsDistinguishDerivativesFromTheirSourceForIntersections() {
         val original=graphAnalysisTarget(0,0,0)
         val first=graphAnalysisTarget(-1,0,0)

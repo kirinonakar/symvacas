@@ -1,7 +1,7 @@
 import {displayNumber} from './display-format.js';
 import {integralPolygons} from './graph-integral.js';
 import {clipGraphSegment} from './graph-geometry.js';
-import {clipSurfaceSegment,prepareSurfaceFaces,combineSurfaceFaces,projectSurfaceFaces,surfaceProjection,surfaceZRange} from './surface-geometry.js';
+import {surfaceSectionPlane,surfaceSectionSegments,clipSurfaceSegment,prepareSurfaceFaces,combineSurfaceFaces,projectSurfaceFaces,surfaceProjection,surfaceZRange} from './surface-geometry.js';
 import {renderSurfaceGpu} from './surface-gpu.js';
 
 import {defaultGraphColors} from './graph-colors.js';
@@ -12,7 +12,7 @@ const surfaceGeometry=new WeakMap();
 
 // One persistent bitmap per workspace, with a backing store sized for its
 // actual CSS width and device pixel ratio. Geometry uses the gesture viewBox.
-export function plotGraph(container,result,bounds,{colors=defaultGraphColors,digits=10,dots=false,selected=0,analysis=null,trace=null,integral=null,radianAxis=false,halfHeight=false,heightScale=halfHeight?.5:1,surfaceView={},contextFactory=null}={}){
+export function plotGraph(container,result,bounds,{colors=defaultGraphColors,digits=10,dots=false,selected=0,analysis=null,trace=null,integral=null,radianAxis=false,halfHeight=false,heightScale=halfHeight?.5:1,surfaceView={},hiddenCurves=[],hiddenShadings=[],contextFactory=null}={}){
   const scale=[1,.5,2].includes(heightScale)?heightScale:1;
   const h=460*scale,ih=h-2*pad;
   const {xmin,xmax,ymin,ymax}=bounds;
@@ -56,7 +56,7 @@ export function plotGraph(container,result,bounds,{colors=defaultGraphColors,dig
   };
   const clip=()=>{ctx.save();ctx.beginPath();ctx.rect(left,pad,iw,ih);ctx.clip();};
   if(result.surface){
-    const {rotation=35,elevation=32,zoom=1,renderMode='surface'}=surfaceView;
+    const {rotation=35,elevation=32,zoom=1,renderMode='surface',opacity=1,sliceEnabled=false,sliceAxis='z',slicePosition=surfaceView.sliceZ??0}=surfaceView;
     const color=/^#[0-9a-f]{6}$/i.test(surfaceView.color||'')?surfaceView.color:colors[0];
     const surfaces=result.surfaces||[result],palette=surfaces.length>1?surfaces.map((_,i)=>graphCurveColor(i,colors)):[color];
     const [zmin,zmax]=surfaceZRange(result.zMin,result.zMax),box={...bounds,zmin,zmax},projection=surfaceProjection(box,rotation,elevation),scale=ih*.3*zoom;
@@ -70,12 +70,12 @@ export function plotGraph(container,result,bounds,{colors=defaultGraphColors,dig
       });
       cached={signature,groups,normalsSource:result.surfaceNormals,indexSource:result.surfaceTriangles,convex:result.convexSurface,prepared:combineSurfaceFaces(groups.map(group=>group.prepared))};surfaceGeometry.set(key,cached);
     }
-    const {groups,prepared}=cached;
+    const {groups}=cached,prepared={...cached.prepared,faces:cached.prepared.faces.filter(face=>!hiddenCurves.includes(face.group||0))};
     const project=p=>{const [x,y]=projection.project(p);return [w/2+x*scale,h/2+y*scale];};
     clip();
-    const gpu=!contextFactory&&prepared.faces.length?renderSurfaceGpu(canvas,prepared,{rotation,elevation,scale,width:w,height:h,pixelWidth:canvas.width,pixelHeight:canvas.height,color,palette,wireColor:/^#[0-9a-f]{6}$/i.test(muted)?muted:'#738a7c',renderMode}):null;
+    const gpu=opacity===1&&!contextFactory&&prepared.faces.length?renderSurfaceGpu(canvas,prepared,{rotation,elevation,scale,width:w,height:h,pixelWidth:canvas.width,pixelHeight:canvas.height,color,palette,wireColor:/^#[0-9a-f]{6}$/i.test(muted)?muted:'#738a7c',renderMode}):null;
     if(gpu)ctx.drawImage(gpu,0,0,w,h);
-    else if(renderMode!=='wireframe')for(const face of projectSurfaceFaces(prepared,projection)){
+    else if(renderMode!=='wireframe')for(const face of projectSurfaceFaces(prepared,projection,opacity<1)){
       const rgb=[1,3,5].map(i=>parseInt(palette[face.group||0].slice(i,i+2),16));
       const shade=value=>`rgb(${rgb.map(v=>Math.round(v*value)).join(',')})`;
       let fill=shade((.65+.35*face.height)*face.light);
@@ -84,9 +84,10 @@ export function plotGraph(container,result,bounds,{colors=defaultGraphColors,dig
         fill=ctx.createLinearGradient(w/2+start[0]*scale,h/2+start[1]*scale,w/2+end[0]*scale,h/2+end[1]*scale);
         fill.addColorStop(0,shade(min));fill.addColorStop(1,shade(max));
       }
-      polygon(face.projected.map(p=>[w/2+p[0]*scale,h/2+p[1]*scale]),fill,1,renderMode==='surface-wireframe'?muted:fill,renderMode==='surface-wireframe'?.65:.8);
+      polygon(face.projected.map(p=>[w/2+p[0]*scale,h/2+p[1]*scale]),fill,opacity,renderMode==='surface-wireframe'?muted:opacity===1?fill:null,renderMode==='surface-wireframe'?.65:.8);
     }
     else for(const [index,{mesh,triangles}] of groups.entries()){
+      if(hiddenCurves.includes(index))continue;
       ctx.beginPath();
       const wire=points=>{for(let i=1;i<points.length;i++){const segment=clipSurfaceSegment(points[i-1],points[i],box);if(segment){ctx.moveTo(...project(segment[0]));ctx.lineTo(...project(segment[1]));}}};
       for(const row of mesh)wire(row);
@@ -95,7 +96,15 @@ export function plotGraph(container,result,bounds,{colors=defaultGraphColors,dig
       for(let col=0;col<columns;col++)wire(mesh.map(row=>row[col]));
       ctx.strokeStyle=palette[index];ctx.lineWidth=1.3;ctx.stroke();
     }
+    const sectionAxis=['x','y','z'].indexOf(sliceAxis),sectionRange=[[xmin,xmax],[ymin,ymax],[zmin,zmax]][sectionAxis];
+    if(sliceEnabled&&sectionRange&&slicePosition>=sectionRange[0]&&slicePosition<=sectionRange[1]){
+      const plane=surfaceSectionPlane(box,slicePosition,sectionAxis).map(project);
+      polygon(plane,accent,.08);ctx.setLineDash([5,4]);
+      for(let i=0;i<4;i++)line(plane[i],plane[(i+1)%4],accent,1);ctx.setLineDash([]);
+      for(const segment of surfaceSectionSegments(prepared.faces,slicePosition,sectionAxis))line(...segment.points.map(project),palette[segment.group],3);
+    }
     for(const [i,curve] of (result.spaceCurves||[]).entries()){
+      if(hiddenCurves.includes(i))continue;
       ctx.beginPath();let pen=null;
       for(let k=1;k<curve.length;k++){
         const segment=clipSurfaceSegment(curve[k-1],curve[k],box);
@@ -134,10 +143,11 @@ export function plotGraph(container,result,bounds,{colors=defaultGraphColors,dig
   clip();
   if(xmin<=0&&xmax>=0)line([x(0),pad],[x(0),h-pad]);
   if(ymin<=0&&ymax>=0)line([left,y(0)],[w-pad,y(0)]);
-  for(const [i,shade] of (result.shadings||[]).entries())for(const points of shade.fill||[])polygon(points.map(project),colors[i%colors.length],.16);
+  for(const [i,shade] of (result.shadings||[]).entries()){if(hiddenShadings.includes(i))continue;for(const points of shade.fill||[])polygon(points.map(project),colors[(shade.sourceIndex??shade.shadeIndex??i)%colors.length],.16);}
   ctx.beginPath();for(const [at,value,slope] of result.fields||[]){const angle=Math.atan(slope*(xmax-xmin)/(ymax-ymin)*ih/iw),dx=7*Math.cos(angle),dy=-7*Math.sin(angle);ctx.moveTo(x(at)-dx,y(value)-dy);ctx.lineTo(x(at)+dx,y(value)+dy);}ctx.strokeStyle=muted;ctx.globalAlpha=.6;ctx.lineWidth=1;ctx.stroke();ctx.globalAlpha=1;
   const path=(points,i)=>{
-    const color=colors[i%colors.length];ctx.beginPath();let previous=null,pen=null;
+    if(hiddenCurves.includes(i))return;
+    const color=colors[i%colors.length];ctx.setLineDash(result.curveStyles?.[i]==='dashed'?[6,4]:[]);ctx.beginPath();let previous=null,pen=null;
     for(const point of points){
       const segment=clipGraphSegment(previous,point,bounds);previous=finite(point)?point:null;
       if(!segment){pen=null;continue;}
@@ -145,7 +155,7 @@ export function plotGraph(container,result,bounds,{colors=defaultGraphColors,dig
       if(!pen||a[0]!==pen[0]||a[1]!==pen[1])ctx.moveTo(...project(a));
       ctx.lineTo(...project(b));pen=b;
     }
-    ctx.strokeStyle=color;ctx.lineWidth=i===selected?4:2;ctx.stroke();
+    ctx.strokeStyle=color;ctx.lineWidth=i===selected?4:2;ctx.stroke();ctx.setLineDash([]);
     if(dots)for(const point of points)if(finite(point)&&point[0]>=xmin&&point[0]<=xmax&&point[1]>=ymin&&point[1]<=ymax)circle(project(point),3,color);
   };
   (result.curves||[]).forEach((curve,i)=>{if(i!==selected)path(curve,i);});if(result.curves?.[selected])path(result.curves[selected],selected);

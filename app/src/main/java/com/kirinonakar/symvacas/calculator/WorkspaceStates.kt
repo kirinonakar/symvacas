@@ -31,6 +31,11 @@ internal class GraphState(private val prefs:SharedPreferences) {
     var surfaceColor by mutableStateOf(prefs.getString("surfaceColor","#007b68")?.takeIf {it.matches(Regex("#[0-9a-fA-F]{6}"))} ?: "#007b68")
     var surfaceSamples by mutableIntStateOf(prefs.getInt("surfaceSamples",26).coerceIn(12,96))
     var surfaceAutoDensity by mutableStateOf(prefs.getBoolean("surfaceAutoDensity",true))
+    var hiddenGraphKeys by mutableStateOf(runCatching {val array=JSONArray(prefs.getString("hiddenGraphKeys","[]"));(0 until array.length()).map {array.getString(it)}.toSet()}.getOrDefault(emptySet()))
+    var surfaceOpacity by mutableFloatStateOf(prefs.getFloat("surfaceOpacity",1f).takeIf {it.isFinite()}?.coerceIn(.1f,1f) ?: 1f)
+    var surfaceSliceEnabled by mutableStateOf(prefs.getBoolean("surfaceSliceEnabled",false))
+    var surfaceSliceAxis by mutableStateOf(prefs.getString("surfaceSliceAxis","z")?.takeIf {it in listOf("x","y","z")} ?: "z")
+    var surfaceSlicePosition by mutableDoubleStateOf(prefs.getString("surfaceSlicePosition",prefs.getString("surfaceSliceZ","0"))?.toDoubleOrNull()?.takeIf(Double::isFinite) ?: 0.0)
     var surfaceZoom by mutableFloatStateOf(prefs.getFloat("surfaceZoom",1f).takeIf {it.isFinite()}?.coerceIn(.4f,3f) ?: 1f)
     var graphData by mutableStateOf<JSONObject?>(null)
     var graphResultSignature:String?=null
@@ -42,19 +47,21 @@ internal class GraphState(private val prefs:SharedPreferences) {
     var trace by mutableStateOf<Pair<Double,Double>?>(null)
     var parameterMin by mutableDoubleStateOf(prefs.getString("parameterMin","0")?.toDoubleOrNull()?.takeIf(Double::isFinite) ?: 0.0)
     var parameterMax by mutableDoubleStateOf(prefs.getString("parameterMax","6.283185307179586")?.toDoubleOrNull()?.takeIf(Double::isFinite) ?: 6.283185307179586)
+    var thetaMin by mutableDoubleStateOf(prefs.getString("thetaMin",if(restoredKind in listOf("cartesian","polar"))parameterMin.toString() else "0")?.toDoubleOrNull()?.takeIf(Double::isFinite) ?: 0.0)
+    var thetaMax by mutableDoubleStateOf(prefs.getString("thetaMax",if(restoredKind in listOf("cartesian","polar"))parameterMax.toString() else (2*PI).toString())?.toDoubleOrNull()?.takeIf(Double::isFinite) ?: 2*PI)
     var shadedInterval by mutableStateOf<Pair<Double,Double>?>(null)
     var graphParameters by mutableStateOf(loadParameters())
     var graphAnimating by mutableStateOf(false)
     var animationPhase=0.0
     private val animationOffsets=mutableMapOf<String,Double>()
     var radianAxis by mutableStateOf(prefs.getBoolean("radianAxis",false))
-    private data class InputSnapshot(val source:String,val derivative:Int?,val secondDerivative:Int?,val parameters:Map<String,GraphParameter>)
+    private data class InputSnapshot(val source:String,val derivative:Int?,val secondDerivative:Int?,val parameters:Map<String,GraphParameter>,val hiddenKeys:Set<String>)
     private val inputUndo=mutableStateMapOf<String,List<InputSnapshot>>()
     val canUndoInput get()=inputUndo[graphKind].orEmpty().isNotEmpty()
 
     fun rememberInput() {
         val history=inputUndo[graphKind].orEmpty()
-        inputUndo[graphKind]=(history+InputSnapshot(graphSource,graphDerivativeSelected,graphSecondDerivativeSelected,graphParameters)).takeLast(100)
+        inputUndo[graphKind]=(history+InputSnapshot(graphSource,graphDerivativeSelected,graphSecondDerivativeSelected,graphParameters,hiddenGraphKeys)).takeLast(100)
     }
 
     fun undoInput():Boolean {
@@ -63,6 +70,7 @@ internal class GraphState(private val prefs:SharedPreferences) {
         inputUndo[graphKind]=history.dropLast(1)
         clearAnalysis()
         graphSource=previous.source;graphDerivativeSelected=previous.derivative;graphParameters=previous.parameters
+        hiddenGraphKeys=previous.hiddenKeys
         graphSecondDerivativeSelected=previous.secondDerivative
         graphAnimating=false
         return true
@@ -216,9 +224,12 @@ internal class GraphState(private val prefs:SharedPreferences) {
             .putString("xMin",xMin.toString()).putString("xMax",xMax.toString()).putString("yMin",yMin.toString()).putString("yMax",yMax.toString())
             .putString("zMin",zMin?.toString()).putString("zMax",zMax?.toString())
             .putString("surfaceRenderMode",surfaceRenderMode)
+            .putString("hiddenGraphKeys",JSONArray(hiddenGraphKeys.toList()).toString())
+            .putFloat("surfaceOpacity",surfaceOpacity).putBoolean("surfaceSliceEnabled",surfaceSliceEnabled).putString("surfaceSliceAxis",surfaceSliceAxis).putString("surfaceSlicePosition",surfaceSlicePosition.toString())
             .putString("surfaceColor",surfaceColor).putInt("surfaceSamples",surfaceSamples)
             .putBoolean("surfaceAutoDensity",surfaceAutoDensity).putFloat("surfaceZoom",surfaceZoom)
             .putString("parameterMin",parameterMin.toString()).putString("parameterMax",parameterMax.toString())
+            .putString("thetaMin",thetaMin.toString()).putString("thetaMax",thetaMax.toString())
             .putBoolean("radianAxis",radianAxis).putString("graphParameters",parameters.toString())
     }
 }

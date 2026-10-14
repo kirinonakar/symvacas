@@ -15,11 +15,34 @@ internal fun graphInputTree(source:String,kind:String="cartesian",removeComputat
     return if(kind=="cartesian")FunctionTransfer.graphExpression(tree)else tree
 }
 
+internal fun graphPlanarKind(tree:Expr):String {
+    if(tree.kind=="relation" && tree.value in listOf("<","<=",">",">="))return "inequality"
+    var body=tree
+    if(tree.kind=="relation" && tree.value in listOf("=","==")) {
+        val head=tree.args[0]
+        if(head.kind in listOf("symbol","call") && head.value=="r")return "polar"
+        body=tree.args[1]
+    }
+    return if(body.kind in listOf("tuple","list") && body.args.size==2)"parametric" else "cartesian"
+}
+
+internal fun graphRangeAxes(source:String,kind:String):Set<String> {
+    val rows=source.lines().filter(String::isNotBlank).take(graphSourceLimit(kind)).filterNot(::isGraphShading)
+    if(rows.isEmpty())return emptySet()
+    return when(kind) {
+        "polar"->setOf("theta")
+        "parametric","space","differential"->setOf("t")
+        "cartesian"->rows.mapNotNull {row->runCatching {when(graphPlanarKind(graphInputTree(row))) {
+            "polar"->"theta";"parametric"->"t";else->null
+        }}.getOrNull()}.toSet()
+        else->emptySet()
+    }
+}
+
 internal fun graphExpressionTarget(source:String):Pair<String,String> {
     val tree=Parser(source).parse()
     if(tree.nodes().any {it.kind in listOf("list","tuple") && it.args.size==3})return "space" to source
     if(tree.kind=="relation") {
-        require(tree.value in listOf("=","==")) {"Graph an expression, y = f(x), or an equation F(x,y)=0"}
         if(tree.args[0].kind=="symbol" && tree.args[0].value=="z" && tree.args[1].nodes().none {it.kind=="symbol" && it.value=="z"}) {
             val rhs=tree.args[1]
             return "surface" to source.substring(rhs.start,rhs.end)
@@ -93,14 +116,15 @@ internal object CalculatorGraphActions {
         if(trees.isEmpty() && shadings.length()==0) { if(!auto)error="Enter a function"; return }
         val derivativeSelected=graphDerivativeSelected?.takeIf {graphKind=="cartesian" && it in trees.indices}
         val secondDerivativeSelected=graphSecondDerivativeSelected?.takeIf {graphKind=="cartesian" && it in trees.indices}
-        val source=graphSource;val kind=graphKind;val min=if(kind in listOf("cartesian","implicit","surface"))xMin else parameterMin;val max=if(kind in listOf("cartesian","implicit","surface"))xMax else parameterMax
+        val source=graphSource;val kind=graphKind;val min=if(kind in listOf("cartesian","implicit","surface"))xMin else if(kind=="polar")thetaMin else parameterMin;val max=if(kind in listOf("cartesian","implicit","surface"))xMax else if(kind=="polar")thetaMax else parameterMax
+        val paramMin=parameterMin;val paramMax=parameterMax;val polarMin=thetaMin;val polarMax=thetaMax
         val viewYMin=yMin;val viewYMax=yMax;val parameters=graphState.parameterPayload()
         val initials=sequenceInitials;val differentialSeeds=differentialInitials;val initialTime=differentialT0
         val environment=request("graph").put("angle","RAD").toString()
         val request=request("graph").put("angle","RAD").put("trees",JSONArray(trees)).put("graphKind",kind)
             .put("variable",when(kind){"cartesian","implicit","surface"->"x";"sequence"->"n";else->"t"})
             .put("min",min).put("max",max).put("samples",if(graphAnimating || preview)200 else 500).put("xMin",xMin).put("xMax",xMax).put("yMin",viewYMin).put("yMax",viewYMax)
-            .put("parameters",parameters)
+            .put("parameters",parameters).put("parameterMin",paramMin).put("parameterMax",paramMax).put("thetaMin",polarMin).put("thetaMax",polarMax)
         if(preview && kind in listOf("cartesian","implicit")) {
             // Sample a small margin so the next pointer frames already have data.
             val dx=(max-min)*.15;val dy=(viewYMax-viewYMin)*.15
@@ -144,10 +168,10 @@ internal object CalculatorGraphActions {
             graphBusy=true; error=""
             try {
                 val response=engine.execute(request)
-                val domainMatches=if(kind in listOf("cartesian","implicit","surface"))preview || min==xMin && max==xMax else min==parameterMin && max==parameterMax
+                val domainMatches=if(kind in listOf("cartesian","implicit","surface"))preview || min==xMin && max==xMax else if(kind=="polar")min==thetaMin && max==thetaMax else min==parameterMin && max==parameterMax
                 // Keep useful preview geometry even if another pan happened while
                 // Python was running. The Canvas projects it into the latest view.
-                if(source==graphSource && kind==graphKind && derivativeSelected==graphDerivativeSelected && secondDerivativeSelected==graphSecondDerivativeSelected && domainMatches && (preview || viewYMin==yMin && viewYMax==yMax) && initials==sequenceInitials && differentialSeeds==differentialInitials && initialTime==differentialT0 && environment==request("graph").put("angle","RAD").toString() && (graphAnimating || parameters.toString()==graphState.parameterPayload().toString())) {
+                if(source==graphSource && kind==graphKind && derivativeSelected==graphDerivativeSelected && secondDerivativeSelected==graphSecondDerivativeSelected && domainMatches && (kind!="cartesian" || paramMin==parameterMin && paramMax==parameterMax && polarMin==thetaMin && polarMax==thetaMax) && (preview || viewYMin==yMin && viewYMax==yMax) && initials==sequenceInitials && differentialSeeds==differentialInitials && initialTime==differentialT0 && environment==request("graph").put("angle","RAD").toString() && (graphAnimating || parameters.toString()==graphState.parameterPayload().toString())) {
                     if(response.optBoolean("ok")) {
                     } else error=response.optString("error")
                     graphState.applyPlotResponse(response,signature)
@@ -232,6 +256,7 @@ internal object CalculatorGraphActions {
         }
         val sources=graphSource.lines().filter(String::isNotBlank).take(24).map(String::trim).filter {!isGraphShading(it)}.take(20)
         if(selected !in sources.indices) {error="Select a function";return}
+        if(runCatching {graphPlanarKind(graphInputTree(sources[selected]))}.getOrNull()!="cartesian") {error="Derivative graphs require a Cartesian curve";return}
         graphState.rememberInput()
         clearGraphTangent()
         if(order==2)graphSecondDerivativeSelected=selected else graphDerivativeSelected=selected
@@ -252,7 +277,10 @@ internal object CalculatorGraphActions {
     }
     fun CalculatorModel.performAnalyzeGraph(action:String,first:String,second:String,selected:Int,other:Int) {
         if(graphKind !in listOf("cartesian","parametric","polar")) {error="Analysis requires a Cartesian, parametric or polar graph";return}
-        val fixedIntercept=action=="yintercept" && graphKind=="cartesian"
+        val sourceRows=graphSource.lines().filter(String::isNotBlank).take(24).filter {!isGraphShading(it)}
+        val selectedSource=graphAnalysisTarget(selected,graphDerivativeSelected,graphSecondDerivativeSelected)?.source ?: selected
+        val rowKind=if(graphKind=="cartesian")runCatching {graphPlanarKind(graphInputTree(sourceRows[selectedSource]))}.getOrDefault("cartesian") else graphKind
+        val fixedIntercept=action=="yintercept" && rowKind=="cartesian"
         val singled=action in listOf("derivative","tangent","tangentangle") || fixedIntercept
         val a=if(fixedIntercept)0.0 else first.toDoubleOrNull();val b=if(singled)a else second.toDoubleOrNull()
         if(a==null || !a.isFinite() || b==null || !b.isFinite() || (!singled && a>=b)) {error="Enter finite values with a < b";return}
@@ -266,7 +294,7 @@ internal object CalculatorGraphActions {
         val kind=graphKind
         val parameters=graphState.parameterPayload()
         val derivative=graphDerivativeSelected;val secondDerivative=graphSecondDerivativeSelected
-        val analysisRequest=request("graphAnalysis").put("angle","RAD").put("trees",trees).put("graphKind",kind).put("analysis",action).put("a",a).put("b",b).put("selected",selectedTarget.source).put("selectedDerivativeOrder",selectedTarget.order).put("other",otherTarget?.source ?: 0).put("otherDerivativeOrder",otherTarget?.order ?: 0).put("variable",if(kind=="cartesian")"x" else "t").put("parameters",parameters).put("xMin",xMin).put("xMax",xMax).put("yMin",yMin).put("yMax",yMax)
+        val analysisRequest=request("graphAnalysis").put("angle","RAD").put("trees",trees).put("graphKind",kind).put("analysis",action).put("a",a).put("b",b).put("selected",selectedTarget.source).put("selectedDerivativeOrder",selectedTarget.order).put("other",otherTarget?.source ?: 0).put("otherDerivativeOrder",otherTarget?.order ?: 0).put("variable",if(rowKind=="cartesian")"x" else "t").put("parameters",parameters).put("xMin",xMin).put("xMax",xMax).put("yMin",yMin).put("yMax",yMax)
         trace?.let {analysisRequest.put("tracePoint",JSONArray(listOf(it.first,it.second)))}
         analysisJob=viewModelScope.launch {
             graphState.graphAnalysisBusy=true;error="";graphState.graphAnalysis=null
@@ -275,7 +303,7 @@ internal object CalculatorGraphActions {
                 if(source==graphSource && kind==graphKind && derivative==graphDerivativeSelected && secondDerivative==graphSecondDerivativeSelected && parameters.toString()==graphState.parameterPayload().toString()) {
                     if(response.optBoolean("ok")) {
                         graphState.graphAnalysis=response
-                        shadedInterval=if(action=="integral" && graphKind=="cartesian")a to b else null
+                        shadedInterval=if(action=="integral" && rowKind=="cartesian")a to b else null
                         response.optJSONArray("points")?.optJSONArray(0)?.let {trace=it.getDouble(0) to it.getDouble(1)}
                     } else error=response.optString("error","Analysis failed")
                 }

@@ -190,6 +190,28 @@ def implicit_analysis(engine, request, curves, x, y, numeric, zeroes, tangent_po
 def graph_analysis(engine, request, _expressions=None, _derivative_primitive=None):
     bind_graph_parameters(engine,request)
     kind = request.get("graphKind","cartesian")
+    if kind == "cartesian" and _expressions is None:
+        from calc_graph_planar import planar_tree_spec
+        trees = request.get("trees", [])
+        specs = [planar_tree_spec(tree) for tree in trees]
+        selected = int(request.get("selected", 0))
+        pair = request.get("analysis") in ("intersection", "intersectionangle")
+        targets = [selected] + ([int(request.get("other", 1))] if pair else [])
+        require(all(0 <= i < len(specs) for i in targets), "Select a function")
+        selected_kind, selected_tree = specs[selected]
+        require(selected_kind != "inequality", "Select a curve rather than a filled inequality for analysis")
+        if selected_kind in ("parametric", "polar"):
+            require(not pair, "Intersection analysis requires two Cartesian curves")
+            require(not request.get("selectedDerivativeOrder", 0), "Derivative graphs require a Cartesian curve")
+            def parameter_tree(tree):
+                return {**tree, "value":"t" if tree.get("kind") == "symbol" and tree.get("value") == "theta" else tree.get("value", ""),
+                        "args":[parameter_tree(child) for child in tree.get("args", [])]}
+            return graph_analysis(engine, {**request, "graphKind":selected_kind, "variable":"t",
+                                  "trees":[parameter_tree(selected_tree)], "selected":0})
+        require(all(specs[i][0] == "cartesian" for i in targets), "Intersection analysis requires two Cartesian curves")
+        if any(spec[0] != "cartesian" for spec in specs):
+            request = {**request, "trees":[tree if spec[0] == "cartesian" else {"kind":"number", "value":"0"}
+                                           for tree,spec in zip(trees,specs)]}
     # Every analysis may differentiate (including searches for tangent roots).
     # Real plot coordinates keep Abs derivatives out of complex re/im terms.
     axes = ("x","y") if kind == "cartesian" else (request.get("variable","t"),)

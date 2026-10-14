@@ -51,11 +51,13 @@ internal class GraphAnalysisUiState(
     var selectedDerivativeOrder by state.selectedDerivativeOrder
     var other by state.other
     val analysisCurveKey=if(selectedDerivativeOrder==0)selected else -selectedDerivativeOrder
+    val analysisKind=if(m.graphKind=="cartesian" && selectedDerivativeOrder==0)m.graphData?.optJSONArray("curveKinds")?.optString(selected,"cartesian") ?: "cartesian" else m.graphKind
+
     Column(Modifier.padding(horizontal=10.dp)) {
-        Text(if(isKorean())"${analysisCurveLabels[analysisCurveKey] ?: "선택한 곡선"} 분석 · ${if(m.graphKind=="cartesian")"x" else "t"} 구간" else "Analyze ${analysisCurveLabels[analysisCurveKey] ?: "the selected curve"} · ${if(m.graphKind=="cartesian")"x" else "t"} interval",fontSize=12.sp,color=c.muted)
+        Text(if(isKorean())"${analysisCurveLabels[analysisCurveKey] ?: "선택한 곡선"} 분석 · ${if(analysisKind=="cartesian")"x" else if(analysisKind=="polar")"θ" else "t"} 구간" else "Analyze ${analysisCurveLabels[analysisCurveKey] ?: "the selected curve"} · ${if(analysisKind=="cartesian")"x" else if(analysisKind=="polar")"θ" else "t"} interval",fontSize=12.sp,color=c.muted)
         Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) { GraphNumberField(first,"a",m.displayDigits,Modifier.weight(1f)) {first=it};GraphNumberField(second,"b",m.displayDigits,Modifier.weight(1f)) {second=it} }
-        val sliderMin=if(m.graphKind=="cartesian")m.xMin else m.parameterMin
-        val sliderMax=if(m.graphKind=="cartesian")m.xMax else m.parameterMax
+        val sliderMin=if(analysisKind=="cartesian")m.xMin else if(analysisKind=="polar")m.thetaMin else m.parameterMin
+        val sliderMax=if(analysisKind=="cartesian")m.xMax else if(analysisKind=="polar")m.thetaMax else m.parameterMax
         val sliderSpan=sliderMax-sliderMin
         if(sliderMin.isFinite() && sliderMax.isFinite() && sliderSpan.isFinite() && sliderSpan>0.0) {
             val low=((first.toDoubleOrNull()?.takeIf(Double::isFinite) ?: sliderMin)-sliderMin).div(sliderSpan).coerceIn(0.0,1.0).toFloat()
@@ -67,10 +69,10 @@ internal class GraphAnalysisUiState(
         }
         CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
             Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                SmallAction("Use visible ${if(m.graphKind=="cartesian")"x" else "t"} range") {if(m.graphKind=="cartesian"){first=m.xMin.toString();second=m.xMax.toString()}else{first=m.parameterMin.toString();second=m.parameterMax.toString()}}
+                SmallAction("Use visible ${if(analysisKind=="cartesian")"x" else if(analysisKind=="polar")"θ" else "t"} range") {if(analysisKind=="cartesian"){first=m.xMin.toString();second=m.xMax.toString()}else if(analysisKind=="polar"){first=m.thetaMin.toString();second=m.thetaMax.toString()}else{first=m.parameterMin.toString();second=m.parameterMax.toString()}}
                 SmallAction("Clear analysis") {focusManager.clearFocus();tangentPositionOpen=false;m.clearGraphTangent()}
             }
-            if(m.graphKind=="cartesian"&&analysisCurveLabels.size>1) {
+            if(analysisKind=="cartesian"&&analysisCurveLabels.size>1) {
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                     Text(if(isKorean())"교점 / 교점 각도: ${analysisCurveLabels[analysisCurveKey]}와" else "Intersection / angle: ${analysisCurveLabels[analysisCurveKey]} with",fontSize=12.sp,color=c.muted)
                     Spacer(Modifier.width(6.dp))
@@ -80,7 +82,7 @@ internal class GraphAnalysisUiState(
                 }
             }
             Row(Modifier.horizontalScroll(rememberScrollState())) {
-                val actions=if(m.graphKind=="cartesian")listOf("Root","Y-intercept","Intersection","Intersection angle","Minimum","Maximum","Inflection","Derivative","Tangent","Tangent angle","Integral","Arc length","Asymptotes") else listOf("Root","Y-intercept","Minimum","Maximum","Inflection","Derivative","Tangent","Tangent angle","Integral","Arc length")
+                val actions=if(analysisKind=="cartesian")listOf("Root","Y-intercept","Intersection","Intersection angle","Minimum","Maximum","Inflection","Derivative","Tangent","Tangent angle","Integral","Arc length","Asymptotes") else listOf("Root","Y-intercept","Minimum","Maximum","Inflection","Derivative","Tangent","Tangent angle","Integral","Arc length")
                 actions.forEach { action->
                     val key=action.lowercase().replace(" ","").replace("-","")
                     val isTangent=key in listOf("tangent","tangentangle")
@@ -99,8 +101,8 @@ internal class GraphAnalysisUiState(
             }
         }
         if(tangentPositionOpen) {
-            Text(if(isKorean())"접선 위치 (${if(m.graphKind=="cartesian")"x" else "t"})" else "Tangent position (${if(m.graphKind=="cartesian")"x" else "t"})",fontSize=12.sp,color=c.muted)
-            GraphNumberField(pointAt,if(m.graphKind=="cartesian")"x" else "t",m.displayDigits,Modifier.fillMaxWidth()) {pointAt=it}
+            Text(if(isKorean())"접선 위치 (${if(analysisKind=="cartesian")"x" else if(analysisKind=="polar")"θ" else "t"})" else "Tangent position (${if(analysisKind=="cartesian")"x" else if(analysisKind=="polar")"θ" else "t"})",fontSize=12.sp,color=c.muted)
+            GraphNumberField(pointAt,if(analysisKind=="cartesian")"x" else if(analysisKind=="polar")"θ" else "t",m.displayDigits,Modifier.fillMaxWidth()) {pointAt=it}
             if(sliderMin.isFinite() && sliderMax.isFinite() && sliderSpan.isFinite() && sliderSpan>0.0) {
                 val position=((pointAt.toDoubleOrNull()?.takeIf(Double::isFinite) ?: sliderMin)-sliderMin).div(sliderSpan).coerceIn(0.0,1.0).toFloat()
                 CompactSlider(position,{pointAt=(sliderMin+it*sliderSpan).toString()},Modifier.fillMaxWidth(),onValueChangeFinished={
@@ -131,7 +133,7 @@ internal class GraphAnalysisUiState(
                     if(p.second !in m.yMin..m.yMax) {val half=(m.yMax-m.yMin)/2;m.yMin=p.second-half;m.yMax=p.second+half}
                 } }
         }
-        if(m.graphKind=="cartesian")Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+        if(analysisKind=="cartesian")Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
             SmallAction("f${(m.graphDerivativeSelected ?: selected)+1}′",active=if(m.graphDerivativeSelected!=null)true else null,shaded=m.graphDerivativeSelected!=null) {m.toggleGraphDerivative(selected)}
             SmallAction("f${(m.graphSecondDerivativeSelected ?: selected)+1}″",active=if(m.graphSecondDerivativeSelected!=null)true else null,shaded=m.graphSecondDerivativeSelected!=null) {m.toggleGraphDerivative(selected,2)}
         }

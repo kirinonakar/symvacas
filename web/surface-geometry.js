@@ -96,18 +96,18 @@ export function prepareSurfaceFaces(mesh,bounds,triangles=null,triangleNormals=n
   }
   return {faces,closed,convex,limits:limits(bounds)};
 }
-export function projectSurfaceFaces(prepared,projection){
+export function projectSurfaceFaces(prepared,projection,transparent=false){
   const cache=new Map(),project=p=>{if(!cache.has(p))cache.set(p,projection.project(p));return cache.get(p);},faces=[];
   for(const face of prepared.faces){
     const front=face.normal.reduce((sum,v,i)=>sum+v*projection.direction[i],0)>1e-12*Math.hypot(...face.normal);
-    if((face.closed??prepared.closed)&&!front)continue;
+    if(!transparent&&(face.closed??prepared.closed)&&!front)continue;
     const projected=face.points.map(project);
     const lighting=face.levels?surfaceLightingGradient(face.source.map(project),face.levels):null;
     faces.push({...face,projected,front,lighting,depth:projected.reduce((sum,p)=>sum+p[2],0)/projected.length});
   }
   // A convex shell's front and back each project without self-overlap. Draw
   // every back face before every front face, including when ranges cut it open.
-  return faces.sort((a,b)=>prepared.convex&&a.front!==b.front?Number(a.front)-Number(b.front):a.depth-b.depth);
+  return faces.sort((a,b)=>!transparent&&prepared.convex&&a.front!==b.front?Number(a.front)-Number(b.front):a.depth-b.depth);
 }
 // Keep all surfaces in one scene so their depths interleave across groups.
 export function combineSurfaceFaces(groups){
@@ -117,4 +117,35 @@ export function combineSurfaceFaces(groups){
 }
 export function surfaceFaces(mesh,bounds,projection,triangles=null,triangleNormals=null,convex=false){
   return projectSurfaceFaces(prepareSurfaceFaces(mesh,bounds,triangles,triangleNormals,convex),projection);
+}
+
+export function surfaceSectionSegments(faces,position,axis=2){
+  const segments=[];
+  if(!Number.isFinite(position)||![0,1,2].includes(axis))return segments;
+  for(const face of faces){
+    const points=face.points,crossings=[];
+    if(points.every(p=>p[axis]===position)){
+      for(let i=0;i<points.length;i++)segments.push({group:face.group||0,points:[points[i],points[(i+1)%points.length]]});
+      continue;
+    }
+    for(let i=0;i<points.length;i++){
+      const a=points[i],b=points[(i+1)%points.length];
+      if(a[axis]===position)crossings.push(a);
+      if((a[axis]<position&&b[axis]>position)||(a[axis]>position&&b[axis]<position)){
+        const t=(position-a[axis])/(b[axis]-a[axis]);const point=a.map((v,k)=>v+t*(b[k]-v));point[axis]=position;crossings.push(point);
+      }
+    }
+    const unique=crossings.filter((p,i)=>!crossings.slice(0,i).some(q=>p.every((v,k)=>Math.abs(v-q[k])<1e-12)));
+    if(unique.length===2)segments.push({group:face.group||0,points:unique});
+  }
+  return segments;
+}
+
+export function surfaceSectionPlane(bounds,position,axis=2){
+  if(!Number.isFinite(position)||![0,1,2].includes(axis))return [];
+  const ranges=limits(bounds),other=[0,1,2].filter(i=>i!==axis);
+  return [[0,0],[1,0],[1,1],[0,1]].map(([a,b])=>{
+    const point=ranges.map(range=>range[0]);point[axis]=position;
+    point[other[0]]=ranges[other[0]][a];point[other[1]]=ranges[other[1]][b];return point;
+  });
 }

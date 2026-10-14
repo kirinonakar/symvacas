@@ -178,3 +178,77 @@ def integral_fill(expression, variable, a, b):
         else: segment.append(point)
     flush()
     return polygons
+
+
+def inequality_shading(parts, x, y, sliders, xmin, xmax, ymin, ymax, samples):
+    """Clip bounded triangles by signed residuals, preserving holes and undefined cells.
+
+    Full cells become horizontal strips to bound transport size. Boundary cells
+    retain subcell polygons; no square-free transform may change an inequality's sign.
+    """
+    functions = [graph_function(expr, (x, y), sliders) for expr, _ in parts]
+    def inside(value, index): return value < 0 if parts[index][1] else value <= 0
+    count = min(128, max(40, int(math.sqrt(samples))*4))
+    dx, dy = (xmax-xmin)/count, (ymax-ymin)/count
+    def values(px, py):
+        try:
+            result = [_finite_real(fn(px, py)) for fn in functions]
+            return result if all(v is not None for v in result) else None
+        except (TypeError, ValueError, ZeroDivisionError, OverflowError): return None
+    def row(j):
+        return [(xmin+i*dx, ymin+j*dy, values(xmin+i*dx, ymin+j*dy)) for i in range(count+1)]
+    fill, boundary = [], []
+    previous = row(0)
+    for j in range(count):
+        current = row(j+1); run = None
+        for i in range(count+1):
+            cell = [previous[i], previous[i+1], current[i+1], current[i]] if i < count else []
+            full = bool(cell) and all(p[2] is not None and all(inside(v,k) for k,v in enumerate(p[2])) for p in cell)
+            if full:
+                if run is None: run = i
+                continue
+            if run is not None:
+                fill.append([[xmin+run*dx,ymin+j*dy],[xmin+i*dx,ymin+j*dy],
+                             [xmin+i*dx,ymin+(j+1)*dy],[xmin+run*dx,ymin+(j+1)*dy]])
+                run = None
+            if not cell: continue
+            for ids in ((0,1,2),(0,2,3)):
+                triangle = [cell[k] for k in ids]
+                if any(p[2] is None for p in triangle): continue
+                polygon = triangle
+                for k in range(len(parts)):
+                    clipped = []
+                    a = polygon[-1] if polygon else None
+                    for b in polygon:
+                        va, vb = a[2][k], b[2][k]
+                        if inside(va,k) != inside(vb,k):
+                            t = va/(va-vb)
+                            clipped.append((a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1]),
+                                            [u+t*(v-u) for u,v in zip(a[2],b[2])]))
+                        if inside(vb,k): clipped.append(b)
+                        a = b
+                    polygon = clipped
+                if len(polygon) >= 3: fill.append([[p[0],p[1]] for p in polygon])
+                # Keep only boundary segments belonging to the intersection.
+                for k in range(len(parts)):
+                    crossings = []
+                    for a,b in zip(triangle,triangle[1:]+triangle[:1]):
+                        va,vb = a[2][k],b[2][k]
+                        if inside(va,k) != inside(vb,k):
+                            t = va/(va-vb)
+                            crossings.append((a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1]),
+                                              [u+t*(v-u) for u,v in zip(a[2],b[2])]))
+                    if len(crossings) == 2:
+                        a,b = crossings; lo,hi = 0.,1.
+                        for l in range(len(parts)):
+                            if l == k: continue
+                            va,vb = a[2][l],b[2][l]
+                            if not inside(va,l) and not inside(vb,l): hi = -1; break
+                            if inside(va,l) != inside(vb,l):
+                                t=va/(va-vb)
+                                if not inside(va,l): lo=max(lo,t)
+                                else: hi=min(hi,t)
+                        if lo < hi:
+                            boundary += [[a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])] for t in (lo,hi)] + [None]
+        previous = current
+    return {"mode":"inequality", "fill":fill, "boundary":[], "curve":boundary}

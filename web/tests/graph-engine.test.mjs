@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fork} from 'node:child_process';
 import {parse} from '../parser.js';
+import {graphInputTree} from '../graph-input.js';
 
 test('packaged graph modules execute every graph kind in the production WASM worker', {timeout:60000}, async t=>{
   const worker=fork(new URL('./worker-bridge.mjs',import.meta.url),[],{execArgv:['--experimental-wasm-jspi']});
@@ -44,6 +45,24 @@ test('packaged graph modules execute every graph kind in the production WASM wor
       assert.ok(Math.abs(points[i][1]-2*Math.sin(positions[i]))<1e-12);
     }
   }
+  const mixed=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',
+    trees:['y = x^2','x^2 + y^2 = 9','r = 2cos(3θ)','(cos(t), sin(t))','x^2+y^2<4','y\\ge x^2-2'].map(source=>graphInputTree(source)),
+    min:-4,max:4,yMin:-4,yMax:4,parameterMin:0,parameterMax:2*Math.PI});
+  assert.deepEqual(mixed.curveKinds,['cartesian','cartesian','polar','parametric','inequality','inequality']);
+  assert.deepEqual(mixed.parameters,[]);
+  assert.deepEqual(mixed.curveStyles.slice(4),['dashed','solid']);
+  assert.deepEqual(mixed.shadings.map(shade=>shade.sourceIndex),[4,5]);
+  for(const [index,shade] of mixed.shadings.entries()){
+    assert.ok(shade.fill.length);
+    for(const polygon of shade.fill)for(const [x,y] of polygon){
+      assert.ok(index===0?x*x+y*y<=4.0001:y-x*x+2>=-.0001);
+    }
+  }
+  const separateRanges=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:['(cos(t),sin(t))','r=2cos(3θ)'].map(source=>graphInputTree(source)),
+    min:-4,max:4,yMin:-4,yMax:4,parameterMin:1,parameterMax:2,thetaMin:-.5,thetaMax:.5});
+  assert.deepEqual(separateRanges.curveParameters.map(values=>[values[0],values.at(-1)]),[[1,2],[-.5,.5]]);
+  const thetaPolar=await graph('polar','r=2*cos(3*theta)',{variable:'t',min:0,max:2*Math.PI});
+  assert.ok(thetaPolar.curveParameters[0].length>30);
   const sequence=await graph('sequence','2*u(n-1)',{min:0,max:5,initialTrees:[parse('1')]});
   assert.deepEqual(sequence.curves[0],Array.from({length:6},(_,i)=>[i,2**i]));
   const differential=await graph('differential','y',{t0:0,initialValues:[1]});

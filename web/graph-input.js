@@ -14,7 +14,7 @@ export function implicitFormula(source){
 export function cartesianFormula(source,index=0){
   try{
     const tree=parse(latexInput(source)),hasY=node=>node.kind==='symbol'&&node.value==='y'||(node.args||[]).some(hasY);
-    if(tree.kind==='relation')return source;
+    if(tree.kind==='relation'||['list','tuple'].includes(tree.kind))return source;
     if(hasY(tree))return `${source}=0`;
   }catch{}
   return `f${index+1}(x)=${source}`;
@@ -26,7 +26,7 @@ export function graphExpressionTarget(source){
   if(hasVector(tree))return {kind:'space',source:normalized};
   const hasZ=node=>node.kind==='symbol'&&node.value==='z'||(node.args||[]).some(hasZ);
   if(tree.kind==='relation'){
-    if(!['=','=='].includes(tree.value))throw new Error('Graph an expression, y = f(x), or an equation F(x,y)=0');
+
     if(tree.args[0].kind==='symbol'&&tree.args[0].value==='z'&&!hasZ(tree.args[1]))return {kind:'surface',source:normalized.slice(tree.args[1].start,tree.args[1].end)};
   }
   return {kind:hasZ(tree)?'surface':'cartesian',source:normalized};
@@ -120,4 +120,30 @@ export function graphAnalysisCurves(count,derivative,secondDerivative){
   if(derivative!==null&&derivative>=0&&derivative<count)curves.push({key:-1,label:`f${derivative+1}′`});
   if(secondDerivative!==null&&secondDerivative>=0&&secondDerivative<count)curves.push({key:-2,label:`f${secondDerivative+1}″`});
   return curves;
+}
+
+// Occurrences keep duplicate expressions individually switchable.
+export function graphVisibilityKeys(sources,kind,role='curve'){
+  const occurrences=new Map();
+  return sources.map(source=>{const text=source.trim(),n=occurrences.get(text)||0;occurrences.set(text,n+1);return JSON.stringify([kind,role,text,n]);});
+}
+export function planarTreeKind(tree){
+  if(tree.kind==='relation'&&['<','<=','>','>='].includes(tree.value))return 'inequality';
+  if(tree.kind==='relation'&&['=','=='].includes(tree.value)){
+    const [head,body]=tree.args;
+    if(['symbol','call'].includes(head.kind)&&head.value==='r')return 'polar';
+    tree=body;
+  }
+  return ['list','tuple'].includes(tree.kind)&&tree.args.length===2?'parametric':'cartesian';
+}
+
+export function graphRangeAxes(source,kind){
+  const rows=graphExpressions(source,kind);
+  if(!rows.length)return new Set();
+  if(kind==='polar')return new Set(['theta']);
+  if(['parametric','space','differential'].includes(kind))return new Set(['t']);
+  if(kind!=='cartesian')return new Set();
+  const axes=new Set();
+  for(const row of rows)try{const type=planarTreeKind(graphInputTree(row));if(type==='polar')axes.add('theta');else if(type==='parametric')axes.add('t');}catch{}
+  return axes;
 }

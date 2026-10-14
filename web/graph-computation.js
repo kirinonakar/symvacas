@@ -1,6 +1,6 @@
 // Graph requests, scheduling, analysis, and stale-response rejection.
 import {curvePointAtX} from './graph-view.js';
-import {graphInputTree,hasImplicitSurface,splitTopLevel} from './graph-input.js';
+import {planarTreeKind,graphInputTree,hasImplicitSurface,splitTopLevel} from './graph-input.js';
 import {graphPreviewRequest,graphSamplingIdentity} from './graph-sampling.js';
 import {graphShadings} from './graph-shading.js';
 import {parse} from './parser.js';
@@ -36,11 +36,11 @@ export function createGraphComputation({
   zRange
 }){
   function makeRequest(){
-    const trees=expressions().map(s=>graphInputTree(s,kind())),shadings=graphShadings(value('graph-source'),kind()),min=numeric('graph-min'),max=numeric('graph-max'),view=currentBounds();
+    const trees=expressions().map(s=>graphInputTree(s,kind())),shadings=graphShadings(value('graph-source'),kind()),prefix=kind()==='polar'?'graph-theta':['parametric','space'].includes(kind())?'graph-parameter':'graph',min=numeric(prefix+'-min'),max=numeric(prefix+'-max'),view=currentBounds();
     if(!trees.length&&!shadings.length)throw new Error('Enter a function to graph');
     if(![min,max,...Object.values(view)].every(Number.isFinite)||max<=min||view.xmax<=view.xmin||view.ymax<=view.ymin)throw new Error('Enter finite values with minimum < maximum');
     if(kind()==='surface')zRange();
-    const request={...options(),action:'graph',angle:'RAD',graphKind:kind(),trees,shadings,min,max,xMin:view.xmin,xMax:view.xmax,yMin:view.ymin,yMax:view.ymax,surfaceYMin:view.ymin,surfaceYMax:view.ymax,parameters:{...state.parameters},variable:['parametric','polar','space','differential'].includes(kind())?'t':kind()==='sequence'?'n':'x',samples:state.animation?200:500};
+    const request={...options(),action:'graph',angle:'RAD',graphKind:kind(),trees,shadings,min,max,xMin:view.xmin,xMax:view.xmax,yMin:view.ymin,yMax:view.ymax,surfaceYMin:view.ymin,surfaceYMax:view.ymax,parameterMin:numeric('graph-parameter-min'),parameterMax:numeric('graph-parameter-max'),thetaMin:numeric('graph-theta-min'),thetaMax:numeric('graph-theta-max'),parameters:{...state.parameters},variable:['parametric','polar','space','differential'].includes(kind())?'t':kind()==='sequence'?'n':'x',samples:state.animation?200:500};
     if(kind()==='space'){[request.surfaceZMin,request.surfaceZMax]=surface.autoZ?[-5,5]:zRange();}if(kind()==='surface'){const density=surfaceSampleCount(view,surface.samples,surface.autoDensity,surface.zoom,hasImplicitSurface(value('graph-source')));request.surfaceSamples=state.animation?Math.min(density,hasImplicitSurface(value('graph-source'))?16:32):density;[request.surfaceZMin,request.surfaceZMax]=surface.autoZ?[view.ymin,view.ymax]:zRange();}
     if(kind()==='sequence')request.initialTrees=splitTopLevel(value('graph-initial')).map(s=>parse(s));
     if(kind()==='differential'){request.initialValues=splitTopLevel(value('graph-initial')).map(Number);request.t0=numeric('graph-t0');}
@@ -76,16 +76,17 @@ export function createGraphComputation({
     state.pendingAnalysis=null;clearTimeout(state.timer);state.timer=null;
     const token=++state.analysisRevision;
     try{
-      const fixedIntercept=action==='yintercept'&&kind()==='cartesian';
+      const fixedIntercept=action==='yintercept'&&kind()==='cartesian'&&planarTreeKind(graphInputTree(expressions()[analysisTarget()?.source]||'0'))==='cartesian';
       const trees=expressions().map(s=>graphInputTree(s,kind())),a=fixedIntercept?0:point??numeric('graph-analysis-a'),b=fixedIntercept||['derivative','tangent','tangentangle'].includes(action)?a:numeric('graph-analysis-b'),view=state.bounds||currentBounds(),source=value('graph-source'),graphKind=kind();
       if(!Number.isFinite(a)||!Number.isFinite(b)||!fixedIntercept&&!['derivative','tangent','tangentangle'].includes(action)&&a>=b)throw new Error('Enter finite values with a < b');
       const currentParameters={...state.parameters};
       const target=analysisTarget(),other=otherTarget();
       if(!target||target.source>=trees.length||['intersection','intersectionangle'].includes(action)&&(!other||other.source>=trees.length||JSON.stringify(target)===JSON.stringify(other)))throw new Error('Select two different functions');
+      const rowKind=graphKind==='cartesian'?planarTreeKind(trees[target.source]):graphKind;
       const tracePoint=state.trace||(graphKind==='cartesian'&&['derivative','tangent','tangentangle'].includes(action)&&(state.selectedDerivativeOrder!==0||state.result?.implicitCurves?.[selectedPlotIndex()])?curvePointAtX(state.result?.curves?.[selectedPlotIndex()]||[],a):null);
-      const response=await execute({...options(),angle:'RAD',action:'graphAnalysis',graphKind,trees,analysis:action,a,b,selected:target.source,selectedDerivativeOrder:target.order,other:other?.source??0,otherDerivativeOrder:other?.order??0,variable:graphKind==='cartesian'?'x':'t',parameters:currentParameters,tracePoint,xMin:view.xmin,xMax:view.xmax,yMin:view.ymin,yMax:view.ymax});
+      const response=await execute({...options(),angle:'RAD',action:'graphAnalysis',graphKind,trees,analysis:action,a,b,selected:target.source,selectedDerivativeOrder:target.order,other:other?.source??0,otherDerivativeOrder:other?.order??0,variable:rowKind==='cartesian'?'x':'t',parameters:currentParameters,tracePoint,xMin:view.xmin,xMax:view.xmax,yMin:view.ymin,yMax:view.ymax});
       if(token!==state.analysisRevision||source!==value('graph-source')||graphKind!==kind()||JSON.stringify(currentParameters)!==JSON.stringify(state.parameters))return;if(!response.ok){onError(response.error);return;}
-      state.analysis=response;$('graph-status').textContent='';state.integral=action==='integral'&&graphKind==='cartesian'?[a,b]:null;state.trace=response.points?.[0]||state.trace;$('graph-analysis-action').value=action;analysisControls();render();
+      state.analysis=response;$('graph-status').textContent='';state.integral=action==='integral'&&rowKind==='cartesian'?[a,b]:null;state.trace=response.points?.[0]||state.trace;$('graph-analysis-action').value=action;analysisControls();render();
     }catch(error){if(token===state.analysisRevision)onError(error.message);}finally{flush();}
   }
   return {makeRequest,queue,flush,run,analyze};

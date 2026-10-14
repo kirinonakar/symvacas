@@ -117,17 +117,49 @@ object SurfaceMesh {
         }
         return PreparedSurface(faces,convex,closed)
     }
-    fun project(prepared:PreparedSurface,projection:SurfaceProjection):List<SurfaceFace> {
+    fun sectionSegments(faces:List<PreparedSurfaceFace>,position:Double,axis:Int=2):List<Pair<Int,Pair<DoubleArray,DoubleArray>>> {
+        if(!position.isFinite() || axis !in 0..2)return emptyList()
+        val segments=mutableListOf<Pair<Int,Pair<DoubleArray,DoubleArray>>>()
+        for(face in faces) {
+            val points=face.points
+            if(points.all {it[axis]==position}) {
+                points.indices.forEach {i->segments.add(face.group to (points[i] to points[(i+1)%points.size]))}
+                continue
+            }
+            val crossings=mutableListOf<DoubleArray>()
+            for(i in points.indices) {
+                val a=points[i];val b=points[(i+1)%points.size]
+                if(a[axis]==position)crossings.add(a)
+                if(a[axis]<position&&b[axis]>position || a[axis]>position&&b[axis]<position)crossings.add(interpolate(a,b,(position-a[axis])/(b[axis]-a[axis])))
+            }
+            val unique=mutableListOf<DoubleArray>()
+            for(p in crossings)if(unique.none {q->p.indices.all {abs(p[it]-q[it])<1e-12}})unique.add(p)
+            if(unique.size==2)segments.add(face.group to (unique[0] to unique[1]))
+        }
+        return segments
+    }
+    fun sectionPlane(bounds:SurfaceBounds,position:Double,axis:Int=2):List<DoubleArray> {
+        if(!position.isFinite() || axis !in 0..2)return emptyList()
+        val other=(0..2).filter {it!=axis}
+        return listOf(0 to 0,1 to 0,1 to 1,0 to 1).map {(a,b)->
+            DoubleArray(3) {bounds.limits[it].first}.apply {
+                this[axis]=position
+                this[other[0]]=if(a==0)bounds.limits[other[0]].first else bounds.limits[other[0]].second
+                this[other[1]]=if(b==0)bounds.limits[other[1]].first else bounds.limits[other[1]].second
+            }
+        }
+    }
+    fun project(prepared:PreparedSurface,projection:SurfaceProjection,transparent:Boolean=false):List<SurfaceFace> {
         val cache=java.util.IdentityHashMap<DoubleArray,DoubleArray>()
         fun point(p:DoubleArray)=cache.getOrPut(p){projection.project(p)}
         val faces=prepared.faces.mapNotNull {face->
             val front=face.normal.indices.sumOf {face.normal[it]*projection.direction[it]}>1e-12*sqrt(face.normal.sumOf {it*it})
-            if((face.closed ?: prepared.closed)&&!front)return@mapNotNull null
+            if(!transparent&&(face.closed ?: prepared.closed)&&!front)return@mapNotNull null
             val projected=face.points.map(::point)
             val lighting=face.levels?.let {lightingGradient(face.source.map(::point),it)}
             SurfaceFace(face.points,projected.map {it[2]}.average(),face.height,face.light,lighting,projected,front,face.levels?.average(),face.group)
         }
-        return faces.sortedWith(compareBy<SurfaceFace> {if(prepared.convex&&it.front)1 else 0}.thenBy {it.depth})
+        return faces.sortedWith(compareBy<SurfaceFace> {if(!transparent&&prepared.convex&&it.front)1 else 0}.thenBy {it.depth})
     }
     fun combine(groups:List<PreparedSurface>):PreparedSurface {
         if(groups.size==1)return groups.first()

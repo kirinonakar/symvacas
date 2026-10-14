@@ -25,6 +25,8 @@ export function createGraphPresentation({
   selected,
   state,
   surface,
+  visibilityKey,
+  toggleVisibility,
   value
 }){
   let formulaSignature='',tableResult=null,tableDigits=null,tableLanguage=null;
@@ -48,17 +50,22 @@ export function createGraphPresentation({
   }
 
   function formulas(){
-    const next=JSON.stringify([value('graph-source'),kind(),state.derivative,state.secondDerivative,state.result?.derivativeExpression,state.result?.secondDerivativeExpression,selected(),state.selectedDerivativeOrder,options().displayDigits,document.documentElement.lang,getColors(),surface.color]);if(next===formulaSignature)return;formulaSignature=next;
+    const next=JSON.stringify([value('graph-source'),kind(),state.derivative,state.secondDerivative,state.result?.derivativeExpression,state.result?.secondDerivativeExpression,selected(),state.selectedDerivativeOrder,options().displayDigits,document.documentElement.lang,getColors(),surface.color,[...state.hiddenKeys]]);if(next===formulaSignature)return;formulaSignature=next;
     $('graph-derivative-label').textContent=`f${(state.derivative??selected())+1}′`;
     $('graph-second-derivative-label').textContent=`f${(state.secondDerivative??selected())+1}″`;
     const variable=kind()==='sequence'?'n':['parametric','polar','space','differential'].includes(kind())?'t':'x',labels=expressions().map((s,i)=>kind()==='cartesian'?cartesianFormula(s,i):['parametric','space'].includes(kind())?parametricFormula(s,i,kind()==='space'):kind()==='surface'?surfaceFormula(s):kind()==='differential'?`diff(y,t)=${s}`:kind()==='polar'?`r${i+1}(t)=${s}`:`f${i+1}(${variable})=${s}`);
     if(state.derivative!==null&&kind()==='cartesian'&&expressions()[state.derivative])labels.push(`diff(f${state.derivative+1}(x),x)`+(state.result?.derivativeSelected===state.derivative&&state.result?.derivativeExpression?`=${state.result.derivativeExpression}`:''));
     if(state.secondDerivative!==null&&kind()==='cartesian'&&expressions()[state.secondDerivative])labels.push(`diff(f${state.secondDerivative+1}(x),x,2)`+(state.result?.secondDerivativeSelected===state.secondDerivative&&state.result?.secondDerivativeExpression?`=${state.result.secondDerivativeExpression}`:''));
     for(const line of graphSources(value('graph-source'),kind()).filter(isGraphShading))labels.push(graphShadingBody(line).split(';')[0].trim());
-    renderFormulas($('graph-formulas'),labels,{digits:options().displayDigits});
+    const strip=$('graph-formulas'),scrollLeft=strip.scrollLeft;
+    renderFormulas(strip,labels,{digits:options().displayDigits,limit:labels.length});
     const lines=[...$('graph-formulas').children],count=expressions().length;
-    function removeButton(line,label,remove){
-      const button=document.createElement('button');button.type='button';button.className='graph-formula-remove';button.textContent='×';button.setAttribute('aria-label',label);button.title=label;button.onclick=remove;line.append(button);
+    function eyeButton(line,key,label){
+      const button=document.createElement('button'),hidden=state.hiddenKeys.has(key);
+      button.type='button';button.className='graph-formula-eye';button.setAttribute('aria-pressed',String(!hidden));
+      button.setAttribute('aria-label',`${t(hidden?'Show graph':'Hide graph')}: ${label}`);button.title=button.getAttribute('aria-label');
+      button.innerHTML='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>'+(hidden?'<path d="m3 3 18 18"/>':'')+'</svg>';
+      button.onclick=()=>toggleVisibility(key);line.prepend(button);line.classList.toggle('hidden-curve',hidden);
     }
     function selectButton(line,active,label,pick,color){
       line.classList.toggle('selected-curve',active);line.style.setProperty('--curve-color',color);
@@ -67,20 +74,21 @@ export function createGraphPresentation({
     lines.slice(0,count).forEach((line,i)=>{
       const pick=()=>{$('graph-selected').value=String(i);$('graph-selected').onchange();};
       selectButton(line,state.selectedDerivativeOrder===0&&i===selected(),`f${i+1}`,pick,['surface','space'].includes(kind())&&count===1?surface.color:graphCurveColor(i,getColors()));
-      removeButton(line,`${t('Delete graph')}: f${i+1}`,()=>removeSource(i));
+      eyeButton(line,visibilityKey(i),`f${i+1}`);
     });
     const hasDerivative=state.derivative!==null&&kind()==='cartesian'&&expressions()[state.derivative];
     if(hasDerivative){
       selectButton(lines[count],state.selectedDerivativeOrder===1,`f${state.derivative+1}′`,()=>selectDerivative(1),graphCurveColor(count,getColors()));
-      removeButton(lines[count],t('Delete derivative curve'),()=>{rememberInput();state.derivative=null;if(state.selectedDerivativeOrder===1)state.selectedDerivativeOrder=0;$('graph-derivative').checked=false;clearPlot();formulas();queue();persist();});
+      eyeButton(lines[count],visibilityKey(state.derivative,'derivative'),`f${state.derivative+1}′`);
     }
     const hasSecondDerivative=state.secondDerivative!==null&&kind()==='cartesian'&&expressions()[state.secondDerivative];
     if(hasSecondDerivative){
       const index=count+(hasDerivative?1:0);
       selectButton(lines[index],state.selectedDerivativeOrder===2,`f${state.secondDerivative+1}″`,()=>selectDerivative(2),graphCurveColor(index,getColors()));
-      removeButton(lines[index],`${t('Delete derivative curve')}: f${state.secondDerivative+1}″`,()=>{rememberInput();state.secondDerivative=null;if(state.selectedDerivativeOrder===2)state.selectedDerivativeOrder=0;$('graph-second-derivative').checked=false;clearPlot();formulas();queue();persist();});
+      eyeButton(lines[index],visibilityKey(state.secondDerivative,'secondDerivative'),`f${state.secondDerivative+1}″`);
     }
-    lines.slice(count+(hasDerivative?1:0)+(hasSecondDerivative?1:0)).forEach((line,i)=>removeButton(line,`${t('Delete shading')}: ${i+1}`,()=>removeSource(i,true)));
+    lines.slice(count+(hasDerivative?1:0)+(hasSecondDerivative?1:0)).forEach((line,i)=>eyeButton(line,visibilityKey(i,'shade'),`${i+1}`));
+    strip.scrollLeft=scrollLeft;
   }
 
   function table(){
@@ -88,7 +96,7 @@ export function createGraphPresentation({
     const table=document.createElement('table'),head=document.createElement('thead'),header=document.createElement('tr');
     for(const name of ['Curve','x / n','y',...(state.result.spaceCurves?['z','t']:state.result.curveParameters?['t']:state.result.surface?['z']:[])]){const th=document.createElement('th');th.textContent=t(name);header.append(th);}head.append(header);table.append(head);const body=document.createElement('tbody');
     const curves=state.result.surfaces?.map(surface=>surface.surfaceVertices||surface.surface.flat())||state.result.spaceCurves||state.result.curves||state.result.surface||[];
-    curves.forEach((curve,i)=>curve.forEach((point,index)=>{if(!point||index%Math.max(1,Math.floor(curve.length/60))!==0)return;const row=document.createElement('tr');for(const number of [i+1,...point,...(state.result.curveParameters?[state.result.curveParameters[i]?.[index]]:[])]){const td=document.createElement('td');td.textContent=displayNumber(number,options().displayDigits);row.append(td);}if(!state.result.surface){row.tabIndex=0;const pick=()=>{if(i===state.result.derivativeCurveIndex&&state.derivative!==null)selectDerivative(1);else if(i===state.result.secondDerivativeCurveIndex&&state.secondDerivative!==null)selectDerivative(2);else if(i<expressions().length){$('graph-selected').value=String(i);$('graph-selected').onchange();}selectTrace(point,state.result.curveParameters?.[i]?.[index]??point[0]);};row.onclick=pick;row.onkeydown=e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();pick();}};}body.append(row);}));table.append(body);$('graph-table').replaceChildren(table);
+    curves.forEach((curve,i)=>curve.forEach((point,index)=>{if(!point||index%Math.max(1,Math.floor(curve.length/60))!==0)return;const row=document.createElement('tr');for(const number of [i+1,...point,...(state.result.curveParameters?[state.result.curveParameters[i]?.[index]]:[])]){const td=document.createElement('td');td.textContent=number==null?'':displayNumber(number,options().displayDigits);row.append(td);}if(!state.result.surface){row.tabIndex=0;const pick=()=>{if(i===state.result.derivativeCurveIndex&&state.derivative!==null)selectDerivative(1);else if(i===state.result.secondDerivativeCurveIndex&&state.secondDerivative!==null)selectDerivative(2);else if(i<expressions().length){$('graph-selected').value=String(i);$('graph-selected').onchange();}selectTrace(point,state.result.curveParameters?.[i]?.[index]??point[0]);};row.onclick=pick;row.onkeydown=e=>{if(['Enter',' '].includes(e.key)){e.preventDefault();pick();}};}body.append(row);}));table.append(body);$('graph-table').replaceChildren(table);
   }
 
   function renderAnalysis(){

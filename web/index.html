@@ -29,6 +29,9 @@
 cos(x)</textarea></div>
       <details id="graph-help"><summary>Graph input help</summary>
         <p class="hint">Expressions · one per line</p>
+<p class="hint">Cartesian combines y=x^2, x^2+y^2=9, r=2*cos(3*θ), and (cos(t),sin(t)). Set separate t and θ bounds in Range; each appears when its graph is present.</p>
+<p class="hint">Enter x^2+y^2&lt;4 or y&gt;=x^2-2 to shade directly. Strict inequalities use dashed boundaries; &lt;= and &gt;= use solid boundaries.</p>
+<p class="hint">Use the eye before each formula to show or hide its graph. In 3D, adjust Surface opacity and choose x = c, y = c or z = c for the section slider.</p>
         <p class="hint">Angle analysis: choose a point for Tangent angle, or two Cartesian curves and an a–b interval for Intersection angle. Results show degrees and radians.</p>
         <p class="hint">One [x(t),y(t)] pair per line</p>
         <p class="hint">r(t) · radians · one curve per line</p>
@@ -55,18 +58,30 @@ y=2*x {x&gt;2}</pre>
       <div class="graph-toolbar"><button id="graph-save-svg" disabled>Save SVG</button><button id="graph-save-png" disabled>Save PNG</button></div>
       <div class="graph-toolbar" id="graph-parameter-actions" hidden=""><button id="graph-parameters-toggle" aria-expanded="true" aria-controls="graph-parameters">Parameters</button><button id="graph-animate" aria-label="Animate" title="Animate" aria-pressed="false"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true" focusable="false"><path class="graph-play-icon" d="M6 4 20 12 6 20Z"/><path class="graph-stop-icon" d="M4 4H20V20H4Z"/></svg></button><button id="graph-reset-parameters">Reset sliders</button></div><div id="graph-parameters" class="form-row" hidden=""></div>
       <div class="graph-plot-frame"><div id="graph-plot" class="plot interactive-plot" tabindex="0" aria-label="Calculated function graph" data-i18narialabel="계산된 함수 그래프"></div><button id="graph-height-toggle" aria-controls="graph-plot" aria-label="Half height" aria-pressed="false" title="Half height">½</button></div>
-      <div id="graph-formulas" class="formula-preview" role="group" aria-label="Selected curve"></div>
+      <div id="graph-formulas" class="formula-preview" role="group" tabindex="0" aria-label="Graph formulas"></div>
       <div id="graph-status" role="status" class="hint"></div><div id="graph-trace" class="formula-preview" aria-live="polite"></div>
       <details id="graph-ranges" class="graph-section" open aria-label="Range"><summary id="graph-ranges-toggle">Range</summary>
       <div id="graph-range-controls">
       <div class="graph-range-actions"><button id="graph-reset-ranges" hidden>Reset ranges</button></div>
-      <div class="form-row ranges"><label>x / t / n min<input id="graph-min" type="number" value="-10" step="any"></label><label>max<input id="graph-max" type="number" value="10" step="any"></label><label>y min<input id="graph-ymin" type="number" value="-5" step="any"></label><label>max<input id="graph-ymax" type="number" value="5" step="any"></label></div>
+      <div class="form-row ranges"><label>x min<input id="graph-min" type="number" value="-10" step="any"></label><label>max<input id="graph-max" type="number" value="10" step="any"></label><label>y min<input id="graph-ymin" type="number" value="-5" step="any"></label><label>max<input id="graph-ymax" type="number" value="5" step="any"></label></div>
+      <div id="graph-mixed-ranges" class="form-row ranges" hidden>
+        <div id="graph-t-ranges" class="graph-range-domain" hidden><label>t min<input id="graph-parameter-min" type="number" value="0" step="any"></label><label>max<input id="graph-parameter-max" type="number" value="6.283185307179586" step="any"></label></div>
+        <div id="graph-theta-ranges" class="graph-range-domain" hidden><label>θ min<input id="graph-theta-min" type="number" value="0" step="any"></label><label>max<input id="graph-theta-max" type="number" value="6.283185307179586" step="any"></label></div>
+      </div>
       <div id="graph-viewport-ranges" class="form-row"><label>View x min<input id="graph-xmin" type="number" value="-10" step="any"></label><label>View x max<input id="graph-xmax" type="number" value="10" step="any"></label></div>
       <div id="graph-surface-controls" class="graph-surface-panel" hidden="">
         <div class="graph-surface-appearance">
           <label><span>Rendering</span><select id="graph-surface-render"><option value="wireframe">Wireframe</option><option value="surface" selected>Surface</option><option value="surface-wireframe">Surface + mesh</option></select></label>
           <label><span>Surface color</span><input id="graph-surface-color" type="color" value="#007b68"></label>
           <div class="graph-surface-density"><div class="graph-surface-density-heading"><label for="graph-surface-samples">Mesh density</label><label class="check"><input id="graph-auto-density" type="checkbox" checked>Auto</label></div><span class="graph-surface-slider"><input id="graph-surface-samples" type="range" min="12" max="96" step="1" value="26"><output id="graph-surface-samples-value">26 × 26</output></span></div>
+        </div>
+        <div id="graph-surface-section-controls" class="graph-surface-sections">
+          <label><span>Surface opacity</span><span class="graph-surface-slider"><input id="graph-surface-opacity" type="range" min="0.1" max="1" step="0.05" value="1"><output id="graph-surface-opacity-value">100%</output></span></label>
+          <div class="graph-surface-section-row">
+          <label class="check"><input id="graph-slice-enabled" type="checkbox">Show section</label>
+          <label class="graph-section-axis"><span>Axis</span><select id="graph-slice-axis"><option value="x">x = c</option><option value="y">y = c</option><option value="z" selected>z = c</option></select></label>
+          <label class="graph-section-position"><span>Position</span><span class="graph-surface-slider"><input id="graph-slice-z" type="range" min="-1" max="1" step="any" value="0" disabled><output id="graph-slice-z-value">z = 0</output></span></label>
+          </div>
         </div>
         <div class="graph-surface-camera">
           <label><span>Rotate</span><span class="graph-surface-slider"><input id="graph-rotation" type="range" min="0" max="360" step="any" value="35"><output id="graph-rotation-value">35°</output></span></label>

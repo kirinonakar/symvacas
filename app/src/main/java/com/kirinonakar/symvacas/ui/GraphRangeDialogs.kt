@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.*
 import com.kirinonakar.symvacas.calculator.CalculatorModel
+import com.kirinonakar.symvacas.calculator.graphRangeAxes
 import com.kirinonakar.symvacas.math.SurfaceMesh
 import kotlin.math.*
 
@@ -17,6 +18,8 @@ import kotlin.math.*
 @Composable internal fun GraphRangeDialog(m:CalculatorModel,onDismiss:()->Unit) {
     var xmin by remember {mutableStateOf(m.xMin.toString())};var xmax by remember {mutableStateOf(m.xMax.toString())};var ymin by remember {mutableStateOf(m.yMin.toString())};var ymax by remember {mutableStateOf(m.yMax.toString())}
     var tmin by remember {mutableStateOf(m.parameterMin.toString())};var tmax by remember {mutableStateOf(m.parameterMax.toString())}
+    var thetaMin by remember {mutableStateOf(m.thetaMin.toString())};var thetaMax by remember {mutableStateOf(m.thetaMax.toString())}
+    val rangeAxes=graphRangeAxes(m.graphSource,m.graphKind)
     val sampledMin=m.graphData?.optDouble("zMin",-1.0)?.takeIf(Double::isFinite) ?: -1.0
     val sampledMax=m.graphData?.optDouble("zMax",1.0)?.takeIf(Double::isFinite) ?: 1.0
     val sampledRange=SurfaceMesh.zRange(sampledMin,sampledMax)
@@ -35,18 +38,22 @@ import kotlin.math.*
                     Row(verticalAlignment=Alignment.CenterVertically) {Checkbox(autoZ,{autoZ=it});Text(tr("Automatic z range"))}
                     if(!autoZ)RangeAxisEditor("z",zmin,zmax,zmin.toDoubleOrNull() ?: -1.0,zmax.toDoubleOrNull() ?: 1.0,m.displayDigits,{zmin=it},{zmax=it})
                 }
-                if(m.graphKind in listOf("parametric","polar","space","differential"))RangeAxisEditor("t",tmin,tmax,m.parameterMin,m.parameterMax,m.displayDigits,{tmin=it},{tmax=it})
+                if("t" in rangeAxes)RangeAxisEditor("t",tmin,tmax,m.parameterMin,m.parameterMax,m.displayDigits,{tmin=it},{tmax=it})
+                if("theta" in rangeAxes)RangeAxisEditor("θ",thetaMin,thetaMax,m.thetaMin,m.thetaMax,m.displayDigits,{thetaMin=it},{thetaMax=it})
         }},confirmButton={TextButton(onClick={
                     val values=listOf(xmin,xmax,ymin,ymax).map {it.toDoubleOrNull()}
                     val ta=tmin.toDoubleOrNull();val tb=tmax.toDoubleOrNull()
                     val za=zmin.toDoubleOrNull();val zb=zmax.toDoubleOrNull()
-                    val usesT=m.graphKind in listOf("parametric","polar","space","differential")
+                    val usesT="t" in rangeAxes
+                    val usesTheta="theta" in rangeAxes
+                    val pa=thetaMin.toDoubleOrNull();val pb=thetaMax.toDoubleOrNull()
                     val usesZ=m.graphKind in listOf("surface","space")&&!autoZ
-                    if(values.any {it==null||!it.isFinite()} || values[0]!!>=values[1]!! || values[2]!!>=values[3]!! || (usesT&&(ta==null||tb==null||!ta.isFinite()||!tb.isFinite()||ta>=tb)) || (usesZ&&(za==null||zb==null||!za.isFinite()||!zb.isFinite()||za>=zb))) m.error="Enter finite increasing ranges" else {
+                    if(values.any {it==null||!it.isFinite()} || values[0]!!>=values[1]!! || values[2]!!>=values[3]!! || (usesT&&(ta==null||tb==null||!ta.isFinite()||!tb.isFinite()||ta>=tb)) || (usesTheta&&(pa==null||pb==null||!pa.isFinite()||!pb.isFinite()||pa>=pb)) || (usesZ&&(za==null||zb==null||!za.isFinite()||!zb.isFinite()||za>=zb))) m.error="Enter finite increasing ranges" else {
                         m.xMin=values[0]!!;m.xMax=values[1]!!;m.yMin=values[2]!!;m.yMax=values[3]!!
                         if(m.graphKind in listOf("surface","space")){m.zMin=if(autoZ)null else za;m.zMax=if(autoZ)null else zb}
                         if(m.graphKind=="sequence"){m.parameterMin=values[0]!!;m.parameterMax=values[1]!!}
                         else if(usesT){m.parameterMin=ta!!;m.parameterMax=tb!!}
+                        if(usesTheta){m.thetaMin=pa!!;m.thetaMax=pb!!}
                         m.save();onDismiss();m.plot()
                     }
             }) {Text(tr("Apply"))} },dismissButton={TextButton(onClick={onDismiss()}) {Text(tr("Cancel"))} })

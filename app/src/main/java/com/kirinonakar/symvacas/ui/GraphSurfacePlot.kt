@@ -54,7 +54,7 @@ internal class GraphSurfaceViewState(val rotation:MutableFloatState,val elevatio
     }
     val surfaceZRange=m.graphData?.let {SurfaceMesh.zRange(m.zMin ?: it.optDouble("zMin",-1.0),m.zMax ?: it.optDouble("zMax",1.0))}
     Column(Modifier.fillMaxWidth()) {
-        GraphFormulas(m.graphKind,sources,0,null,"",shadeSources,null,{},removeSource,m.displayDigits,if(sources.size==1)listOf(Color(android.graphics.Color.parseColor(m.surfaceColor))) else c.curves)
+        GraphFormulas(m.graphKind,sources,0,null,"",shadeSources,null,{},removeSource,m.displayDigits,if(sources.size==1)listOf(Color(android.graphics.Color.parseColor(m.surfaceColor))) else c.curves,isVisible=m::isGraphVisible,onVisibility=m::toggleGraphVisibility)
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal=14.dp),horizontalArrangement=Arrangement.spacedBy(6.dp),verticalAlignment=Alignment.CenterVertically) {
             Text(if(isKorean())"렌더링" else "Rendering",fontSize=11.sp,color=c.muted)
             listOf("wireframe" to (if(isKorean())"와이어프레임" else "Wireframe"),"surface" to (if(isKorean())"표면" else "Surface"),"surface-wireframe" to (if(isKorean())"표면+격자" else "Surface + mesh")).forEach { (mode,label)->
@@ -104,6 +104,30 @@ internal class GraphSurfaceViewState(val rotation:MutableFloatState,val elevatio
     if(colorPickerOpen)SurfaceColorPickerDialog(m.surfaceColor,onDismiss={colorPickerOpen=false},onConfirm={color->
             m.surfaceColor=color;m.save();colorPickerOpen=false
     })
+    if(m.graphKind!="space") {
+        Row(Modifier.fillMaxWidth().height(38.dp).padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically) {
+            Text(if(korean)"표면 불투명도" else "Surface opacity",fontSize=11.sp,color=c.muted)
+            CompactSlider(m.surfaceOpacity,{m.surfaceOpacity=it},Modifier.weight(1f),valueRange=.1f..1f,onValueChangeFinished={m.save()})
+            Text("${graphDisplayNumber((m.surfaceOpacity*100).toString(),m.displayDigits)}%",fontSize=11.sp,color=c.muted)
+        }
+        val (low,high)=when(m.surfaceSliceAxis) {
+            "x"->m.xMin to m.xMax
+            "y"->m.yMin to m.yMax
+            else->SurfaceMesh.zRange(m.zMin ?: m.graphData?.optDouble("zMin",-1.0) ?: -1.0,m.zMax ?: m.graphData?.optDouble("zMax",1.0) ?: 1.0)
+        }
+        val slice=m.surfaceSlicePosition.coerceIn(low,high)
+        Row(Modifier.fillMaxWidth().height(44.dp).padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically) {
+            Checkbox(m.surfaceSliceEnabled,{m.surfaceSliceEnabled=it;m.save()},Modifier.semantics {contentDescription=if(korean)"단면 표시" else "Show section"})
+            Text(if(korean)"단면" else "Section",fontSize=11.sp,color=c.muted)
+            listOf("x","y","z").forEach {axis->
+                SmallAction("$axis = c",active=m.surfaceSliceAxis==axis,shaded=m.surfaceSliceAxis==axis) {m.surfaceSliceAxis=axis;m.save()}
+            }
+        }
+        Row(Modifier.fillMaxWidth().height(38.dp).padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically) {
+            CompactSlider(((slice-low)/(high-low)).toFloat(),{m.surfaceSlicePosition=low+(high-low)*it},Modifier.weight(1f),valueRange=0f..1f,enabled=m.surfaceSliceEnabled,onValueChangeFinished={m.save()})
+            Text("${m.surfaceSliceAxis} = ${graphDisplayNumber(slice,m.displayDigits)}",fontSize=11.sp,color=c.muted)
+        }
+    }
     if(m.graphKind!="space")Row(Modifier.fillMaxWidth().height(38.dp).padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically) {
         Text(if(isKorean())"격자 밀도" else "Mesh density",fontSize=11.sp,color=c.muted)
         val implicit=hasImplicitSurface(m.graphSource)
@@ -156,11 +180,12 @@ private fun readSurfaceGeometry(data:JSONObject):SurfaceGeometry {
     val (zmin,zmax)=SurfaceMesh.zRange(m.zMin ?: m.graphData?.optDouble("zMin",-1.0) ?: -1.0,m.zMax ?: m.graphData?.optDouble("zMax",1.0) ?: 1.0)
     val bounds=SurfaceBounds(xmin,xmax,ymin,ymax,zmin,zmax)
     val projection=remember(bounds,rotation,elevationDeg) {SurfaceProjection(bounds,rotation.toDouble(),elevationDeg.toDouble())}
-    val prepared=remember(groups,bounds) {SurfaceMesh.combine(groups.map {SurfaceMesh.prepare(it.mesh,bounds,it.triangles,it.normals,it.convex)})}
-    val faces=remember(prepared,projection,renderMode) {if(renderMode=="wireframe")emptyList() else SurfaceMesh.project(prepared,projection)}
+    val prepared=remember(groups,bounds,m.graphState.hiddenGraphKeys,m.graphSource) {val combined=SurfaceMesh.combine(groups.map {SurfaceMesh.prepare(it.mesh,bounds,it.triangles,it.normals,it.convex)});combined.copy(faces=combined.faces.filter {m.isGraphVisible(it.group)})}
+    val opacity=m.surfaceOpacity
+    val faces=remember(prepared,projection,renderMode,opacity) {if(renderMode=="wireframe")emptyList() else SurfaceMesh.project(prepared,projection,opacity<1f)}
     val surfaceColor=remember(colorHex) {runCatching {Color(android.graphics.Color.parseColor(colorHex))}.getOrDefault(Color(0xFF007B68))}
     val palette=if(groups.size>1)c.curves else listOf(surfaceColor)
-    val batch=remember(faces,palette) {
+    val batch=remember(faces,palette,opacity) {
         val count=faces.sumOf {(it.projected.size-2).coerceAtLeast(0)*3}
         val positions=FloatArray(count*2);val colors=IntArray(count);var index=0
         for(face in faces)for(i in 1 until face.projected.lastIndex)for(k in intArrayOf(0,i,i+1)) {
@@ -172,7 +197,7 @@ private fun readSurfaceGeometry(data:JSONObject):SurfaceGeometry {
             }
             val shade=brightness.coerceIn(0.0,1.0)
             positions[index*2]=p[0].toFloat();positions[index*2+1]=p[1].toFloat()
-            colors[index]=android.graphics.Color.rgb((red*shade).roundToInt(),(green*shade).roundToInt(),(blue*shade).roundToInt());index++
+            colors[index]=android.graphics.Color.argb((opacity*255).roundToInt(),(red*shade).roundToInt(),(green*shade).roundToInt(),(blue*shade).roundToInt());index++
         }
         positions to colors
     }
@@ -217,26 +242,27 @@ private fun readSurfaceGeometry(data:JSONObject):SurfaceGeometry {
                 }
             }
             if(vector)for(face in faces) {
-                val faceColor=palette[face.group%palette.size]
+                val faceColor=palette[face.group%palette.size].copy(alpha=opacity)
                 val path=Path().apply {
                     face.points.forEachIndexed { index,point->val p=project(point);if(index==0)moveTo(p.x,p.y)else lineTo(p.x,p.y) };close()
                 }
-                val color=lerp(Color.Black,faceColor,(face.brightness ?: ((.65+.35*face.height)*face.light)).toFloat())
+                val color=lerp(Color.Black.copy(alpha=opacity),faceColor,(face.brightness ?: ((.65+.35*face.height)*face.light)).toFloat())
                 val lighting=face.lighting
                 if(lighting!=null) {
                     val start=Offset(size.width/2+lighting.start[0].toFloat()*scale,size.height/2+lighting.start[1].toFloat()*scale)
                     val end=Offset(size.width/2+lighting.end[0].toFloat()*scale,size.height/2+lighting.end[1].toFloat()*scale)
                     drawGraphGradientPath(drawContext.canvas.nativeCanvas,path.asAndroidPath(),start,end,
-                        lerp(Color.Black,faceColor,lighting.min.toFloat()).toArgb(),lerp(Color.Black,faceColor,lighting.max.toFloat()).toArgb(),
-                        if(renderMode=="surface-wireframe")0f else .8.dp.toPx())
+                        lerp(Color.Black.copy(alpha=opacity),faceColor,lighting.min.toFloat()).toArgb(),lerp(Color.Black.copy(alpha=opacity),faceColor,lighting.max.toFloat()).toArgb(),
+                        if(renderMode=="surface-wireframe" || opacity<1f)0f else .8.dp.toPx())
                     if(renderMode=="surface-wireframe")drawPath(path,c.muted,style=Stroke(.65.dp.toPx()))
                 } else {
                     drawPath(path,color)
-                    drawPath(path,if(renderMode=="surface-wireframe")c.muted else color,style=Stroke(if(renderMode=="surface-wireframe").65.dp.toPx() else .35.dp.toPx()))
+                    if(renderMode=="surface-wireframe" || opacity==1f)drawPath(path,if(renderMode=="surface-wireframe")c.muted else color,style=Stroke(if(renderMode=="surface-wireframe").65.dp.toPx() else .35.dp.toPx()))
                 }
             }
             if(renderMode=="wireframe") {
                 groups.forEachIndexed {index,group->
+                    if(!m.isGraphVisible(index))return@forEachIndexed
                     val mesh=group.mesh;val wireColor=palette[index%palette.size]
                     val rows=Path();val columns=Path()
                     wireEdges[index].forEach {(a,b)->surfaceSegment(rows,a,b)}
@@ -256,7 +282,18 @@ private fun readSurfaceGeometry(data:JSONObject):SurfaceGeometry {
                     drawPath(columns,wireColor.copy(alpha=.78f),style=Stroke(1.dp.toPx()))
                 }
             }
+            if(m.surfaceSliceEnabled && m.graphKind=="surface") {
+                val axis=listOf("x","y","z").indexOf(m.surfaceSliceAxis)
+                val range=bounds.limits[axis]
+                val position=m.surfaceSlicePosition.coerceIn(range.first,range.second)
+                val corners=SurfaceMesh.sectionPlane(bounds,position,axis)
+                val plane=Path().apply {corners.forEachIndexed {i,p->val at=project(p);if(i==0)moveTo(at.x,at.y)else lineTo(at.x,at.y)};close()}
+                drawPath(plane,c.accent.copy(alpha=.08f))
+                drawPath(plane,c.accent.copy(alpha=.6f),style=Stroke(1.dp.toPx(),pathEffect=PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(),4.dp.toPx()))))
+                for((group,segment) in SurfaceMesh.sectionSegments(prepared.faces,position,axis))drawLine(palette[group%palette.size],project(segment.first),project(segment.second),3.dp.toPx())
+            }
             spaceCurves.forEachIndexed {i,curve->
+                if(!m.isGraphVisible(i))return@forEachIndexed
                 val path=Path()
                 for(k in 1 until curve.size)surfaceSegment(path,curve[k-1],curve[k])
                 drawPath(path,if(spaceCurves.size==1)surfaceColor else c.curves[i%c.curves.size],style=Stroke(3.dp.toPx(),cap=StrokeCap.Round,join=StrokeJoin.Round))

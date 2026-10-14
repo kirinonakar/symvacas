@@ -281,6 +281,31 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
     var zMax
         get()=graphState.zMax
         set(value) {graphState.zMax=value}
+    var surfaceOpacity
+        get()=graphState.surfaceOpacity
+        set(value) {graphState.surfaceOpacity=value.coerceIn(.1f,1f)}
+    var surfaceSliceEnabled
+        get()=graphState.surfaceSliceEnabled
+        set(value) {graphState.surfaceSliceEnabled=value}
+    var surfaceSliceAxis
+        get()=graphState.surfaceSliceAxis
+        set(value) {if(value in listOf("x","y","z"))graphState.surfaceSliceAxis=value}
+    var surfaceSlicePosition
+        get()=graphState.surfaceSlicePosition
+        set(value) {if(value.isFinite())graphState.surfaceSlicePosition=value}
+    fun graphVisibilityKey(index:Int,role:String="curve"):String {
+        val sources=graphSource.lines().filter(String::isNotBlank).take(graphSourceLimit(graphKind))
+            .filter {isGraphShading(it)==(role=="shade")}
+        val text=sources.getOrNull(index)?.trim().orEmpty()
+        val occurrence=sources.take(index).count {it.trim()==text}
+        return JSONArray(listOf(graphKind,role,text,occurrence)).toString()
+    }
+    fun isGraphVisible(index:Int,role:String="curve")=graphVisibilityKey(index,role) !in graphState.hiddenGraphKeys
+    fun toggleGraphVisibility(index:Int,role:String="curve") {
+        val key=graphVisibilityKey(index,role)
+        graphState.hiddenGraphKeys=if(key in graphState.hiddenGraphKeys)graphState.hiddenGraphKeys-key else graphState.hiddenGraphKeys+key
+        clearGraphTangent();save()
+    }
     var surfaceRenderMode
         get()=graphState.surfaceRenderMode
         set(value) {graphState.surfaceRenderMode=value}
@@ -317,6 +342,12 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
     var trace
         get()=graphState.trace
         set(value) {graphState.trace=value}
+    var thetaMin
+        get()=graphState.thetaMin
+        set(value) {graphState.thetaMin=value}
+    var thetaMax
+        get()=graphState.thetaMax
+        set(value) {graphState.thetaMax=value}
     var parameterMin
         get()=graphState.parameterMin
         set(value) {graphState.parameterMin=value}

@@ -1,8 +1,8 @@
 import {expressionDisplay} from './expression-display.js';
 import {latexInput} from './parser.js';
-export function renderFormulas(container,sources,{digits=10,preserveSmallValues=false}={}){
+export function renderFormulas(container,sources,{digits=10,preserveSmallValues=false,limit=12}={}){
   container.replaceChildren();
-  for(const source of sources.filter(s=>s.trim()).slice(0,12)){
+  for(const source of sources.filter(s=>s.trim()).slice(0,limit)){
     const line=document.createElement('div');line.className='formula-line';
     try{line.append(expressionDisplay(latexInput(source),{digits,roundNumbers:true,preserveSmallValues}));}
     catch{line.textContent=source;}

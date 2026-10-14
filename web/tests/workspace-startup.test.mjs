@@ -408,3 +408,97 @@ test('row filter saves a separate dataset only after a current nonempty preview'
   assert.equal(JSON.parse(state.fields[key]).length,1);assert.equal(save.disabled,true);
   assert.deepEqual(errors,[]);
 });
+
+
+test('formula eyes precede formulas, preserve input, and persist independent visibility with Undo',async context=>{
+  const {window,get,graphs,errors}=graphFixture(context,{source:'x\nx^2\nx'});
+  await graphs.run();
+  const eyes=()=>[...get('graph-formulas').querySelectorAll('.graph-formula-eye')];
+  assert.equal(eyes().length,3);
+  assert.equal(get('graph-formulas').querySelectorAll('.graph-formula-remove').length,0);
+  for(const eye of eyes())assert.equal(eye.parentElement.firstElementChild,eye);
+  eyes()[2].click();
+  assert.equal(eyes()[2].getAttribute('aria-pressed'),'false');
+  assert.equal(eyes()[0].getAttribute('aria-pressed'),'true');
+  assert.equal(get('graph-source').value,'x\nx^2\nx');
+  const hidden=[...graphs.snapshot().hiddenKeys];assert.equal(hidden.length,1);
+  get('graph-source').value='x';get('graph-source').oninput();get('graph-undo').click();
+  assert.deepEqual(graphs.snapshot().hiddenKeys,hidden);
+  eyes()[2].click();assert.deepEqual(graphs.snapshot().hiddenKeys,[]);
+  assert.equal(get('graph-line-numbers').querySelectorAll('button').length,3);
+  assert.deepEqual(errors,[]);
+});
+
+test('mixed Cartesian ranges and 3D appearance controls persist without resampling for section movement',async context=>{
+  const {get,graphs,requests,errors}=graphFixture(context,{source:'y=x^2\nr=2*cos(3*θ)\n(cos(t),sin(t))'});
+  get('graph-parameter-min').value='1';get('graph-parameter-max').value='2';
+  await graphs.run();assert.equal(requests.at(-1).parameterMin,1);assert.equal(requests.at(-1).parameterMax,2);
+  get('graph-kind').value='surface';get('graph-kind').onchange();
+  get('graph-surface-opacity').value='.5';get('graph-surface-opacity').oninput();
+  get('graph-slice-enabled').checked=true;get('graph-slice-enabled').onchange();
+  get('graph-slice-z').value='.25';get('graph-slice-z').oninput();
+  assert.equal(graphs.snapshot().surface.opacity,.5);assert.equal(graphs.snapshot().surface.sliceEnabled,true);assert.equal(graphs.snapshot().surface.slicePosition,.25);
+  for(const axis of ['x','y','z']){
+    get('graph-slice-axis').value=axis;get('graph-slice-axis').onchange();
+    assert.equal(graphs.snapshot().surface.sliceAxis,axis);
+    const ranges=graphs.snapshot().ranges;
+    assert.equal(Number(get('graph-slice-z').min),axis==='x'?ranges['graph-min']:axis==='y'?ranges['graph-ymin']:-1);
+    assert.equal(Number(get('graph-slice-z').max),axis==='x'?ranges['graph-max']:axis==='y'?ranges['graph-ymax']:1);
+    assert.ok(get('graph-slice-z-value').textContent.startsWith(axis+' = '));
+  }
+  assert.equal(requests.length,1);assert.deepEqual(errors,[]);
+});
+
+
+test('saved legacy z section settings migrate and general axis settings restore',context=>{
+  const {get,graphs,errors}=graphFixture(context,{saved:{surface:{sliceEnabled:true,sliceZ:.375}}});
+  assert.equal(graphs.snapshot().surface.sliceAxis,'z');assert.equal(graphs.snapshot().surface.slicePosition,.375);
+  get('graph-slice-axis').value='x';get('graph-slice-axis').onchange();
+  assert.equal(graphs.snapshot().surface.sliceAxis,'x');assert.equal(graphs.snapshot().surface.slicePosition,.375);
+  assert.deepEqual(errors,[]);
+});
+
+
+test('t and theta range pairs are independently visible, persisted, and sent according to the curve type',async context=>{
+  const {get,graphs,requests,errors}=graphFixture(context,{source:'y=x^2',saved:{ranges:{'graph-parameter-min':1,'graph-parameter-max':2,'graph-theta-min':-.5,'graph-theta-max':.5}}});
+  const setSource=source=>{get('graph-source').value=source;get('graph-source').oninput();};
+  const visible=(t,theta)=>{assert.equal(get('graph-t-ranges').hidden,!t);assert.equal(get('graph-theta-ranges').hidden,!theta);assert.equal(get('graph-mixed-ranges').hidden,!t&&!theta);};
+  visible(false,false);
+  setSource('(cos(t),sin(t))');visible(true,false);
+  setSource('r=2cos(3θ)');visible(false,true);
+  setSource('(cos(t),sin(t))\nr=2cos(3θ)');visible(true,true);
+  for(const prefix of ['graph-parameter','graph-theta']){
+    const pair=get(prefix+'-min').closest('.graph-range-pair');
+    assert.ok(pair);assert.equal(pair,get(prefix+'-max').closest('.graph-range-pair'));assert.ok(pair.querySelector('.graph-range-slider'));
+  }
+  await graphs.run();assert.deepEqual([requests.at(-1).parameterMin,requests.at(-1).parameterMax,requests.at(-1).thetaMin,requests.at(-1).thetaMax],[1,2,-.5,.5]);
+  get('graph-selected').value='1';get('graph-selected').onchange();get('graph-analysis-visible-range').click();
+  assert.equal(graphs.snapshot().ranges['graph-analysis-a'],-.5);assert.equal(graphs.snapshot().ranges['graph-analysis-b'],.5);
+  get('graph-kind').value='polar';get('graph-kind').onchange();visible(false,true);await graphs.run();
+  assert.deepEqual([requests.at(-1).min,requests.at(-1).max],[-.5,.5]);
+  get('graph-kind').value='parametric';get('graph-kind').onchange();visible(true,false);await graphs.run();
+  assert.deepEqual([requests.at(-1).min,requests.at(-1).max],[1,2]);
+  assert.deepEqual(errors,[]);
+});
+
+
+test('many graph formulas retain every eye and preserve wheel scrolling through visibility redraws',async context=>{
+  const sources=[...Array.from({length:20},(_,i)=>'x+'+(i+1)),...Array.from({length:4},(_,i)=>'[s] x,'+(i+1))].join('\n');
+  const {window,get,graphs,errors}=graphFixture(context,{source:sources,execute:async()=>({ok:true,parameters:[],curves:Array.from({length:22},()=>[[0,0],[1,1]]),
+    derivativeSelected:0,derivativeCurveIndex:20,derivativeExpression:'1',secondDerivativeSelected:0,secondDerivativeCurveIndex:21,secondDerivativeExpression:'0'})});
+  get('graph-derivative').checked=true;get('graph-derivative').onchange();
+  get('graph-second-derivative').checked=true;get('graph-second-derivative').onchange();
+  await graphs.run();
+  const strip=get('graph-formulas');assert.equal(strip.children.length,26);assert.equal(strip.querySelectorAll('.graph-formula-eye').length,26);
+  assert.ok(strip.querySelector('.graph-formula-select[aria-label="f20"]'));
+  Object.defineProperty(strip,'scrollWidth',{configurable:true,value:1600});Object.defineProperty(strip,'clientWidth',{configurable:true,value:320});
+  strip.scrollLeft=240;
+  const wheel=new window.WheelEvent('wheel',{deltaY:80,bubbles:true,cancelable:true});strip.dispatchEvent(wheel);
+  assert.equal(strip.scrollLeft,320);assert.equal(wheel.defaultPrevented,true);
+  strip.querySelectorAll('.graph-formula-eye')[19].click();
+  assert.equal(strip.scrollLeft,320);assert.equal(strip.querySelectorAll('.graph-formula-eye')[19].getAttribute('aria-pressed'),'false');
+  strip.scrollLeft=0;const edge=new window.WheelEvent('wheel',{deltaY:-80,bubbles:true,cancelable:true});strip.dispatchEvent(edge);assert.equal(edge.defaultPrevented,false);
+  const horizontal=new window.WheelEvent('wheel',{deltaX:80,deltaY:1,bubbles:true,cancelable:true});strip.dispatchEvent(horizontal);assert.equal(horizontal.defaultPrevented,false);
+  graphs.dispose();const disposed=new window.WheelEvent('wheel',{deltaY:80,bubbles:true,cancelable:true});strip.dispatchEvent(disposed);assert.equal(disposed.defaultPrevented,false);
+  assert.deepEqual(errors,[]);
+});
