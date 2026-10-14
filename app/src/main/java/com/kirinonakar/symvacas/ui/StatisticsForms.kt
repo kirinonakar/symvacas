@@ -8,6 +8,7 @@ internal fun advancedStatisticsTermLabels(definition:JSONObject,rows:List<List<S
     val controls=definition.optJSONArray("controls")
     val opts=(0 until (controls?.length() ?: 0)).associate {index->val field=controls!!.getJSONObject(index);val key=field.getString("key");key to settings.optString(key,field.get("default").toString())}
     fun column(key:String)=opts[key]?.toIntOrNull()?.let {if(it==-1)n-1 else it} ?: -1
+    if(id=="metaanalysis"&&opts["studyLabels"]=="column")return rows.mapIndexed {index,row->"study:${index+1}" to row.getOrElse(column("study")){""}.trim()}.toMap()
     if(id in socialAnalysisIds)return socialStatisticsPlan(id,rows,opts,columnLabels).labels
     if(id=="modelcompare")return modelComparisonPlan(rows,opts+mapOf("validation" to "apparent"),columnLabels).labels
     if(id=="logisticcompare")return logisticComparisonLabels(rows,opts,columnLabels)
@@ -113,6 +114,18 @@ internal fun guidedStatisticsCommand(definition:JSONObject,rows:List<List<String
         return selected.map {row->listOf(row[0],if(row[1]==eventValue)"1" else "0")+row.drop(2)}
     }
     return when(id) {
+        "metaanalysis"->{
+            val columns=listOf(col("effect"),col("se"))
+            if(opts["studyLabels"]=="column")complete(columns+col("study"))
+            "metaanalysis(${table(complete(columns))},${opts["method"]},${opts["level"]},${if(opts["method"]=="fixed")"z" else opts["inference"]},${opts["egger"]})"
+        }
+        "icc"->"icc(${table(complete(multiple("columns")))},${opts["model"]},${opts["unit"]},${opts["level"]})"
+        "blandaltman"->"blandaltman(${table(complete(listOf(col("first"),col("second"))))},${opts["level"]},${opts["mode"]})"
+        "tost"->"tost(${vector(values(col("column")))},${opts["lower"]},${opts["upper"]},${opts["reference"]},${opts["alpha"]})"
+        "tost2","tostpaired"->{
+            val plan=statisticsComparisonData(rows,opts,paired=id=="tostpaired",strict=true)
+            "$id(${plan.samples.joinToString(",",transform=::vector)},${opts["lower"]},${opts["upper"]}${if(id=="tost2")","+opts["method"] else ""},${opts["alpha"]})"
+        }
         "arima","sarima"->{
             val keys=listOf("p","d","q")+(if(id=="sarima")listOf("P","D","Q","period") else emptyList())+"horizon"
             require(keys.all {opts.getValue(it).trim().matches(Regex("\\d+"))&&opts.getValue(it).trim().toIntOrNull()!=null}) {"Time-series orders and horizon must be integers"}

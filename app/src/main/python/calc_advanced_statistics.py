@@ -31,6 +31,7 @@ from calc_advanced_timeseries import calculate as timeseries
 from calc_posthoc import dunn_comparisons
 from calc_logistic_comparison import calculate as logistic_comparison
 from calc_model_comparison import calculate as model_comparison
+from calc_advanced_research import calculate as research
 
 
 def dunn(engine, name, a):
@@ -39,6 +40,12 @@ def dunn(engine, name, a):
 
 # Function names, argument limits and handlers share one registry.
 _ANALYSES = {
+    'metaanalysis': (1, 5, research),
+    'icc': (1, 4, research),
+    'blandaltman': (1, 3, research),
+    'tost': (3, 5, research),
+    'tost2': (4, 6, research),
+    'tostpaired': (4, 5, research),
     'modelcompare': (3, 10, model_comparison),
     'logisticcompare': (2, 9, logistic_comparison),
     'arima': (1, 6, timeseries),

@@ -896,8 +896,8 @@ export const advancedStatisticsSchema = [
     "help": "Rows are subjects, columns are items; raw or standardized alpha. Reverse-code items first. Returns corrected item-total correlations and alpha if deleted. Alpha measures internal consistency.",
     "helpKo": "행은 대상, 열은 문항; raw·standardized α. 역문항은 먼저 역코딩합니다. 수정 문항-총점 상관·문항 삭제 시 α를 제공합니다. α는 내적 일관성을 나타냅니다.",
     "section": "general",
-    "group": "Reliability",
-    "groupKo": "신뢰도",
+    "group": "Reliability & agreement",
+    "groupKo": "신뢰도·일치도",
     "controls": [
       {
         "key": "columns",
@@ -1120,6 +1120,195 @@ export const advancedStatisticsSchema = [
         "3.472",
         "3.458",
         "4.419"
+      ]
+    ]
+  },
+  {
+    "id": "icc",
+    "label": "Intraclass correlation (ICC)",
+    "ko": "급내상관계수 (ICC)",
+    "input": "table",
+    "suffix": ",random,single,0.95",
+    "example": "icc([[9,10,9],[6,7,6],[8,8,9],[5,6,5],[10,9,10],[7,7,8]],random,single,0.95)",
+    "help": "Complete subject × rater numeric matrix. oneway=ICC(1), random=two-way absolute agreement ICC(2), mixed=two-way consistency ICC(3). single / average (mean of all k raters); confidence level. F-based CIs; absolute agreement uses approximate Satterthwaite df. Negative estimates are retained. Independent subjects, normal ANOVA errors. Mixed consistency ignores systematic rater shifts; choose the model before analysis. Degenerate intervals are unavailable.",
+    "helpKo": "완전한 숫자 대상×평가자 행렬. oneway=ICC(1), random=이원 랜덤 절대 일치 ICC(2), mixed=이원 혼합 일관성 ICC(3). single 단일·average k명 평균; 신뢰수준. F 기반 구간, 절대 일치는 Satterthwaite 근사 자유도. 음의 추정값 유지. 독립 대상·정규 ANOVA 오차 가정. 혼합 일관성은 평가자 간 체계적 차이를 무시하므로 분석 전 모형을 선택하세요. 퇴화 구간은 계산 불가로 표시합니다.",
+    "section": "general",
+    "group": "Reliability & agreement",
+    "groupKo": "신뢰도·일치도",
+    "controls": [
+      {
+        "key": "columns",
+        "label": "Rater columns",
+        "ko": "평가자 열",
+        "type": "columns",
+        "default": "auto"
+      },
+      {
+        "key": "model",
+        "label": "ICC model",
+        "ko": "ICC 모형",
+        "type": "choice",
+        "default": "random",
+        "choices": [
+          {
+            "id": "oneway",
+            "label": "ICC(1): one-way agreement",
+            "ko": "ICC(1): 일원 일치"
+          },
+          {
+            "id": "random",
+            "label": "ICC(2): two-way random agreement",
+            "ko": "ICC(2): 이원 랜덤 일치"
+          },
+          {
+            "id": "mixed",
+            "label": "ICC(3): two-way mixed consistency",
+            "ko": "ICC(3): 이원 혼합 일관성"
+          }
+        ]
+      },
+      {
+        "key": "unit",
+        "label": "Measurement unit",
+        "ko": "측정 단위",
+        "type": "choice",
+        "default": "single",
+        "choices": [
+          {
+            "id": "single",
+            "label": "Single measurement",
+            "ko": "단일 측정"
+          },
+          {
+            "id": "average",
+            "label": "Average of selected raters",
+            "ko": "선택 평가자의 평균"
+          }
+        ]
+      },
+      {
+        "key": "level",
+        "label": "Confidence level",
+        "ko": "신뢰수준",
+        "type": "number",
+        "default": "0.95"
+      }
+    ],
+    "formHelp": "Complete subject × rater numeric matrix. oneway=ICC(1), random=two-way absolute agreement ICC(2), mixed=two-way consistency ICC(3). single / average (mean of all k raters); confidence level. F-based CIs; absolute agreement uses approximate Satterthwaite df. Negative estimates are retained. Independent subjects, normal ANOVA errors. Mixed consistency ignores systematic rater shifts; choose the model before analysis. Degenerate intervals are unavailable.",
+    "formHelpKo": "완전한 숫자 대상×평가자 행렬. oneway=ICC(1), random=이원 랜덤 절대 일치 ICC(2), mixed=이원 혼합 일관성 ICC(3). single 단일·average k명 평균; 신뢰수준. F 기반 구간, 절대 일치는 Satterthwaite 근사 자유도. 음의 추정값 유지. 독립 대상·정규 ANOVA 오차 가정. 혼합 일관성은 평가자 간 체계적 차이를 무시하므로 분석 전 모형을 선택하세요. 퇴화 구간은 계산 불가로 표시합니다.",
+    "exampleRows": [
+      [
+        "9",
+        "10",
+        "9"
+      ],
+      [
+        "6",
+        "7",
+        "6"
+      ],
+      [
+        "8",
+        "8",
+        "9"
+      ],
+      [
+        "5",
+        "6",
+        "5"
+      ],
+      [
+        "10",
+        "9",
+        "10"
+      ],
+      [
+        "7",
+        "7",
+        "8"
+      ]
+    ]
+  },
+  {
+    "id": "blandaltman",
+    "label": "Bland–Altman agreement",
+    "ko": "Bland–Altman 일치도",
+    "input": "table",
+    "suffix": ",0.95,difference",
+    "example": "blandaltman([[10,10.5],[12,11.8],[8,8.6],[15,14.7],[11,11.3],[9,9.1]],0.95,difference)",
+    "help": "Two measurements per independent subject, complete rows A then B. difference A−B or log(A/B) (positive values). Reports bias, individual agreement limits, bias CI and approximate agreement-limit CIs at the chosen level; log mode also reports geometric mean ratio and ratio limits. Pair means versus differences plot. Assumes normal differences and constant variance; repeated observations per subject need another model. Agreement limits are not the mean-bias CI.",
+    "helpKo": "독립 대상마다 두 측정값 A·B를 완전한 행으로 입력합니다. difference A−B·양수 자료의 log(A/B). 편향·개별 차이의 일치한계·편향 신뢰구간·일치한계의 근사 신뢰구간을 선택 수준으로 제공합니다. 로그 방식은 기하평균 비율·비율 한계도 제공합니다. 두 값의 평균 대 차이 그래프. 차이의 정규성·일정 분산 가정; 대상별 반복 관측에는 다른 모형이 필요합니다. 일치한계와 평균 편향의 신뢰구간은 구분해야 합니다.",
+    "section": "general",
+    "group": "Reliability & agreement",
+    "groupKo": "신뢰도·일치도",
+    "controls": [
+      {
+        "key": "first",
+        "label": "Measurement A",
+        "ko": "측정 A 열",
+        "type": "column",
+        "default": 0
+      },
+      {
+        "key": "second",
+        "label": "Measurement B",
+        "ko": "측정 B 열",
+        "type": "column",
+        "default": 1
+      },
+      {
+        "key": "level",
+        "label": "Confidence level",
+        "ko": "신뢰수준",
+        "type": "number",
+        "default": "0.95"
+      },
+      {
+        "key": "mode",
+        "label": "Agreement scale",
+        "ko": "일치도 척도",
+        "type": "choice",
+        "default": "difference",
+        "choices": [
+          {
+            "id": "difference",
+            "label": "Difference A − B",
+            "ko": "차이 A − B"
+          },
+          {
+            "id": "log",
+            "label": "Log ratio log(A/B)",
+            "ko": "로그 비율 log(A/B)"
+          }
+        ]
+      }
+    ],
+    "formHelp": "Two measurements per independent subject, complete rows A then B. difference A−B or log(A/B) (positive values). Reports bias, individual agreement limits, bias CI and approximate agreement-limit CIs at the chosen level; log mode also reports geometric mean ratio and ratio limits. Pair means versus differences plot. Assumes normal differences and constant variance; repeated observations per subject need another model. Agreement limits are not the mean-bias CI.",
+    "formHelpKo": "독립 대상마다 두 측정값 A·B를 완전한 행으로 입력합니다. difference A−B·양수 자료의 log(A/B). 편향·개별 차이의 일치한계·편향 신뢰구간·일치한계의 근사 신뢰구간을 선택 수준으로 제공합니다. 로그 방식은 기하평균 비율·비율 한계도 제공합니다. 두 값의 평균 대 차이 그래프. 차이의 정규성·일정 분산 가정; 대상별 반복 관측에는 다른 모형이 필요합니다. 일치한계와 평균 편향의 신뢰구간은 구분해야 합니다.",
+    "exampleRows": [
+      [
+        "10",
+        "10.5"
+      ],
+      [
+        "12",
+        "11.8"
+      ],
+      [
+        "8",
+        "8.6"
+      ],
+      [
+        "15",
+        "14.7"
+      ],
+      [
+        "11",
+        "11.3"
+      ],
+      [
+        "9",
+        "9.1"
       ]
     ]
   },
@@ -3060,6 +3249,468 @@ export const advancedStatisticsSchema = [
       ],
       [
         "5"
+      ]
+    ]
+  },
+  {
+    "id": "tost",
+    "label": "One-sample equivalence (TOST)",
+    "ko": "단일 표본 동등성 (TOST)",
+    "input": "list",
+    "suffix": ",-0.5,0.5,10,0.05",
+    "example": "tost([9.8,10.1,10.2,9.9,10,10.1,9.9,10.2],-0.5,0.5,10,0.05)",
+    "help": "tost(data,lower,upper,reference=0,alpha=.05). Prespecify lower/upper equivalence bounds in original units for A−B (one-sample: mean−reference). Both one-sided p values must be below alpha. Reports max p, equivalence decision and 1−2 alpha CI (90% at .05). A nonsignificant difference does not establish equivalence. Positive sampling variance and independent approximately normal observations/differences are required.",
+    "helpKo": "tost(자료,하한,상한,기준평균=0,alpha=.05). A−B(단일 표본: 평균−기준평균)에 대한 원래 단위의 동등성 하한·상한을 미리 지정하세요. 두 단측 p값이 모두 alpha보다 작아야 합니다. 최대 p·동등성 판단·1−2 alpha 구간(.05이면 90%)을 제공합니다. 차이가 유의하지 않다는 것만으로 동등하지 않습니다. 양의 표본분산·독립 근사 정규 관측 또는 대응 차이가 필요합니다.",
+    "section": "tests",
+    "group": "Equivalence tests (TOST)",
+    "groupKo": "동등성 검정 (TOST)",
+    "controls": [
+      {
+        "key": "column",
+        "label": "Sample column",
+        "ko": "표본 열",
+        "type": "column",
+        "default": 0
+      },
+      {
+        "key": "lower",
+        "label": "Lower equivalence bound",
+        "ko": "동등성 하한",
+        "type": "number",
+        "default": "-0.5"
+      },
+      {
+        "key": "upper",
+        "label": "Upper equivalence bound",
+        "ko": "동등성 상한",
+        "type": "number",
+        "default": "0.5"
+      },
+      {
+        "key": "reference",
+        "label": "Reference mean",
+        "ko": "기준평균",
+        "type": "number",
+        "default": "10"
+      },
+      {
+        "key": "alpha",
+        "label": "Significance level α",
+        "ko": "유의수준 α",
+        "type": "number",
+        "default": "0.05"
+      }
+    ],
+    "formHelp": "tost(data,lower,upper,reference=0,alpha=.05). Prespecify lower/upper equivalence bounds in original units for A−B (one-sample: mean−reference). Both one-sided p values must be below alpha. Reports max p, equivalence decision and 1−2 alpha CI (90% at .05). A nonsignificant difference does not establish equivalence. Positive sampling variance and independent approximately normal observations/differences are required.",
+    "formHelpKo": "tost(자료,하한,상한,기준평균=0,alpha=.05). A−B(단일 표본: 평균−기준평균)에 대한 원래 단위의 동등성 하한·상한을 미리 지정하세요. 두 단측 p값이 모두 alpha보다 작아야 합니다. 최대 p·동등성 판단·1−2 alpha 구간(.05이면 90%)을 제공합니다. 차이가 유의하지 않다는 것만으로 동등하지 않습니다. 양의 표본분산·독립 근사 정규 관측 또는 대응 차이가 필요합니다.",
+    "exampleRows": [
+      [
+        "9.8"
+      ],
+      [
+        "10.1"
+      ],
+      [
+        "10.2"
+      ],
+      [
+        "9.9"
+      ],
+      [
+        "10"
+      ],
+      [
+        "10.1"
+      ],
+      [
+        "9.9"
+      ],
+      [
+        "10.2"
+      ]
+    ]
+  },
+  {
+    "id": "tost2",
+    "label": "Independent equivalence (TOST)",
+    "ko": "독립 두 표본 동등성 (TOST)",
+    "input": "groups",
+    "suffix": ",-0.5,0.5,welch,0.05",
+    "example": "tost2([9.8,10.1,10.2,9.9,10,10.1,9.9,10.2],[10,10.2,10.1,9.8,10.1,10,9.9,10.1],-0.5,0.5,welch,0.05)",
+    "help": "tost2(A,B,lower,upper,welch/student,alpha=.05). Welch permits unequal variances; Student assumes equal variances. Blank independent cells are omitted separately. Prespecify lower/upper equivalence bounds in original units for A−B (one-sample: mean−reference). Both one-sided p values must be below alpha. Reports max p, equivalence decision and 1−2 alpha CI (90% at .05). A nonsignificant difference does not establish equivalence. Positive sampling variance and independent approximately normal observations/differences are required.",
+    "helpKo": "tost2(A,B,하한,상한,welch/student,alpha=.05). Welch는 이분산, Student는 등분산 가정. 독립 표본의 빈 셀은 각각 제외합니다. A−B(단일 표본: 평균−기준평균)에 대한 원래 단위의 동등성 하한·상한을 미리 지정하세요. 두 단측 p값이 모두 alpha보다 작아야 합니다. 최대 p·동등성 판단·1−2 alpha 구간(.05이면 90%)을 제공합니다. 차이가 유의하지 않다는 것만으로 동등하지 않습니다. 양의 표본분산·독립 근사 정규 관측 또는 대응 차이가 필요합니다.",
+    "section": "tests",
+    "group": "Equivalence tests (TOST)",
+    "groupKo": "동등성 검정 (TOST)",
+    "controls": [
+      {
+        "key": "grouping",
+        "label": "Grouping",
+        "ko": "그룹 구성",
+        "type": "choice",
+        "default": "columns",
+        "choices": [
+          {
+            "id": "columns",
+            "label": "Columns",
+            "ko": "열별 그룹"
+          },
+          {
+            "id": "groups",
+            "label": "Group / value columns",
+            "ko": "그룹·값 열"
+          }
+        ]
+      },
+      {
+        "key": "first",
+        "label": "Group A column",
+        "ko": "A 그룹 열",
+        "type": "column",
+        "default": 0,
+        "when": {
+          "grouping": [
+            "columns"
+          ]
+        }
+      },
+      {
+        "key": "second",
+        "label": "Group B column",
+        "ko": "B 그룹 열",
+        "type": "column",
+        "default": 1,
+        "when": {
+          "grouping": [
+            "columns"
+          ]
+        }
+      },
+      {
+        "key": "group",
+        "label": "Group column",
+        "ko": "그룹 열",
+        "type": "column",
+        "default": 0,
+        "when": {
+          "grouping": [
+            "groups"
+          ]
+        }
+      },
+      {
+        "key": "value",
+        "label": "Value column",
+        "ko": "값 열",
+        "type": "column",
+        "default": 1,
+        "when": {
+          "grouping": [
+            "groups"
+          ]
+        }
+      },
+      {
+        "key": "firstGroup",
+        "label": "Group A value",
+        "ko": "A 그룹 값",
+        "type": "group",
+        "default": "",
+        "when": {
+          "grouping": [
+            "groups"
+          ]
+        }
+      },
+      {
+        "key": "secondGroup",
+        "label": "Group B value",
+        "ko": "B 그룹 값",
+        "type": "group",
+        "default": "",
+        "when": {
+          "grouping": [
+            "groups"
+          ]
+        }
+      },
+      {
+        "key": "lower",
+        "label": "Lower equivalence bound",
+        "ko": "동등성 하한",
+        "type": "number",
+        "default": "-0.5"
+      },
+      {
+        "key": "upper",
+        "label": "Upper equivalence bound",
+        "ko": "동등성 상한",
+        "type": "number",
+        "default": "0.5"
+      },
+      {
+        "key": "method",
+        "label": "Variance assumption",
+        "ko": "분산 가정",
+        "type": "choice",
+        "default": "welch",
+        "choices": [
+          {
+            "id": "welch",
+            "label": "Welch (unequal variances)",
+            "ko": "Welch (이분산)"
+          },
+          {
+            "id": "student",
+            "label": "Student (equal variances)",
+            "ko": "Student (등분산)"
+          }
+        ]
+      },
+      {
+        "key": "alpha",
+        "label": "Significance level α",
+        "ko": "유의수준 α",
+        "type": "number",
+        "default": "0.05"
+      }
+    ],
+    "formHelp": "tost2(A,B,lower,upper,welch/student,alpha=.05). Welch permits unequal variances; Student assumes equal variances. Blank independent cells are omitted separately. Prespecify lower/upper equivalence bounds in original units for A−B (one-sample: mean−reference). Both one-sided p values must be below alpha. Reports max p, equivalence decision and 1−2 alpha CI (90% at .05). A nonsignificant difference does not establish equivalence. Positive sampling variance and independent approximately normal observations/differences are required.",
+    "formHelpKo": "tost2(A,B,하한,상한,welch/student,alpha=.05). Welch는 이분산, Student는 등분산 가정. 독립 표본의 빈 셀은 각각 제외합니다. A−B(단일 표본: 평균−기준평균)에 대한 원래 단위의 동등성 하한·상한을 미리 지정하세요. 두 단측 p값이 모두 alpha보다 작아야 합니다. 최대 p·동등성 판단·1−2 alpha 구간(.05이면 90%)을 제공합니다. 차이가 유의하지 않다는 것만으로 동등하지 않습니다. 양의 표본분산·독립 근사 정규 관측 또는 대응 차이가 필요합니다.",
+    "exampleRows": [
+      [
+        "9.8",
+        "10"
+      ],
+      [
+        "10.1",
+        "10.2"
+      ],
+      [
+        "10.2",
+        "10.1"
+      ],
+      [
+        "9.9",
+        "9.8"
+      ],
+      [
+        "10",
+        "10.1"
+      ],
+      [
+        "10.1",
+        "10"
+      ],
+      [
+        "9.9",
+        "9.9"
+      ],
+      [
+        "10.2",
+        "10.1"
+      ]
+    ]
+  },
+  {
+    "id": "tostpaired",
+    "label": "Paired equivalence (TOST)",
+    "ko": "대응 두 표본 동등성 (TOST)",
+    "input": "groups",
+    "suffix": ",-0.5,0.5,0.05",
+    "example": "tostpaired([9.8,10.1,10.2,9.9,10,10.1,9.9,10.2],[10,10.2,10.1,9.8,10.1,10,9.9,10.1],-0.5,0.5,0.05)",
+    "help": "tostpaired(A,B,lower,upper,alpha=.05). Complete pairs; subject-ID matching is available. Prespecify lower/upper equivalence bounds in original units for A−B (one-sample: mean−reference). Both one-sided p values must be below alpha. Reports max p, equivalence decision and 1−2 alpha CI (90% at .05). A nonsignificant difference does not establish equivalence. Positive sampling variance and independent approximately normal observations/differences are required.",
+    "helpKo": "tostpaired(A,B,하한,상한,alpha=.05). 완전한 대응 쌍; 대상 ID 연결도 지원합니다. A−B(단일 표본: 평균−기준평균)에 대한 원래 단위의 동등성 하한·상한을 미리 지정하세요. 두 단측 p값이 모두 alpha보다 작아야 합니다. 최대 p·동등성 판단·1−2 alpha 구간(.05이면 90%)을 제공합니다. 차이가 유의하지 않다는 것만으로 동등하지 않습니다. 양의 표본분산·독립 근사 정규 관측 또는 대응 차이가 필요합니다.",
+    "section": "tests",
+    "group": "Equivalence tests (TOST)",
+    "groupKo": "동등성 검정 (TOST)",
+    "controls": [
+      {
+        "key": "grouping",
+        "label": "Grouping",
+        "ko": "그룹 구성",
+        "type": "choice",
+        "default": "columns",
+        "choices": [
+          {
+            "id": "columns",
+            "label": "Columns",
+            "ko": "열별 그룹"
+          },
+          {
+            "id": "groups",
+            "label": "Group / value columns",
+            "ko": "그룹·값 열"
+          }
+        ]
+      },
+      {
+        "key": "first",
+        "label": "Group A column",
+        "ko": "A 그룹 열",
+        "type": "column",
+        "default": 0,
+        "when": {
+          "grouping": [
+            "columns"
+          ]
+        }
+      },
+      {
+        "key": "second",
+        "label": "Group B column",
+        "ko": "B 그룹 열",
+        "type": "column",
+        "default": 1,
+        "when": {
+          "grouping": [
+            "columns"
+          ]
+        }
+      },
+      {
+        "key": "group",
+        "label": "Group column",
+        "ko": "그룹 열",
+        "type": "column",
+        "default": 0,
+        "when": {
+          "grouping": [
+            "groups"
+          ]
+        }
+      },
+      {
+        "key": "value",
+        "label": "Value column",
+        "ko": "값 열",
+        "type": "column",
+        "default": 1,
+        "when": {
+          "grouping": [
+            "groups"
+          ]
+        }
+      },
+      {
+        "key": "firstGroup",
+        "label": "Group A value",
+        "ko": "A 그룹 값",
+        "type": "group",
+        "default": "",
+        "when": {
+          "grouping": [
+            "groups"
+          ]
+        }
+      },
+      {
+        "key": "secondGroup",
+        "label": "Group B value",
+        "ko": "B 그룹 값",
+        "type": "group",
+        "default": "",
+        "when": {
+          "grouping": [
+            "groups"
+          ]
+        }
+      },
+      {
+        "key": "matching",
+        "label": "Pair matching",
+        "ko": "대응 연결",
+        "type": "choice",
+        "default": "order",
+        "choices": [
+          {
+            "id": "order",
+            "label": "Within-group row order",
+            "ko": "그룹 안의 행 순서"
+          },
+          {
+            "id": "subject",
+            "label": "Subject ID",
+            "ko": "대상 ID"
+          }
+        ],
+        "when": {
+          "grouping": [
+            "groups"
+          ]
+        }
+      },
+      {
+        "key": "subject",
+        "label": "Subject ID",
+        "ko": "대상 ID 열",
+        "type": "column",
+        "default": 0,
+        "when": {
+          "grouping": [
+            "groups"
+          ],
+          "matching": [
+            "subject"
+          ]
+        }
+      },
+      {
+        "key": "lower",
+        "label": "Lower equivalence bound",
+        "ko": "동등성 하한",
+        "type": "number",
+        "default": "-0.5"
+      },
+      {
+        "key": "upper",
+        "label": "Upper equivalence bound",
+        "ko": "동등성 상한",
+        "type": "number",
+        "default": "0.5"
+      },
+      {
+        "key": "alpha",
+        "label": "Significance level α",
+        "ko": "유의수준 α",
+        "type": "number",
+        "default": "0.05"
+      }
+    ],
+    "formHelp": "tostpaired(A,B,lower,upper,alpha=.05). Complete pairs; subject-ID matching is available. Prespecify lower/upper equivalence bounds in original units for A−B (one-sample: mean−reference). Both one-sided p values must be below alpha. Reports max p, equivalence decision and 1−2 alpha CI (90% at .05). A nonsignificant difference does not establish equivalence. Positive sampling variance and independent approximately normal observations/differences are required.",
+    "formHelpKo": "tostpaired(A,B,하한,상한,alpha=.05). 완전한 대응 쌍; 대상 ID 연결도 지원합니다. A−B(단일 표본: 평균−기준평균)에 대한 원래 단위의 동등성 하한·상한을 미리 지정하세요. 두 단측 p값이 모두 alpha보다 작아야 합니다. 최대 p·동등성 판단·1−2 alpha 구간(.05이면 90%)을 제공합니다. 차이가 유의하지 않다는 것만으로 동등하지 않습니다. 양의 표본분산·독립 근사 정규 관측 또는 대응 차이가 필요합니다.",
+    "exampleRows": [
+      [
+        "9.8",
+        "10"
+      ],
+      [
+        "10.1",
+        "10.2"
+      ],
+      [
+        "10.2",
+        "10.1"
+      ],
+      [
+        "9.9",
+        "9.8"
+      ],
+      [
+        "10",
+        "10.1"
+      ],
+      [
+        "10.1",
+        "10"
+      ],
+      [
+        "9.9",
+        "9.9"
+      ],
+      [
+        "10.2",
+        "10.1"
       ]
     ]
   },
@@ -13045,6 +13696,165 @@ export const advancedStatisticsSchema = [
       ],
       [
         "8"
+      ]
+    ]
+  },
+  {
+    "id": "metaanalysis",
+    "label": "Meta-analysis",
+    "ko": "메타분석",
+    "input": "table",
+    "suffix": ",pm,0.95,z,1",
+    "example": "metaanalysis([[0.2,0.1],[0.45,0.15],[-0.1,0.12],[0.6,0.2],[0.3,0.11]],pm,0.95,z,1)",
+    "help": "Independent study rows: effect estimate, positive standard error (SE, not SD or variance). fixed / dl (DerSimonian–Laird) / pm (Paule–Mandel, default); confidence level 0–1; inference z / hksj (modified Hartung–Knapp for random effects); Egger 0/1. Returns pooled effect, weights, Q/p, I², τ², prediction interval, Forest/Funnel plots. Ratio effects require log effects and log-scale SE. Study and funnel limits use z. Egger OLS standardized effect on precision uses t(k−2); needs 3 studies with differing SE, has low power below 10, and asymmetry is not proof of publication bias. Random-effects prediction uses t(k−2) and omits tau estimation uncertainty.",
+    "helpKo": "독립 연구별 행: 효과 추정값·양수 표준오차(SE, 표준편차·분산 아님). fixed·dl(DerSimonian–Laird)·pm(Paule–Mandel, 기본); 신뢰수준 0~1; 추론 z·hksj(랜덤효과의 수정 Hartung–Knapp); Egger 0/1. 통합 효과·가중치·Q/p·I²·τ²·예측구간·Forest/Funnel plot. 비율은 로그 효과·로그 척도 SE를 입력합니다. 연구·Funnel 경계는 z 근사. Egger는 표준화 효과 대 정밀도 OLS 절편의 t(k−2) 검정으로 연구 3개 이상·서로 다른 SE가 필요합니다. 10개 미만은 검정력이 낮고 비대칭이 출판편향을 증명하지 않습니다. 랜덤효과 예측은 t(k−2) 근사이며 tau 추정 불확실성을 제외합니다.",
+    "section": "advanced",
+    "group": "Research synthesis",
+    "groupKo": "연구 종합",
+    "controls": [
+      {
+        "key": "effect",
+        "label": "Effect estimate column",
+        "ko": "효과 추정값 열",
+        "type": "column",
+        "default": 0
+      },
+      {
+        "key": "se",
+        "label": "Standard error column (SE)",
+        "ko": "표준오차 열 (SE)",
+        "type": "column",
+        "default": 1
+      },
+      {
+        "key": "studyLabels",
+        "label": "Study labels",
+        "ko": "연구 이름",
+        "type": "choice",
+        "default": "index",
+        "choices": [
+          {
+            "id": "index",
+            "label": "Row numbers",
+            "ko": "행 번호"
+          },
+          {
+            "id": "column",
+            "label": "Study name column",
+            "ko": "연구 이름 열"
+          }
+        ]
+      },
+      {
+        "key": "study",
+        "label": "Study name column",
+        "ko": "연구 이름 열",
+        "type": "column",
+        "default": 2,
+        "when": {
+          "studyLabels": [
+            "column"
+          ]
+        }
+      },
+      {
+        "key": "method",
+        "label": "Effect model / τ² estimator",
+        "ko": "효과 모형 / τ² 추정",
+        "type": "choice",
+        "default": "pm",
+        "choices": [
+          {
+            "id": "fixed",
+            "label": "Fixed effect",
+            "ko": "고정효과"
+          },
+          {
+            "id": "pm",
+            "label": "Random: Paule–Mandel",
+            "ko": "랜덤: Paule–Mandel"
+          },
+          {
+            "id": "dl",
+            "label": "Random: DerSimonian–Laird",
+            "ko": "랜덤: DerSimonian–Laird"
+          }
+        ]
+      },
+      {
+        "key": "level",
+        "label": "Confidence level",
+        "ko": "신뢰수준",
+        "type": "number",
+        "default": "0.95"
+      },
+      {
+        "key": "inference",
+        "label": "Pooled inference",
+        "ko": "통합 효과 추론",
+        "type": "choice",
+        "default": "z",
+        "choices": [
+          {
+            "id": "z",
+            "label": "Normal approximation",
+            "ko": "정규 근사"
+          },
+          {
+            "id": "hksj",
+            "label": "Modified Hartung–Knapp",
+            "ko": "수정 Hartung–Knapp"
+          }
+        ],
+        "when": {
+          "method": [
+            "pm",
+            "dl"
+          ]
+        }
+      },
+      {
+        "key": "egger",
+        "label": "Egger asymmetry test",
+        "ko": "Egger 비대칭 검정",
+        "type": "choice",
+        "default": "1",
+        "choices": [
+          {
+            "id": "1",
+            "label": "On",
+            "ko": "켬"
+          },
+          {
+            "id": "0",
+            "label": "Off",
+            "ko": "끔"
+          }
+        ]
+      }
+    ],
+    "formHelp": "Independent study rows: effect estimate, positive standard error (SE, not SD or variance). fixed / dl (DerSimonian–Laird) / pm (Paule–Mandel, default); confidence level 0–1; inference z / hksj (modified Hartung–Knapp for random effects); Egger 0/1. Returns pooled effect, weights, Q/p, I², τ², prediction interval, Forest/Funnel plots. Ratio effects require log effects and log-scale SE. Study and funnel limits use z. Egger OLS standardized effect on precision uses t(k−2); needs 3 studies with differing SE, has low power below 10, and asymmetry is not proof of publication bias. Random-effects prediction uses t(k−2) and omits tau estimation uncertainty.",
+    "formHelpKo": "독립 연구별 행: 효과 추정값·양수 표준오차(SE, 표준편차·분산 아님). fixed·dl(DerSimonian–Laird)·pm(Paule–Mandel, 기본); 신뢰수준 0~1; 추론 z·hksj(랜덤효과의 수정 Hartung–Knapp); Egger 0/1. 통합 효과·가중치·Q/p·I²·τ²·예측구간·Forest/Funnel plot. 비율은 로그 효과·로그 척도 SE를 입력합니다. 연구·Funnel 경계는 z 근사. Egger는 표준화 효과 대 정밀도 OLS 절편의 t(k−2) 검정으로 연구 3개 이상·서로 다른 SE가 필요합니다. 10개 미만은 검정력이 낮고 비대칭이 출판편향을 증명하지 않습니다. 랜덤효과 예측은 t(k−2) 근사이며 tau 추정 불확실성을 제외합니다.",
+    "exampleRows": [
+      [
+        "0.2",
+        "0.1"
+      ],
+      [
+        "0.45",
+        "0.15"
+      ],
+      [
+        "-0.1",
+        "0.12"
+      ],
+      [
+        "0.6",
+        "0.2"
+      ],
+      [
+        "0.3",
+        "0.11"
       ]
     ]
   },

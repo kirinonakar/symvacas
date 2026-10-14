@@ -4,6 +4,7 @@ import ast
 from pathlib import Path
 from statistics_help import USES, enrich_help
 from statistics_social_schema import SPECS as SOCIAL_SPECS, forms as social_forms
+from statistics_research_schema import SPECS as RESEARCH_SPECS, forms as research_forms
 
 ROOT = Path(__file__).resolve().parents[1]
 GROUPS = '[1,2,4,5],[2,3,5,8]'
@@ -75,23 +76,26 @@ specs.append(('logisticcompare','Nested logistic model comparison','중첩 로�
 from statistics_comparison_schema import SPEC as COMPARISON_SPEC, HELP as COMPARISON_HELP, forms as comparison_forms, examples as comparison_examples
 specs.append(COMPARISON_SPEC)
 specs.extend(SOCIAL_SPECS)
+specs.extend(RESEARCH_SPECS)
 schema = [{'id':id_,'label':label,'ko':ko,'input':layout,'suffix':suffix,'example':f'{id_}({data}{suffix})','help':help_,'helpKo':helpko} for id_,label,ko,layout,suffix,data,help_,helpko in specs]
 # Menu placement and order are shared by Android and Web; function IDs stay stable.
 menus = [
     ('preparation', 'Data preparation', '데이터 준비', ['impute']),
     ('general', 'Categorical data', '범주형 자료', ['propztest','propztest2','mcnemar','cramerv','phi','cohenkappa']),
-    ('general', 'Reliability', '신뢰도', ['cronbach']),
+    ('general', 'Reliability & agreement', '신뢰도·일치도', ['cronbach','icc','blandaltman']),
     ('tests', 'Distribution & variance', '분포·분산 검정', ['shapiro','kstest','levene','bartlett']),
     ('tests', 'Post-hoc comparisons', '사후비교', ['tukey','gameshowell','dunn']),
     ('tests', 'Group comparisons', '그룹 비교', ['twowayanova','ancova','manova','repeatedanova','friedman']),
     ('tests', 'Effect sizes & multiple testing', '효과크기·다중검정', ['cohend','eta2','padjust']),
     ('tests', 'Confidence intervals', '신뢰구간', ['tinterval','zinterval']),
+    ('tests', 'Equivalence tests (TOST)', '동등성 검정 (TOST)', ['tost','tost2','tostpaired']),
     ('models', 'Generalized regression', '일반화 회귀', ['linearmodel','glm','poissonreg','nbreg','zeroinflated','tobit','quantreg','multinomial','ordinal']),
     ('models', 'Mediation & moderation', '매개·조절 분석', ['mediation','moderation']),
     ('models', 'Repeated & clustered data', '반복·군집 자료', ['mixedmodel','glmm','gee']),
     ('models', 'Model validation', '모형 검증', ['crossvalidate','modelcompare','logisticcompare']),
     ('advanced', 'Bayesian inference', '베이지안 추론', ['bayesmean','bayescompare','bayesproportion','bayesrate']),
     ('advanced', 'Resampling', '재표집', ['bootstrapci','bayesbootstrap']),
+    ('advanced', 'Research synthesis', '연구 종합', ['metaanalysis']),
     ('advanced', 'Measurement & structural models', '측정·구조 모형', ['efa','cfa','sem']),
     ('advanced', 'Multivariate analysis', '다변량 분석', ['pca','discriminantanalysis','kmeans','hcluster']),
     ('advanced', 'Time series & forecasting', '시계열·예측', ['arima','sarima']),
@@ -282,10 +286,14 @@ for id_ in ('arima','sarima'):
     definitions[id_]['help'] += DATE_HELP[0]
     definitions[id_]['helpKo'] += DATE_HELP[1]
     next(item for item in schema if item['id']==id_).update(help=definitions[id_]['help'],helpKo=definitions[id_]['helpKo'])
+forms.update(research_forms(field,col,multi,two_fields,matching_fields))
 form_help['arima'] = tuple(TIME_HELP[i]+DATE_HELP[i] for i in range(2))
 form_help['sarima'] = (definitions['sarima']['help'],definitions['sarima']['helpKo'])
 for id_ in ('arima','sarima'): USES[id_] = ('Forecast equally spaced time-series observations.','일정한 간격의 시계열 관측값을 예측합니다.')
 for spec in SOCIAL_SPECS:
+    form_help[spec[0]]=(spec[6],spec[7])
+    USES[spec[0]]=(spec[1]+'.',spec[2]+'.')
+for spec in RESEARCH_SPECS:
     form_help[spec[0]]=(spec[6],spec[7])
     USES[spec[0]]=(spec[1]+'.',spec[2]+'.')
 for item in schema:
@@ -309,9 +317,9 @@ for item in schema:
     elif item['id']=='propztest': rows=literal(arguments[1])
     elif item['id']=='propztest2': rows=[[60,100],[45,100]]
     elif item['input']=='none': rows=[]
-    elif item['id'] in ('shapiro','padjust','bayesproportion','bayesmean','bayesrate','bayesbootstrap','bootstrapci','arima','sarima'): rows=[[v] for v in first]
-    elif item['id'] in ('tukey','gameshowell','levene','bartlett','kstest','bayescompare','cohend','eta2'):
-        samples=[literal(arg) for arg in (arguments[:2] if item['id'] in ('bayescompare','cohend') else arguments)]; rows=[[sample[i] if i<len(sample) else '' for sample in samples] for i in range(max(map(len,samples)))]
+    elif item['id'] in ('shapiro','padjust','bayesproportion','bayesmean','bayesrate','bayesbootstrap','bootstrapci','arima','sarima','tost'): rows=[[v] for v in first]
+    elif item['id'] in ('tukey','gameshowell','levene','bartlett','kstest','bayescompare','cohend','eta2','tost2','tostpaired'):
+        samples=[literal(arg) for arg in (arguments[:2] if item['id'] in ('bayescompare','cohend','tost2','tostpaired') else arguments)]; rows=[[sample[i] if i<len(sample) else '' for sample in samples] for i in range(max(map(len,samples)))]
     elif item['id']=='logrank': rows=[r+[i+1] for i,arg in enumerate(arguments) for r in literal(arg)]
     elif item['id']=='dunn': rows=[[sample[i] if i<len(sample) else '' for sample in first] for i in range(max(map(len,first)))]
     else: rows=first

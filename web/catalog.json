@@ -219,11 +219,19 @@
   ],
   "Reliability & association": [
     "cronbach([],raw)",
+    "icc([],random,single,0.95)",
+    "blandaltman([],0.95,difference)",
     "cramerv([])",
     "phi([])",
     "cohenkappa([],unweighted)",
     "cohenkappa([],linear)",
     "cohenkappa([],quadratic)"
+  ],
+  "Research synthesis & equivalence": [
+    "metaanalysis([],pm,0.95,z,1)",
+    "tost([],-0.5,0.5,0,0.05)",
+    "tost2([],[],-0.5,0.5,welch,0.05)",
+    "tostpaired([],[],-0.5,0.5,0.05)"
   ],
   "Data preparation": [
     "impute([],mean)"

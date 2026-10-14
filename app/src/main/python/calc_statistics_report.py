@@ -27,6 +27,8 @@ TITLES.update({'cronbach':'Cronbach α reliability','efa':'Exploratory factor an
                'quantreg':'Quantile regression','zeroinflated':'Zero-inflated regression (ZIP/ZINB)',
                'tobit':'Tobit censored regression','hcluster':'Hierarchical clustering'})
 TITLES.update({'arima': 'ARIMA / time-series forecast', 'sarima': 'SARIMA / time-series forecast'})
+TITLES.update({'metaanalysis':'Meta-analysis','icc':'Intraclass correlation (ICC)', 'blandaltman':'Bland–Altman agreement',
+               'tost':'One-sample equivalence (TOST)','tost2':'Independent equivalence (TOST)','tostpaired':'Paired equivalence (TOST)'})
 
 
 def statistics_report(name, value, precision, labels=None):
@@ -112,7 +114,13 @@ def statistics_report(name, value, precision, labels=None):
         for label,estimate,lower,upper in rows:
             values=list(map(finite,(estimate,lower,upper)))
             if all(v is not None for v in values) and values[1]<=values[0]<=values[2]: points.append([str(label),*values])
-        if points: plots.append({'kind':'intervals','title':title,'rows':points,'reference':reference})
+        if points:
+            plot = {'kind':'intervals','title':title,'rows':points,'reference':reference}
+            if name in ('tost','tost2','tostpaired'):
+                plot.update(reference=0, thresholds=[float(value['Lower equivalence bound']),float(value['Upper equivalence bound'])],
+                            xlabel='Difference from reference' if name=='tost' else 'Difference (A − B)',
+                            caption='Confidence interval level = 1 − 2α. Equivalence requires the whole interval to lie strictly inside the prespecified bounds.')
+            plots.append(plot)
 
     def visit(title, v):
         if isinstance(v, s.MatrixBase): v = v.tolist()
@@ -128,7 +136,7 @@ def statistics_report(name, value, precision, labels=None):
                 visit('Model diagnostics',remaining.pop('diagnostics'))
             estimate=v.get('estimate',v.get('posterior mean',v.get('sample mean')))
             interval=v.get('credible interval',v.get('confidence interval'))
-            if vector(interval) and len(interval)==2:
+            if name!='metaanalysis' and vector(interval) and len(interval)==2:
                 interval_plot('Credible interval' if 'credible interval' in v else 'Confidence interval',[(TITLES.get(name,name) if title=='Summary' else title,estimate,*interval)])
             elif 'lower' in v and 'upper' in v:
                 interval_plot('Confidence interval',[(TITLES.get(name,name) if title=='Summary' else title,estimate,v['lower'],v['upper'])])
@@ -167,6 +175,7 @@ def statistics_report(name, value, precision, labels=None):
                 intervals=[]; expanded=[]
                 for row_index, raw in enumerate(v):
                     row=dict(raw)
+                    if name=='metaanalysis' and title=='Studies': row['Study']=table_labels.get('study:'+str(row['Study']),str(row['Study']))
                     if name in ('cfa','sem') and title=='Latent R²' and row.get('Role')=='Exogenous (R² not applicable)': row['R²']='Not applicable'
                     bounds=row.pop('CI95',None)
                     if isinstance(bounds,(list,tuple)) and len(bounds)==2: row['Lower 95% CI'],row['Upper 95% CI']=bounds
@@ -374,6 +383,10 @@ def statistics_report(name, value, precision, labels=None):
         report_title={'asymptotic':'McNemar','exact':'Exact McNemar','corrected':'McNemar (continuity correction)'}.get(value.get('method'),report_title)
     if name in ('cfa','sem'): priority=['CFI','RMSEA','SRMR','p']
     if name in ('arima','sarima'): priority=['Forecast horizon','Prediction level','RMSE','Conditional AICc']
+    if name=='metaanalysis': priority=['estimate','I² (%)','τ²','Q p']
+    if name=='icc': priority=['ICC','p']
+    if name=='blandaltman': priority=['Bias','Lower agreement limit','Upper agreement limit']
+    if name in ('tost','tost2','tostpaired'): priority=['estimate','TOST p','Lower p','Upper p']
     if name=='logisticcompare':priority=['LRT χ²','LRT p','ΔAIC (B − A)','ΔBIC (B − A)']
     if name=='modelcompare':priority=['F','LRT χ²','Difference χ²','p','ΔR² (B − A)','ΔAUC (B − A)','ΔC-index (B − A)','ΔRMSE (B − A)','ΔAIC (B − A)']
     highlights=[{'label':('χ² p' if name in ('cfa','sem') else 'p value') if key=='p' and name in ('cfa','sem','mcnemar') else key,'value':cell(value[key])} for key in priority if isinstance(value,dict) and key in value and finite(value[key]) is not None][:4]

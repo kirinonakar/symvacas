@@ -120,6 +120,18 @@ export function guidedStatisticsCommand(definition,rows,settings={},columnLabels
   };
   const distinct=indices=>{if(new Set(indices).size!==indices.length)throw new Error('Roles must use different columns');};
   const complete=indices=>{distinct(indices);const selected=rows.map(row=>indices.map(i=>(row[i]||'').trim()));if(selected.some(row=>row.some(cell=>!cell)))throw new Error('Complete selected rows required');return selected;};
+  if(id==='metaanalysis'){
+    const cols=[column('effect'),column('se')];
+    if(opts.studyLabels==='column')complete([...cols,column('study')]);
+    return `metaanalysis(${table(complete(cols))},${opts.method},${opts.level},${opts.method==='fixed'?'z':opts.inference},${opts.egger})`;
+  }
+  if(id==='icc')return `icc(${table(complete(multiple('columns')))},${opts.model},${opts.unit},${opts.level})`;
+  if(id==='blandaltman')return `blandaltman(${table(complete([column('first'),column('second')]))},${opts.level},${opts.mode})`;
+  if(id==='tost')return `tost(${list(values(column('column')))},${opts.lower},${opts.upper},${opts.reference},${opts.alpha})`;
+  if(['tost2','tostpaired'].includes(id)){
+    const plan=statisticsComparisonData(rows,opts,{paired:id==='tostpaired',strict:true});
+    return `${id}(${plan.samples.map(list).join(',')},${opts.lower},${opts.upper}${id==='tost2'?','+opts.method:''},${opts.alpha})`;
+  }
   if(['arima','sarima'].includes(id)){
     const keys=['p','d','q',...(id==='sarima'?['P','D','Q','period']:[]),'horizon'];
     if(keys.some(key=>!/^\d+$/.test(String(opts[key]).trim())))throw new Error('Time-series orders and horizon must be integers');
@@ -334,6 +346,7 @@ export function guidedStatisticsCommand(definition,rows,settings={},columnLabels
 export function advancedStatisticsTermLabels(definition,rows,settings={},columnLabels=[]){
   const n=Math.max(0,...rows.map(row=>row.length)),id=definition.id;
   const opts=Object.fromEntries((definition.controls||[]).map(field=>[field.key,settings[field.key]??field.default]));
+  if(id==='metaanalysis'&&opts.studyLabels==='column')return Object.fromEntries(rows.map((row,i)=>[`study:${i+1}`,String(row[Number(opts.study)]??'').trim()]));
   if(socialAnalysisIds.has(id))return socialStatisticsPlan(id,rows,opts,columnLabels).labels;
   if(id==='modelcompare')return modelComparisonPlan(rows,{...opts,validation:"apparent"},columnLabels).labels;
   if(id==='logisticcompare')return logisticComparisonLabels(rows,opts,columnLabels);

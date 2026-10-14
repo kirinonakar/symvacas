@@ -10,8 +10,27 @@ globalThis.addEventListener?.('resize',()=>{for(const [view,draw] of activeChart
 const number=value=>Number(value).toLocaleString(undefined,{maximumSignificantDigits:4});
 const pc=(plot,index)=>plot.axisLabels?.[index]?.replace(/^(Component|Factor) (\d+)$/,(_,label,n)=>`${t(label)} ${n}`)||(['clusters','interaction'].includes(plot.kind)?(plot.features?.[index]||`Feature ${index+1}`).replace(/^Feature (\d+)$/,`${t('Feature')} $1`):`PC${index+1} (${number(100*plot.ratios[index])}%)`);
 
+// Keep large forest canvases bounded while retaining every study and the pooled row.
+export function statisticsIntervalPage(plot,page=0,pageSize=40){
+  if(!Number.isInteger(plot.summaryIndex)||plot.rows.length<=pageSize+1)return plot;
+  const studies=plot.rows.map((_,i)=>i).filter(i=>i!==plot.summaryIndex);
+  const at=Math.max(0,Math.min(Math.floor(page),Math.ceil(studies.length/pageSize)-1));
+  const indices=[...studies.slice(at*pageSize,(at+1)*pageSize),plot.summaryIndex];
+  return {...plot,rows:indices.map(i=>plot.rows[i]),weights:indices.map(i=>plot.weights?.[i]??0),summaryIndex:indices.length-1};
+}
+
 // Raw engine arrays retain every observation and all component coordinates.
 export function statisticsPlotModel(plot,xAxis=0,yAxis=1){
+  if(plot.kind==='research-scatter'){
+    const points=plot.points.map(([x,y],i)=>({x,y,label:plot.labels?.[i]||`${t('Observation')} ${i+1}`}));
+    if(!points.length)return null;
+    const lines=plot.lines||[],horizontal=plot.horizontal||[],all=[...plot.points,...lines.flat()];
+    const xs=all.map(p=>p[0]),ys=[...all.map(p=>p[1]),...horizontal];
+    const lo=Math.min(...xs),hi=Math.max(...xs),low=Math.min(...ys),high=Math.max(...ys);
+    const dx=(hi-lo||1)*.1,dy=(high-low||1)*.1;
+    return {xmin:lo-dx,xmax:hi+dx,ymin:plot.invertY?0:low-dy,ymax:high+dy,points,lines,horizontal,invertY:!!plot.invertY,
+      xlabel:t(plot.xlabel),ylabel:t(plot.ylabel)};
+  }
   if(plot.kind==='timeseries'){
     const all=[...plot.observed,...plot.fitted,...plot.forecast,...plot.interval.flatMap(([x,lo,hi])=>[[x,lo],[x,hi]])];
     if(!all.length)return null;
@@ -27,9 +46,9 @@ export function statisticsPlotModel(plot,xAxis=0,yAxis=1){
   if(plot.kind==='intervals'){
     const rows=plot.rows.filter(row=>row.slice(1).every(Number.isFinite));
     if(!rows.length)return null;
-    const bounds=rows.flatMap(row=>row.slice(1));if(Number.isFinite(plot.reference))bounds.push(plot.reference);
+    const bounds=[...rows.flatMap(row=>row.slice(1)),...(plot.thresholds||[])];if(Number.isFinite(plot.reference))bounds.push(plot.reference);
     const lo=Math.min(...bounds),hi=Math.max(...bounds),pad=(hi-lo||1)*.1;
-    return {xmin:lo-pad,xmax:hi+pad,ymin:0,ymax:rows.length+1,intervals:rows.map(([label,estimate,lower,upper],i)=>({label,estimate,lower,upper,y:rows.length-i})),reference:plot.reference,xlabel:t('Estimate & interval'),ylabel:''};
+    return {xmin:lo-pad,xmax:hi+pad,ymin:0,ymax:rows.length+1,intervals:rows.map(([label,estimate,lower,upper],i)=>({label,estimate,lower,upper,y:rows.length-i,summary:i===plot.summaryIndex,weight:plot.weights?.[i]})),reference:plot.reference,thresholds:plot.thresholds||[],xlabel:t(plot.xlabel||'Estimate & interval'),ylabel:''};
   }
   if(plot.kind==='bars')return {xmin:.5,xmax:plot.values.length+.5,ymin:0,ymax:plot.maximum||Math.max(1e-12,...plot.values,...(plot.secondary||[]))*1.15,
     bars:plot.values.map((value,i)=>({x:i+1,y:value,label:`${plot.labels[i]}: ${number(value)}`})),secondary:plot.secondary,reference:plot.reference,xlabel:t('Observation / fold'),ylabel:t(plot.ylabel)};
@@ -67,7 +86,7 @@ function chart(plot,xAxis,yAxis,displayWidth){
   svg.setAttribute('aria-label',t(plot.title));svg.style.cssText='width:100%;height:auto;min-width:260px;display:block;background:var(--number);border-radius:8px';
   if(!model)return svg;
   const {xmin,xmax,ymin,ymax}=model,left=model.intervals?(width<400?128:170):64,top=22,w=width-left-30,h=height-82;
-  const px=x=>left+w*(x-xmin)/(xmax-xmin),py=y=>top+h-h*(y-ymin)/(ymax-ymin);
+  const px=x=>left+w*(x-xmin)/(xmax-xmin),py=y=>top+(model.invertY?0:h)+(model.invertY?1:-1)*h*(y-ymin)/(ymax-ymin);
   function shape(tag,attrs,text=''){
     const node=document.createElementNS(ns,tag);for(const [key,value]of Object.entries(attrs))node.setAttribute(key,String(value));node.textContent=text;svg.append(node);return node;
   }
@@ -99,8 +118,13 @@ function chart(plot,xAxis,yAxis,displayWidth){
     text(left-10,py(row.y)+4,row.label.length>21?row.label.slice(0,20)+'…':row.label,'end');
     shape('line',{x1:px(row.lower),x2:px(row.upper),y1:py(row.y),y2:py(row.y),stroke:'var(--accent)','stroke-width':3});
     for(const end of [row.lower,row.upper])shape('line',{x1:px(end),x2:px(end),y1:py(row.y)-5,y2:py(row.y)+5,stroke:'var(--accent)','stroke-width':2});
-    const node=shape('circle',{cx:px(row.estimate),cy:py(row.y),r:4,fill:'var(--gold)'}),title=document.createElementNS(ns,'title');title.textContent=`${row.label}: ${number(row.estimate)} [${number(row.lower)}, ${number(row.upper)}]`;node.append(title);
+    const side=Number.isFinite(row.weight)?Math.max(4,Math.min(18,2*Math.sqrt(row.weight))):8;
+    const node=row.summary?shape('polygon',{points:[[row.lower,row.y],[row.estimate,row.y+.22],[row.upper,row.y],[row.estimate,row.y-.22]].map(([x,y])=>`${px(x)},${py(y)}`).join(' '),fill:'var(--gold)'}):Number.isFinite(row.weight)?shape('rect',{x:px(row.estimate)-side/2,y:py(row.y)-side/2,width:side,height:side,fill:'var(--accent)'}):shape('circle',{cx:px(row.estimate),cy:py(row.y),r:4,fill:'var(--gold)'});
+    const title=document.createElementNS(ns,'title');title.textContent=`${row.label}: ${number(row.estimate)} [${number(row.lower)}, ${number(row.upper)}]${Number.isFinite(row.weight)?` · ${number(row.weight)}%`:''}`;node.append(title);
   }
+  for(const value of model.thresholds||[])shape('line',{x1:px(value),x2:px(value),y1:top,y2:top+h,stroke:'var(--danger)','stroke-width':2,'stroke-dasharray':'6 4'});
+  for(const line of model.lines||[])shape('polyline',{points:line.map(([x,y])=>`${px(x)},${py(y)}`).join(' '),fill:'none',stroke:'var(--muted)','stroke-width':1.6,'stroke-dasharray':'5 4'});
+  for(const [index,value] of (model.horizontal||[]).entries())shape('line',{x1:left,x2:left+w,y1:py(value),y2:py(value),stroke:index===0?'var(--gold)':'var(--muted)','stroke-width':1.8,...(index?{'stroke-dasharray':'5 4'}:{})});
   if(plot.kind==='interaction'){
     plot.xLabels.forEach((label,i)=>text(px(i+1),top+h+20,label));
     plot.lineGroups.forEach((line,i)=>shape('polyline',{points:line.map(([x,y])=>`${px(x)},${py(y)}`).join(' '),fill:'none',stroke:['var(--accent)','var(--gold)','#9466b8','#437db0','#bd5c67','#598e85'][i%6],'stroke-width':2.5}));
@@ -121,8 +145,10 @@ function chart(plot,xAxis,yAxis,displayWidth){
   if(model.stems)shape('line',{x1:left,x2:left+w,y1:py(0),y2:py(0),stroke:'var(--muted)'});
   if(model.line)shape('polyline',{points:model.line.map(([x,y])=>`${px(x)},${py(y)}`).join(' '),fill:'none',stroke:'var(--gold)','stroke-width':2.5});
   if(model.points){
-    shape('line',{x1:px(0),x2:px(0),y1:top,y2:top+h,stroke:'var(--line)'});
-    shape('line',{x1:left,x2:left+w,y1:py(0),y2:py(0),stroke:'var(--line)'});
+    if(plot.kind!=='research-scatter'){
+      shape('line',{x1:px(0),x2:px(0),y1:top,y2:top+h,stroke:'var(--line)'});
+      shape('line',{x1:left,x2:left+w,y1:py(0),y2:py(0),stroke:'var(--line)'});
+    }
     model.points.forEach((point,i)=>{
       const palette=['var(--accent)','var(--gold)','#9466b8','#437db0','#bd5c67','#598e85'];
       const color=model.vectors?palette[i%palette.length]:point.group?palette[(point.group-1)%palette.length]:'var(--accent)';
@@ -151,10 +177,17 @@ export function renderStatisticsVisualizations(container,plots=[]){
     if(['roc-comparison','calibration-comparison'].includes(plot.kind)){container.append(logisticComparisonPlot(plot));continue;}
     const block=element('section','','statistics-visualization');block.append(element('h4',t(plot.title)));
     const view=element('div');if(plot.kind==='sem-diagram')view.style.cssText='overflow-x:auto;max-width:100%';
-    let x=0,y=(plot.points?.[0]?.length||0)>1?1:-1,sample=0,fitToScreen=false;
-    const selected=()=>plot.series?{...plot,...plot.series[sample]}:plot;
+    let x=0,y=(plot.points?.[0]?.length||0)>1?1:-1,sample=0,fitToScreen=false,page=0;
+    const pages=Number.isInteger(plot.summaryIndex)?Math.ceil((plot.rows.length-1)/40):1;
+    const selected=()=>pages>1?statisticsIntervalPage(plot,page):plot.series?{...plot,...plot.series[sample]}:plot;
     const draw=()=>{const svg=plot.kind==='sem-diagram'?semDiagramSvg(selected(),{fitToScreen,viewportWidth:view.clientWidth||container.clientWidth||(globalThis.innerWidth||720)-56,viewportHeight:(globalThis.innerHeight||800)*.65}):chart(selected(),x,plot.kind==='qq'?1:y,view.clientWidth);view.replaceChildren(svg);appendPlotExportButtons(svg,`symvacas-${plot.kind}`,{captions:[{text:t(plot.title)},...(plot.series?[{text:`${plot.series[sample].label} · n=${plot.series[sample].n}`}]:[])]});};
     activeCharts.set(view,draw);
+    if(pages>1){
+      const pager=element('div','','form-row'),label=element('span');
+      const update=()=>{label.textContent=`${t('Page')} ${page+1} / ${pages}`;previous.disabled=page===0;next.disabled=page===pages-1;draw();};
+      const previous=control('Previous',()=>{page--;update();}),next=control('Next',()=>{page++;update();});
+      pager.append(previous,label,next);block.append(pager);update();
+    }
     if(plot.kind==='sem-diagram'){
       const button=control('Fit diagram to screen',()=>{fitToScreen=!fitToScreen;setText(button,fitToScreen?'Original size':'Fit diagram to screen');button.setAttribute('aria-pressed',String(fitToScreen));draw();});
       button.setAttribute('aria-pressed','false');block.append(button);
@@ -165,7 +198,7 @@ export function renderStatisticsVisualizations(container,plots=[]){
       plot.series.forEach((item,i)=>{const option=element('option',`${t(item.label)} (n=${item.n})`);option.value=String(i);select.append(option);});
       select.onchange=()=>{sample=Number(select.value);draw();};label.append(select);block.append(label);
     }
-    if(width>1&&!['qq','interaction'].includes(plot.kind)){
+    if(width>1&&!['qq','interaction','research-scatter'].includes(plot.kind)){
       const controls=element('div','','form-row');
       for(const axis of ['x','y']){
         const label=element('label',t(axis==='x'?'X axis':'Y axis')),select=element('select');

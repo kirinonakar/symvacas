@@ -4,6 +4,7 @@ import android.graphics.Paint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -47,6 +48,7 @@ private fun plotNumber(value:Double)=String.format(Locale.ROOT,"%.4g",value)
     val c=LocalInstrument.current
     val title=tr(plot.getString("title"));val kind=plot.getString("kind")
     if(kind=="sem-diagram"){StatisticsSemDiagram(plot);return}
+    if(kind=="research-scatter"){StatisticsResearchPlot(plot);return}
     if(kind in listOf("timeseries","acf")){StatisticsTimeSeriesPlot(plot);return}
     if(kind in listOf("intervals","bars")){StatisticsComparisonPlot(plot);return}
     val ratios=plot.optJSONArray("ratios")?.numbers().orEmpty()
@@ -170,18 +172,26 @@ private fun plotNumber(value:Double)=String.format(Locale.ROOT,"%.4g",value)
     }
 }
 
-@Composable private fun StatisticsComparisonPlot(plot:JSONObject) {
+@Composable private fun StatisticsComparisonPlot(source:JSONObject) {
+    var page by remember(source) {mutableIntStateOf(0)}
+    val pages=if(source.has("summaryIndex"))(source.getJSONArray("rows").length()-2)/40+1 else 1
+    val plot=statisticsIntervalPage(source,page)
     val c=LocalInstrument.current;val title=tr(plot.getString("title"));val intervals=plot.getString("kind")=="intervals"
-    val xlabel=tr(if(intervals)"Estimate & interval" else plot.optString("ylabel"))
+    val xlabel=tr(if(intervals)plot.optString("xlabel","Estimate & interval") else plot.optString("ylabel"))
     val rows=plot.optJSONArray("rows");val values=plot.optJSONArray("values")?.numbers().orEmpty()
     val count=if(intervals)rows!!.length() else values.size
     val exports=remember {GraphExportState()}
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(6.dp)) {
         Text(title,fontSize=14.sp,color=c.ink)
+        if(pages>1)Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
+            TextButton(onClick={page--},enabled=page>0){Text(tr("Previous"))}
+            Text("${tr("Page")} ${page+1} / $pages",color=c.muted,fontSize=12.sp)
+            TextButton(onClick={page++},enabled=page<pages-1){Text(tr("Next"))}
+        }
         ExportableGraphCanvas(Modifier.fillMaxWidth().height(if(intervals)max(220,count*34+70).dp else 280.dp).background(c.display).semantics {contentDescription=title},c.display,exports) {
             val left=(if(intervals)108 else 54).dp.toPx();val top=22.dp.toPx();val w=size.width-left-18.dp.toPx();val h=size.height-top-54.dp.toPx()
             val reference=plot.optDouble("reference",Double.NaN)
-            val range=if(intervals)(0 until count).flatMap {i->val row=rows!!.getJSONArray(i);listOf(row.getDouble(1),row.getDouble(2),row.getDouble(3))}+listOfNotNull(reference.takeIf(Double::isFinite)) else values+(plot.optJSONArray("secondary")?.numbers().orEmpty())
+            val range=if(intervals)(0 until count).flatMap {i->val row=rows!!.getJSONArray(i);listOf(row.getDouble(1),row.getDouble(2),row.getDouble(3))}+listOfNotNull(reference.takeIf(Double::isFinite))+(plot.optJSONArray("thresholds")?.numbers().orEmpty()) else values+(plot.optJSONArray("secondary")?.numbers().orEmpty())
             val lo=if(intervals)range.minOrNull() ?: 0.0 else 0.0
             val hi=if(intervals)range.maxOrNull() ?: 1.0 else plot.optDouble("maximum",(range.maxOrNull() ?: 1.0).coerceAtLeast(1e-12)*1.15)
             val pad=if(intervals)(hi-lo).takeIf {it>0}?.times(.1) ?: .1 else 0.0
@@ -192,9 +202,18 @@ private fun plotNumber(value:Double)=String.format(Locale.ROOT,"%.4g",value)
             if(intervals){
                 for(i in 0..4){val v=lo-pad+(hi-lo+2*pad)*i/4;drawLine(c.grid,Offset(px(v),top),Offset(px(v),top+h));label(px(v),top+h+17.dp.toPx(),plotNumber(v))}
                 if(reference.isFinite())drawLine(c.muted,Offset(px(reference),top),Offset(px(reference),top+h),pathEffect=PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(),4.dp.toPx())))
+                plot.optJSONArray("thresholds")?.numbers()?.forEach {value->drawLine(c.danger,Offset(px(value),top),Offset(px(value),top+h),2.dp.toPx(),pathEffect=PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(),4.dp.toPx())))}
                 for(i in 0 until count){val row=rows!!.getJSONArray(i);val y=top+h*(i+1)/(count+1);val low=px(row.getDouble(2));val high=px(row.getDouble(3));val text=row.getString(0)
                     label(left-8.dp.toPx(),y+4.dp.toPx(),if(text.length>15)text.take(14)+"…" else text,Paint.Align.RIGHT)
-                    drawLine(c.accent,Offset(low,y),Offset(high,y),3.dp.toPx());for(x in listOf(low,high))drawLine(c.accent,Offset(x,y-5.dp.toPx()),Offset(x,y+5.dp.toPx()),2.dp.toPx());drawCircle(c.danger,4.dp.toPx(),Offset(px(row.getDouble(1)),y))
+                    if(i==plot.optInt("summaryIndex",-1)) {
+                        val diamond=Path().apply {moveTo(low,y);lineTo(px(row.getDouble(1)),y-7.dp.toPx());lineTo(high,y);lineTo(px(row.getDouble(1)),y+7.dp.toPx());close()}
+                        drawPath(diamond,c.danger)
+                    } else {
+                        drawLine(c.accent,Offset(low,y),Offset(high,y),2.dp.toPx());for(x in listOf(low,high))drawLine(c.accent,Offset(x,y-5.dp.toPx()),Offset(x,y+5.dp.toPx()),2.dp.toPx())
+                        val weight=plot.optJSONArray("weights")?.optDouble(i,Double.NaN) ?: Double.NaN
+                        if(weight.isFinite()){val side=(2*sqrt(weight)).coerceIn(4.0,18.0).toFloat().dp.toPx();drawRect(c.accent,Offset(px(row.getDouble(1))-side/2,y-side/2),Size(side,side))}
+                        else drawCircle(c.danger,4.dp.toPx(),Offset(px(row.getDouble(1)),y))
+                    }
                 }
             }else {
                 for(i in 0..4){val v=hi*i/4;drawLine(c.grid,Offset(left,py(v)),Offset(left+w,py(v)));label(left-5.dp.toPx(),py(v)+4.dp.toPx(),plotNumber(v),Paint.Align.RIGHT)}
@@ -206,6 +225,7 @@ private fun plotNumber(value:Double)=String.format(Locale.ROOT,"%.4g",value)
             label(left+w/2,size.height-8.dp.toPx(),xlabel)
         }
         if(plot.has("secondary"))StatisticsExplanation("Plot details",tr("Bars: adjusted p · dots: raw p · dashed line: α"),"statistics-comparison-plot-help",plot)
+        if(plot.has("caption"))StatisticsExplanation("Plot details",tr(plot.getString("caption")),"statistics-interval-plot-help",plot)
         PlotExportActions(exports,"symvacas-${plot.getString("kind")}")
     }
 }

@@ -839,10 +839,16 @@ Example: phi([[20,5],[7,18]])
 `cohenkappa` — Cohen’s κ agreement. Two-rater square count table with common category order. Unweighted, linear or quadratic kappa; multinomial delta-method SE and asymptotic Wald CI. Weighted categories must be ordered. Observed/expected agreement use the selected weights; exact agreement is also reported.
 Example: cohenkappa([[25,4,2],[3,20,5],[1,6,24]],unweighted)
 
-### Reliability
+### Reliability & agreement
 
 `cronbach` — Cronbach α reliability. Rows are subjects, columns are items; raw or standardized alpha. Reverse-code items first. Returns corrected item-total correlations and alpha if deleted. Alpha measures internal consistency.
 Example: cronbach([[1.987,2.255,1.895,1.448,2.702,2.043],[3.103,3.653,2.588,3.608,3.265,3.866],[5.16,4.181,6.042,4.848,4.128,5.317],[1.995,2.767,1.417,-0.304,-1.529,-0.2],[1.802,1.7,2.56,2.591,4.452,3.681],[5.242,3.886,4.375,5.082,5.152,4.701],[3.057,2.704,2.315,2.034,0.528,0.659],[4.576,5.304,4.688,5.573,4.66,5.626],[5.08,3.257,4.251,3.415,3.076,4.508],[2.502,2.733,2.919,3.058,3.403,2.427],[4.23,3.357,4.235,4.595,5.16,5.999],[2.86,3.515,2.619,0.955,1.766,0.26],[3.16,2.893,2.37,2.341,1.676,2.201],[1.101,3.477,2.018,2.67,2.235,3.664],[3.503,4.223,4.268,2.178,3.518,1.656],[3.623,3.309,4.28,2.605,3.676,3.647],[4.285,5.139,6.064,4.069,4.097,4.629],[3.301,2.767,3.271,2.832,3.249,3.621],[2.857,2.677,2.348,3.272,2.696,3.272],[0.449,1.323,0.652,3.013,3.114,1.652],[3.447,3.14,2.42,2.311,3.202,2.063],[2.401,2.196,3.998,1.025,2.349,1.691],[3.54,5.121,3.878,2.99,2.849,3.135],[3.67,4.081,4.264,3.472,3.458,4.419]],raw)
+
+`icc` — Intraclass correlation (ICC). Complete subject × rater numeric matrix. oneway=ICC(1), random=two-way absolute agreement ICC(2), mixed=two-way consistency ICC(3). single / average (mean of all k raters); confidence level. F-based CIs; absolute agreement uses approximate Satterthwaite df. Negative estimates are retained. Independent subjects, normal ANOVA errors. Mixed consistency ignores systematic rater shifts; choose the model before analysis. Degenerate intervals are unavailable.
+Example: icc([[9,10,9],[6,7,6],[8,8,9],[5,6,5],[10,9,10],[7,7,8]],random,single,0.95)
+
+`blandaltman` — Bland–Altman agreement. Two measurements per independent subject, complete rows A then B. difference A−B or log(A/B) (positive values). Reports bias, individual agreement limits, bias CI and approximate agreement-limit CIs at the chosen level; log mode also reports geometric mean ratio and ratio limits. Pair means versus differences plot. Assumes normal differences and constant variance; repeated observations per subject need another model. Agreement limits are not the mean-bias CI.
+Example: blandaltman([[10,10.5],[12,11.8],[8,8.6],[15,14.7],[11,11.3],[9,9.1]],0.95,difference)
 
 ### Distribution & variance
 
@@ -904,6 +910,17 @@ Example: tinterval(95,[1,2,3,4,5])
 
 `zinterval` — Estimate a mean interval when population SD is known. Mean confidence interval with known population SD: zinterval(level,sigma,data) or zinterval(level,sigma,mean,n).
 Example: zinterval(95,2,[1,2,3,4,5])
+
+### Equivalence tests (TOST)
+
+`tost` — One-sample equivalence (TOST). tost(data,lower,upper,reference=0,alpha=.05). Prespecify lower/upper equivalence bounds in original units for A−B (one-sample: mean−reference). Both one-sided p values must be below alpha. Reports max p, equivalence decision and 1−2 alpha CI (90% at .05). A nonsignificant difference does not establish equivalence. Positive sampling variance and independent approximately normal observations/differences are required.
+Example: tost([9.8,10.1,10.2,9.9,10,10.1,9.9,10.2],-0.5,0.5,10,0.05)
+
+`tost2` — Independent equivalence (TOST). tost2(A,B,lower,upper,welch/student,alpha=.05). Welch permits unequal variances; Student assumes equal variances. Blank independent cells are omitted separately. Prespecify lower/upper equivalence bounds in original units for A−B (one-sample: mean−reference). Both one-sided p values must be below alpha. Reports max p, equivalence decision and 1−2 alpha CI (90% at .05). A nonsignificant difference does not establish equivalence. Positive sampling variance and independent approximately normal observations/differences are required.
+Example: tost2([9.8,10.1,10.2,9.9,10,10.1,9.9,10.2],[10,10.2,10.1,9.8,10.1,10,9.9,10.1],-0.5,0.5,welch,0.05)
+
+`tostpaired` — Paired equivalence (TOST). tostpaired(A,B,lower,upper,alpha=.05). Complete pairs; subject-ID matching is available. Prespecify lower/upper equivalence bounds in original units for A−B (one-sample: mean−reference). Both one-sided p values must be below alpha. Reports max p, equivalence decision and 1−2 alpha CI (90% at .05). A nonsignificant difference does not establish equivalence. Positive sampling variance and independent approximately normal observations/differences are required.
+Example: tostpaired([9.8,10.1,10.2,9.9,10,10.1,9.9,10.2],[10,10.2,10.1,9.8,10.1,10,9.9,10.1],-0.5,0.5,0.05)
 
 ### Generalized regression
 
@@ -985,6 +1002,11 @@ Example: bootstrapci([1,2,3,4,5,8],mean,0.95,2000,0)
 
 `bayesbootstrap` — Quantify posterior uncertainty in statistics using random weights on observations. Dirichlet(1,…,1) weights on IID observed values; mean / median / variance / stdev, credible level, draws, seed. Median estimate uses the ordinary sample median (average the two middle values for even n); posterior draws use the Lower weighted quantile (smallest value with weighted CDF >= 0.5); variance/SD use population weights. Equal-tailed simulated posterior interval and histogram. Two samples: bayesbootstrap(A,B,mean,0.95,10000,0,independent); paired uses shared row weights. Comparison is statistic(B) - statistic(A).
 Example: bayesbootstrap([1,2,3,4,5,8],mean,0.95,10000,0)
+
+### Research synthesis
+
+`metaanalysis` — Meta-analysis. Independent study rows: effect estimate, positive standard error (SE, not SD or variance). fixed / dl (DerSimonian–Laird) / pm (Paule–Mandel, default); confidence level 0–1; inference z / hksj (modified Hartung–Knapp for random effects); Egger 0/1. Returns pooled effect, weights, Q/p, I², τ², prediction interval, Forest/Funnel plots. Ratio effects require log effects and log-scale SE. Study and funnel limits use z. Egger OLS standardized effect on precision uses t(k−2); needs 3 studies with differing SE, has low power below 10, and asymmetry is not proof of publication bias. Random-effects prediction uses t(k−2) and omits tau estimation uncertainty.
+Example: metaanalysis([[0.2,0.1],[0.45,0.15],[-0.1,0.12],[0.6,0.2],[0.3,0.11]],pm,0.95,z,1)
 
 ### Measurement & structural models
 
