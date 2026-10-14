@@ -196,7 +196,7 @@
     "ctranspose()",
     "svd()"
   ],
-  "Data & units": [
+  "General statistics": [
     "stats([])",
     "mean([])",
     "median([])",
@@ -214,35 +214,20 @@
     "covariance([],[])",
     "covariance([],[],0)",
     "correlation([],[])",
-    "qty(,m)",
-    "convert(,m,cm)"
-  ],
-  "Correlation": [
     "pearson([],[],both)",
     "spearman([],[],both)",
-    "kendall([],[],both)"
-  ],
-  "Reliability & agreement": [
+    "kendall([],[],both)",
     "cronbach([],raw)",
     "icc([],random,single,0.95)",
     "blandaltman([],0.95,difference)",
     "cohenkappa([],unweighted)",
     "cohenkappa([],linear)",
-    "cohenkappa([],quadratic)"
-  ],
-  "Effect Size": [
-    "cramerv([])"
-  ],
-  "Research synthesis & equivalence": [
-    "metaanalysis([],pm,0.95,z,1)",
+    "cohenkappa([],quadratic)",
+    "cramerv([])",
     "tost([],-0.5,0.5,0,0.05)",
     "tost2([],[],-0.5,0.5,welch,0.05)",
-    "tostpaired([],[],-0.5,0.5,0.05)"
-  ],
-  "Data preparation": [
-    "impute([],mean)"
-  ],
-  "Regression & models": [
+    "tostpaired([],[],-0.5,0.5,0.05)",
+    "impute([],mean)",
     "regression([],linear)",
     "regression([],quadratic)",
     "regression([],polynomial,3)",
@@ -291,9 +276,7 @@
     "zeroinflated([],nbinom,same)",
     "tobit([],0,none)",
     "mediation([],2000,0)",
-    "moderation([])"
-  ],
-  "Distributions": [
+    "moderation([])",
     "normpdf(,0,1)",
     "normcdf()",
     "normcdf(,)",
@@ -336,9 +319,7 @@
     "cauchycdf(,)",
     "cauchycdf(,0,1)",
     "cauchycdf(,,0,1)",
-    "invcauchy(,0,1)"
-  ],
-  "Tests & intervals": [
+    "invcauchy(,0,1)",
     "ttest(,[])",
     "ttest(,,,)",
     "ttest2(,[],[])",
@@ -388,6 +369,7 @@
     "manova([])"
   ],
   "Advanced statistics": [
+    "metaanalysis([],pm,0.95,z,1)",
     "arima([],[1,1,0],12,0.95,auto)",
     "sarima([],[1,0,0],[0,1,1,12],12,0.95,auto)",
     "bayesmean([],0,1,2,1,0.95,0)",
@@ -411,6 +393,10 @@
     "discriminantanalysis([],lda,empirical)",
     "discriminantanalysis([],qda,equal)",
     "hcluster([],2,ward,1)"
+  ],
+  "Data & units": [
+    "qty(,m)",
+    "convert(,m,cm)"
   ],
   "Finance": [
     "tvmfv(,,,)",
