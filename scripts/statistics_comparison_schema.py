@@ -56,7 +56,14 @@ def forms(field,col,multi):
     return result
 
 
-def examples(schema,logistic):
+EXAMPLE_FAMILIES = ('linear', 'logistic', 'poisson', 'nb', 'cox', 'lmm',
+                    'glmm', 'gee', 'cfa', 'sem', 'mlclassification', 'mlregression')
+EXAMPLE_ALIASES = {'gee': 'glmm', 'sem': 'cfa',
+                   'mlclassification': 'logistic', 'mlregression': 'linear'}
+
+
+def family_example_rows(logistic):
+    """Convert each dataset once; aliases expand normally in the generated JSON."""
     rng=random.Random(73);continuous=[]
     for i in range(150):
         f=rng.gauss(0,1);g=.4*f+rng.gauss(0,1)
@@ -70,9 +77,15 @@ def examples(schema,logistic):
     survival=[[1+(i*11)%43,int(i%4!=0),r[0],r[1]] for i,r in enumerate(ROWS)]
     clustered=[[i//4+1,r[0],r[1],r[-1]+(i//4)%5] for i,r in enumerate(ROWS)]
     binary=[[i//4+1,*row] for i,row in enumerate(logistic)]
-    mapping={'linear':ROWS,'logistic':logistic,'poisson':count,'nb':nb,'cox':survival,'lmm':clustered,'glmm':binary,'gee':binary,'cfa':continuous,'sem':continuous,'mlclassification':logistic,'mlregression':ROWS}
+    mapping={'linear':ROWS,'logistic':logistic,'poisson':count,'nb':nb,'cox':survival,'lmm':clustered,'glmm':binary,'cfa':continuous}
+    rows = {key: [[str(v) for v in row] for row in values] for key, values in mapping.items()}
+    return {family: rows[EXAMPLE_ALIASES.get(family, family)] for family in EXAMPLE_FAMILIES}
+
+
+def examples(schema,logistic):
+    rows = family_example_rows(logistic)
     for item in schema:
         if item['id']=='modelcompare':
-            item['exampleRowsByFamily']={key:[[str(v) for v in row] for row in values] for key,values in mapping.items()}
+            item['exampleRowsByFamily']=rows
             item['validationExampleRows']=item['exampleRows']
         if item['id']=='logisticcompare':item['hidden']=True

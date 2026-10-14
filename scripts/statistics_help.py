@@ -198,7 +198,8 @@ Select by the data structure and target quantity. Rank-based location comparison
 자료 구조와 비교할 통계량에 맞춰 선택하세요. 순위 기반 위치 비교는 분포 형태·대칭성 가정을 확인합니다. 반복 조건은 같은 대상의 측정입니다.
 ''']
 
-def enrich_help(text, korean=False):
+def enrich_help(text, korean=False, uses=None):
+    uses = USES if uses is None else uses
     index=int(bool(korean))
     # Keep the choosing guide before the first descriptive-statistics entry.
     # Remove its earlier generated placement before rebuilding it below.
@@ -236,8 +237,8 @@ def enrich_help(text, korean=False):
         if name=='discriminant':
             description=('다항식의 판별식. x에 대한 다항식의 판별식을 구합니다.' if korean else 'Polynomial discriminant. Computes the discriminant of a polynomial in x.')
             return '`'+signature+'` — '+description
-        if name not in USES: return match.group(0)
-        usage=USES[name][index]
+        if name not in uses: return match.group(0)
+        usage=uses[name][index]
         if usage not in description: description=usage+' '+description
         return '`'+signature+'` — '+description
     return re.sub(r'^`([^`]+)`\s*[—–-]\s*(.*)$',entry,text,flags=re.MULTILINE)
