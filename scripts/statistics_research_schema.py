@@ -30,7 +30,15 @@ def forms(field, col, multi, two_fields, matching_fields):
     alpha=[field('alpha','Significance level α','유의수준 α','number','0.05')]
     level=[field('level','Confidence level','신뢰수준','number','0.95')]
     return {
-        'metaanalysis':[col('effect','Effect estimate column','효과 추정값 열',0),col('se','Standard error column (SE)','표준오차 열 (SE)',1),
+        'metaanalysis':[field('layout','Input data','입력 자료','choice','effects',[('effects','Effect estimate / SE','효과 추정값 / SE'),('binary','Binary events / patients','이진 사건 수 / 환자 수'),('continuous','Continuous mean / SD / n','연속형 평균 / SD / n')]),
+                        dict(col('effect','Effect estimate column','효과 추정값 열',0),when={'layout':['effects']}),dict(col('se','Standard error column (SE)','표준오차 열 (SE)',1),when={'layout':['effects']}),
+                        dict(col('eventsA','Events A','A 사건 수 열',0),when={'layout':['binary']}),dict(col('totalA','Total patients A','A 전체 환자 수 열',1),when={'layout':['binary']}),
+                        dict(col('eventsB','Events B','B 사건 수 열',2),when={'layout':['binary']}),dict(col('totalB','Total patients B','B 전체 환자 수 열',3),when={'layout':['binary']}),
+                        dict(col('meanA','Mean A','A 평균 열',0),when={'layout':['continuous']}),dict(col('sdA','Sample SD A','A 표본 표준편차 열',1),when={'layout':['continuous']}),dict(col('nA','Sample size A','A 표본수 열',2),when={'layout':['continuous']}),
+                        dict(col('meanB','Mean B','B 평균 열',3),when={'layout':['continuous']}),dict(col('sdB','Sample SD B','B 표본 표준편차 열',4),when={'layout':['continuous']}),dict(col('nB','Sample size B','B 표본수 열',5),when={'layout':['continuous']}),
+                        field('continuousMeasure','Continuous effect','연속형 효과','choice','md',[('md','Mean difference (MD)','평균차 (MD)'),('smd','Standardized mean difference (Hedges g)','표준화 평균차 (Hedges g)')],when={'layout':['continuous']}),
+                        field('measure','Ratio measure (A / B)','비율 효과 (A / B)','choice','oddsratio',[('oddsratio','Odds ratio (OR)','오즈비 (OR)'),('riskratio','Risk ratio (RR)','위험비 (RR)')],when={'layout':['binary']}),
+                        field('correction','Zero-cell continuity correction','0 셀 연속성 보정','choice','0.5',[('0.5','Add 0.5 when a cell is zero','0 셀이 있으면 0.5 추가'),('0','None (zero cells rejected)','없음 (0 셀은 오류)')],when={'layout':['binary']}),
                         field('studyLabels','Study labels','연구 이름','choice','index',[('index','Row numbers','행 번호'),('column','Study name column','연구 이름 열')]),
                         dict(col('study','Study name column','연구 이름 열',2),when={'studyLabels':['column']}),
                         field('method','Effect model / τ² estimator','효과 모형 / τ² 추정','choice','pm',[('fixed','Fixed effect','고정효과'),('pm','Random: Paule–Mandel','랜덤: Paule–Mandel'),('dl','Random: DerSimonian–Laird','랜덤: DerSimonian–Laird')])]+level+[

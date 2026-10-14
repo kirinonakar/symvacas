@@ -598,295 +598,6 @@
     ]
   },
   {
-    "id": "cramerv",
-    "label": "Cramér’s V",
-    "ko": "Cramér의 V",
-    "input": "table",
-    "suffix": "",
-    "example": "cramerv([[20,5],[7,18]])",
-    "help": "Nonnegative integer contingency counts; uncorrected Pearson χ² and Cramér’s V. Independent observations; sparse counts can invalidate χ² p values.",
-    "helpKo": "음이 아닌 정수 분할표 빈도; 보정 없는 Pearson χ²·Cramér의 V. 독립 관측; 희소 빈도에서는 χ² p값이 부정확할 수 있습니다.",
-    "section": "general",
-    "group": "Categorical data",
-    "groupKo": "범주형 자료",
-    "controls": [
-      {
-        "key": "layout",
-        "label": "Data layout",
-        "ko": "자료 형태",
-        "type": "choice",
-        "default": "counts",
-        "choices": [
-          {
-            "id": "counts",
-            "label": "Contingency counts",
-            "ko": "분할표 빈도"
-          },
-          {
-            "id": "pairs",
-            "label": "Paired categories",
-            "ko": "범주 쌍"
-          }
-        ]
-      },
-      {
-        "key": "columns",
-        "label": "Count columns",
-        "ko": "빈도 열",
-        "type": "columns",
-        "default": "auto",
-        "when": {
-          "layout": [
-            "counts"
-          ]
-        }
-      },
-      {
-        "key": "first",
-        "label": "First variable / rater",
-        "ko": "첫 변수·평가자",
-        "type": "column",
-        "default": 0,
-        "when": {
-          "layout": [
-            "pairs"
-          ]
-        }
-      },
-      {
-        "key": "second",
-        "label": "Second variable / rater",
-        "ko": "둘째 변수·평가자",
-        "type": "column",
-        "default": 1,
-        "when": {
-          "layout": [
-            "pairs"
-          ]
-        }
-      }
-    ],
-    "formHelp": "Nonnegative integer contingency counts; uncorrected Pearson χ² and Cramér’s V. Independent observations; sparse counts can invalidate χ² p values.",
-    "formHelpKo": "음이 아닌 정수 분할표 빈도; 보정 없는 Pearson χ²·Cramér의 V. 독립 관측; 희소 빈도에서는 χ² p값이 부정확할 수 있습니다.",
-    "exampleRows": [
-      [
-        "20",
-        "5"
-      ],
-      [
-        "7",
-        "18"
-      ]
-    ]
-  },
-  {
-    "id": "phi",
-    "label": "Phi coefficient",
-    "ko": "phi 계수",
-    "input": "table",
-    "suffix": "",
-    "example": "phi([[20,5],[7,18]])",
-    "help": "Signed phi for a 2×2 integer count table; swapping one category order reverses its sign. No Yates correction.",
-    "helpKo": "2×2 정수 빈도표의 부호 있는 phi; 한 변수의 범주 순서를 바꾸면 부호가 반전됩니다. Yates 보정 없음.",
-    "section": "general",
-    "group": "Categorical data",
-    "groupKo": "범주형 자료",
-    "controls": [
-      {
-        "key": "layout",
-        "label": "Data layout",
-        "ko": "자료 형태",
-        "type": "choice",
-        "default": "counts",
-        "choices": [
-          {
-            "id": "counts",
-            "label": "Contingency counts",
-            "ko": "분할표 빈도"
-          },
-          {
-            "id": "pairs",
-            "label": "Paired categories",
-            "ko": "범주 쌍"
-          }
-        ]
-      },
-      {
-        "key": "columns",
-        "label": "Count columns",
-        "ko": "빈도 열",
-        "type": "columns",
-        "default": "auto",
-        "when": {
-          "layout": [
-            "counts"
-          ]
-        }
-      },
-      {
-        "key": "first",
-        "label": "First variable / rater",
-        "ko": "첫 변수·평가자",
-        "type": "column",
-        "default": 0,
-        "when": {
-          "layout": [
-            "pairs"
-          ]
-        }
-      },
-      {
-        "key": "second",
-        "label": "Second variable / rater",
-        "ko": "둘째 변수·평가자",
-        "type": "column",
-        "default": 1,
-        "when": {
-          "layout": [
-            "pairs"
-          ]
-        }
-      }
-    ],
-    "formHelp": "Signed phi for a 2×2 integer count table; swapping one category order reverses its sign. No Yates correction.",
-    "formHelpKo": "2×2 정수 빈도표의 부호 있는 phi; 한 변수의 범주 순서를 바꾸면 부호가 반전됩니다. Yates 보정 없음.",
-    "exampleRows": [
-      [
-        "20",
-        "5"
-      ],
-      [
-        "7",
-        "18"
-      ]
-    ]
-  },
-  {
-    "id": "cohenkappa",
-    "label": "Cohen’s κ agreement",
-    "ko": "Cohen의 κ 일치도",
-    "input": "table",
-    "suffix": ",unweighted",
-    "example": "cohenkappa([[25,4,2],[3,20,5],[1,6,24]],unweighted)",
-    "help": "Two-rater square count table with common category order. Unweighted, linear or quadratic kappa; multinomial delta-method SE and asymptotic Wald CI. Weighted categories must be ordered. Observed/expected agreement use the selected weights; exact agreement is also reported.",
-    "helpKo": "공통 범주 순서의 두 평가자 정방 빈도표. 무가중·선형·제곱 가중 κ; 다항 델타법 SE·점근 Wald CI. 가중 범주는 순서형이어야 합니다. 관측·기대 일치율은 선택한 가중치를 반영하며 정확 일치율도 제공합니다.",
-    "section": "general",
-    "group": "Categorical data",
-    "groupKo": "범주형 자료",
-    "controls": [
-      {
-        "key": "layout",
-        "label": "Data layout",
-        "ko": "자료 형태",
-        "type": "choice",
-        "default": "counts",
-        "choices": [
-          {
-            "id": "counts",
-            "label": "Contingency counts",
-            "ko": "분할표 빈도"
-          },
-          {
-            "id": "pairs",
-            "label": "Paired categories",
-            "ko": "범주 쌍"
-          }
-        ]
-      },
-      {
-        "key": "columns",
-        "label": "Count columns",
-        "ko": "빈도 열",
-        "type": "columns",
-        "default": "auto",
-        "when": {
-          "layout": [
-            "counts"
-          ]
-        }
-      },
-      {
-        "key": "first",
-        "label": "First variable / rater",
-        "ko": "첫 변수·평가자",
-        "type": "column",
-        "default": 0,
-        "when": {
-          "layout": [
-            "pairs"
-          ]
-        }
-      },
-      {
-        "key": "second",
-        "label": "Second variable / rater",
-        "ko": "둘째 변수·평가자",
-        "type": "column",
-        "default": 1,
-        "when": {
-          "layout": [
-            "pairs"
-          ]
-        }
-      },
-      {
-        "key": "weights",
-        "label": "Weights",
-        "ko": "가중치",
-        "type": "choice",
-        "default": "unweighted",
-        "choices": [
-          {
-            "id": "unweighted",
-            "label": "Unweighted",
-            "ko": "무가중"
-          },
-          {
-            "id": "linear",
-            "label": "Linear",
-            "ko": "선형"
-          },
-          {
-            "id": "quadratic",
-            "label": "Quadratic",
-            "ko": "제곱"
-          }
-        ]
-      },
-      {
-        "key": "categories",
-        "label": "Category order (comma separated; optional for unweighted)",
-        "ko": "범주 순서 (쉼표 구분; 무가중은 선택)",
-        "type": "text",
-        "default": "",
-        "when": {
-          "layout": [
-            "pairs"
-          ]
-        }
-      }
-    ],
-    "formHelp": "Two-rater square count table with common category order. Unweighted, linear or quadratic kappa; multinomial delta-method SE and asymptotic Wald CI. Weighted categories must be ordered. Observed/expected agreement use the selected weights; exact agreement is also reported.",
-    "formHelpKo": "공통 범주 순서의 두 평가자 정방 빈도표. 무가중·선형·제곱 가중 κ; 다항 델타법 SE·점근 Wald CI. 가중 범주는 순서형이어야 합니다. 관측·기대 일치율은 선택한 가중치를 반영하며 정확 일치율도 제공합니다.",
-    "exampleRows": [
-      [
-        "25",
-        "4",
-        "2"
-      ],
-      [
-        "3",
-        "20",
-        "5"
-      ],
-      [
-        "1",
-        "6",
-        "24"
-      ]
-    ]
-  },
-  {
     "id": "cronbach",
     "label": "Cronbach α reliability",
     "ko": "Cronbach α 신뢰도",
@@ -1130,8 +841,8 @@
     "input": "table",
     "suffix": ",random,single,0.95",
     "example": "icc([[9,10,9],[6,7,6],[8,8,9],[5,6,5],[10,9,10],[7,7,8]],random,single,0.95)",
-    "help": "Complete subject × rater numeric matrix. oneway=ICC(1), random=two-way absolute agreement ICC(2), mixed=two-way consistency ICC(3). single / average (mean of all k raters); confidence level. F-based CIs; absolute agreement uses approximate Satterthwaite df. Negative estimates are retained. Independent subjects, normal ANOVA errors. Mixed consistency ignores systematic rater shifts; choose the model before analysis. Degenerate intervals are unavailable.",
-    "helpKo": "완전한 숫자 대상×평가자 행렬. oneway=ICC(1), random=이원 랜덤 절대 일치 ICC(2), mixed=이원 혼합 일관성 ICC(3). single 단일·average k명 평균; 신뢰수준. F 기반 구간, 절대 일치는 Satterthwaite 근사 자유도. 음의 추정값 유지. 독립 대상·정규 ANOVA 오차 가정. 혼합 일관성은 평가자 간 체계적 차이를 무시하므로 분석 전 모형을 선택하세요. 퇴화 구간은 계산 불가로 표시합니다.",
+    "help": "Complete subject × rater numeric matrix. oneway=ICC(1), random=two-way absolute agreement ICC(2), mixed=two-way consistency ICC(3). single / average (mean of all k raters); confidence level. F-based CIs; absolute agreement uses approximate Satterthwaite df. Negative estimates are retained. Independent subjects, normal ANOVA errors. Mixed consistency ignores systematic rater shifts; choose the model before analysis. Degenerate intervals are unavailable. Koo & Li (2016): <.50 poor, [.50,.75) moderate, [.75,.90] good, >.90 excellent. Point and CI-range ratings are shown; interpretation should use the CI and study context. Graph domain is 0–1, with arrows for out-of-range estimates; tables retain negative estimates and raw CI limits.",
+    "helpKo": "완전한 숫자 대상×평가자 행렬. oneway=ICC(1), random=이원 랜덤 절대 일치 ICC(2), mixed=이원 혼합 일관성 ICC(3). single 단일·average k명 평균; 신뢰수준. F 기반 구간, 절대 일치는 Satterthwaite 근사 자유도. 음의 추정값 유지. 독립 대상·정규 ANOVA 오차 가정. 혼합 일관성은 평가자 간 체계적 차이를 무시하므로 분석 전 모형을 선택하세요. 퇴화 구간은 계산 불가로 표시합니다. Koo & Li (2016): .50 미만 낮음, .50 이상 .75 미만 보통, .75 이상 .90 이하 좋음, .90 초과 매우 좋음. 추정값·신뢰구간 범위의 판정을 표시하며 신뢰구간과 연구 맥락을 함께 해석합니다. 그래프 범위는 0~1이고 범위 밖 추정값은 화살표로 표시하며 표의 음수·원래 신뢰구간은 유지합니다.",
     "section": "general",
     "group": "Reliability & agreement",
     "groupKo": "신뢰도·일치도",
@@ -1194,8 +905,8 @@
         "default": "0.95"
       }
     ],
-    "formHelp": "Complete subject × rater numeric matrix. oneway=ICC(1), random=two-way absolute agreement ICC(2), mixed=two-way consistency ICC(3). single / average (mean of all k raters); confidence level. F-based CIs; absolute agreement uses approximate Satterthwaite df. Negative estimates are retained. Independent subjects, normal ANOVA errors. Mixed consistency ignores systematic rater shifts; choose the model before analysis. Degenerate intervals are unavailable.",
-    "formHelpKo": "완전한 숫자 대상×평가자 행렬. oneway=ICC(1), random=이원 랜덤 절대 일치 ICC(2), mixed=이원 혼합 일관성 ICC(3). single 단일·average k명 평균; 신뢰수준. F 기반 구간, 절대 일치는 Satterthwaite 근사 자유도. 음의 추정값 유지. 독립 대상·정규 ANOVA 오차 가정. 혼합 일관성은 평가자 간 체계적 차이를 무시하므로 분석 전 모형을 선택하세요. 퇴화 구간은 계산 불가로 표시합니다.",
+    "formHelp": "Complete subject × rater numeric matrix. oneway=ICC(1), random=two-way absolute agreement ICC(2), mixed=two-way consistency ICC(3). single / average (mean of all k raters); confidence level. F-based CIs; absolute agreement uses approximate Satterthwaite df. Negative estimates are retained. Independent subjects, normal ANOVA errors. Mixed consistency ignores systematic rater shifts; choose the model before analysis. Degenerate intervals are unavailable. Koo & Li (2016): <.50 poor, [.50,.75) moderate, [.75,.90] good, >.90 excellent. Point and CI-range ratings are shown; interpretation should use the CI and study context. Graph domain is 0–1, with arrows for out-of-range estimates; tables retain negative estimates and raw CI limits.",
+    "formHelpKo": "완전한 숫자 대상×평가자 행렬. oneway=ICC(1), random=이원 랜덤 절대 일치 ICC(2), mixed=이원 혼합 일관성 ICC(3). single 단일·average k명 평균; 신뢰수준. F 기반 구간, 절대 일치는 Satterthwaite 근사 자유도. 음의 추정값 유지. 독립 대상·정규 ANOVA 오차 가정. 혼합 일관성은 평가자 간 체계적 차이를 무시하므로 분석 전 모형을 선택하세요. 퇴화 구간은 계산 불가로 표시합니다. Koo & Li (2016): .50 미만 낮음, .50 이상 .75 미만 보통, .75 이상 .90 이하 좋음, .90 초과 매우 좋음. 추정값·신뢰구간 범위의 판정을 표시하며 신뢰구간과 연구 맥락을 함께 해석합니다. 그래프 범위는 0~1이고 범위 밖 추정값은 화살표로 표시하며 표의 음수·원래 신뢰구간은 유지합니다.",
     "exampleRows": [
       [
         "9",
@@ -1230,14 +941,204 @@
     ]
   },
   {
+    "id": "cohenkappa",
+    "label": "Cohen’s κ agreement",
+    "ko": "Cohen의 κ 일치도",
+    "input": "table",
+    "suffix": ",unweighted",
+    "example": "cohenkappa([[6,1,0],[1,5,1],[0,1,5]],unweighted)",
+    "help": "Two-rater square count table with common category order. Unweighted, linear or quadratic kappa; multinomial delta-method SE and asymptotic Wald CI. Weighted categories must be ordered. Observed/expected agreement use the selected weights; exact agreement is also reported. Landis–Koch conventional benchmarks: <0 poor, [0,.20] slight, (.20,.40] fair, (.40,.60] moderate, (.60,.80] substantial, (.80,1] almost perfect. These are context-dependent heuristics; prevalence and chosen weights matter. Graph domain is 0–1; raw negative estimates and CI limits remain in tables. Example pairs are ordered Normal,Mild,Severe ratings from two raters.",
+    "helpKo": "공통 범주 순서의 두 평가자 정방 빈도표. 무가중·선형·제곱 가중 κ; 다항 델타법 SE·점근 Wald CI. 가중 범주는 순서형이어야 합니다. 관측·기대 일치율은 선택한 가중치를 반영하며 정확 일치율도 제공합니다. Landis–Koch 관례: 0 미만 낮음, 0~.20 미약, .20 초과 .40 이하 약함, .40 초과 .60 이하 보통, .60 초과 .80 이하 상당, .80 초과 1 이하 거의 완벽. 보편적 판정 기준이 아니며 유병률·가중치·연구 맥락을 고려합니다. 그래프는 0~1, 표에는 음수·원래 신뢰구간을 유지합니다. 예제는 두 평가자의 Normal·Mild·Severe 순서형 등급 쌍입니다.",
+    "section": "general",
+    "group": "Reliability & agreement",
+    "groupKo": "신뢰도·일치도",
+    "controls": [
+      {
+        "key": "layout",
+        "label": "Data layout",
+        "ko": "자료 형태",
+        "type": "choice",
+        "default": "pairs",
+        "choices": [
+          {
+            "id": "counts",
+            "label": "Contingency counts",
+            "ko": "분할표 빈도"
+          },
+          {
+            "id": "pairs",
+            "label": "Paired categories",
+            "ko": "범주 쌍"
+          }
+        ]
+      },
+      {
+        "key": "columns",
+        "label": "Count columns",
+        "ko": "빈도 열",
+        "type": "columns",
+        "default": "auto",
+        "when": {
+          "layout": [
+            "counts"
+          ]
+        }
+      },
+      {
+        "key": "first",
+        "label": "First variable / rater",
+        "ko": "첫 변수·평가자",
+        "type": "column",
+        "default": 0,
+        "when": {
+          "layout": [
+            "pairs"
+          ]
+        }
+      },
+      {
+        "key": "second",
+        "label": "Second variable / rater",
+        "ko": "둘째 변수·평가자",
+        "type": "column",
+        "default": 1,
+        "when": {
+          "layout": [
+            "pairs"
+          ]
+        }
+      },
+      {
+        "key": "weights",
+        "label": "Weights",
+        "ko": "가중치",
+        "type": "choice",
+        "default": "unweighted",
+        "choices": [
+          {
+            "id": "unweighted",
+            "label": "Unweighted",
+            "ko": "무가중"
+          },
+          {
+            "id": "linear",
+            "label": "Linear",
+            "ko": "선형"
+          },
+          {
+            "id": "quadratic",
+            "label": "Quadratic",
+            "ko": "제곱"
+          }
+        ]
+      },
+      {
+        "key": "categories",
+        "label": "Category order (comma separated; optional for unweighted)",
+        "ko": "범주 순서 (쉼표 구분; 무가중은 선택)",
+        "type": "text",
+        "default": "",
+        "when": {
+          "layout": [
+            "pairs"
+          ]
+        }
+      }
+    ],
+    "formHelp": "Two-rater square count table with common category order. Unweighted, linear or quadratic kappa; multinomial delta-method SE and asymptotic Wald CI. Weighted categories must be ordered. Observed/expected agreement use the selected weights; exact agreement is also reported. Landis–Koch conventional benchmarks: <0 poor, [0,.20] slight, (.20,.40] fair, (.40,.60] moderate, (.60,.80] substantial, (.80,1] almost perfect. These are context-dependent heuristics; prevalence and chosen weights matter. Graph domain is 0–1; raw negative estimates and CI limits remain in tables. Example pairs are ordered Normal,Mild,Severe ratings from two raters.",
+    "formHelpKo": "공통 범주 순서의 두 평가자 정방 빈도표. 무가중·선형·제곱 가중 κ; 다항 델타법 SE·점근 Wald CI. 가중 범주는 순서형이어야 합니다. 관측·기대 일치율은 선택한 가중치를 반영하며 정확 일치율도 제공합니다. Landis–Koch 관례: 0 미만 낮음, 0~.20 미약, .20 초과 .40 이하 약함, .40 초과 .60 이하 보통, .60 초과 .80 이하 상당, .80 초과 1 이하 거의 완벽. 보편적 판정 기준이 아니며 유병률·가중치·연구 맥락을 고려합니다. 그래프는 0~1, 표에는 음수·원래 신뢰구간을 유지합니다. 예제는 두 평가자의 Normal·Mild·Severe 순서형 등급 쌍입니다.",
+    "exampleRows": [
+      [
+        "Normal",
+        "Normal"
+      ],
+      [
+        "Normal",
+        "Normal"
+      ],
+      [
+        "Normal",
+        "Normal"
+      ],
+      [
+        "Normal",
+        "Normal"
+      ],
+      [
+        "Normal",
+        "Normal"
+      ],
+      [
+        "Normal",
+        "Normal"
+      ],
+      [
+        "Normal",
+        "Mild"
+      ],
+      [
+        "Mild",
+        "Normal"
+      ],
+      [
+        "Mild",
+        "Mild"
+      ],
+      [
+        "Mild",
+        "Mild"
+      ],
+      [
+        "Mild",
+        "Mild"
+      ],
+      [
+        "Mild",
+        "Mild"
+      ],
+      [
+        "Mild",
+        "Mild"
+      ],
+      [
+        "Mild",
+        "Severe"
+      ],
+      [
+        "Severe",
+        "Mild"
+      ],
+      [
+        "Severe",
+        "Severe"
+      ],
+      [
+        "Severe",
+        "Severe"
+      ],
+      [
+        "Severe",
+        "Severe"
+      ],
+      [
+        "Severe",
+        "Severe"
+      ],
+      [
+        "Severe",
+        "Severe"
+      ]
+    ]
+  },
+  {
     "id": "blandaltman",
     "label": "Bland–Altman agreement",
     "ko": "Bland–Altman 일치도",
     "input": "table",
     "suffix": ",0.95,difference",
     "example": "blandaltman([[10,10.5],[12,11.8],[8,8.6],[15,14.7],[11,11.3],[9,9.1]],0.95,difference)",
-    "help": "Two measurements per independent subject, complete rows A then B. difference A−B or log(A/B) (positive values). Reports bias, individual agreement limits, bias CI and approximate agreement-limit CIs at the chosen level; log mode also reports geometric mean ratio and ratio limits. Pair means versus differences plot. Assumes normal differences and constant variance; repeated observations per subject need another model. Agreement limits are not the mean-bias CI.",
-    "helpKo": "독립 대상마다 두 측정값 A·B를 완전한 행으로 입력합니다. difference A−B·양수 자료의 log(A/B). 편향·개별 차이의 일치한계·편향 신뢰구간·일치한계의 근사 신뢰구간을 선택 수준으로 제공합니다. 로그 방식은 기하평균 비율·비율 한계도 제공합니다. 두 값의 평균 대 차이 그래프. 차이의 정규성·일정 분산 가정; 대상별 반복 관측에는 다른 모형이 필요합니다. 일치한계와 평균 편향의 신뢰구간은 구분해야 합니다.",
+    "help": "Two measurements per independent subject, complete rows A then B. difference A−B or log(A/B) (positive values). Reports bias, individual agreement limits, bias CI and approximate agreement-limit CIs at the chosen level; log mode also reports geometric mean ratio and ratio limits. Pair means versus differences plot. Assumes normal differences and constant variance; repeated observations per subject need another model. Agreement limits are not the mean-bias CI. Proportional bias: OLS difference on pair mean, slope SE/CI and two-sided t(n−2) p value; fitted trend is plotted. Log mode uses log measurements. Mean variation and positive residual variance are needed for inference. A nonsignificant slope does not establish absence of bias; unequal measurement error variances can induce a trend.",
+    "helpKo": "독립 대상마다 두 측정값 A·B를 완전한 행으로 입력합니다. difference A−B·양수 자료의 log(A/B). 편향·개별 차이의 일치한계·편향 신뢰구간·일치한계의 근사 신뢰구간을 선택 수준으로 제공합니다. 로그 방식은 기하평균 비율·비율 한계도 제공합니다. 두 값의 평균 대 차이 그래프. 차이의 정규성·일정 분산 가정; 대상별 반복 관측에는 다른 모형이 필요합니다. 일치한계와 평균 편향의 신뢰구간은 구분해야 합니다. 비례 편향: 차이를 두 측정값 평균에 OLS 회귀하여 기울기·SE·신뢰구간·양측 t(n−2) p값을 표시하고 적합 추세선을 그립니다. 로그 방식은 로그 측정값을 사용합니다. 평균의 변동과 양의 잔차분산이 추론에 필요합니다. 비유의 기울기가 편향 부재를 입증하지 않으며 측정 오차의 이분산이 추세를 만들 수 있습니다.",
     "section": "general",
     "group": "Reliability & agreement",
     "groupKo": "신뢰도·일치도",
@@ -1283,8 +1184,8 @@
         ]
       }
     ],
-    "formHelp": "Two measurements per independent subject, complete rows A then B. difference A−B or log(A/B) (positive values). Reports bias, individual agreement limits, bias CI and approximate agreement-limit CIs at the chosen level; log mode also reports geometric mean ratio and ratio limits. Pair means versus differences plot. Assumes normal differences and constant variance; repeated observations per subject need another model. Agreement limits are not the mean-bias CI.",
-    "formHelpKo": "독립 대상마다 두 측정값 A·B를 완전한 행으로 입력합니다. difference A−B·양수 자료의 log(A/B). 편향·개별 차이의 일치한계·편향 신뢰구간·일치한계의 근사 신뢰구간을 선택 수준으로 제공합니다. 로그 방식은 기하평균 비율·비율 한계도 제공합니다. 두 값의 평균 대 차이 그래프. 차이의 정규성·일정 분산 가정; 대상별 반복 관측에는 다른 모형이 필요합니다. 일치한계와 평균 편향의 신뢰구간은 구분해야 합니다.",
+    "formHelp": "Two measurements per independent subject, complete rows A then B. difference A−B or log(A/B) (positive values). Reports bias, individual agreement limits, bias CI and approximate agreement-limit CIs at the chosen level; log mode also reports geometric mean ratio and ratio limits. Pair means versus differences plot. Assumes normal differences and constant variance; repeated observations per subject need another model. Agreement limits are not the mean-bias CI. Proportional bias: OLS difference on pair mean, slope SE/CI and two-sided t(n−2) p value; fitted trend is plotted. Log mode uses log measurements. Mean variation and positive residual variance are needed for inference. A nonsignificant slope does not establish absence of bias; unequal measurement error variances can induce a trend.",
+    "formHelpKo": "독립 대상마다 두 측정값 A·B를 완전한 행으로 입력합니다. difference A−B·양수 자료의 log(A/B). 편향·개별 차이의 일치한계·편향 신뢰구간·일치한계의 근사 신뢰구간을 선택 수준으로 제공합니다. 로그 방식은 기하평균 비율·비율 한계도 제공합니다. 두 값의 평균 대 차이 그래프. 차이의 정규성·일정 분산 가정; 대상별 반복 관측에는 다른 모형이 필요합니다. 일치한계와 평균 편향의 신뢰구간은 구분해야 합니다. 비례 편향: 차이를 두 측정값 평균에 OLS 회귀하여 기울기·SE·신뢰구간·양측 t(n−2) p값을 표시하고 적합 추세선을 그립니다. 로그 방식은 로그 측정값을 사용합니다. 평균의 변동과 양의 잔차분산이 추론에 필요합니다. 비유의 기울기가 편향 부재를 입증하지 않으며 측정 오차의 이분산이 추세를 만들 수 있습니다.",
     "exampleRows": [
       [
         "10",
@@ -2816,8 +2717,8 @@
     "help": "Two samples; independent (pooled d) or paired (dz).",
     "helpKo": "두 표본; independent(합동 SD) 또는 paired(차이의 SD).",
     "section": "tests",
-    "group": "Effect sizes & multiple testing",
-    "groupKo": "효과크기·다중검정",
+    "group": "Effect Size",
+    "groupKo": "Effect Size (효과크기)",
     "controls": [
       {
         "key": "grouping",
@@ -3000,8 +2901,8 @@
     "help": "Independent groups as separate lists.",
     "helpKo": "독립 그룹별 목록.",
     "section": "tests",
-    "group": "Effect sizes & multiple testing",
-    "groupKo": "효과크기·다중검정",
+    "group": "Effect Size",
+    "groupKo": "Effect Size (효과크기)",
     "controls": [
       {
         "key": "grouping",
@@ -3081,6 +2982,171 @@
     ]
   },
   {
+    "id": "cramerv",
+    "label": "Phi / Cramér’s V",
+    "ko": "Phi / Cramér의 V",
+    "input": "table",
+    "suffix": "",
+    "example": "cramerv([[20,5],[7,18]])",
+    "help": "Nonnegative integer contingency counts; uncorrected Pearson χ² and Cramér’s V. Independent observations; sparse counts can invalidate χ² p values. Combined Phi / Cramér’s V: signed phi is available for 2×2; V applies to larger tables. Cohen thresholds for V: .10/.30/.50 divided by sqrt(min(rows−1,columns−1)); phi uses absolute magnitude with .10/.30/.50. Ratings and threshold tables are descriptive conventions, not clinical significance. χ² and Fisher reports include both effects using uncorrected Pearson χ².",
+    "helpKo": "음이 아닌 정수 분할표 빈도; 보정 없는 Pearson χ²·Cramér의 V. 독립 관측; 희소 빈도에서는 χ² p값이 부정확할 수 있습니다. 통합 Phi / Cramér의 V: 2×2는 부호 있는 phi, 더 큰 표는 V를 사용합니다. V의 Cohen 기준은 .10/.30/.50을 sqrt(min(행−1,열−1))로 나누며 phi는 절댓값 .10/.30/.50을 사용합니다. 판정·기준 표는 관례적 설명이며 임상적 중요성을 뜻하지 않습니다. χ²·Fisher 결과에도 보정 없는 Pearson χ² 기준의 두 효과를 표시합니다.",
+    "section": "tests",
+    "group": "Effect Size",
+    "groupKo": "Effect Size (효과크기)",
+    "controls": [
+      {
+        "key": "layout",
+        "label": "Data layout",
+        "ko": "자료 형태",
+        "type": "choice",
+        "default": "pairs",
+        "choices": [
+          {
+            "id": "counts",
+            "label": "Contingency counts",
+            "ko": "분할표 빈도"
+          },
+          {
+            "id": "pairs",
+            "label": "Paired categories",
+            "ko": "범주 쌍"
+          }
+        ]
+      },
+      {
+        "key": "columns",
+        "label": "Count columns",
+        "ko": "빈도 열",
+        "type": "columns",
+        "default": "auto",
+        "when": {
+          "layout": [
+            "counts"
+          ]
+        }
+      },
+      {
+        "key": "first",
+        "label": "First variable / rater",
+        "ko": "첫 변수·평가자",
+        "type": "column",
+        "default": 0,
+        "when": {
+          "layout": [
+            "pairs"
+          ]
+        }
+      },
+      {
+        "key": "second",
+        "label": "Second variable / rater",
+        "ko": "둘째 변수·평가자",
+        "type": "column",
+        "default": 1,
+        "when": {
+          "layout": [
+            "pairs"
+          ]
+        }
+      }
+    ],
+    "formHelp": "Nonnegative integer contingency counts; uncorrected Pearson χ² and Cramér’s V. Independent observations; sparse counts can invalidate χ² p values. Combined Phi / Cramér’s V: signed phi is available for 2×2; V applies to larger tables. Cohen thresholds for V: .10/.30/.50 divided by sqrt(min(rows−1,columns−1)); phi uses absolute magnitude with .10/.30/.50. Ratings and threshold tables are descriptive conventions, not clinical significance. χ² and Fisher reports include both effects using uncorrected Pearson χ².",
+    "formHelpKo": "음이 아닌 정수 분할표 빈도; 보정 없는 Pearson χ²·Cramér의 V. 독립 관측; 희소 빈도에서는 χ² p값이 부정확할 수 있습니다. 통합 Phi / Cramér의 V: 2×2는 부호 있는 phi, 더 큰 표는 V를 사용합니다. V의 Cohen 기준은 .10/.30/.50을 sqrt(min(행−1,열−1))로 나누며 phi는 절댓값 .10/.30/.50을 사용합니다. 판정·기준 표는 관례적 설명이며 임상적 중요성을 뜻하지 않습니다. χ²·Fisher 결과에도 보정 없는 Pearson χ² 기준의 두 효과를 표시합니다.",
+    "exampleRows": [
+      [
+        "20",
+        "5"
+      ],
+      [
+        "7",
+        "18"
+      ]
+    ]
+  },
+  {
+    "id": "phi",
+    "label": "Phi coefficient",
+    "ko": "phi 계수",
+    "input": "table",
+    "suffix": "",
+    "example": "phi([[20,5],[7,18]])",
+    "help": "Signed phi for a 2×2 integer count table; swapping one category order reverses its sign. No Yates correction.",
+    "helpKo": "2×2 정수 빈도표의 부호 있는 phi; 한 변수의 범주 순서를 바꾸면 부호가 반전됩니다. Yates 보정 없음.",
+    "section": "tests",
+    "group": "Effect Size",
+    "groupKo": "Effect Size (효과크기)",
+    "hidden": true,
+    "controls": [
+      {
+        "key": "layout",
+        "label": "Data layout",
+        "ko": "자료 형태",
+        "type": "choice",
+        "default": "pairs",
+        "choices": [
+          {
+            "id": "counts",
+            "label": "Contingency counts",
+            "ko": "분할표 빈도"
+          },
+          {
+            "id": "pairs",
+            "label": "Paired categories",
+            "ko": "범주 쌍"
+          }
+        ]
+      },
+      {
+        "key": "columns",
+        "label": "Count columns",
+        "ko": "빈도 열",
+        "type": "columns",
+        "default": "auto",
+        "when": {
+          "layout": [
+            "counts"
+          ]
+        }
+      },
+      {
+        "key": "first",
+        "label": "First variable / rater",
+        "ko": "첫 변수·평가자",
+        "type": "column",
+        "default": 0,
+        "when": {
+          "layout": [
+            "pairs"
+          ]
+        }
+      },
+      {
+        "key": "second",
+        "label": "Second variable / rater",
+        "ko": "둘째 변수·평가자",
+        "type": "column",
+        "default": 1,
+        "when": {
+          "layout": [
+            "pairs"
+          ]
+        }
+      }
+    ],
+    "formHelp": "Signed phi for a 2×2 integer count table; swapping one category order reverses its sign. No Yates correction.",
+    "formHelpKo": "2×2 정수 빈도표의 부호 있는 phi; 한 변수의 범주 순서를 바꾸면 부호가 반전됩니다. Yates 보정 없음.",
+    "exampleRows": [
+      [
+        "20",
+        "5"
+      ],
+      [
+        "7",
+        "18"
+      ]
+    ]
+  },
+  {
     "id": "padjust",
     "label": "Multiple testing",
     "ko": "다중검정 보정",
@@ -3090,8 +3156,8 @@
     "help": "p values; method bonferroni / holm / fdr (BH) / by; alpha.",
     "helpKo": "p값 목록; 방법 bonferroni / holm / fdr (BH) / by; 유의수준.",
     "section": "tests",
-    "group": "Effect sizes & multiple testing",
-    "groupKo": "효과크기·다중검정",
+    "group": "Multiple testing",
+    "groupKo": "다중검정 보정",
     "controls": [
       {
         "key": "column",
@@ -13706,25 +13772,251 @@
     "input": "table",
     "suffix": ",pm,0.95,z,1",
     "example": "metaanalysis([[0.2,0.1],[0.45,0.15],[-0.1,0.12],[0.6,0.2],[0.3,0.11]],pm,0.95,z,1)",
-    "help": "Independent study rows: effect estimate, positive standard error (SE, not SD or variance). fixed / dl (DerSimonian–Laird) / pm (Paule–Mandel, default); confidence level 0–1; inference z / hksj (modified Hartung–Knapp for random effects); Egger 0/1. Returns pooled effect, weights, Q/p, I², τ², prediction interval, Forest/Funnel plots. Ratio effects require log effects and log-scale SE. Study and funnel limits use z. Egger OLS standardized effect on precision uses t(k−2); needs 3 studies with differing SE, has low power below 10, and asymmetry is not proof of publication bias. Random-effects prediction uses t(k−2) and omits tau estimation uncertainty.",
-    "helpKo": "독립 연구별 행: 효과 추정값·양수 표준오차(SE, 표준편차·분산 아님). fixed·dl(DerSimonian–Laird)·pm(Paule–Mandel, 기본); 신뢰수준 0~1; 추론 z·hksj(랜덤효과의 수정 Hartung–Knapp); Egger 0/1. 통합 효과·가중치·Q/p·I²·τ²·예측구간·Forest/Funnel plot. 비율은 로그 효과·로그 척도 SE를 입력합니다. 연구·Funnel 경계는 z 근사. Egger는 표준화 효과 대 정밀도 OLS 절편의 t(k−2) 검정으로 연구 3개 이상·서로 다른 SE가 필요합니다. 10개 미만은 검정력이 낮고 비대칭이 출판편향을 증명하지 않습니다. 랜덤효과 예측은 t(k−2) 근사이며 tau 추정 불확실성을 제외합니다.",
+    "help": "Independent study rows: effect estimate, positive standard error (SE, not SD or variance). fixed / dl (DerSimonian–Laird) / pm (Paule–Mandel, default); confidence level 0–1; inference z / hksj (modified Hartung–Knapp for random effects); Egger 0/1. Returns pooled effect, weights, Q/p, I², τ², prediction interval, Forest/Funnel plots. Ratio effects require log effects and log-scale SE. Study and funnel limits use z. Egger OLS standardized effect on precision uses t(k−2); needs 3 studies with differing SE, has low power below 10, and asymmetry is not proof of publication bias. Random-effects prediction uses t(k−2) and omits tau estimation uncertainty. Binary mode selects events A,total A,events B,total B and OR/RR. Expressions add a sixth argument oddsratio/riskratio and seventh zero-cell correction (default .5). Converts to log OR/log RR and SE, reports both ratios per study and pooled ratio CI, and plots log effects. Double-zero events are excluded; OR also excludes double-zero non-events. A zero cell adds the correction to all four cells; zero correction rejects such studies. Independent arms; this is inverse variance, not Mantel–Haenszel/Peto. Continuous mode: mean A, sample SD A, n A, mean B, sample SD B, n B. Sixth expression argument md or smd. MD uses unpooled SE²=SD A²/n A+SD B²/n B and needs common units across studies. SMD uses pooled within-study SD, Hedges g with J≈1−3/(4df−1), and variance N/(n A n B)+g²/(2(N−3.94)), matching statsmodels. Independent arms, each n≥2; comparable constructs, common within-study variance for SMD and aligned direction. Paired arms require covariance. Independent-arm change outcomes may use change means and change SDs, not separate baseline/followup summaries.",
+    "helpKo": "독립 연구별 행: 효과 추정값·양수 표준오차(SE, 표준편차·분산 아님). fixed·dl(DerSimonian–Laird)·pm(Paule–Mandel, 기본); 신뢰수준 0~1; 추론 z·hksj(랜덤효과의 수정 Hartung–Knapp); Egger 0/1. 통합 효과·가중치·Q/p·I²·τ²·예측구간·Forest/Funnel plot. 비율은 로그 효과·로그 척도 SE를 입력합니다. 연구·Funnel 경계는 z 근사. Egger는 표준화 효과 대 정밀도 OLS 절편의 t(k−2) 검정으로 연구 3개 이상·서로 다른 SE가 필요합니다. 10개 미만은 검정력이 낮고 비대칭이 출판편향을 증명하지 않습니다. 랜덤효과 예측은 t(k−2) 근사이며 tau 추정 불확실성을 제외합니다. 이진 자료 방식에서는 A 사건 수·A 전체 환자 수·B 사건 수·B 전체 환자 수와 OR/RR을 선택합니다. 수식은 여섯째 인수 oddsratio/riskratio, 일곱째 0 셀 보정(기본 .5)을 추가합니다. log OR/log RR·SE로 변환하며 연구별 두 비율·통합 비율 신뢰구간을 표시하고 그래프는 로그 효과를 사용합니다. 양쪽 사건 0 연구는 제외하고 OR은 양쪽 비사건 0도 제외합니다. 0 셀이 있으면 네 셀 모두에 보정값을 더하며 0 보정은 해당 연구를 오류로 처리합니다. 독립 두 군 가정; 역분산 방식이며 Mantel–Haenszel/Peto가 아닙니다. 연속형 방식: A 평균·표본 SD·n, B 평균·표본 SD·n. 수식의 여섯째 인수 md·smd. MD는 비합동 SE²=SD A²/n A+SD B²/n B이며 연구 간 같은 측정 단위가 필요합니다. SMD는 연구 내 합동 SD, Hedges g의 J≈1−3/(4df−1) 보정, 분산 N/(n A n B)+g²/(2(N−3.94))로 statsmodels와 같습니다. 독립 두 군, 각 n≥2. SMD는 같은 구성개념·연구 내 공통 분산·일치하는 결과 방향이 필요합니다. 대응 두 군에는 공분산이 필요합니다. 독립 두 군의 변화량 비교에는 변화량 평균·SD를 입력하며 별도의 전후 요약으로 대체하지 마세요.",
     "section": "advanced",
     "group": "Research synthesis",
     "groupKo": "연구 종합",
     "controls": [
       {
+        "key": "layout",
+        "label": "Input data",
+        "ko": "입력 자료",
+        "type": "choice",
+        "default": "effects",
+        "choices": [
+          {
+            "id": "effects",
+            "label": "Effect estimate / SE",
+            "ko": "효과 추정값 / SE"
+          },
+          {
+            "id": "binary",
+            "label": "Binary events / patients",
+            "ko": "이진 사건 수 / 환자 수"
+          },
+          {
+            "id": "continuous",
+            "label": "Continuous mean / SD / n",
+            "ko": "연속형 평균 / SD / n"
+          }
+        ]
+      },
+      {
         "key": "effect",
         "label": "Effect estimate column",
         "ko": "효과 추정값 열",
         "type": "column",
-        "default": 0
+        "default": 0,
+        "when": {
+          "layout": [
+            "effects"
+          ]
+        }
       },
       {
         "key": "se",
         "label": "Standard error column (SE)",
         "ko": "표준오차 열 (SE)",
         "type": "column",
-        "default": 1
+        "default": 1,
+        "when": {
+          "layout": [
+            "effects"
+          ]
+        }
+      },
+      {
+        "key": "eventsA",
+        "label": "Events A",
+        "ko": "A 사건 수 열",
+        "type": "column",
+        "default": 0,
+        "when": {
+          "layout": [
+            "binary"
+          ]
+        }
+      },
+      {
+        "key": "totalA",
+        "label": "Total patients A",
+        "ko": "A 전체 환자 수 열",
+        "type": "column",
+        "default": 1,
+        "when": {
+          "layout": [
+            "binary"
+          ]
+        }
+      },
+      {
+        "key": "eventsB",
+        "label": "Events B",
+        "ko": "B 사건 수 열",
+        "type": "column",
+        "default": 2,
+        "when": {
+          "layout": [
+            "binary"
+          ]
+        }
+      },
+      {
+        "key": "totalB",
+        "label": "Total patients B",
+        "ko": "B 전체 환자 수 열",
+        "type": "column",
+        "default": 3,
+        "when": {
+          "layout": [
+            "binary"
+          ]
+        }
+      },
+      {
+        "key": "meanA",
+        "label": "Mean A",
+        "ko": "A 평균 열",
+        "type": "column",
+        "default": 0,
+        "when": {
+          "layout": [
+            "continuous"
+          ]
+        }
+      },
+      {
+        "key": "sdA",
+        "label": "Sample SD A",
+        "ko": "A 표본 표준편차 열",
+        "type": "column",
+        "default": 1,
+        "when": {
+          "layout": [
+            "continuous"
+          ]
+        }
+      },
+      {
+        "key": "nA",
+        "label": "Sample size A",
+        "ko": "A 표본수 열",
+        "type": "column",
+        "default": 2,
+        "when": {
+          "layout": [
+            "continuous"
+          ]
+        }
+      },
+      {
+        "key": "meanB",
+        "label": "Mean B",
+        "ko": "B 평균 열",
+        "type": "column",
+        "default": 3,
+        "when": {
+          "layout": [
+            "continuous"
+          ]
+        }
+      },
+      {
+        "key": "sdB",
+        "label": "Sample SD B",
+        "ko": "B 표본 표준편차 열",
+        "type": "column",
+        "default": 4,
+        "when": {
+          "layout": [
+            "continuous"
+          ]
+        }
+      },
+      {
+        "key": "nB",
+        "label": "Sample size B",
+        "ko": "B 표본수 열",
+        "type": "column",
+        "default": 5,
+        "when": {
+          "layout": [
+            "continuous"
+          ]
+        }
+      },
+      {
+        "key": "continuousMeasure",
+        "label": "Continuous effect",
+        "ko": "연속형 효과",
+        "type": "choice",
+        "default": "md",
+        "choices": [
+          {
+            "id": "md",
+            "label": "Mean difference (MD)",
+            "ko": "평균차 (MD)"
+          },
+          {
+            "id": "smd",
+            "label": "Standardized mean difference (Hedges g)",
+            "ko": "표준화 평균차 (Hedges g)"
+          }
+        ],
+        "when": {
+          "layout": [
+            "continuous"
+          ]
+        }
+      },
+      {
+        "key": "measure",
+        "label": "Ratio measure (A / B)",
+        "ko": "비율 효과 (A / B)",
+        "type": "choice",
+        "default": "oddsratio",
+        "choices": [
+          {
+            "id": "oddsratio",
+            "label": "Odds ratio (OR)",
+            "ko": "오즈비 (OR)"
+          },
+          {
+            "id": "riskratio",
+            "label": "Risk ratio (RR)",
+            "ko": "위험비 (RR)"
+          }
+        ],
+        "when": {
+          "layout": [
+            "binary"
+          ]
+        }
+      },
+      {
+        "key": "correction",
+        "label": "Zero-cell continuity correction",
+        "ko": "0 셀 연속성 보정",
+        "type": "choice",
+        "default": "0.5",
+        "choices": [
+          {
+            "id": "0.5",
+            "label": "Add 0.5 when a cell is zero",
+            "ko": "0 셀이 있으면 0.5 추가"
+          },
+          {
+            "id": "0",
+            "label": "None (zero cells rejected)",
+            "ko": "없음 (0 셀은 오류)"
+          }
+        ],
+        "when": {
+          "layout": [
+            "binary"
+          ]
+        }
       },
       {
         "key": "studyLabels",
@@ -13833,8 +14125,8 @@
         ]
       }
     ],
-    "formHelp": "Independent study rows: effect estimate, positive standard error (SE, not SD or variance). fixed / dl (DerSimonian–Laird) / pm (Paule–Mandel, default); confidence level 0–1; inference z / hksj (modified Hartung–Knapp for random effects); Egger 0/1. Returns pooled effect, weights, Q/p, I², τ², prediction interval, Forest/Funnel plots. Ratio effects require log effects and log-scale SE. Study and funnel limits use z. Egger OLS standardized effect on precision uses t(k−2); needs 3 studies with differing SE, has low power below 10, and asymmetry is not proof of publication bias. Random-effects prediction uses t(k−2) and omits tau estimation uncertainty.",
-    "formHelpKo": "독립 연구별 행: 효과 추정값·양수 표준오차(SE, 표준편차·분산 아님). fixed·dl(DerSimonian–Laird)·pm(Paule–Mandel, 기본); 신뢰수준 0~1; 추론 z·hksj(랜덤효과의 수정 Hartung–Knapp); Egger 0/1. 통합 효과·가중치·Q/p·I²·τ²·예측구간·Forest/Funnel plot. 비율은 로그 효과·로그 척도 SE를 입력합니다. 연구·Funnel 경계는 z 근사. Egger는 표준화 효과 대 정밀도 OLS 절편의 t(k−2) 검정으로 연구 3개 이상·서로 다른 SE가 필요합니다. 10개 미만은 검정력이 낮고 비대칭이 출판편향을 증명하지 않습니다. 랜덤효과 예측은 t(k−2) 근사이며 tau 추정 불확실성을 제외합니다.",
+    "formHelp": "Independent study rows: effect estimate, positive standard error (SE, not SD or variance). fixed / dl (DerSimonian–Laird) / pm (Paule–Mandel, default); confidence level 0–1; inference z / hksj (modified Hartung–Knapp for random effects); Egger 0/1. Returns pooled effect, weights, Q/p, I², τ², prediction interval, Forest/Funnel plots. Ratio effects require log effects and log-scale SE. Study and funnel limits use z. Egger OLS standardized effect on precision uses t(k−2); needs 3 studies with differing SE, has low power below 10, and asymmetry is not proof of publication bias. Random-effects prediction uses t(k−2) and omits tau estimation uncertainty. Binary mode selects events A,total A,events B,total B and OR/RR. Expressions add a sixth argument oddsratio/riskratio and seventh zero-cell correction (default .5). Converts to log OR/log RR and SE, reports both ratios per study and pooled ratio CI, and plots log effects. Double-zero events are excluded; OR also excludes double-zero non-events. A zero cell adds the correction to all four cells; zero correction rejects such studies. Independent arms; this is inverse variance, not Mantel–Haenszel/Peto. Continuous mode: mean A, sample SD A, n A, mean B, sample SD B, n B. Sixth expression argument md or smd. MD uses unpooled SE²=SD A²/n A+SD B²/n B and needs common units across studies. SMD uses pooled within-study SD, Hedges g with J≈1−3/(4df−1), and variance N/(n A n B)+g²/(2(N−3.94)), matching statsmodels. Independent arms, each n≥2; comparable constructs, common within-study variance for SMD and aligned direction. Paired arms require covariance. Independent-arm change outcomes may use change means and change SDs, not separate baseline/followup summaries.",
+    "formHelpKo": "독립 연구별 행: 효과 추정값·양수 표준오차(SE, 표준편차·분산 아님). fixed·dl(DerSimonian–Laird)·pm(Paule–Mandel, 기본); 신뢰수준 0~1; 추론 z·hksj(랜덤효과의 수정 Hartung–Knapp); Egger 0/1. 통합 효과·가중치·Q/p·I²·τ²·예측구간·Forest/Funnel plot. 비율은 로그 효과·로그 척도 SE를 입력합니다. 연구·Funnel 경계는 z 근사. Egger는 표준화 효과 대 정밀도 OLS 절편의 t(k−2) 검정으로 연구 3개 이상·서로 다른 SE가 필요합니다. 10개 미만은 검정력이 낮고 비대칭이 출판편향을 증명하지 않습니다. 랜덤효과 예측은 t(k−2) 근사이며 tau 추정 불확실성을 제외합니다. 이진 자료 방식에서는 A 사건 수·A 전체 환자 수·B 사건 수·B 전체 환자 수와 OR/RR을 선택합니다. 수식은 여섯째 인수 oddsratio/riskratio, 일곱째 0 셀 보정(기본 .5)을 추가합니다. log OR/log RR·SE로 변환하며 연구별 두 비율·통합 비율 신뢰구간을 표시하고 그래프는 로그 효과를 사용합니다. 양쪽 사건 0 연구는 제외하고 OR은 양쪽 비사건 0도 제외합니다. 0 셀이 있으면 네 셀 모두에 보정값을 더하며 0 보정은 해당 연구를 오류로 처리합니다. 독립 두 군 가정; 역분산 방식이며 Mantel–Haenszel/Peto가 아닙니다. 연속형 방식: A 평균·표본 SD·n, B 평균·표본 SD·n. 수식의 여섯째 인수 md·smd. MD는 비합동 SE²=SD A²/n A+SD B²/n B이며 연구 간 같은 측정 단위가 필요합니다. SMD는 연구 내 합동 SD, Hedges g의 J≈1−3/(4df−1) 보정, 분산 N/(n A n B)+g²/(2(N−3.94))로 statsmodels와 같습니다. 독립 두 군, 각 n≥2. SMD는 같은 구성개념·연구 내 공통 분산·일치하는 결과 방향이 필요합니다. 대응 두 군에는 공분산이 필요합니다. 독립 두 군의 변화량 비교에는 변화량 평균·SD를 입력하며 별도의 전후 요약으로 대체하지 마세요.",
     "exampleRows": [
       [
         "0.2",
@@ -13855,6 +14147,66 @@
       [
         "0.3",
         "0.11"
+      ]
+    ],
+    "binaryExampleRows": [
+      [
+        "12",
+        "100",
+        "20",
+        "100"
+      ],
+      [
+        "8",
+        "80",
+        "15",
+        "90"
+      ],
+      [
+        "25",
+        "150",
+        "40",
+        "160"
+      ],
+      [
+        "4",
+        "60",
+        "10",
+        "65"
+      ]
+    ],
+    "continuousExampleRows": [
+      [
+        "12",
+        "3",
+        "50",
+        "10",
+        "2.5",
+        "48"
+      ],
+      [
+        "15",
+        "4",
+        "60",
+        "12",
+        "3.5",
+        "55"
+      ],
+      [
+        "9",
+        "2",
+        "40",
+        "8",
+        "2.2",
+        "42"
+      ],
+      [
+        "11",
+        "3.2",
+        "65",
+        "9.5",
+        "3",
+        "62"
       ]
     ]
   },

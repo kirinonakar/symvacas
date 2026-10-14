@@ -192,9 +192,10 @@ private fun plotNumber(value:Double)=String.format(Locale.ROOT,"%.4g",value)
             val left=(if(intervals)108 else 54).dp.toPx();val top=22.dp.toPx();val w=size.width-left-18.dp.toPx();val h=size.height-top-54.dp.toPx()
             val reference=plot.optDouble("reference",Double.NaN)
             val range=if(intervals)(0 until count).flatMap {i->val row=rows!!.getJSONArray(i);listOf(row.getDouble(1),row.getDouble(2),row.getDouble(3))}+listOfNotNull(reference.takeIf(Double::isFinite))+(plot.optJSONArray("thresholds")?.numbers().orEmpty()) else values+(plot.optJSONArray("secondary")?.numbers().orEmpty())
-            val lo=if(intervals)range.minOrNull() ?: 0.0 else 0.0
-            val hi=if(intervals)range.maxOrNull() ?: 1.0 else plot.optDouble("maximum",(range.maxOrNull() ?: 1.0).coerceAtLeast(1e-12)*1.15)
-            val pad=if(intervals)(hi-lo).takeIf {it>0}?.times(.1) ?: .1 else 0.0
+            val domain=plot.optJSONArray("domain")
+            val lo=domain?.getDouble(0) ?: if(intervals)range.minOrNull() ?: 0.0 else 0.0
+            val hi=domain?.getDouble(1) ?: if(intervals)range.maxOrNull() ?: 1.0 else plot.optDouble("maximum",(range.maxOrNull() ?: 1.0).coerceAtLeast(1e-12)*1.15)
+            val pad=if(intervals&&domain==null)(hi-lo).takeIf {it>0}?.times(.1) ?: .1 else 0.0
             fun px(v:Double)=left+((v-lo+pad)/(hi-lo+2*pad)).toFloat()*w
             fun py(v:Double)=top+h-(v/hi).toFloat()*h
             val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply {color=c.muted.toArgb();textSize=10.sp.toPx()}
@@ -203,16 +204,22 @@ private fun plotNumber(value:Double)=String.format(Locale.ROOT,"%.4g",value)
                 for(i in 0..4){val v=lo-pad+(hi-lo+2*pad)*i/4;drawLine(c.grid,Offset(px(v),top),Offset(px(v),top+h));label(px(v),top+h+17.dp.toPx(),plotNumber(v))}
                 if(reference.isFinite())drawLine(c.muted,Offset(px(reference),top),Offset(px(reference),top+h),pathEffect=PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(),4.dp.toPx())))
                 plot.optJSONArray("thresholds")?.numbers()?.forEach {value->drawLine(c.danger,Offset(px(value),top),Offset(px(value),top+h),2.dp.toPx(),pathEffect=PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(),4.dp.toPx())))}
-                for(i in 0 until count){val row=rows!!.getJSONArray(i);val y=top+h*(i+1)/(count+1);val low=px(row.getDouble(2));val high=px(row.getDouble(3));val text=row.getString(0)
+                for(i in 0 until count){val row=rows!!.getJSONArray(i);val y=top+h*(i+1)/(count+1);val rawLow=row.getDouble(2);val rawHigh=row.getDouble(3);val estimate=row.getDouble(1)
+                    val low=px(rawLow.coerceIn(lo-pad,hi+pad));val high=px(rawHigh.coerceIn(lo-pad,hi+pad));val text=row.getString(0)
                     label(left-8.dp.toPx(),y+4.dp.toPx(),if(text.length>15)text.take(14)+"…" else text,Paint.Align.RIGHT)
                     if(i==plot.optInt("summaryIndex",-1)) {
                         val diamond=Path().apply {moveTo(low,y);lineTo(px(row.getDouble(1)),y-7.dp.toPx());lineTo(high,y);lineTo(px(row.getDouble(1)),y+7.dp.toPx());close()}
                         drawPath(diamond,c.danger)
                     } else {
-                        drawLine(c.accent,Offset(low,y),Offset(high,y),2.dp.toPx());for(x in listOf(low,high))drawLine(c.accent,Offset(x,y-5.dp.toPx()),Offset(x,y+5.dp.toPx()),2.dp.toPx())
+                        if(rawHigh>=lo-pad&&rawLow<=hi+pad)drawLine(c.accent,Offset(low,y),Offset(high,y),2.dp.toPx())
+                        for(value in listOf(rawLow,rawHigh).filter {it>=lo-pad&&it<=hi+pad}){val x=px(value);drawLine(c.accent,Offset(x,y-5.dp.toPx()),Offset(x,y+5.dp.toPx()),2.dp.toPx())}
                         val weight=plot.optJSONArray("weights")?.optDouble(i,Double.NaN) ?: Double.NaN
                         if(weight.isFinite()){val side=(2*sqrt(weight)).coerceIn(4.0,18.0).toFloat().dp.toPx();drawRect(c.accent,Offset(px(row.getDouble(1))-side/2,y-side/2),Size(side,side))}
-                        else drawCircle(c.danger,4.dp.toPx(),Offset(px(row.getDouble(1)),y))
+                        else if(estimate<lo-pad||estimate>hi+pad) {
+                            val tip=px(estimate.coerceIn(lo-pad,hi+pad));val tail=tip+if(estimate<lo-pad)8.dp.toPx() else -8.dp.toPx()
+                            drawPath(Path().apply {moveTo(tip,y);lineTo(tail,y-5.dp.toPx());lineTo(tail,y+5.dp.toPx());close()},c.danger)
+                            label(tail+if(estimate<lo-pad)5.dp.toPx() else -5.dp.toPx(),y-7.dp.toPx(),plotNumber(estimate))
+                        } else drawCircle(c.danger,4.dp.toPx(),Offset(px(estimate),y))
                     }
                 }
             }else {

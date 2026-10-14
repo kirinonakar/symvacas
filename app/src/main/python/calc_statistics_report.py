@@ -29,6 +29,7 @@ TITLES.update({'cronbach':'Cronbach α reliability','efa':'Exploratory factor an
 TITLES.update({'arima': 'ARIMA / time-series forecast', 'sarima': 'SARIMA / time-series forecast'})
 TITLES.update({'metaanalysis':'Meta-analysis','icc':'Intraclass correlation (ICC)', 'blandaltman':'Bland–Altman agreement',
                'tost':'One-sample equivalence (TOST)','tost2':'Independent equivalence (TOST)','tostpaired':'Paired equivalence (TOST)'})
+TITLES['cramerv']='Phi / Cramér’s V'
 
 
 def statistics_report(name, value, precision, labels=None):
@@ -120,12 +121,18 @@ def statistics_report(name, value, precision, labels=None):
                 plot.update(reference=0, thresholds=[float(value['Lower equivalence bound']),float(value['Upper equivalence bound'])],
                             xlabel='Difference from reference' if name=='tost' else 'Difference (A − B)',
                             caption='Confidence interval level = 1 − 2α. Equivalence requires the whole interval to lie strictly inside the prespecified bounds.')
+            if name in ('icc','cohenkappa'):
+                plot.update(domain=[0,1],caption='Display range is 0–1. Arrows mark estimates outside this range; original estimates and confidence limits remain in the tables.')
             plots.append(plot)
 
     def visit(title, v):
         if isinstance(v, s.MatrixBase): v = v.tolist()
         if isinstance(v, dict):
             remaining = dict(v)
+            effect_rows=[]
+            if title=='Summary' and name in ('cramerv','phi') and 'Cramér’s V' in remaining:
+                effect_rows=[[metric,remaining.pop(metric),remaining.pop(rating,'unavailable')]
+                             for metric,rating in [('phi','Phi effect rating'),('Cramér’s V','V effect rating')] if metric in remaining]
             if name=='cfa': remaining.pop('Latent R²',None)
             if isinstance(remaining.get('Assumptions'), str):
                 assumptions.append(remaining.pop('Assumptions'))
@@ -134,7 +141,7 @@ def statistics_report(name, value, precision, labels=None):
             extract_details(title, remaining)
             if isinstance(remaining.get('diagnostics'),dict):
                 visit('Model diagnostics',remaining.pop('diagnostics'))
-            estimate=v.get('estimate',v.get('posterior mean',v.get('sample mean')))
+            estimate=v.get('estimate',v.get('Cohen κ',v.get('posterior mean',v.get('sample mean'))))
             interval=v.get('credible interval',v.get('confidence interval'))
             if name!='metaanalysis' and vector(interval) and len(interval)==2:
                 interval_plot('Credible interval' if 'credible interval' in v else 'Confidence interval',[(TITLES.get(name,name) if title=='Summary' else title,estimate,*interval)])
@@ -154,6 +161,7 @@ def statistics_report(name, value, precision, labels=None):
                        ('Fold scores', 'Fold', ['fold MSE','fold log loss'])]
             summary = [[key, item] for key, item in remaining.items() if not isinstance(item, (dict, list, tuple, s.MatrixBase))]
             add(title, ['Metric','Value'], summary)
+            if effect_rows:add('Effect size',['Effect size','Value','Rating'],effect_rows)
             for key, _ in summary: remaining.pop(key)
             for heading, index, keys in bundles:
                 present = [key for key in keys if key in remaining and vector(remaining[key])]
@@ -175,7 +183,7 @@ def statistics_report(name, value, precision, labels=None):
                 intervals=[]; expanded=[]
                 for row_index, raw in enumerate(v):
                     row=dict(raw)
-                    if name=='metaanalysis' and title=='Studies': row['Study']=table_labels.get('study:'+str(row['Study']),str(row['Study']))
+                    if name=='metaanalysis' and title in ('Studies','Excluded studies'): row['Study']=table_labels.get('study:'+str(row['Study']),str(row['Study']))
                     if name in ('cfa','sem') and title=='Latent R²' and row.get('Role')=='Exogenous (R² not applicable)': row['R²']='Not applicable'
                     bounds=row.pop('CI95',None)
                     if isinstance(bounds,(list,tuple)) and len(bounds)==2: row['Lower 95% CI'],row['Upper 95% CI']=bounds
@@ -236,7 +244,7 @@ def statistics_report(name, value, precision, labels=None):
                     return
                 add(title, [index]+headers, [[table_labels.get('feature:'+str(i+1),i+1) if name in ('pca','efa') and index=='Feature' else i+1]+list(row) for i,row in enumerate(v)])
             elif vector(v):
-                if title in ('confidence interval','credible interval','difference credible interval','effect credible interval','quartiles (inclusive)','Quartiles'):
+                if title in ('confidence interval','credible interval','difference credible interval','effect credible interval','Ratio confidence interval','Slope CI','Bias CI','Lower limit CI (approximate)','Upper limit CI (approximate)','quartiles (inclusive)','Quartiles'):
                     labels = ['Lower','Upper'] if len(v)==2 else ['Q1','Median','Q3']
                     if len(labels)==len(v): add(title, labels, [list(v)]); return
                 add(title, ['Fold' if title in ('fold MSE','fold log loss','fold sizes') else 'Observation','Value'], [[i+1,item] for i,item in enumerate(v)])

@@ -81,12 +81,13 @@ schema = [{'id':id_,'label':label,'ko':ko,'input':layout,'suffix':suffix,'exampl
 # Menu placement and order are shared by Android and Web; function IDs stay stable.
 menus = [
     ('preparation', 'Data preparation', '데이터 준비', ['impute']),
-    ('general', 'Categorical data', '범주형 자료', ['propztest','propztest2','mcnemar','cramerv','phi','cohenkappa']),
-    ('general', 'Reliability & agreement', '신뢰도·일치도', ['cronbach','icc','blandaltman']),
+    ('general', 'Categorical data', '범주형 자료', ['propztest','propztest2','mcnemar']),
+    ('general', 'Reliability & agreement', '신뢰도·일치도', ['cronbach','icc','cohenkappa','blandaltman']),
     ('tests', 'Distribution & variance', '분포·분산 검정', ['shapiro','kstest','levene','bartlett']),
     ('tests', 'Post-hoc comparisons', '사후비교', ['tukey','gameshowell','dunn']),
     ('tests', 'Group comparisons', '그룹 비교', ['twowayanova','ancova','manova','repeatedanova','friedman']),
-    ('tests', 'Effect sizes & multiple testing', '효과크기·다중검정', ['cohend','eta2','padjust']),
+    ('tests', 'Effect Size', 'Effect Size (효과크기)', ['cohend','eta2','cramerv','phi']),
+    ('tests', 'Multiple testing', '다중검정 보정', ['padjust']),
     ('tests', 'Confidence intervals', '신뢰구간', ['tinterval','zinterval']),
     ('tests', 'Equivalence tests (TOST)', '동등성 검정 (TOST)', ['tost','tost2','tostpaired']),
     ('models', 'Generalized regression', '일반화 회귀', ['linearmodel','glm','poissonreg','nbreg','zeroinflated','tobit','quantreg','multinomial','ordinal']),
@@ -287,6 +288,9 @@ for id_ in ('arima','sarima'):
     definitions[id_]['helpKo'] += DATE_HELP[1]
     next(item for item in schema if item['id']==id_).update(help=definitions[id_]['help'],helpKo=definitions[id_]['helpKo'])
 forms.update(research_forms(field,col,multi,two_fields,matching_fields))
+definitions['cramerv'].update(label='Phi / Cramér’s V',ko='Phi / Cramér의 V')
+next(item for item in schema if item['id']=='cramerv').update(label='Phi / Cramér’s V',ko='Phi / Cramér의 V')
+next(item for item in schema if item['id']=='phi')['hidden']=True
 form_help['arima'] = tuple(TIME_HELP[i]+DATE_HELP[i] for i in range(2))
 form_help['sarima'] = (definitions['sarima']['help'],definitions['sarima']['helpKo'])
 for id_ in ('arima','sarima'): USES[id_] = ('Forecast equally spaced time-series observations.','일정한 간격의 시계열 관측값을 예측합니다.')
@@ -335,6 +339,31 @@ for item in schema:
         for choice in next(f for f in item['controls'] if f['key']=='link')['choices']:
             if choice['id']!='auto': choice['when']={'family':links[choice['id']]}
 comparison_examples(schema,LOGISTIC_COMPARE_ROWS)
+research_extra={
+    'metaanalysis':(' Binary mode selects events A,total A,events B,total B and OR/RR. Expressions add a sixth argument oddsratio/riskratio and seventh zero-cell correction (default .5). Converts to log OR/log RR and SE, reports both ratios per study and pooled ratio CI, and plots log effects. Double-zero events are excluded; OR also excludes double-zero non-events. A zero cell adds the correction to all four cells; zero correction rejects such studies. Independent arms; this is inverse variance, not Mantel–Haenszel/Peto.',
+                    ' 이진 자료 방식에서는 A 사건 수·A 전체 환자 수·B 사건 수·B 전체 환자 수와 OR/RR을 선택합니다. 수식은 여섯째 인수 oddsratio/riskratio, 일곱째 0 셀 보정(기본 .5)을 추가합니다. log OR/log RR·SE로 변환하며 연구별 두 비율·통합 비율 신뢰구간을 표시하고 그래프는 로그 효과를 사용합니다. 양쪽 사건 0 연구는 제외하고 OR은 양쪽 비사건 0도 제외합니다. 0 셀이 있으면 네 셀 모두에 보정값을 더하며 0 보정은 해당 연구를 오류로 처리합니다. 독립 두 군 가정; 역분산 방식이며 Mantel–Haenszel/Peto가 아닙니다.'),
+    'blandaltman':(' Proportional bias: OLS difference on pair mean, slope SE/CI and two-sided t(n−2) p value; fitted trend is plotted. Log mode uses log measurements. Mean variation and positive residual variance are needed for inference. A nonsignificant slope does not establish absence of bias; unequal measurement error variances can induce a trend.',
+                   ' 비례 편향: 차이를 두 측정값 평균에 OLS 회귀하여 기울기·SE·신뢰구간·양측 t(n−2) p값을 표시하고 적합 추세선을 그립니다. 로그 방식은 로그 측정값을 사용합니다. 평균의 변동과 양의 잔차분산이 추론에 필요합니다. 비유의 기울기가 편향 부재를 입증하지 않으며 측정 오차의 이분산이 추세를 만들 수 있습니다.'),
+    'icc':(' Koo & Li (2016): <.50 poor, [.50,.75) moderate, [.75,.90] good, >.90 excellent. Point and CI-range ratings are shown; interpretation should use the CI and study context. Graph domain is 0–1, with arrows for out-of-range estimates; tables retain negative estimates and raw CI limits.',
+            ' Koo & Li (2016): .50 미만 낮음, .50 이상 .75 미만 보통, .75 이상 .90 이하 좋음, .90 초과 매우 좋음. 추정값·신뢰구간 범위의 판정을 표시하며 신뢰구간과 연구 맥락을 함께 해석합니다. 그래프 범위는 0~1이고 범위 밖 추정값은 화살표로 표시하며 표의 음수·원래 신뢰구간은 유지합니다.'),
+    'cohenkappa':(' Landis–Koch conventional benchmarks: <0 poor, [0,.20] slight, (.20,.40] fair, (.40,.60] moderate, (.60,.80] substantial, (.80,1] almost perfect. These are context-dependent heuristics; prevalence and chosen weights matter. Graph domain is 0–1; raw negative estimates and CI limits remain in tables. Example pairs are ordered Normal,Mild,Severe ratings from two raters.',
+                   ' Landis–Koch 관례: 0 미만 낮음, 0~.20 미약, .20 초과 .40 이하 약함, .40 초과 .60 이하 보통, .60 초과 .80 이하 상당, .80 초과 1 이하 거의 완벽. 보편적 판정 기준이 아니며 유병률·가중치·연구 맥락을 고려합니다. 그래프는 0~1, 표에는 음수·원래 신뢰구간을 유지합니다. 예제는 두 평가자의 Normal·Mild·Severe 순서형 등급 쌍입니다.'),
+    'cramerv':(' Combined Phi / Cramér’s V: signed phi is available for 2×2; V applies to larger tables. Cohen thresholds for V: .10/.30/.50 divided by sqrt(min(rows−1,columns−1)); phi uses absolute magnitude with .10/.30/.50. Ratings and threshold tables are descriptive conventions, not clinical significance. χ² and Fisher reports include both effects using uncorrected Pearson χ².',
+               ' 통합 Phi / Cramér의 V: 2×2는 부호 있는 phi, 더 큰 표는 V를 사용합니다. V의 Cohen 기준은 .10/.30/.50을 sqrt(min(행−1,열−1))로 나누며 phi는 절댓값 .10/.30/.50을 사용합니다. 판정·기준 표는 관례적 설명이며 임상적 중요성을 뜻하지 않습니다. χ²·Fisher 결과에도 보정 없는 Pearson χ² 기준의 두 효과를 표시합니다.')}
+for id_,extra in research_extra.items():
+    item=next(item for item in schema if item['id']==id_)
+    item['help']+=extra[0];item['helpKo']+=extra[1];item['formHelp']+=extra[0];item['formHelpKo']+=extra[1]
+meta=next(item for item in schema if item['id']=='metaanalysis')
+meta['binaryExampleRows']=[[str(v) for v in row] for row in [[12,100,20,100],[8,80,15,90],[25,150,40,160],[4,60,10,65]]]
+meta['continuousExampleRows']=[[str(v) for v in row] for row in [[12,3,50,10,2.5,48],[15,4,60,12,3.5,55],[9,2,40,8,2.2,42],[11,3.2,65,9.5,3,62]]]
+continuous_help=(' Continuous mode: mean A, sample SD A, n A, mean B, sample SD B, n B. Sixth expression argument md or smd. MD uses unpooled SE²=SD A²/n A+SD B²/n B and needs common units across studies. SMD uses pooled within-study SD, Hedges g with J≈1−3/(4df−1), and variance N/(n A n B)+g²/(2(N−3.94)), matching statsmodels. Independent arms, each n≥2; comparable constructs, common within-study variance for SMD and aligned direction. Paired arms require covariance. Independent-arm change outcomes may use change means and change SDs, not separate baseline/followup summaries.',
+                 ' 연속형 방식: A 평균·표본 SD·n, B 평균·표본 SD·n. 수식의 여섯째 인수 md·smd. MD는 비합동 SE²=SD A²/n A+SD B²/n B이며 연구 간 같은 측정 단위가 필요합니다. SMD는 연구 내 합동 SD, Hedges g의 J≈1−3/(4df−1) 보정, 분산 N/(n A n B)+g²/(2(N−3.94))로 statsmodels와 같습니다. 독립 두 군, 각 n≥2. SMD는 같은 구성개념·연구 내 공통 분산·일치하는 결과 방향이 필요합니다. 대응 두 군에는 공분산이 필요합니다. 독립 두 군의 변화량 비교에는 변화량 평균·SD를 입력하며 별도의 전후 요약으로 대체하지 마세요.')
+meta['help']+=continuous_help[0];meta['helpKo']+=continuous_help[1];meta['formHelp']+=continuous_help[0];meta['formHelpKo']+=continuous_help[1]
+(next(field for field in forms['cohenkappa'] if field['key']=='layout'))['default']='pairs'
+kappa=next(item for item in schema if item['id']=='cohenkappa')
+kappa_counts=[[6,1,0],[1,5,1],[0,1,5]]
+kappa['example']='cohenkappa([[6,1,0],[1,5,1],[0,1,5]],unweighted)'
+kappa['exampleRows']=[[['Normal','Mild','Severe'][i],['Normal','Mild','Severe'][j]] for i,row in enumerate(kappa_counts) for j,count in enumerate(row) for _ in range(count)]
 (ROOT/'app/src/main/assets/advanced_statistics.json').write_text(json.dumps(schema,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 for language in ('','_ko'):
     path=ROOT/f'app/src/main/assets/catalog_help{language}.md'

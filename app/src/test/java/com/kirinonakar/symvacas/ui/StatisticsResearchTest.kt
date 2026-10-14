@@ -8,6 +8,24 @@ import org.json.JSONObject
 import java.io.File
 
 class StatisticsResearchTest {
+    @Test fun binaryPatientCountsAndAgreementExamplesUseSharedSelectedRoles() {
+        val d=definition("metaanalysis");val rows=advancedStatisticsExampleRows(d,JSONObject().put("layout","binary"))
+        assertEquals(4,rows[0].size)
+        val settings=JSONObject().put("layout","binary").put("measure","riskratio")
+        assertTrue(guidedStatisticsCommand(d,rows,settings).endsWith(",riskratio,0.5)"))
+        val named=listOf(listOf("Trial A","12","100","20","100"),listOf("Trial B","8","80","15","90"))
+        val opts=JSONObject().put("layout","binary").put("eventsA","1").put("totalA","2").put("eventsB","3").put("totalB","4").put("studyLabels","column").put("study","0")
+        assertEquals("metaanalysis([[12,100,20,100],[8,80,15,90]],pm,0.95,z,1,oddsratio,0.5)",guidedStatisticsCommand(d,named,opts))
+        val kappa=definition("cohenkappa")
+        assertEquals("Reliability & agreement",kappa.getString("group"));assertEquals(kappa.getString("example"),guidedStatisticsCommand(kappa,advancedStatisticsExampleRows(kappa)))
+        assertTrue(definition("phi").getBoolean("hidden"));assertEquals("Effect Size",definition("cramerv").getString("group"))
+    }
+    @Test fun continuousMeanSdAndSampleSizeInputSupportsMdAndHedgesG() {
+        val d=definition("metaanalysis");val settings=JSONObject().put("layout","continuous").put("continuousMeasure","smd")
+        val rows=advancedStatisticsExampleRows(d,settings);assertEquals(6,rows[0].size)
+        assertTrue(guidedStatisticsCommand(d,rows,settings).endsWith(",smd)"))
+        settings.put("continuousMeasure","md");assertTrue(guidedStatisticsCommand(d,rows,settings).endsWith(",md)"))
+    }
     @Test fun forestPagingBoundsTheCanvasWithoutDroppingStudiesOrThePooledInterval() {
         val rows=JSONArray();for(i in 0 until 105)rows.put(JSONArray().put("Study ${i+1}").put(i).put(i-1).put(i+1))
         rows.put(JSONArray().put("Pooled effect").put(1).put(0).put(2))

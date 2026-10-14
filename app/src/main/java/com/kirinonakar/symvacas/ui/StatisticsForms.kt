@@ -115,9 +115,9 @@ internal fun guidedStatisticsCommand(definition:JSONObject,rows:List<List<String
     }
     return when(id) {
         "metaanalysis"->{
-            val columns=listOf(col("effect"),col("se"))
+            val columns=when(opts["layout"]){"binary"->listOf("eventsA","totalA","eventsB","totalB").map(::col);"continuous"->listOf("meanA","sdA","nA","meanB","sdB","nB").map(::col);else->listOf(col("effect"),col("se"))}
             if(opts["studyLabels"]=="column")complete(columns+col("study"))
-            "metaanalysis(${table(complete(columns))},${opts["method"]},${opts["level"]},${if(opts["method"]=="fixed")"z" else opts["inference"]},${opts["egger"]})"
+            "metaanalysis(${table(complete(columns))},${opts["method"]},${opts["level"]},${if(opts["method"]=="fixed")"z" else opts["inference"]},${opts["egger"]}${when(opts["layout"]){"binary"->",${opts["measure"]},${opts["correction"]}";"continuous"->",${opts["continuousMeasure"]}";else->""}})"
         }
         "icc"->"icc(${table(complete(multiple("columns")))},${opts["model"]},${opts["unit"]},${opts["level"]})"
         "blandaltman"->"blandaltman(${table(complete(listOf(col("first"),col("second"))))},${opts["level"]},${opts["mode"]})"

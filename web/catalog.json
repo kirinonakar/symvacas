@@ -217,15 +217,16 @@
     "qty(,m)",
     "convert(,m,cm)"
   ],
-  "Reliability & association": [
+  "Reliability & agreement": [
     "cronbach([],raw)",
     "icc([],random,single,0.95)",
     "blandaltman([],0.95,difference)",
-    "cramerv([])",
-    "phi([])",
     "cohenkappa([],unweighted)",
     "cohenkappa([],linear)",
     "cohenkappa([],quadratic)"
+  ],
+  "Effect Size": [
+    "cramerv([])"
   ],
   "Research synthesis & equivalence": [
     "metaanalysis([],pm,0.95,z,1)",

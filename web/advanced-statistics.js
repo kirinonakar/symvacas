@@ -121,9 +121,9 @@ export function guidedStatisticsCommand(definition,rows,settings={},columnLabels
   const distinct=indices=>{if(new Set(indices).size!==indices.length)throw new Error('Roles must use different columns');};
   const complete=indices=>{distinct(indices);const selected=rows.map(row=>indices.map(i=>(row[i]||'').trim()));if(selected.some(row=>row.some(cell=>!cell)))throw new Error('Complete selected rows required');return selected;};
   if(id==='metaanalysis'){
-    const cols=[column('effect'),column('se')];
+    const cols=opts.layout==='binary'?['eventsA','totalA','eventsB','totalB'].map(column):opts.layout==='continuous'?['meanA','sdA','nA','meanB','sdB','nB'].map(column):[column('effect'),column('se')];
     if(opts.studyLabels==='column')complete([...cols,column('study')]);
-    return `metaanalysis(${table(complete(cols))},${opts.method},${opts.level},${opts.method==='fixed'?'z':opts.inference},${opts.egger})`;
+    return `metaanalysis(${table(complete(cols))},${opts.method},${opts.level},${opts.method==='fixed'?'z':opts.inference},${opts.egger}${opts.layout==='binary'?`,${opts.measure},${opts.correction}`:opts.layout==='continuous'?`,${opts.continuousMeasure}`:''})`;
   }
   if(id==='icc')return `icc(${table(complete(multiple('columns')))},${opts.model},${opts.unit},${opts.level})`;
   if(id==='blandaltman')return `blandaltman(${table(complete([column('first'),column('second')]))},${opts.level},${opts.mode})`;
@@ -437,6 +437,8 @@ export function advancedStatisticsRows(source,columnLimit){
 }
 
 export function advancedStatisticsExampleRows(definition,settings={}){
+  if(definition.id==='metaanalysis'&&settings.layout==='binary')return definition.binaryExampleRows.map(row=>row.map(String));
+  if(definition.id==='metaanalysis'&&settings.layout==='continuous')return definition.continuousExampleRows.map(row=>row.map(String));
   let rows=definition.id==='modelcompare'?(definition.exampleRowsByFamily?.[settings.family||'linear']||definition.exampleRows):definition.exampleRows;
   if(definition.id==='modelcompare'&&['cfa','sem'].includes(settings.family)&&settings.estimator==='wlsmv')rows=rows.map(row=>row.map(value=>String(1+[-.5,.5].filter(cut=>Number(value)>cut).length)));
   if(['cfa','sem'].includes(definition.id)){

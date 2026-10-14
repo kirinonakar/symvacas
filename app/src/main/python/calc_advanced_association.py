@@ -3,6 +3,7 @@ import math
 from calc_shared import require
 from calc_advanced_common import table, option
 from calc_statistics import _chisq_sf
+from calc_effect_interpretation import contingency_effects, kappa_rating, KAPPA_GUIDE
 
 
 def calculate(engine,name,a):
@@ -24,13 +25,15 @@ def calculate(engine,name,a):
         se=math.sqrt(sum(rows[i][j]/n*(gradient[i][j]-center)**2 for i in range(nr) for j in range(nr))/n)
         value=1-observed/expected
         return {'n':int(n),'Cohen κ':value,'Weights':mode,'Observed agreement':1-observed,'Expected agreement':1-expected,'Exact agreement':sum(rows[i][i] for i in range(nr))/n,
+                'Agreement rating':kappa_rating(value),'Landis–Koch guide':KAPPA_GUIDE,
+                'Interpretation note':'Landis–Koch benchmarks are conventional, not universal cutoffs. Kappa depends on category prevalence, rater marginals and chosen weights; report the confidence interval and observed agreement. Negative estimates and CI endpoints are retained; the 0–1 graph clips the display only.',
                 'SE':se,'confidence interval':[value-1.95996398454*se,value+1.95996398454*se],
                 'Assumptions':'Two raters, independent paired subjects, common category order. Weighted kappa requires ordered categories. Multinomial delta-method Wald CI is asymptotic and may exceed [-1,1].'}
     require(all(rowtotal) and all(coltotal),'Every category must have a positive marginal count')
     expected=[[rowtotal[i]*coltotal[j]/n for j in range(nc)] for i in range(nr)]
     chi=sum((rows[i][j]-expected[i][j])**2/expected[i][j] for i in range(nr) for j in range(nc))
     df=(nr-1)*(nc-1)
-    result={'n':int(n),'χ² (uncorrected)':chi,'df':df,'p':float(_chisq_sf(chi,df)),"Cramér’s V":math.sqrt(chi/(n*min(nr-1,nc-1))),'expected':expected,
+    result={'n':int(n),'χ² (uncorrected)':chi,'df':df,'p':float(_chisq_sf(chi,df)),**contingency_effects(rows),'expected':expected,
             'Assumptions':'Independent observations; uncorrected Pearson association, no Yates correction. Sparse expected counts can invalidate the chi-square approximation.'}
     if nr==nc==2:
         result['phi']=(rows[0][0]*rows[1][1]-rows[0][1]*rows[1][0])/math.sqrt(math.prod(rowtotal)*math.prod(coltotal))

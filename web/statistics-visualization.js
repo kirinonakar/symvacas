@@ -24,12 +24,12 @@ export function statisticsPlotModel(plot,xAxis=0,yAxis=1){
   if(plot.kind==='research-scatter'){
     const points=plot.points.map(([x,y],i)=>({x,y,label:plot.labels?.[i]||`${t('Observation')} ${i+1}`}));
     if(!points.length)return null;
-    const lines=plot.lines||[],horizontal=plot.horizontal||[],all=[...plot.points,...lines.flat()];
+    const lines=plot.lines||[],horizontal=plot.horizontal||[],all=[...plot.points,...lines.flat(),...(plot.trend||[])];
     const xs=all.map(p=>p[0]),ys=[...all.map(p=>p[1]),...horizontal];
     const lo=Math.min(...xs),hi=Math.max(...xs),low=Math.min(...ys),high=Math.max(...ys);
     const dx=(hi-lo||1)*.1,dy=(high-low||1)*.1;
     return {xmin:lo-dx,xmax:hi+dx,ymin:plot.invertY?0:low-dy,ymax:high+dy,points,lines,horizontal,invertY:!!plot.invertY,
-      xlabel:t(plot.xlabel),ylabel:t(plot.ylabel)};
+      trend:plot.trend||[],xlabel:t(plot.xlabel),ylabel:t(plot.ylabel)};
   }
   if(plot.kind==='timeseries'){
     const all=[...plot.observed,...plot.fitted,...plot.forecast,...plot.interval.flatMap(([x,lo,hi])=>[[x,lo],[x,hi]])];
@@ -47,7 +47,7 @@ export function statisticsPlotModel(plot,xAxis=0,yAxis=1){
     const rows=plot.rows.filter(row=>row.slice(1).every(Number.isFinite));
     if(!rows.length)return null;
     const bounds=[...rows.flatMap(row=>row.slice(1)),...(plot.thresholds||[])];if(Number.isFinite(plot.reference))bounds.push(plot.reference);
-    const lo=Math.min(...bounds),hi=Math.max(...bounds),pad=(hi-lo||1)*.1;
+    const lo=plot.domain?.[0]??Math.min(...bounds),hi=plot.domain?.[1]??Math.max(...bounds),pad=plot.domain?0:(hi-lo||1)*.1;
     return {xmin:lo-pad,xmax:hi+pad,ymin:0,ymax:rows.length+1,intervals:rows.map(([label,estimate,lower,upper],i)=>({label,estimate,lower,upper,y:rows.length-i,summary:i===plot.summaryIndex,weight:plot.weights?.[i]})),reference:plot.reference,thresholds:plot.thresholds||[],xlabel:t(plot.xlabel||'Estimate & interval'),ylabel:''};
   }
   if(plot.kind==='bars')return {xmin:.5,xmax:plot.values.length+.5,ymin:0,ymax:plot.maximum||Math.max(1e-12,...plot.values,...(plot.secondary||[]))*1.15,
@@ -116,15 +116,18 @@ function chart(plot,xAxis,yAxis,displayWidth){
   }
   for(const row of model.intervals||[]){
     text(left-10,py(row.y)+4,row.label.length>21?row.label.slice(0,20)+'…':row.label,'end');
-    shape('line',{x1:px(row.lower),x2:px(row.upper),y1:py(row.y),y2:py(row.y),stroke:'var(--accent)','stroke-width':3});
-    for(const end of [row.lower,row.upper])shape('line',{x1:px(end),x2:px(end),y1:py(row.y)-5,y2:py(row.y)+5,stroke:'var(--accent)','stroke-width':2});
+    const clip=value=>Math.max(xmin,Math.min(xmax,value));
+    if(row.upper>=xmin&&row.lower<=xmax)shape('line',{x1:px(clip(row.lower)),x2:px(clip(row.upper)),y1:py(row.y),y2:py(row.y),stroke:'var(--accent)','stroke-width':3});
+    for(const end of [row.lower,row.upper].filter(value=>value>=xmin&&value<=xmax))shape('line',{x1:px(end),x2:px(end),y1:py(row.y)-5,y2:py(row.y)+5,stroke:'var(--accent)','stroke-width':2});
     const side=Number.isFinite(row.weight)?Math.max(4,Math.min(18,2*Math.sqrt(row.weight))):8;
-    const node=row.summary?shape('polygon',{points:[[row.lower,row.y],[row.estimate,row.y+.22],[row.upper,row.y],[row.estimate,row.y-.22]].map(([x,y])=>`${px(x)},${py(y)}`).join(' '),fill:'var(--gold)'}):Number.isFinite(row.weight)?shape('rect',{x:px(row.estimate)-side/2,y:py(row.y)-side/2,width:side,height:side,fill:'var(--accent)'}):shape('circle',{cx:px(row.estimate),cy:py(row.y),r:4,fill:'var(--gold)'});
+    const outside=row.estimate<xmin||row.estimate>xmax,tip=px(clip(row.estimate)),tail=tip+(row.estimate<xmin?8:-8);
+    const node=outside?shape('polygon',{points:`${tip},${py(row.y)} ${tail},${py(row.y)-5} ${tail},${py(row.y)+5}`,fill:'var(--gold)','data-outside-range':'true'}):row.summary?shape('polygon',{points:[[row.lower,row.y],[row.estimate,row.y+.22],[row.upper,row.y],[row.estimate,row.y-.22]].map(([x,y])=>`${px(x)},${py(y)}`).join(' '),fill:'var(--gold)'}):Number.isFinite(row.weight)?shape('rect',{x:px(row.estimate)-side/2,y:py(row.y)-side/2,width:side,height:side,fill:'var(--accent)'}):shape('circle',{cx:px(row.estimate),cy:py(row.y),r:4,fill:'var(--gold)'});
     const title=document.createElementNS(ns,'title');title.textContent=`${row.label}: ${number(row.estimate)} [${number(row.lower)}, ${number(row.upper)}]${Number.isFinite(row.weight)?` · ${number(row.weight)}%`:''}`;node.append(title);
   }
   for(const value of model.thresholds||[])shape('line',{x1:px(value),x2:px(value),y1:top,y2:top+h,stroke:'var(--danger)','stroke-width':2,'stroke-dasharray':'6 4'});
   for(const line of model.lines||[])shape('polyline',{points:line.map(([x,y])=>`${px(x)},${py(y)}`).join(' '),fill:'none',stroke:'var(--muted)','stroke-width':1.6,'stroke-dasharray':'5 4'});
   for(const [index,value] of (model.horizontal||[]).entries())shape('line',{x1:left,x2:left+w,y1:py(value),y2:py(value),stroke:index===0?'var(--gold)':'var(--muted)','stroke-width':1.8,...(index?{'stroke-dasharray':'5 4'}:{})});
+  if(model.trend?.length)shape('polyline',{points:model.trend.map(([x,y])=>`${px(x)},${py(y)}`).join(' '),fill:'none',stroke:'var(--accent)','stroke-width':2.5,'data-proportional-bias':'true'});
   if(plot.kind==='interaction'){
     plot.xLabels.forEach((label,i)=>text(px(i+1),top+h+20,label));
     plot.lineGroups.forEach((line,i)=>shape('polyline',{points:line.map(([x,y])=>`${px(x)},${py(y)}`).join(' '),fill:'none',stroke:['var(--accent)','var(--gold)','#9466b8','#437db0','#bd5c67','#598e85'][i%6],'stroke-width':2.5}));

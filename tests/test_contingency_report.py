@@ -28,6 +28,7 @@ class ContingencyReportTests(unittest.TestCase):
             self.assertTrue(labeled['ok'], labeled.get('error'))
             self.assertEqual(result['exact'], labeled['exact'])
             report = labeled['statisticsReport']
+            self.assertEqual(sum(section['title']=='Compared columns' for section in report['sections']),1)
             observed = self.section(report, 'observed')
             self.assertEqual(observed['columns'], ['Treatment (x)', 'Outcome (y): No', 'Outcome (y): Yes', 'Total'])
             self.assertEqual([row[0] for row in observed['rows']], ['Control','Drug','Total'])

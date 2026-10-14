@@ -12,6 +12,7 @@ from calc_statistics import _shapiro_wilk, _tail_argument, statistical_test
 from calc_statistics_report import statistics_report
 from calc_advanced_inference import calculate as grouped_test
 from calc_posthoc import posthoc_comparisons, holm_comparisons, dunn_comparisons
+from calc_effect_interpretation import contingency_effects
 
 
 def normal_views(values, label):
@@ -175,7 +176,8 @@ def companion_report(report, name, value, inputs, precision, labels=None, residu
             counts=value['observed'];total=sum(sum(row) for row in counts)
             margins=[sum(column) for column in zip(*counts)]
             expected=[[s.sympify(sum(row))*margin/total for margin in margins] for row in counts]
-            report['sections'].extend(statistics_report(name,{'expected':expected},precision,labels)['sections'])
+            report['sections'].extend(section for section in statistics_report(name,{'expected':expected},precision,labels)['sections']
+                                      if section['title']!='Compared columns')
         flat=[float(v) for row in expected for v in (row if isinstance(row,(list,tuple)) else [row])]
         if flat:
             extras.append(('Expected-count diagnostics',{'minimum expected count':min(flat),'cells below 5':sum(v<5 for v in flat),'cells below 1':sum(v<1 for v in flat),'fraction below 5':sum(v<5 for v in flat)/len(flat)}))
@@ -184,18 +186,18 @@ def companion_report(report, name, value, inputs, precision, labels=None, residu
                 report.setdefault('warnings',[]).append({'text':'Some expected counts are below 5; the chi-square approximation may be inaccurate.'})
                 if len(expected)==2 and len(expected[0])==2:
                     report['warnings'].append({'text':'Consider Fisher exact for this 2×2 table.'})
-        if name=='chi2independence' and expected:
-            n=sum(flat); df=min(len(expected)-1,len(expected[0])-1)
-            if n>0 and df>0:
-                observed=value['observed']
-                pearson=sum((float(o)-float(e))**2/float(e) for row,erow in zip(observed,expected) for o,e in zip(row,erow))
-                extras.append(('Effect size',{'Cramér V (Pearson)':math.sqrt(pearson/(n*df))}))
+    if name in ('chi2independence','fisherexact') and isinstance(value,dict) and value.get('observed'):
+        effects=contingency_effects(value['observed'])
+        notes.append(effects.pop('Note',''))
+        extras.append(('Effect size',effects))
     for title,data in [('Sample summaries',summary),*extras]:
         if data:
-            supplement=statistics_report(name,data,precision,labels)
+            supplement=statistics_report('cramerv' if title=='Effect size' and name in ('chi2independence','fisherexact') else name,data,precision,{} if title=='Effect size' and name in ('chi2independence','fisherexact') else labels)
             for section in supplement['sections']:
-                if section['title']=='Summary' or section['title']==report['title']: section['title']=title
-            report['sections'].extend(supplement['sections'])
+                if section['title']=='Compared columns':continue
+                if title=='Effect size' and name in ('chi2independence','fisherexact') and section['title']=='Summary':section['title']='Effect-size context'
+                elif section['title']=='Summary' or section['title']==report['title']: section['title']=title
+            report['sections'].extend(section for section in supplement['sections'] if section['title']!='Compared columns')
             report.setdefault('plots',[]).extend(supplement.get('plots',[]))
     if diagnostics:
         # Format numeric cells through the same decimal/table contract as the primary result.

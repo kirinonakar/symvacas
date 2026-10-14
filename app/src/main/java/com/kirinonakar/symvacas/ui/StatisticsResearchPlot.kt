@@ -51,8 +51,9 @@ internal fun researchPlotBounds(points:List<Pair<Double,Double>>,lines:List<List
     fun points(array:JSONArray)=List(array.length()){i->val row=array.getJSONArray(i);row.getDouble(0) to row.getDouble(1)}
     val observations=points(plot.getJSONArray("points"));val rawLines=plot.optJSONArray("lines")
     val lines=List(rawLines?.length() ?: 0){points(rawLines!!.getJSONArray(it))}
+    val trend=plot.optJSONArray("trend")?.let(::points).orEmpty()
     val rawHorizontal=plot.optJSONArray("horizontal");val horizontal=List(rawHorizontal?.length() ?: 0){rawHorizontal!!.getDouble(it)}
-    val invertY=plot.optBoolean("invertY");val bounds=researchPlotBounds(observations,lines,horizontal,invertY)
+    val invertY=plot.optBoolean("invertY");val bounds=researchPlotBounds(observations,lines+listOf(trend),horizontal,invertY)
     val xlabel=tr(plot.getString("xlabel"));val ylabel=tr(plot.getString("ylabel"))
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(6.dp)) {
         Text(title,fontSize=14.sp,color=c.ink)
@@ -74,6 +75,10 @@ internal fun researchPlotBounds(points:List<Pair<Double,Double>>,lines:List<List
                 drawPath(path,c.muted,style=Stroke(1.5.dp.toPx(),pathEffect=dashed))
             }
             horizontal.forEachIndexed {index,value->drawLine(if(index==0)c.danger else c.muted,Offset(left,py(value)),Offset(left+w,py(value)),1.5.dp.toPx(),pathEffect=if(index==0)null else dashed)}
+            if(trend.isNotEmpty()) {
+                val path=Path();trend.forEachIndexed {index,(x,y)->if(index==0)path.moveTo(px(x),py(y)) else path.lineTo(px(x),py(y))}
+                drawPath(path,c.accent,style=Stroke(2.5.dp.toPx()))
+            }
             observations.forEach {(x,y)->drawCircle(c.accent.copy(alpha=.8f),3.dp.toPx(),Offset(px(x),py(y)))}
             label(left,16.dp.toPx(),ylabel,Paint.Align.LEFT);label(left+w/2,size.height-8.dp.toPx(),xlabel)
         }

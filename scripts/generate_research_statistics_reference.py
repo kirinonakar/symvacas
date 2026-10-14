@@ -17,7 +17,7 @@ import pandas as pd
 import scipy
 from scipy import stats
 import statsmodels
-from statsmodels.stats.meta_analysis import combine_effects
+from statsmodels.stats.meta_analysis import combine_effects, effectsize_2proportions, effectsize_smd
 from statsmodels.stats.weightstats import ttost_ind,ttost_paired
 import pingouin as pg
 
@@ -45,6 +45,19 @@ for method,external in [('fixed','iterated'),('dl','chi2'),('pm','iterated')]:
 import statsmodels.api as sm
 egger=sm.OLS(y/se,sm.add_constant(1/se)).fit()
 add('metaanalysis',[meta,'pm',.95,'hksj',1],[(('Egger test','Intercept'),egger.params[0]),(('Egger test','SE'),egger.bse[0]),(('Egger test','p'),egger.pvalues[0])])
+binary=np.array([[12,100,20,100],[8,80,15,90],[25,150,40,160],[4,60,10,65]])
+for measure,statistic in [('oddsratio','odds-ratio'),('riskratio','risk-ratio')]:
+    effects,variances=effectsize_2proportions(*binary.T,statistic=statistic)
+    pooled=combine_effects(effects,variances,method_re='iterated',atol=1e-12,maxiter=1000)
+    add('metaanalysis',[binary.tolist(),'pm',.95,'z',1,measure,.5],[(('estimate',),pooled.mean_effect_re),(('SE',),np.sqrt(pooled.var_eff_w_re)),
+         (('Pooled ratio',),np.exp(pooled.mean_effect_re)),(('Studies',0,'Estimate'),effects[0]),(('Studies',0,'SE'),np.sqrt(variances[0]))])
+continuous=np.array([[12,3,50,10,2.5,48],[15,4,60,12,3.5,55],[9,2,40,8,2.2,42],[11,3.2,65,9.5,3,62]])
+for measure in ('md','smd'):
+    m1,s1,n1,m2,s2,n2=continuous.T
+    effects,variances=(m1-m2,s1**2/n1+s2**2/n2) if measure=='md' else effectsize_smd(*continuous.T)
+    pooled=combine_effects(effects,variances,method_re='iterated',atol=1e-12,maxiter=1000)
+    add('metaanalysis',[continuous.tolist(),'pm',.95,'z',1,measure],[(('estimate',),pooled.mean_effect_re),(('SE',),np.sqrt(pooled.var_eff_w_re)),
+         (('τ²',),pooled.tau2),(('Studies',0,'Estimate'),effects[0]),(('Studies',0,'SE'),np.sqrt(variances[0]))])
 
 icc=[[9,2,5,8],[6,1,3,2],[8,4,6,8],[7,1,2,6],[10,5,6,9],[6,2,4,7]]
 data=pd.DataFrame([(i,j,value) for i,row in enumerate(icc) for j,value in enumerate(row)],columns=['subject','rater','score'])
@@ -72,6 +85,10 @@ for mode in ('difference','log'):
     differences=np.diff(np.log(measure) if mode=='log' else measure,axis=1).ravel()*-1
     center=np.mean(differences); sd=np.std(differences,ddof=1); ci=stats.t.interval(.95,len(measure)-1,loc=center,scale=stats.sem(differences))
     add('blandaltman',[measure.tolist(),.95,mode],[(('Bias',),center),(('SD of differences',),sd),(('Lower agreement limit',),center-stats.norm.ppf(.975)*sd),(('Upper agreement limit',),center+stats.norm.ppf(.975)*sd),(('Bias CI',0),ci[0]),(('Bias CI',1),ci[1])])
+    transformed=np.log(measure) if mode=='log' else measure
+    trend=sm.OLS(differences,sm.add_constant(transformed.mean(axis=1))).fit()
+    add('blandaltman',[measure.tolist(),.95,mode],[(('Proportional bias','Slope'),trend.params[1]),(('Proportional bias','SE'),trend.bse[1]),
+         (('Proportional bias','p'),trend.pvalues[1]),(('Proportional bias','Slope CI',0),trend.conf_int()[1,0]),(('Proportional bias','Slope CI',1),trend.conf_int()[1,1])])
 
 output=dict(sources=['statsmodels.stats.meta_analysis.combine_effects','statsmodels.OLS','statsmodels.stats.weightstats.ttost_ind/ttost_paired','pingouin.intraclass_corr','scipy.stats'],
             versions=dict(scipy=scipy.__version__,statsmodels=statsmodels.__version__,pingouin=pg.__version__),cases=cases)

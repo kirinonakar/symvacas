@@ -29,7 +29,8 @@ class DescriptiveShapeTests(unittest.TestCase):
         self.assertIn('mode(s)',titles)
         rows=[row for section in report['sections'] for row in section['rows']]
         self.assertTrue(any(row[0]=='skewness (sample corrected)' for row in rows))
-        for values in ('[1]','[1,2]','[5,5,5,5]'):
+        # A lone 1 is intentionally categorical; use a nonbinary numeric singleton.
+        for values in ('[2]','[1,2]','[5,5,5,5]'):
             self.assertIn('nan',evaluate(f'stats({values})')['exact'].lower())
 
     def test_shape_domains_and_extreme_units(self):

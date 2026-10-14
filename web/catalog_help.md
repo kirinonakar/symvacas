@@ -830,24 +830,18 @@ Example: propztest2(60,100,45,100)
 `mcnemar` — Compare paired binary outcomes, such as yes/no before and after. Paired 2×2 count table; exact / corrected / asymptotic.
 Example: mcnemar([[20,8],[2,15]],exact)
 
-`cramerv` — Cramér’s V. Nonnegative integer contingency counts; uncorrected Pearson χ² and Cramér’s V. Independent observations; sparse counts can invalidate χ² p values.
-Example: cramerv([[20,5],[7,18]])
-
-`phi` — Phi coefficient. Signed phi for a 2×2 integer count table; swapping one category order reverses its sign. No Yates correction.
-Example: phi([[20,5],[7,18]])
-
-`cohenkappa` — Cohen’s κ agreement. Two-rater square count table with common category order. Unweighted, linear or quadratic kappa; multinomial delta-method SE and asymptotic Wald CI. Weighted categories must be ordered. Observed/expected agreement use the selected weights; exact agreement is also reported.
-Example: cohenkappa([[25,4,2],[3,20,5],[1,6,24]],unweighted)
-
 ### Reliability & agreement
 
 `cronbach` — Cronbach α reliability. Rows are subjects, columns are items; raw or standardized alpha. Reverse-code items first. Returns corrected item-total correlations and alpha if deleted. Alpha measures internal consistency.
 Example: cronbach([[1.987,2.255,1.895,1.448,2.702,2.043],[3.103,3.653,2.588,3.608,3.265,3.866],[5.16,4.181,6.042,4.848,4.128,5.317],[1.995,2.767,1.417,-0.304,-1.529,-0.2],[1.802,1.7,2.56,2.591,4.452,3.681],[5.242,3.886,4.375,5.082,5.152,4.701],[3.057,2.704,2.315,2.034,0.528,0.659],[4.576,5.304,4.688,5.573,4.66,5.626],[5.08,3.257,4.251,3.415,3.076,4.508],[2.502,2.733,2.919,3.058,3.403,2.427],[4.23,3.357,4.235,4.595,5.16,5.999],[2.86,3.515,2.619,0.955,1.766,0.26],[3.16,2.893,2.37,2.341,1.676,2.201],[1.101,3.477,2.018,2.67,2.235,3.664],[3.503,4.223,4.268,2.178,3.518,1.656],[3.623,3.309,4.28,2.605,3.676,3.647],[4.285,5.139,6.064,4.069,4.097,4.629],[3.301,2.767,3.271,2.832,3.249,3.621],[2.857,2.677,2.348,3.272,2.696,3.272],[0.449,1.323,0.652,3.013,3.114,1.652],[3.447,3.14,2.42,2.311,3.202,2.063],[2.401,2.196,3.998,1.025,2.349,1.691],[3.54,5.121,3.878,2.99,2.849,3.135],[3.67,4.081,4.264,3.472,3.458,4.419]],raw)
 
-`icc` — Intraclass correlation (ICC). Complete subject × rater numeric matrix. oneway=ICC(1), random=two-way absolute agreement ICC(2), mixed=two-way consistency ICC(3). single / average (mean of all k raters); confidence level. F-based CIs; absolute agreement uses approximate Satterthwaite df. Negative estimates are retained. Independent subjects, normal ANOVA errors. Mixed consistency ignores systematic rater shifts; choose the model before analysis. Degenerate intervals are unavailable.
+`icc` — Intraclass correlation (ICC). Complete subject × rater numeric matrix. oneway=ICC(1), random=two-way absolute agreement ICC(2), mixed=two-way consistency ICC(3). single / average (mean of all k raters); confidence level. F-based CIs; absolute agreement uses approximate Satterthwaite df. Negative estimates are retained. Independent subjects, normal ANOVA errors. Mixed consistency ignores systematic rater shifts; choose the model before analysis. Degenerate intervals are unavailable. Koo & Li (2016): <.50 poor, [.50,.75) moderate, [.75,.90] good, >.90 excellent. Point and CI-range ratings are shown; interpretation should use the CI and study context. Graph domain is 0–1, with arrows for out-of-range estimates; tables retain negative estimates and raw CI limits.
 Example: icc([[9,10,9],[6,7,6],[8,8,9],[5,6,5],[10,9,10],[7,7,8]],random,single,0.95)
 
-`blandaltman` — Bland–Altman agreement. Two measurements per independent subject, complete rows A then B. difference A−B or log(A/B) (positive values). Reports bias, individual agreement limits, bias CI and approximate agreement-limit CIs at the chosen level; log mode also reports geometric mean ratio and ratio limits. Pair means versus differences plot. Assumes normal differences and constant variance; repeated observations per subject need another model. Agreement limits are not the mean-bias CI.
+`cohenkappa` — Cohen’s κ agreement. Two-rater square count table with common category order. Unweighted, linear or quadratic kappa; multinomial delta-method SE and asymptotic Wald CI. Weighted categories must be ordered. Observed/expected agreement use the selected weights; exact agreement is also reported. Landis–Koch conventional benchmarks: <0 poor, [0,.20] slight, (.20,.40] fair, (.40,.60] moderate, (.60,.80] substantial, (.80,1] almost perfect. These are context-dependent heuristics; prevalence and chosen weights matter. Graph domain is 0–1; raw negative estimates and CI limits remain in tables. Example pairs are ordered Normal,Mild,Severe ratings from two raters.
+Example: cohenkappa([[6,1,0],[1,5,1],[0,1,5]],unweighted)
+
+`blandaltman` — Bland–Altman agreement. Two measurements per independent subject, complete rows A then B. difference A−B or log(A/B) (positive values). Reports bias, individual agreement limits, bias CI and approximate agreement-limit CIs at the chosen level; log mode also reports geometric mean ratio and ratio limits. Pair means versus differences plot. Assumes normal differences and constant variance; repeated observations per subject need another model. Agreement limits are not the mean-bias CI. Proportional bias: OLS difference on pair mean, slope SE/CI and two-sided t(n−2) p value; fitted trend is plotted. Log mode uses log measurements. Mean variation and positive residual variance are needed for inference. A nonsignificant slope does not establish absence of bias; unequal measurement error variances can induce a trend.
 Example: blandaltman([[10,10.5],[12,11.8],[8,8.6],[15,14.7],[11,11.3],[9,9.1]],0.95,difference)
 
 ### Distribution & variance
@@ -892,13 +886,21 @@ Example: repeatedanova([[2,4,5],[3,4,7],[4,7,8],[2,3,6],[5,6,7]],1)
 `friedman` — Compare three or more matched conditions by within-subject ranks; chi-square approximation with tie correction. Rows are independent subjects; columns are at least three repeated conditions. Complete matched rows, midranks and tie correction. Chi-square approximation; small samples or few conditions can give inaccurate p values. Reports Kendall W.
 Example: friedman([[2,4,5],[3,4,7],[4,7,8],[2,3,6],[5,6,7]])
 
-### Effect sizes & multiple testing
+### Effect Size
 
 `cohend` — Describe the standardized mean difference between two independent or paired samples. Two samples; independent (pooled d) or paired (dz).
 Example: cohend([1,2,4,5],[2,3,5,8],independent)
 
 `eta2` — Describe the proportion of total variation associated with group differences. Independent groups as separate lists.
 Example: eta2([1,2,4,5],[2,3,5,8])
+
+`cramerv` — Cramér’s V. Nonnegative integer contingency counts; uncorrected Pearson χ² and Cramér’s V. Independent observations; sparse counts can invalidate χ² p values. Combined Phi / Cramér’s V: signed phi is available for 2×2; V applies to larger tables. Cohen thresholds for V: .10/.30/.50 divided by sqrt(min(rows−1,columns−1)); phi uses absolute magnitude with .10/.30/.50. Ratings and threshold tables are descriptive conventions, not clinical significance. χ² and Fisher reports include both effects using uncorrected Pearson χ².
+Example: cramerv([[20,5],[7,18]])
+
+`phi` — Phi coefficient. Signed phi for a 2×2 integer count table; swapping one category order reverses its sign. No Yates correction.
+Example: phi([[20,5],[7,18]])
+
+### Multiple testing
 
 `padjust` — Correct a family of p values when several hypotheses are tested together. p values; method bonferroni / holm / fdr (BH) / by; alpha.
 Example: padjust([0.01,0.04,0.03,0.2],holm,0.05)
@@ -1005,7 +1007,7 @@ Example: bayesbootstrap([1,2,3,4,5,8],mean,0.95,10000,0)
 
 ### Research synthesis
 
-`metaanalysis` — Meta-analysis. Independent study rows: effect estimate, positive standard error (SE, not SD or variance). fixed / dl (DerSimonian–Laird) / pm (Paule–Mandel, default); confidence level 0–1; inference z / hksj (modified Hartung–Knapp for random effects); Egger 0/1. Returns pooled effect, weights, Q/p, I², τ², prediction interval, Forest/Funnel plots. Ratio effects require log effects and log-scale SE. Study and funnel limits use z. Egger OLS standardized effect on precision uses t(k−2); needs 3 studies with differing SE, has low power below 10, and asymmetry is not proof of publication bias. Random-effects prediction uses t(k−2) and omits tau estimation uncertainty.
+`metaanalysis` — Meta-analysis. Independent study rows: effect estimate, positive standard error (SE, not SD or variance). fixed / dl (DerSimonian–Laird) / pm (Paule–Mandel, default); confidence level 0–1; inference z / hksj (modified Hartung–Knapp for random effects); Egger 0/1. Returns pooled effect, weights, Q/p, I², τ², prediction interval, Forest/Funnel plots. Ratio effects require log effects and log-scale SE. Study and funnel limits use z. Egger OLS standardized effect on precision uses t(k−2); needs 3 studies with differing SE, has low power below 10, and asymmetry is not proof of publication bias. Random-effects prediction uses t(k−2) and omits tau estimation uncertainty. Binary mode selects events A,total A,events B,total B and OR/RR. Expressions add a sixth argument oddsratio/riskratio and seventh zero-cell correction (default .5). Converts to log OR/log RR and SE, reports both ratios per study and pooled ratio CI, and plots log effects. Double-zero events are excluded; OR also excludes double-zero non-events. A zero cell adds the correction to all four cells; zero correction rejects such studies. Independent arms; this is inverse variance, not Mantel–Haenszel/Peto. Continuous mode: mean A, sample SD A, n A, mean B, sample SD B, n B. Sixth expression argument md or smd. MD uses unpooled SE²=SD A²/n A+SD B²/n B and needs common units across studies. SMD uses pooled within-study SD, Hedges g with J≈1−3/(4df−1), and variance N/(n A n B)+g²/(2(N−3.94)), matching statsmodels. Independent arms, each n≥2; comparable constructs, common within-study variance for SMD and aligned direction. Paired arms require covariance. Independent-arm change outcomes may use change means and change SDs, not separate baseline/followup summaries.
 Example: metaanalysis([[0.2,0.1],[0.45,0.15],[-0.1,0.12],[0.6,0.2],[0.3,0.11]],pm,0.95,z,1)
 
 ### Measurement & structural models
