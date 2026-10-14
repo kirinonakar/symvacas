@@ -1,0 +1,17 @@
+1/2	\frac{1}{2}
+(x+1)/(x-1)	\frac{\left(x+1\right)}{\left(x-1\right)}
+x^2	x^{2}
+(x^2)^3	\left(x^{2}\right)^{3}
+sqrt(x)+nthroot(x,3)	\sqrt{x}+\sqrt[3]{x}
+sin(theta)+pi	\sin\left(\theta\right)+\pi
+f(x)+Ans	\operatorname{f}\left(x\right)+\mathrm{Ans}
+integrate(x^2,x,0,1)	\int_{0}^{1} x^{2}\,dx
+sum(k^2,k,1,5)	\sum_{k=1}^{5} k^{2}
+diff(sin(x),x,2)	\frac{d^{2}}{dx^{2}}\left(\sin\left(x\right)\right)
+limit(sin(x)/x,x,0,right)	\lim_{x \to 0^{+}} \frac{\sin\left(x\right)}{x}
+log(x,2)	\log_{2}\left(x\right)
+[[1,2],[3,4]]	\begin{bmatrix}1 & 2 \\ 3 & 4\end{bmatrix}
+{1,2}	\left\{1, 2\right\}
+1.25e-8	1.25 \times 10^{-8}
+-x^2	-x^{2}
+x-(y+1)	x-\left(y+1\right)

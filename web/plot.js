@@ -10,7 +10,7 @@ function svgElement(tag,attributes={},text='') {
   if (text) el.textContent = text;
   return el;
 }
-export function plot(container,result,bounds,{colors=defaultGraphColors,dots=false,scatterCurves=[],digits=10,analysis=null,trace=null,selected=0,integral=null,radianAxis=false,xAxisLabel=null,yAxisLabel=null,xTickValues=null,xTickLabel=null,surfaceView={rotation:35,elevation:32,zoom:1}}={}) {
+export function plot(container,result,bounds,{colors=defaultGraphColors,dots=false,scatterCurves=[],digits=10,preserveSmallValues=false,analysis=null,trace=null,selected=0,integral=null,radianAxis=false,xAxisLabel=null,yAxisLabel=null,xTickValues=null,xTickLabel=null,surfaceView={rotation:35,elevation:32,zoom:1}}={}) {
   const {xmin,xmax,ymin,ymax} = bounds;
   if (![xmin,xmax,ymin,ymax].every(Number.isFinite) || xmax<=xmin || ymax<=ymin) throw new Error('그래프 범위를 확인해 주세요.');
   if(result.surface)return plotSurface(container,result,bounds,{digits,...surfaceView});
@@ -26,12 +26,12 @@ export function plot(container,result,bounds,{colors=defaultGraphColors,dots=fal
   for(const [i,number] of xTicks.entries()) {
     const at=x(number);
     svg.append(svgElement('line',{x1:at,y1:pad,x2:at,y2:h-pad,stroke:'#a4b8ab',opacity:.25}));
-    if (xTickValues||radianAxis||i%2===0) svg.append(svgElement('text',{x:at,y:h-14,fill:'var(--muted)','font-size':12,'text-anchor':'middle','data-axis':'x'},xTickLabel?xTickLabel(number):radianAxis?piLabel(number,digits):displayNumber(number,digits)));
+    if (xTickValues||radianAxis||i%2===0) svg.append(svgElement('text',{x:at,y:h-14,fill:'var(--muted)','font-size':12,'text-anchor':'middle','data-axis':'x'},xTickLabel?xTickLabel(number):radianAxis?piLabel(number,digits):displayNumber(number,digits,preserveSmallValues)));
   }
   for(let i=0;i<=8;i++) {
     const at=pad+innerH*i/8;
     svg.append(svgElement('line',{x1:pad,y1:at,x2:w-pad,y2:at,stroke:'#a4b8ab',opacity:.25}));
-    if(i%2===0) svg.append(svgElement('text',{x:pad-8,y:at+4,fill:'var(--muted)','font-size':12,'text-anchor':'end'},displayNumber(ymax-(ymax-ymin)*i/8,digits)));
+    if(i%2===0) svg.append(svgElement('text',{x:pad-8,y:at+4,fill:'var(--muted)','font-size':12,'text-anchor':'end'},displayNumber(ymax-(ymax-ymin)*i/8,digits,preserveSmallValues)));
   }
   if (xmin<=0 && xmax>=0) group.append(svgElement('line',{x1:x(0),y1:pad,x2:x(0),y2:h-pad,stroke:'#738a7c'}));
   if (ymin<=0 && ymax>=0) group.append(svgElement('line',{x1:pad,y1:y(0),x2:w-pad,y2:y(0),stroke:'#738a7c'}));

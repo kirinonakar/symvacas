@@ -7,6 +7,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 val LocalLanguage = staticCompositionLocalOf { "en" }
 
 private val korean = mapOf(
+    "Copy as LaTeX" to "LaTeX 형식으로 복사",
     "Preview shortened; analysis uses all rows." to "미리보기는 줄여 표시하며 분석에는 모든 행을 사용합니다.",
     "Nested model comparison" to "중첩 모형 비교", "Nested logistic model comparison" to "중첩 로지스틱 모형 비교",
     "Compared predictors" to "비교 설명변수", "Training model fit" to "훈련 모형 적합도", "Validation performance" to "검증 예측 성능",

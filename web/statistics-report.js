@@ -16,6 +16,7 @@ export function statisticsReportTarget(result,source='',requested=''){
 }
 
 export function renderStatisticsReport(container,report,{digits=10,onCopy,onClear,onModelWorkflow,isBusy,...options}={}){
+  options.preserveSmallValues=true;
   container.replaceChildren();
   const panel=element('div','','statistics-result-report');
   const heading=element('div','','statistics-result-heading');heading.append(element('h3',t(report.title)));

@@ -2,6 +2,7 @@ import {roundNumber} from './display-format.js';
 import {expressionTree} from './expression-tree.js';
 import {trackMathRoots} from './math-roots.js';
 import {latexSymbolLabels} from './parser.js';
+import {registerMathCopy} from './latex-output.js';
 const NS = 'http://www.w3.org/1998/Math/MathML';
 function el(tag,children=[],text='') {
   const result = document.createElementNS(NS,tag);
@@ -31,7 +32,7 @@ function superscript(base,exponent) {
   script.setAttribute('voffset',radical?'-0.3em':'-0.12em');
   return el('msup',[base,script]);
 }
-export function mathDisplay(tree,digits=10,decimal=false,{notation='off',grouping=false,roundNumbers=true,engineeringShift=0,showZeroExponent=false}={}) {
+export function mathDisplay(tree,digits=10,decimal=false,{notation='off',grouping=false,roundNumbers=true,engineeringShift=0,showZeroExponent=false,preserveSmallValues=false}={}) {
   function draw(t,allowNotation) {
     if (!t) return el('mtext');
     const args = (t.args || []).map(child=>render(child,allowNotation&&t.kind==='unary')), value = t.value || '';
@@ -120,13 +121,13 @@ export function mathDisplay(tree,digits=10,decimal=false,{notation='off',groupin
         let shown = value;
         if(allowNotation&&notation!=='off'&&/^-?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(value)&&/[1-9]/.test(value.split(/e/i)[0])) {
           const [mantissa,exponent='0']=value.replace(/^-/,'').split(/e/i),[whole,fraction='']=mantissa.split('.'),combined=whole+fraction,first=combined.search(/[1-9]/),power=whole.length-first-1+Number(exponent),engPower=(notation==='eng'?Math.floor(power/3)*3:power)+engineeringShift,places=power-engPower+1;
-          if(Math.abs(engPower)>40000||Math.abs(places)>40000)return el('mn',[],roundNumber(value,digits));
+          if(Math.abs(engPower)>40000||Math.abs(places)>40000)return el('mn',[],roundNumber(value,digits,preserveSmallValues));
           const normalized=combined.slice(first).padEnd(Math.max(0,places),'0');
           const mantissaText=(value.startsWith('-')?'-':'')+(places<=0?'0.'+'0'.repeat(-places)+normalized:normalized.slice(0,places)+(normalized.length>places?'.'+normalized.slice(places):''));
-          const rendered=mathDisplay({kind:'number',value:mantissaText},digits,true,{grouping}).firstChild;
+          const rendered=mathDisplay({kind:'number',value:mantissaText},digits,true,{grouping,preserveSmallValues}).firstChild;
           return engPower||showZeroExponent?row([rendered,operator('×'),superscript(el('mn',[],'10'),el('mn',[],String(engPower)))]):rendered;
         }
-        if(roundNumbers)shown=roundNumber(value,digits);
+        if(roundNumbers)shown=roundNumber(value,digits,preserveSmallValues);
         const number=/^-?[\d.]+(?:e[+-]?\d+)?$/i.test(shown);
         if(number&&/e/i.test(shown)){
           const [mantissa,exponent]=shown.split(/e/i);
@@ -139,10 +140,11 @@ export function mathDisplay(tree,digits=10,decimal=false,{notation='off',groupin
       default: return el('mtext',[],value);
     }
   }
-  function render(t,allowNotation=true){const result=draw(t,allowNotation);if(t?.start!==undefined){result.setAttribute('data-source-start',String(t.start));result.setAttribute('data-source-end',String(t.end));}return result;}
+  function render(t,allowNotation=true){const result=draw(t,allowNotation);if(t?.start!==undefined){result.setAttribute('data-source-start',String(t.start));result.setAttribute('data-source-end',String(t.end));}if(t)registerMathCopy(result,t,digits);return result;}
   const math = el('math',[render(tree)]);
   math.setAttribute('display','block');
   math.setAttribute('displaystyle','true');
+  if(tree)registerMathCopy(math,tree,digits);
   trackMathRoots(math);
   return math;
 }

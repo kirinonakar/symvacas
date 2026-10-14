@@ -22,13 +22,13 @@ internal fun statisticsFormattedCopyCell(cell:JSONObject,digits:Int,mode:ResultD
     val power=sourceTree?.optJSONArray("args")?.optJSONObject(1)
     val notation=sourceTree?.optString("kind") in listOf("product","binary")&&power?.optString("kind")=="power"&&power.optJSONArray("args")?.optJSONObject(0)?.optString("value")=="10"
     if(sourceTree!=null&&!notation&&complex(sourceTree)) {
-        return equationFormulaText(ResultDisplayFormat.formatTree(sourceTree,if(engineeringConversion)ResultDisplayMode.ENGINEERING else mode,grouping,engineeringShift,engineeringConversion,digits))
+        return equationFormulaText(ResultDisplayFormat.formatTree(sourceTree,if(engineeringConversion)ResultDisplayMode.ENGINEERING else mode,grouping,engineeringShift,engineeringConversion,digits,preserveSmallValues=true))
     }
     val source=cell.optString("decimal").ifBlank {cell.optString("exact")}
     if(sourceTree?.optString("kind")=="text"&&source.any {it in "+*/^()"}) {
         regressionFormulaDisplayTree(source,digits)?.let {return equationFormulaText(it)}
     }
-    return ResultDisplayFormat.resultText(cell,true,false,mode,grouping,engineeringConversion,engineeringShift,false,false,digits)
+    return ResultDisplayFormat.resultText(cell,true,false,mode,grouping,engineeringConversion,engineeringShift,false,false,digits,preserveSmallValues=true)
 }
 
 internal fun regressionResultForCopy(fitted:JSONObject?,report:JSONObject):JSONObject? =

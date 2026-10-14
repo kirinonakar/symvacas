@@ -16,7 +16,7 @@ export function renderRegressionReport(container,report,digits=10,parameterLabel
   container.replaceChildren();
   if(!report)return;
   if(onCopy||onClear){const heading=element('div','','statistics-result-heading');heading.append(element('h3',t('Regression')));if(onCopy)heading.append(control('Copy',onCopy));if(onClear)heading.append(control('Clear',onClear));container.append(heading);}
-  const number=value=>value===null||value===undefined?'—':roundNumber(String(value),digits);
+  const number=value=>value===null||value===undefined?'—':roundNumber(String(value),digits,true);
   const bayesian=!!report.bayesian;
   const machineLearning=!!report.model&&!bayesian;
   const credibleLabel=`${number(Number(report.credibleLevel)*100)}% ${t("Credible interval")}`;

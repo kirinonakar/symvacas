@@ -78,7 +78,7 @@ private val LocalCalculatorOverlay=staticCompositionLocalOf<(String)->Unit> { {}
         onDispose {if(previous!=null)window?.setSoftInputMode(previous)}
     }
     LaunchedEffect(m.mode){m.save()}
-    CompositionLocalProvider(LocalCalculatorOverlay provides {overlay=it}, LocalLanguage provides m.language) {
+    CompositionLocalProvider(LocalCalculatorOverlay provides {overlay=it}, LocalLanguage provides m.language,LocalCopyAsLatex provides m.copyAsLatex) {
     Column(Modifier.fillMaxSize().background(c.body).windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))
         .then(if(avoidKeyboard)Modifier.imePadding()else Modifier)) {
         Row(Modifier.fillMaxWidth().height(44.dp).padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -251,19 +251,20 @@ internal fun largeHistoryTree(root:JSONObject?):Boolean {
         val selection=if(showInput)m.editor.source.substring(minOf(m.editor.anchor,m.editor.cursor),maxOf(m.editor.anchor,m.editor.cursor)) else ""
         val language=LocalLanguage.current
         val statisticsCopyResult=m.displayResult?.takeIf {!showInput&&(it.has("statisticsReport")||it.has("statisticsCopyReport"))}
-        val copyAnswer=remember(m.displayResult,m.decimal,m.mixedNumbers,m.resultDisplayMode,m.thousandsSeparator,m.engineeringConversion,m.engineeringShift,m.dmsDisplay,m.dmsConversion,m.displayDigits,showInput,language) {
+        val copyAnswer=remember(m.displayResult,m.decimal,m.mixedNumbers,m.resultDisplayMode,m.thousandsSeparator,m.engineeringConversion,m.engineeringShift,m.dmsDisplay,m.dmsConversion,m.displayDigits,showInput,language,m.copyAsLatex) {
             m.displayResult?.let {result->if(statisticsCopyResult!=null)result.optString("exact")
+                else if(showInput&&m.copyAsLatex)ResultDisplayFormat.resultTree(result,m.decimal,m.mixedNumbers,m.engineeringConversion,m.dmsDisplay,m.dmsConversion)?.let {latexTree(ResultDisplayFormat.formatTree(it,if(m.engineeringConversion)ResultDisplayMode.ENGINEERING else m.resultDisplayMode,false,if(m.engineeringConversion)m.engineeringShift else 0,m.engineeringConversion,m.displayDigits))} ?: mathCopyText(result.optString(if(m.decimal)"decimal" else "exact"),true)
                 else ResultDisplayFormat.resultText(result,m.decimal,m.mixedNumbers,m.resultDisplayMode,m.thousandsSeparator,m.engineeringConversion,m.engineeringShift,m.dmsDisplay,m.dmsConversion,m.displayDigits)}
         }
         val copyTarget=if(showInput)CopyCycle.next(copyAnswer,m.editor.source,copyExpression,selection) else CopyTarget(copyAnswer.orEmpty(),false,false)
         if(showInput)TextButton(onClick={
             val start=minOf(m.editor.anchor,m.editor.cursor)
-            clipboard.setText(AnnotatedString(selection))
+            clipboard.setText(AnnotatedString(mathCopyText(selection,m.copyAsLatex)))
             m.edit(Editor(m.editor.source.removeRange(start,start+selection.length),start))
         },enabled=selection.isNotEmpty()&&m.calcSession==null,modifier=Modifier.height(36.dp),contentPadding=PaddingValues(horizontal=8.dp)){Text("Cut",fontSize=11.sp)}
         TextButton(onClick={
             val text=statisticsCopyResult?.let {statisticsResultCopyText(m,it,language)} ?: copyTarget.text
-            if(text.isNotBlank())clipboard.setText(AnnotatedString(text))
+            if(text.isNotBlank())clipboard.setText(AnnotatedString(mathCopyText(text,showInput&&m.copyAsLatex)))
             if(selection.isEmpty())copyExpression=copyTarget.expressionNext
         },enabled=showInput||copyTarget.text.isNotBlank(),modifier=Modifier.height(36.dp),contentPadding=PaddingValues(horizontal=8.dp)){Text(if(!showInput)tr("Copy") else if(selection.isNotEmpty())"Copy" else copyTarget.label,fontSize=11.sp)}
         if(!showInput)TextButton(onClick={m.clearStatisticsResult()},enabled=m.displayResult!=null&&!m.busy&&!m.regressionBusy,modifier=Modifier.height(36.dp).testTag("statistics-output-clear"),contentPadding=PaddingValues(horizontal=8.dp)){Text(tr("Clear"),fontSize=11.sp)}
@@ -289,14 +290,14 @@ internal fun largeHistoryTree(root:JSONObject?):Boolean {
     val showCalculationStatus=delayedCalculationStatus(calculating,m.inputVersion)
     Column(Modifier.fillMaxWidth().padding(horizontal=14.dp)) {
         if(showInput&&!m.poweredOn) Box(Modifier.fillMaxWidth().height(66.dp),contentAlignment=Alignment.Center){Text("OFF · press 2nd to resume",color=c.muted)}
-        else if(showInput&&typing) BasicTextField(
+        else if(showInput&&typing) MathClipboard {BasicTextField(
             value=TextFieldValue(m.editor.source,TextRange(m.editor.anchor.coerceIn(0,m.editor.source.length),m.editor.cursor.coerceIn(0,m.editor.source.length))),
             onValueChange={
                 val relation=if(!m.committed&&it.selection.collapsed&&it.composition==null)m.editor.typedRelation(it.text,it.selection.end) else null
                 val matrixFactor=if(!m.committed&&it.selection.collapsed&&it.composition==null)m.editor.typedMatrixFactor(it.text,it.selection.end) else null
                 val division=if(!m.committed&&it.selection.collapsed&&it.composition==null)m.editor.typedDivision(it.text,it.selection.end) else null
                 val symbolDeleted=m.editor.atomicSymbolDeletion(it.text)
-                val latex=LatexInput.convertEdit(m.editor,it.text)
+                val latex=if(it.composition==null)LatexInput.convertEdit(m.editor,it.text) else null
                 if(relation!=null) {
                     m.edit(relation)
                 } else if(division!=null) {
@@ -333,7 +334,7 @@ internal fun largeHistoryTree(root:JSONObject?):Boolean {
             textStyle=TextStyle(color=c.ink,fontSize=m.inputFont.sp,fontFamily=FontFamily.Monospace),
             singleLine=!m.wordWrap,
             maxLines=if(m.wordWrap)4 else 1,
-            readOnly=m.calcSession!=null)
+            readOnly=m.calcSession!=null)}
         else if(showInput) Box(Modifier.fillMaxWidth().heightIn(min=60.dp,max=if(m.wordWrap)180.dp else androidx.compose.ui.unit.Dp.Infinity).clickable{requestInputFocus();m.edit(m.editor.atEnd())}.focusRequester(focus).onFocusChanged{inputFocused=it.isFocused}.onKeyEvent{handleMathInputKey(m,it)}.focusable().then(if(m.wordWrap)Modifier.verticalScroll(rememberScrollState())else Modifier.horizontalScroll(rememberScrollState())).semantics{contentDescription="Current expression"},contentAlignment=Alignment.CenterStart){
             // In scrollable workspaces, merely composing this display must not reveal its caret.
             CompositionLocalProvider(LocalMathInputRevision provides if(m.committed||!inputFocused)null else m.editor,LocalMathCursorTarget provides if(m.committed)null else m.editor.cursorTarget(),LocalMathAfter provides {a,b->requestInputFocus();m.edit(m.editor.after(a,b))},LocalCaretVisible provides caretVisible,LocalActiveToken provides m.editor.activeToken,LocalTypedParens provides m.typedParens,LocalPlaceCursor provides {a,b,p->requestInputFocus();m.edit(m.editor.placeInToken(a,b,p))}) {
@@ -345,9 +346,9 @@ internal fun largeHistoryTree(root:JSONObject?):Boolean {
             val session=m.calcSession
             if(session!=null)Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                 Text("${session.index+1}/${session.names.size}  ${session.name} = ",fontSize=20.sp,color=c.accent)
-                BasicTextField(
+                MathClipboard {BasicTextField(
                     value=TextFieldValue(session.input.source,TextRange(session.input.anchor.coerceIn(0,session.input.source.length),session.input.cursor.coerceIn(0,session.input.source.length))),
-                    onValueChange={m.editCalcValue((if(it.selection.collapsed&&it.composition==null)session.input.typedMatrixFactor(it.text,it.selection.end) else null) ?: session.input.atomicSymbolDeletion(it.text) ?: Editor(it.text,it.selection.end,it.selection.start))},
+                    onValueChange={m.editCalcValue((if(it.composition==null)LatexInput.convertEdit(session.input,it.text) else null) ?: (if(it.selection.collapsed&&it.composition==null)session.input.typedMatrixFactor(it.text,it.selection.end) else null) ?: session.input.atomicSymbolDeletion(it.text) ?: Editor(it.text,it.selection.end,it.selection.start))},
                     modifier=Modifier.weight(1f).onPreviewKeyEvent{if(it.key in listOf(Key.MoveHome,Key.MoveEnd))handleMathInputKey(m,it)else if(it.type==KeyEventType.KeyDown&&it.key==Key.Enter){m.submitCalcValue();true}else false}.semantics{contentDescription="Value for ${session.name}"},
                     textStyle=TextStyle(color=c.ink,fontSize=22.sp,fontFamily=FontFamily.Monospace),
                     decorationBox={inner->Box(Modifier.fillMaxWidth()) {
@@ -357,7 +358,7 @@ internal fun largeHistoryTree(root:JSONObject?):Boolean {
                         }
                         inner()
                     }}
-                )
+                )}
             }
             else if(m.displayResult!=null&&m.poweredOn)Box(Modifier.fillMaxWidth(),contentAlignment=Alignment.CenterEnd){
                 val currentResult=m.displayResult!!

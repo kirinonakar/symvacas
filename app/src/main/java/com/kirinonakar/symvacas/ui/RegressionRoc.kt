@@ -33,7 +33,7 @@ import kotlin.math.min
     if(points.size<2)return
     val colors=LocalInstrument.current
     val exports=remember {GraphExportState()}
-    val auc=ResultDisplayFormat.formatText(report.optString("auc"),ResultDisplayMode.OFF,false,maxFractionDigits=digits)
+    val auc=ResultDisplayFormat.formatText(report.optString("auc"),ResultDisplayMode.OFF,false,maxFractionDigits=digits,preserveSmallValues=true)
     val title="${tr(if(oob)"OOB ROC curve" else "ROC curve")} · AUC=$auc"
     val xLabel=tr("False positive rate (FPR)");val yLabel=tr("Sensitivity (TPR)")
     Text(title,fontSize=12.sp)

@@ -14,10 +14,11 @@ internal fun equationStepExplanation(step:JSONObject,translate:(String)->String)
     }
 }
 
-internal fun solutionStepsCopyText(report:JSONObject,digits:Int,translate:(String)->String):String {
+internal fun solutionStepsCopyText(report:JSONObject,digits:Int,copyAsLatex:Boolean=false,translate:(String)->String):String {
     fun formula(value:JSONObject):String=value.optJSONObject("tree")?.let {
-        equationFormulaText(ResultDisplayFormat.formatTree(it,ResultDisplayMode.OFF,false,maxFractionDigits=digits))
-    }?.takeIf {it.isNotBlank()} ?: value.optString("exact")
+        val tree=ResultDisplayFormat.formatTree(it,ResultDisplayMode.OFF,false,maxFractionDigits=digits)
+        if(copyAsLatex)latexTree(tree) else equationFormulaText(tree)
+    }?.takeIf {it.isNotBlank()} ?: mathCopyText(value.optString("exact"),copyAsLatex)
     val blocks=mutableListOf(translate("Step-by-step solution"))
     report.optString("note").lines().filter {it.isNotBlank()}.forEach {blocks.add(translate(it))}
     report.optString("method").takeIf {it.isNotBlank()}?.let {blocks.add(translate(it))}

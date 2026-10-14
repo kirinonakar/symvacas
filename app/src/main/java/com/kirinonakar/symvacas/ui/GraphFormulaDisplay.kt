@@ -5,17 +5,18 @@ import com.kirinonakar.symvacas.math.Parser
 import com.kirinonakar.symvacas.calculator.ResultDisplayMode
 import com.kirinonakar.symvacas.calculator.FunctionTransfer
 import java.math.BigDecimal
+import java.math.MathContext
 import java.math.RoundingMode
 import org.json.JSONObject
 
 /** Round numeric fractions in graph captions without changing the expressions used to plot. */
-internal fun decimalFractionFormulaTree(source:String, fractionDigits:Int=3):JSONObject? = runCatching {
-    JSONObject(decimalizeRegressionFractions(Parser(source).parse(),fractionDigits).json())
+internal fun decimalFractionFormulaTree(source:String, fractionDigits:Int=3,preserveSmallValues:Boolean=false):JSONObject? = runCatching {
+    JSONObject(decimalizeRegressionFractions(Parser(source).parse(),fractionDigits,preserveSmallValues).json())
 }.getOrNull()
 
 internal fun regressionFormulaDisplayTree(source:String, displayDigits:Int,variables:Map<String,String> = emptyMap()):JSONObject? =
-    decimalFractionFormulaTree(source,displayDigits)?.let {
-        ResultDisplayFormat.formatTree(it,ResultDisplayMode.OFF,false,maxFractionDigits=displayDigits)
+    decimalFractionFormulaTree(source,displayDigits,preserveSmallValues=true)?.let {
+        ResultDisplayFormat.formatTree(it,ResultDisplayMode.OFF,false,maxFractionDigits=displayDigits,preserveSmallValues=true)
     }?.also {tree->
         fun rename(node:JSONObject) {
             if(node.optString("kind")=="symbol")variables[node.optString("value")]?.let {node.put("value",it)}
@@ -31,7 +32,7 @@ internal fun multivariateRegressionDisplayTree(source:String,displayDigits:Int):
 /** Make a parseable graph expression whose coefficients match the displayed fit. */
 internal fun regressionFormulaGraphSource(source:String, displayDigits:Int):String? = runCatching {
     val parsed=Parser(source.replace("**","^")).parse()
-    val decimalized=decimalizeRegressionFractions(parsed,displayDigits)
+    val decimalized=decimalizeRegressionFractions(parsed,displayDigits,preserveSmallValues=true)
     fun rounded(node:Expr):Expr {
         val children=node.args.map(::rounded)
         if(node.kind!="number")return node.copy(args=children)
@@ -39,8 +40,7 @@ internal fun regressionFormulaGraphSource(source:String, displayDigits:Int):Stri
         val exponentAt=token.indexOfAny(charArrayOf('e','E'))
         val significand=if(exponentAt<0)token else token.substring(0,exponentAt)
         if(!significand.contains('.'))return node.copy(args=children)
-        val value=significand.toBigDecimal().setScale(displayDigits.coerceIn(0,200),RoundingMode.HALF_UP)
-            .stripTrailingZeros().toPlainString()
+        val value=ResultDisplayFormat.formatText(significand,ResultDisplayMode.OFF,false,maxFractionDigits=displayDigits,preserveSmallValues=true)
         return node.copy(value=value+if(exponentAt<0)"" else token.substring(exponentAt),args=children)
     }
     val graphSource=FunctionTransfer.editableSource(JSONObject(rounded(decimalized).json()))
@@ -48,14 +48,16 @@ internal fun regressionFormulaGraphSource(source:String, displayDigits:Int):Stri
     graphSource
 }.getOrNull()
 
-private fun decimalizeRegressionFractions(expression:Expr, fractionDigits:Int):Expr {
-    val children=expression.args.map {decimalizeRegressionFractions(it,fractionDigits)}
+private fun decimalizeRegressionFractions(expression:Expr, fractionDigits:Int,preserveSmallValues:Boolean=false):Expr {
+    val children=expression.args.map {decimalizeRegressionFractions(it,fractionDigits,preserveSmallValues)}
     val updated=expression.copy(args=children)
     if(updated.kind!="binary" || updated.value!="/" || children.size!=2)return updated
     val denominator=children[1].numberValue() ?: return updated
     if(denominator.signum()==0)return updated
     val (coefficient,remainder)=children[0].numericFactor()
-    val decimal=coefficient.divide(denominator,fractionDigits.coerceIn(0,200),RoundingMode.HALF_UP)
+    // Leave the final rounding to the display formatter, including values just below a carry boundary.
+    val decimal=if(preserveSmallValues)coefficient.divide(denominator,MathContext(200,RoundingMode.HALF_UP))
+        else coefficient.divide(denominator,fractionDigits.coerceIn(0,200),RoundingMode.HALF_UP)
     val number=Expr("number",decimal.abs().toPlainString())
     val result=if(remainder==null)number else Expr("binary","*",listOf(number,remainder))
     return if(decimal.signum()<0)Expr("unary","-",listOf(result)) else result

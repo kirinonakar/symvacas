@@ -1,0 +1,21 @@
+[
+  {"value":"0.0000123","digits":3,"expected":"0.000012"},
+  {"value":"0.0000103","digits":3,"expected":"0.000010"},
+  {"value":"0.0000126","digits":3,"expected":"0.000013"},
+  {"value":"-0.0000126","digits":3,"expected":"-0.000013"},
+  {"value":"0.0000100","digits":3,"expected":"0.000010"},
+  {"value":"0.00001","digits":3,"expected":"0.000010"},
+  {"value":"0.0000999","digits":3,"expected":"0.00010"},
+  {"value":"0.0004999","digits":3,"expected":"0.00050"},
+  {"value":"0.0005","digits":3,"expected":"0.001"},
+  {"value":"-0.0005","digits":3,"expected":"-0.001"},
+  {"value":"0.00123","digits":3,"expected":"0.001"},
+  {"value":"0.0123","digits":3,"expected":"0.012"},
+  {"value":"1.23456","digits":3,"expected":"1.235"},
+  {"value":"0.0000000126","digits":6,"expected":"0.000000013"},
+  {"value":"0.0000103","digits":8,"expected":"0.0000103"},
+  {"value":"0.000000000000000000000000000000000000000123","digits":3,"expected":"0.00000000000000000000000000000000000000012"},
+  {"value":"0.0000","digits":3,"expected":"0"},
+  {"value":"-0.0000","digits":3,"expected":"0"},
+  {"value":"42","digits":3,"expected":"42"}
+]

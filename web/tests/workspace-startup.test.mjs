@@ -4,6 +4,9 @@ import {readFileSync} from 'node:fs';
 import {JSDOM} from 'jsdom';
 import {createAppState,createPersistence,restoreFields,restoreSelect} from '../app-state.js';
 import {createWorkspaces} from '../workspaces.js';
+import {createGraphWorkspace} from '../graph-workspace.js';
+import {createCalculator} from '../calculator.js';
+import {createAppDialogs} from '../app-dialogs.js';
 import {setLanguage} from '../i18n.js';
 import {setComputationLimitsRemoved} from '../computation-limits.js';
 
@@ -12,7 +15,7 @@ import {setComputationLimitsRemoved} from '../computation-limits.js';
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 function fixture(context,saved={},engine={ready:false},usePersistence=false){
   const dom=new JSDOM(html,{url:'http://localhost:8080/',pretendToBeVisual:true}),window=dom.window;
-  const globals={window,document:window.document,navigator:window.navigator,localStorage:window.localStorage,Event:window.Event,
+  const globals={window,document:window.document,navigator:window.navigator,localStorage:window.localStorage,Event:window.Event,NodeFilter:window.NodeFilter,
     getComputedStyle:window.getComputedStyle.bind(window),requestAnimationFrame:window.requestAnimationFrame.bind(window),cancelAnimationFrame:window.cancelAnimationFrame.bind(window)};
   const descriptors=Object.fromEntries(Object.keys(globals).map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
   for(const [key,value] of Object.entries(globals))Object.defineProperty(globalThis,key,{configurable:true,writable:true,value});
@@ -34,6 +37,37 @@ test('fresh page constructs and initializes every workspace without a cached dat
   assert.equal(typeof workspaces.runStatisticsModelWorkflow,'function');
   assert.ok(window.document.getElementById('statistics-models-kind').options.length);
   assert.ok(window.document.getElementById('probability-category').options.length);
+  assert.deepEqual(errors,[]);
+});
+
+test('calculator, graph and equation production inputs convert pasted LaTeX immediately',async context=>{
+  let graphs,calculator;context.after(()=>{calculator?.dispose();graphs?.dispose();});
+  const {window,state,errors}=fixture(context),document=window.document,noop=()=>{};
+  graphs=createGraphWorkspace({execute:async()=>({ok:true}),options:()=>({displayDigits:10,angle:'RAD'}),onError:message=>errors.push(message),persist:noop,isBusy:()=>false,isReady:()=>false});
+  const copies=[],ui={toast:message=>errors.push(message),openDialog:noop,clipboard:text=>copies.push(text),pickFile:noop};
+  calculator=createCalculator({state,engine:{ready:false},isBusy:()=>false,ui,persist:noop,schedulePersist:noop,requestOptions:()=>({displayDigits:10}),error:message=>errors.push(message),changeMode:noop,updateButtons:noop,pressKey:noop,modeDialog:noop,variablesDialog:noop,matrixInsertDialog:noop,graphs});
+  function paste(field,text){const event=new window.Event('paste',{bubbles:true,cancelable:true});Object.defineProperty(event,'clipboardData',{value:{getData:()=>text}});field.dispatchEvent(event);assert.equal(event.defaultPrevented,true);}
+  const expression=document.getElementById('expression');expression.value='2x+3';expression.setSelectionRange(1,2);
+  paste(expression,'$\\frac{1}{5}$');assert.equal(expression.value,'2(1/5)+3');assert.equal(expression.selectionStart,6);
+  const graph=document.getElementById('graph-source');graph.select();
+  paste(graph,'$\\sqrt{x}$\n\\frac{x+1}{2}');assert.equal(graph.value,'sqrt(x)\n(x+1)/2');assert.equal(document.getElementById('graph-line-numbers').children.length,2);
+  assert.equal(graphs.snapshot().sources.cartesian,graph.value);
+  const equation=document.getElementById('equation-source');equation.select();
+  paste(equation,'x=\\frac{1}{2}\ny=\\sqrt{2}');assert.equal(equation.value,'x=1/2\ny=sqrt(2)');assert.equal(equation.selectionStart,equation.value.length);
+  const coefficient=document.getElementById('equation-a');coefficient.select();paste(coefficient,'\\sqrt{2}');assert.equal(coefficient.value,'sqrt(2)');
+  window.matchMedia=()=>({matches:false,addEventListener:noop,removeEventListener:noop});
+  createAppDialogs({state,ui,persist:noop,calculator,changeMode:noop,pressKey:noop,refreshDisplays:noop,renderMatrix:noop,error:noop,reloadState:noop});
+  document.getElementById('settings-dialog').showModal=()=>{};
+  document.getElementById('settings-button').click();
+  const option=document.querySelector('[data-setting="copyAsLatex"]');assert.equal(option.type,'checkbox');assert.equal(option.checked,false);
+  expression.value='1/2';expression.select();document.getElementById('copy').click();assert.equal(copies.pop(),'1/2');
+  option.checked=true;option.dispatchEvent(new window.Event('change'));assert.equal(state.copyAsLatex,true);
+  document.getElementById('copy').click();assert.equal(copies.pop(),'\\frac{1}{2}');
+  const fraction={kind:'fraction',args:[{kind:'number',value:'1'},{kind:'number',value:'2'}]};
+  calculator.showResult({ok:true,exact:'1/2',decimal:'0.5',tree:fraction,decimalTree:{kind:'number',value:'0.5'}},'1/2');
+  document.getElementById('answer-copy').click();assert.equal(copies.pop(),'\\frac{1}{2}');
+  option.checked=false;option.dispatchEvent(new window.Event('change'));document.getElementById('answer-copy').click();assert.equal(copies.pop(),'1/2');
+  await new Promise(resolve=>setTimeout(resolve,0));
   assert.deepEqual(errors,[]);
 });
 

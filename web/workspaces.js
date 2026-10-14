@@ -1,6 +1,7 @@
 import {$,value,element,control} from './app-ui.js';
 import {t,getLanguage} from './i18n.js';
 import {parse,latexInput} from './parser.js';
+import {bindMathPaste} from './math-input.js';
 import {statisticsRequest} from './statistics-request.js';
 import {renderFormulas} from './formula-preview.js';
 import {displayNumber} from './display-format.js';
@@ -16,6 +17,7 @@ import {createEquationSteps} from './equation-steps.js';
 
 export function createWorkspaces({state,engine,ui,persist,restoreSelect,requestOptions,isBusy,error,changeMode,replaceInput,insert,evaluate,showResult,showStatisticsResult,clearResult,graphs}) {
   const {toast}=ui;
+  for(const id of ['equation-source','equation-a','equation-b','equation-c','equation-d','equation-variable','equation-extra','equation-initial'])bindMathPaste($(id),{multiline:id==='equation-source',onError:toast});
   const matrix=createMatrixWorkspace({state,persist,restoreSelect,refreshWorkspaceMath,storeExpression:storeWorkspaceExpression,error,changeMode,replaceInput});
   const statistics=createStatisticsWorkspace({state,engine,ui,persist,refreshWorkspaceMath,storeExpression:storeWorkspaceExpression,error,changeMode,replaceInput,graphs,clearResult,onSummary:()=>run("statistics-summary")});
   const functions=createFunctionsWorkspace({state,ui,persist,refreshWorkspaceMath,changeMode,insert});

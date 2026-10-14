@@ -4,6 +4,7 @@ import com.kirinonakar.symvacas.calculator.ResultDisplayMode
 import org.json.JSONArray
 import org.json.JSONObject
 import java.math.RoundingMode
+import java.math.MathContext
 import kotlin.math.abs
 
 /** Formatting helpers used only for the answer view; the engine result remains lossless. */
@@ -37,14 +38,14 @@ object ResultDisplayFormat {
             .put(JSONObject().put("kind","number").put("value",text(seconds))))
     }.getOrNull()
 
-    fun formatTree(tree: JSONObject, displayMode: ResultDisplayMode, grouping: Boolean, engineeringShift: Int = 0, showZeroExponent: Boolean = false, maxFractionDigits: Int = 30): JSONObject {
-        return formatNode(tree, displayMode, grouping, engineeringShift, showZeroExponent, maxFractionDigits, allowNotation = true)
+    fun formatTree(tree: JSONObject, displayMode: ResultDisplayMode, grouping: Boolean, engineeringShift: Int = 0, showZeroExponent: Boolean = false, maxFractionDigits: Int = 30, preserveSmallValues: Boolean = false): JSONObject {
+        return formatNode(tree, displayMode, grouping, engineeringShift, showZeroExponent, maxFractionDigits, preserveSmallValues, allowNotation = true)
     }
 
-    fun formatText(text: String, displayMode: ResultDisplayMode, grouping: Boolean, engineeringShift: Int = 0, showZeroExponent: Boolean = false, maxFractionDigits: Int = 30): String {
+    fun formatText(text: String, displayMode: ResultDisplayMode, grouping: Boolean, engineeringShift: Int = 0, showZeroExponent: Boolean = false, maxFractionDigits: Int = 30, preserveSmallValues: Boolean = false): String {
         if (text.isBlank()) return text
         if (displayMode != ResultDisplayMode.OFF) {
-            notationParts(text, displayMode, engineeringShift, maxFractionDigits)?.let { parts ->
+            notationParts(text, displayMode, engineeringShift, maxFractionDigits, preserveSmallValues)?.let { parts ->
                 if (parts.exponent != 0 || showZeroExponent) {
                     val mantissa = if (grouping) groupNumber(parts.mantissa) ?: parts.mantissa else parts.mantissa
                     return "$mantissa×10^${parts.exponent}"
@@ -52,11 +53,11 @@ object ResultDisplayFormat {
             }
         }
         scientificParts(text)?.let { parts ->
-            val rounded = roundFraction(parts.mantissa, maxFractionDigits)
+            val rounded = roundFraction(parts.mantissa, maxFractionDigits, preserveSmallValues)
             val mantissa = if (grouping) groupNumber(rounded) ?: rounded else rounded
             return "$mantissa×10^${parts.exponent}"
         }
-        val rounded = roundFraction(text, maxFractionDigits)
+        val rounded = roundFraction(text, maxFractionDigits, preserveSmallValues)
         return if (grouping) groupNumber(rounded) ?: rounded else rounded
     }
 
@@ -67,13 +68,14 @@ object ResultDisplayFormat {
         engineeringShift: Int,
         showZeroExponent: Boolean,
         maxFractionDigits: Int,
+        preserveSmallValues: Boolean,
         allowNotation: Boolean
     ): JSONObject {
         val kind = node.optString("kind")
         val value = node.optString("value")
         val numericLeaf = kind in setOf("number", "float", "text")
         if (displayMode != ResultDisplayMode.OFF && allowNotation && numericLeaf) {
-            notationParts(value, displayMode, engineeringShift, maxFractionDigits)?.let { parts ->
+            notationParts(value, displayMode, engineeringShift, maxFractionDigits, preserveSmallValues)?.let { parts ->
                 if (parts.exponent != 0 || showZeroExponent) {
                     val mantissa = if (grouping) groupNumber(parts.mantissa) ?: parts.mantissa else parts.mantissa
                     return notationNode(mantissa, parts.exponent)
@@ -81,13 +83,13 @@ object ResultDisplayFormat {
             }
         }
         if (allowNotation && numericLeaf) scientificParts(value)?.let { parts ->
-            val rounded = roundFraction(parts.mantissa, maxFractionDigits)
+            val rounded = roundFraction(parts.mantissa, maxFractionDigits, preserveSmallValues)
             val mantissa = if (grouping) groupNumber(rounded) ?: rounded else rounded
             return notationNode(mantissa, parts.exponent)
         }
 
         val copy = JSONObject(node.toString())
-        if (numericLeaf) copy.put("value", roundFraction(value, maxFractionDigits))
+        if (numericLeaf) copy.put("value", roundFraction(value, maxFractionDigits, preserveSmallValues))
         if (grouping && numericLeaf) {
             groupNumber(copy.optString("value"))?.let { copy.put("value", it) }
         }
@@ -97,7 +99,7 @@ object ResultDisplayFormat {
             for (index in 0 until args.length()) {
                 val child = args.opt(index)
                 val childNotation = allowNotation && (displayMode == ResultDisplayMode.OFF || kind == "unary" && args.length() == 1)
-                formatted.put(if (child is JSONObject) formatNode(child, displayMode, grouping, engineeringShift, showZeroExponent, maxFractionDigits, childNotation) else child)
+                formatted.put(if (child is JSONObject) formatNode(child, displayMode, grouping, engineeringShift, showZeroExponent, maxFractionDigits, preserveSmallValues, childNotation) else child)
             }
             copy.put("args", formatted)
         }
@@ -127,18 +129,22 @@ object ResultDisplayFormat {
         return NotationParts(match.groupValues[1], exponent)
     }
 
-    /** Display digits count places after the decimal point, without padding zeros. */
-    private fun roundFraction(value: String, digits: Int): String {
+    /** Decimal places, with an optional two-significant-digit fallback when rounding would show zero. */
+    private fun roundFraction(value: String, digits: Int, preserveSmallValues: Boolean): String {
         if (!value.contains('.') || value.length > MAX_DISPLAY_DIGITS || value.contains('e', ignoreCase = true)) return value
         val number = value.trim().toBigDecimalOrNull() ?: return value
         return runCatching {
-            val rounded = number.setScale(digits.coerceIn(0, MAX_DISPLAY_DIGITS), RoundingMode.HALF_UP)
-                .stripTrailingZeros().toPlainString()
+            val limited = number.setScale(digits.coerceIn(0, MAX_DISPLAY_DIGITS), RoundingMode.HALF_UP)
+            // Keep two significant digits, including a trailing zero, only for underflow in the display.
+            val rounded = if (preserveSmallValues && number.signum() != 0 && limited.signum() == 0) {
+                val significant = number.round(MathContext(2, RoundingMode.HALF_UP))
+                significant.setScale(significant.scale() + 2 - significant.precision()).toPlainString()
+            } else limited.stripTrailingZeros().toPlainString()
             if (rounded.length > MAX_DISPLAY_DIGITS) value else rounded
         }.getOrDefault(value)
     }
 
-    private fun notationParts(value: String, displayMode: ResultDisplayMode, engineeringShift: Int, maxFractionDigits: Int): NotationParts? {
+    private fun notationParts(value: String, displayMode: ResultDisplayMode, engineeringShift: Int, maxFractionDigits: Int, preserveSmallValues: Boolean): NotationParts? {
         if (displayMode == ResultDisplayMode.OFF) return null
         val number = value.trim().toBigDecimalOrNull() ?: return null
         if (number.signum() == 0) return null
@@ -155,7 +161,7 @@ object ResultDisplayFormat {
             val exponent = baseExponent + engineeringShift
             if (abs(exponent) > MAX_DISPLAY_DIGITS) return null
             val scale = maxFractionDigits.coerceIn(0, MAX_DISPLAY_DIGITS)
-            val mantissa = number.scaleByPowerOfTen(-exponent).setScale(scale, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+            val mantissa = roundFraction(number.scaleByPowerOfTen(-exponent).toPlainString(), scale, preserveSmallValues)
             if (mantissa.length > MAX_DISPLAY_DIGITS) null
             else NotationParts(mantissa, exponent)
         }.getOrNull()
@@ -207,13 +213,13 @@ object ResultDisplayFormat {
     }
 
     /** Copy text for the answer view: the digits, grouping and notation the display shows. */
-    fun resultText(result:JSONObject,decimal:Boolean,mixed:Boolean,displayMode:ResultDisplayMode,thousandsSeparator:Boolean,engineeringConversion:Boolean,engineeringShift:Int,dmsDisplay:Boolean,dmsConversion:Boolean,displayDigits:Int):String {
+    fun resultText(result:JSONObject,decimal:Boolean,mixed:Boolean,displayMode:ResultDisplayMode,thousandsSeparator:Boolean,engineeringConversion:Boolean,engineeringShift:Int,dmsDisplay:Boolean,dmsConversion:Boolean,displayDigits:Int,preserveSmallValues:Boolean=false):String {
         val useDecimal=decimal||engineeringConversion
         val effectiveMode=if(engineeringConversion)ResultDisplayMode.ENGINEERING else displayMode
         val shift=if(engineeringConversion)engineeringShift else 0
         val compact=result.optString("exact").length>20_000||largeHistoryTree(result.optJSONObject(if(decimal)"decimalTree" else "tree"))
-        val formatted=if(compact)null else resultTree(result,decimal,mixed,engineeringConversion,dmsDisplay,dmsConversion)?.let{formatTree(it,effectiveMode,thousandsSeparator,shift,engineeringConversion,displayDigits)}
-        return formatted?.let(::treeText) ?: formatText(result.optString(if(useDecimal)"decimal" else "exact"),effectiveMode,thousandsSeparator,shift,engineeringConversion,displayDigits)
+        val formatted=if(compact)null else resultTree(result,decimal,mixed,engineeringConversion,dmsDisplay,dmsConversion)?.let{formatTree(it,effectiveMode,thousandsSeparator,shift,engineeringConversion,displayDigits,preserveSmallValues)}
+        return formatted?.let(::treeText) ?: formatText(result.optString(if(useDecimal)"decimal" else "exact"),effectiveMode,thousandsSeparator,shift,engineeringConversion,displayDigits,preserveSmallValues)
     }
 
     /** Plain text for a formatted display tree; null when the tree has no faithful text form. */

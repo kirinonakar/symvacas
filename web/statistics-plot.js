@@ -60,7 +60,7 @@ function drawStatisticsPlot(container,rows,{type='scatter',digits=10,curve=[],xA
     const colors=data.series.map((_,i)=>data.groupColumn<0?'var(--accent)':defaultGraphColors[i%defaultGraphColors.length]);
     const bounds=dataBounds([...points,...curve]);
     const dateTicks=data.dateAxis?[...new Set(Array.from({length:5},(_,i)=>Math.round(Math.ceil(bounds.xmin)+(Math.floor(bounds.xmax)-Math.ceil(bounds.xmin))*i/4)))]:null;
-    plot(container,{curves:[...data.series.map(entry=>entry.points),...(curve.length?[curve]:[])]},bounds,{scatterCurves:data.series.map((_,i)=>i),colors:[...colors,'var(--danger)'],digits,xAxisLabel,yAxisLabel,xTickValues:dateTicks,xTickLabel:data.dateAxis?value=>statisticsDateLabel(data.dateAxis.origin,value):null});
+    plot(container,{curves:[...data.series.map(entry=>entry.points),...(curve.length?[curve]:[])]},bounds,{scatterCurves:data.series.map((_,i)=>i),colors:[...colors,'var(--danger)'],digits,preserveSmallValues:true,xAxisLabel,yAxisLabel,xTickValues:dateTicks,xTickLabel:data.dateAxis?value=>statisticsDateLabel(data.dateAxis.origin,value):null});
     if(data.groupColumn>=0){
       const legend=document.createElement('div');legend.className='statistics-plot-legend';
       data.series.forEach((entry,i)=>{const label=document.createElement('span');label.textContent=`${entry.label} (n=${entry.points.length})`;label.style.color=colors[i];legend.append(label);});
@@ -88,10 +88,10 @@ function drawHistogram(container,series,digits,kde){
     const value=peak*i/4,y=py(value);
     node('line',{x1:left,x2:left+width,y1:y,y2:y,stroke:'var(--grid)'});
     const raw=String(kde?histogramDensityNumber(value,data):value),parts=raw.split(/e/i);
-    const label=kde?String(Number(Number(parts[0]).toPrecision(4)))+(parts.length>1?'e'+parts[1]:''):displayNumber(value,digits);
+    const label=kde?String(Number(Number(parts[0]).toPrecision(4)))+(parts.length>1?'e'+parts[1]:''):displayNumber(value,digits,true);
     node('text',{x:left-8,y:y+5,fill:'var(--muted)','text-anchor':'end','font-size':12},label);
     const position=data.viewMinimum+(data.viewMaximum-data.viewMinimum)*i/4,x=(data.minimum+position*data.span)*data.scale;
-    node('text',{x:px(position),y:365,fill:'var(--muted)','text-anchor':'middle','font-size':13},displayNumber(x,digits));
+    node('text',{x:px(position),y:365,fill:'var(--muted)','text-anchor':'middle','font-size':13},displayNumber(x,digits,true));
   }
   node('line',{x1:left,x2:left,y1:50,y2:baseline,stroke:'var(--muted)'});
   node('line',{x1:left,x2:left+width,y1:baseline,y2:baseline,stroke:'var(--muted)'});
@@ -101,7 +101,7 @@ function drawHistogram(container,series,digits,kde){
     const x=kde?start:start+lane*seriesIndex,w=kde?binWidth:Math.max(1,lane-2),h=baseline-py(value);
     const shown=kde?histogramDensityNumber(value,data):value;
     const bar=node('rect',{x,y:py(value),width:w,height:h,fill:colors[seriesIndex%colors.length],opacity:kde?.25:.7,'data-bin':index,'data-series':series[seriesIndex].label,'data-count':data.counts[seriesIndex][index],...(kde?{'data-density':shown}:{})});
-    node('title',{},`${series[seriesIndex].label}: ${displayNumber(shown,digits)}`,bar);
+    node('title',{},`${series[seriesIndex].label}: ${displayNumber(shown,digits,true)}`,bar);
     if(!kde)node('text',{x:x+w/2,y:py(value)-5,fill:'var(--ink)','text-anchor':'middle','font-size':11},String(value));
   }));
   data.curves.forEach((curve,index)=>{
@@ -135,12 +135,12 @@ function drawFrequencyBars(container,series,digits){
   data.values.forEach((value,index)=>{
     const center=left+width*data.positions[index];
     if(data.values.length<=10||index===0||index===data.values.length-1||index%Math.ceil(data.values.length/8)===0)
-      node('text',{x:center,y:365,fill:'var(--muted)','text-anchor':'middle','font-size':13},displayNumber(value,digits));
+      node('text',{x:center,y:365,fill:'var(--muted)','text-anchor':'middle','font-size':13},displayNumber(value,digits,true));
     data.counts.forEach((counts,seriesIndex)=>{
       const count=counts[index];if(!count)return;
       const h=height*count/data.peak,x=center-groupWidth/2+seriesIndex*lane;
       const bar=node('rect',{x:x+lane*.05,y:baseline-h,width:lane*.9,height:h,fill:colors[seriesIndex%colors.length],opacity:.78,'data-value':value,'data-count':count,'data-series':series[seriesIndex].label});
-      node('title',{},`${series[seriesIndex].label} · ${displayNumber(value,digits)}: ${count}`,bar);
+      node('title',{},`${series[seriesIndex].label} · ${displayNumber(value,digits,true)}: ${count}`,bar);
       node('text',{x:x+lane/2,y:baseline-h-5,fill:'var(--ink)','text-anchor':'middle','font-size':12},String(count));
     });
   });
@@ -157,7 +157,7 @@ function drawNamedBars(container,data,digits){
   for(let i=0;i<=(data.minimum===data.maximum?0:4);i++){
     const fraction=data.minimum===data.maximum?1:i/4,value=(data.maximum/scale*(1-fraction)+data.minimum/scale*fraction)*scale,y=top+height*fraction;
     node('line',{x1:left,x2:right,y1:y,y2:y,stroke:'var(--grid)'});
-    node('text',{x:left-8,y:y+5,fill:'var(--muted)','text-anchor':'end','font-size':13},displayNumber(value,digits));
+    node('text',{x:left-8,y:y+5,fill:'var(--muted)','text-anchor':'end','font-size':13},displayNumber(value,digits,true));
   }
   node('line',{x1:left,x2:right,y1:baseline,y2:baseline,stroke:'var(--muted)'});
   node('line',{x1:left,x2:left,y1:top,y2:top+height,stroke:'var(--muted)'});
@@ -171,8 +171,8 @@ function drawNamedBars(container,data,digits){
       const value=entry.values[index],position=data.positions[seriesIndex][index];if(value===null)return;
       const y=top+height*position,x=center-groupWidth/2+seriesIndex*lane,h=Math.abs(y-baseline);
       const bar=node('rect',{x:x+lane*.05,y:Math.min(y,baseline),width:lane*.9,height:h,fill:colors[seriesIndex%colors.length],opacity:.78,'data-name':label,'data-value':value,'data-series':entry.label});
-      node('title',{},`${entry.label} · ${label}: ${displayNumber(value,digits)}`,bar);
-      node('text',{x:x+lane/2,y:y+(value<0?16:-5),fill:'var(--ink)','text-anchor':'middle','font-size':12},displayNumber(value,digits));
+      node('title',{},`${entry.label} · ${label}: ${displayNumber(value,digits,true)}`,bar);
+      node('text',{x:x+lane/2,y:y+(value<0?16:-5),fill:'var(--ink)','text-anchor':'middle','font-size':12},displayNumber(value,digits,true));
     });
   });
   const legend=document.createElement('div');legend.className='statistics-plot-legend';
@@ -198,7 +198,7 @@ function drawDistribution(container,series,digits,type,orientation){
   node('line',vertical?{x1:110,x2:110,y1:40,y2:height-80,stroke:'var(--muted)'}:{x1:110,x2:740,y1:height-45,y2:height-45,stroke:'var(--muted)'});
   for(let i=0;i<=(span?4:0);i++){
     const fraction=span?i/4:.5,value=(minimum/scale*(1-fraction)+maximum/scale*fraction)*scale;
-    node('text',{x:vertical?100:110+fraction*630,y:vertical?axis(value)+5:height-20,fill:'var(--muted)','text-anchor':vertical?'end':'middle','font-size':14,'data-value-tick':value},displayNumber(value,digits));
+    node('text',{x:vertical?100:110+fraction*630,y:vertical?axis(value)+5:height-20,fill:'var(--muted)','text-anchor':vertical?'end':'middle','font-size':14,'data-value-tick':value},displayNumber(value,digits,true));
   }
   series.forEach((entry,index)=>{
     const center=lane(index),color=colors[index%colors.length],density=type==='violin'||raincloud?violinDensity(entry.values):[];
@@ -213,9 +213,9 @@ function drawDistribution(container,series,digits,type,orientation){
       line(low,boxCenter,high,boxCenter);
       const a=position(q1,index,boxCenter-boxHalf),b=position(q3,index,boxCenter+boxHalf);
       const box=node('rect',{x:Math.min(a[0],b[0]),y:Math.min(a[1],b[1]),width:Math.max(1,Math.abs(b[0]-a[0])),height:Math.max(1,Math.abs(b[1]-a[1])),fill:color,'fill-opacity':.3,stroke:color,'data-box':entry.label});
-      node('title',{},`${entry.label}: ${raincloud?'lower whisker':'min'}=${displayNumber(low,digits)}, Q1=${displayNumber(q1,digits)}, median=${displayNumber(median,digits)}, Q3=${displayNumber(q3,digits)}, ${raincloud?'upper whisker':'max'}=${displayNumber(high,digits)}`,box);
+      node('title',{},`${entry.label}: ${raincloud?'lower whisker':'min'}=${displayNumber(low,digits,true)}, Q1=${displayNumber(q1,digits,true)}, median=${displayNumber(median,digits,true)}, Q3=${displayNumber(q3,digits,true)}, ${raincloud?'upper whisker':'max'}=${displayNumber(high,digits,true)}`,box);
       line(median,boxCenter-boxHalf,median,boxCenter+boxHalf,{'stroke-width':3,'data-median':median});for(const at of [low,high])line(at,boxCenter-boxHalf*.6,at,boxCenter+boxHalf*.6,{'data-whisker':at});
-      if(!raincloud){const [mx,my]=position(median,index,42);node('text',{x:mx,y:my+4,fill:'var(--ink)','text-anchor':'middle','font-size':12},displayNumber(median,digits));}
+      if(!raincloud){const [mx,my]=position(median,index,42);node('text',{x:mx,y:my+4,fill:'var(--ink)','text-anchor':'middle','font-size':12},displayNumber(median,digits,true));}
     }
     if(density.length){
       const upper=density.map(([value,width])=>position(value,index,(raincloud?-4:0)-width*28).join(',')),lower=[...density].reverse().map(([value,width])=>position(value,index,raincloud?-4:width*28).join(','));
@@ -225,7 +225,7 @@ function drawDistribution(container,series,digits,type,orientation){
       const swarm=beeswarmLayout(entry.values.map(axis),3,raincloud?10:28);
       entry.values.forEach((value,i)=>{
         const [cx,cy]=position(value,index,(raincloud?26:0)+swarm.offsets[i]),point=node('circle',{cx,cy,r:swarm.radius,fill:color,'fill-opacity':.75,'data-raw-point':entry.label,'data-value':value});
-        node('title',{},`${entry.label}: ${displayNumber(value,digits)}`,point);
+        node('title',{},`${entry.label}: ${displayNumber(value,digits,true)}`,point);
       });
     }
   });
@@ -259,7 +259,7 @@ function drawHeatMap(container,data,digits,fitToScreen=false){
     node('title',{},row.label,label);
     row.values.forEach((value,column)=>{
       const cell=node('rect',{x:left+column*cellWidth,y:top+i*30,width:cellWidth,height:30,fill:heatMapColor(value,minimum,maximum)||'var(--number)',stroke:'var(--line)','data-row':i,'data-column':column,'data-value':value??''});
-      const displayed=value===null?'—':displayNumber(value,digits);
+      const displayed=value===null?'—':displayNumber(value,digits,true);
       node('title',{},`${row.label} · ${data.columns[column]}: ${displayed}${row.counts?` (n=${row.counts[column]})`:''}`,cell);
       node('text',{x:left+(column+.5)*cellWidth,y:top+i*30+20,fill:value===null?'var(--muted)':heatMapTextColor(value,minimum,maximum),'text-anchor':'middle','font-size':12},displayed.length>10?`${displayed.slice(0,9)}…`:displayed);
     });
@@ -267,7 +267,7 @@ function drawHeatMap(container,data,digits,fitToScreen=false){
   const scroll=document.createElement('div');scroll.className=fitToScreen?'statistics-heatmap-scroll statistics-heatmap-fit-scroll':'statistics-heatmap-scroll';scroll.tabIndex=0;scroll.setAttribute('aria-label',t('Heat map'));scroll.append(svg);
   const legend=document.createElement('div');legend.className='statistics-heatmap-legend';
   const low=document.createElement('span'),bar=document.createElement('span'),high=document.createElement('span');
-  low.textContent=displayNumber(minimum,digits);high.textContent=displayNumber(maximum,digits);bar.className='statistics-heatmap-scale';
+  low.textContent=displayNumber(minimum,digits,true);high.textContent=displayNumber(maximum,digits,true);bar.className='statistics-heatmap-scale';
   if(minimum===maximum)bar.style.background=heatMapColor(minimum,minimum,maximum);
   legend.append(low,bar,high);
   const caption=document.createElement('div');caption.className='statistics-plot-legend';

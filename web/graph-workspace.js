@@ -1,4 +1,5 @@
 import {parse,latexInput} from './parser.js';
+import {bindMathPaste} from './math-input.js';
 import {graphExpression} from './function-transfer.js';
 import {plotGraph as plot,graphCurveColor} from './graph-canvas.js';
 import {defaultGraphColors} from './graph-colors.js';
@@ -611,6 +612,7 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
     parameters={};parameterRanges={};parameterControls([],true);selectedDerivativeOrder=0;derivative=null;secondDerivative=null;$('graph-derivative').checked=false;$('graph-second-derivative').checked=false;result=null;bounds=null;analysis=null;trace=null;integral=null;revision++;analysisRevision++;$('graph-plot').replaceChildren();$('graph-table').replaceChildren();selections();formulas();typeControls();undoControls();queue();persist();
   };
   $('graph-source').oninput=()=>{if(value('graph-source')!==sourceDrafts[kind()])rememberInput();sourceDrafts[kind()]=value('graph-source');inputLineControls();pendingAnalysis=null;selectedDerivativeOrder=0;derivative=null;secondDerivative=null;$('graph-derivative').checked=false;$('graph-second-derivative').checked=false;analysis=null;trace=null;integral=null;revision++;analysisRevision++;selections();formulas();queue();};
+  bindMathPaste($('graph-source'),{multiline:true,onError});
   for(const id of ['graph-min','graph-max','graph-ymin','graph-ymax','graph-xmin','graph-xmax','graph-initial','graph-t0'])$(id).onchange=()=>{analysisControls();queue();};
   for(const id of rangeIds){const field=$(id);editField(field);for(const name of ['input','change'])field.addEventListener(name,()=>{if(field.dataset.displayValue!==field.value)delete field.dataset.displayValue;const pair=pairedSliders.get(id);if(pair)resetRangeDomain(pair);if(['graph-min','graph-max','graph-analysis-a'].includes(id))analysisControls();});}
   for(const id of sliderIds){const field=$(id),slider=document.createElement('input'),current=numeric(id);slider.type='range';slider.id=id+'-slider';slider.min=String(Math.min(-30,current-20));slider.max=String(Math.max(30,current+20));slider.step='any';slider.value=String(current);slider.setAttribute('aria-label',field.closest('label').firstChild.textContent.trim());field.insertAdjacentElement('afterend',slider);

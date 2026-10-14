@@ -1,5 +1,7 @@
 import {displayText} from './display-format.js';
 import {mathDisplay} from './math-display.js';
+import {latexTree,mathCopyText} from './latex-output.js';
+import {parse} from './parser.js';
 
 // Break at outer operators and collection separators. Structured operands remain
 // intact, and punctuation stays attached to the neighboring mathematical term.
@@ -53,11 +55,23 @@ export function resultDisplayTree(result,{decimal=false,mixed=false}={}) {
   return tree;
 }
 
+export function latexResult(result,options={}) {
+  const tree=resultDisplayTree(result,options);
+  if(!tree)return mathCopyText(resultText(result,{...options,grouping:false}),true);
+  function formatted(node,allowNotation=true){
+    if(['number','float','fixed-number'].includes(node.kind)||node.kind==='text'&&/^-?\d+(?:\.\d*)?(?:e[+-]?\d+)?$/i.test(node.value)){
+      try{return parse(displayText(node.value,options.digits??10,{...options,grouping:false},allowNotation));}catch{return node;}
+    }
+    return {...node,args:(node.args||[]).map(child=>formatted(child,allowNotation&&node.kind==='unary'))};
+  }
+  return latexTree(formatted(tree));
+}
+
 // Copy text for the answer view: the digits, grouping, and notation the result view shows.
-export function resultText(result,{decimal=false,mixed=false,digits=10,notation='off',grouping=false,engineeringShift=0,showZeroExponent=false}={}) {
+export function resultText(result,{decimal=false,mixed=false,digits=10,notation='off',grouping=false,engineeringShift=0,showZeroExponent=false,preserveSmallValues=false}={}) {
   if(!result)return '';
   const text=(decimal ? result.decimal : result.exact)||'';
-  const options={notation,grouping,engineeringShift,showZeroExponent};
+  const options={notation,grouping,engineeringShift,showZeroExponent,preserveSmallValues};
   const tree=resultDisplayTree(result,{decimal,mixed});
   if(tree&&text.length<=40000){
     const shown=treeText(tree,digits,options);

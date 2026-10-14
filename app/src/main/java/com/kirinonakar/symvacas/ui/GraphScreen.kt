@@ -701,6 +701,7 @@ import kotlin.math.*
 
 @Composable private fun GraphSourceInput(value:String,onValue:(String)->Unit,singleRule:Boolean) {
     val c=LocalInstrument.current
+    val (input,change)=rememberMathInput(value,multiline=true,onValue=onValue)
     val vertical=rememberScrollState();val horizontal=rememberScrollState()
     var focused by remember {mutableStateOf(false)}
     val lineHeight=24.sp
@@ -728,9 +729,9 @@ import kotlin.math.*
                 val fieldWidth=(maxWidth-16.dp).coerceAtLeast(0.dp)
                 Box(Modifier.fillMaxSize().verticalScroll(vertical)) {
                     Box(Modifier.horizontalScroll(horizontal)) {
-                        BasicTextField(value,onValue,Modifier.widthIn(min=fieldWidth).keepInputVisible().onFocusChanged {focused=it.isFocused}.testTag("graph-source").semantics {contentDescription=inputLabel},
+                        MathClipboard {BasicTextField(input,change,Modifier.widthIn(min=fieldWidth).keepInputVisible().onFocusChanged {focused=it.isFocused}.testTag("graph-source").semantics {contentDescription=inputLabel},
                             textStyle=style,cursorBrush=SolidColor(c.accent),
-                            decorationBox={inner->Box(Modifier.padding(horizontal=8.dp,vertical=10.dp)){inner()}})
+                            decorationBox={inner->Box(Modifier.padding(horizontal=8.dp,vertical=10.dp)){inner()}})}
                     }
                 }
             }

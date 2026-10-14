@@ -179,6 +179,7 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
     var autoCloseBrackets by mutableStateOf(prefs.getBoolean("autoCloseBrackets",false))
     var removeComputationLimit by mutableStateOf(prefs.getBoolean("removeComputationLimit",false))
     var calcModeStepByStep by mutableStateOf(prefs.getBoolean("calcModeStepByStep",false))
+    var copyAsLatex by mutableStateOf(prefs.getBoolean("copyAsLatex",false))
     var wordWrap by mutableStateOf(prefs.getBoolean("wordWrap",false))
     var typedParens by mutableStateOf<List<IntRange>>(emptyList())
         private set
@@ -548,6 +549,7 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
             .putString("language",language)
             .putFloat("inputFont",inputFont).putFloat("outputFont",outputFont).putBoolean("wordWrap",wordWrap)
             .putBoolean("calcModeStepByStep",calcModeStepByStep)
+            .putBoolean("copyAsLatex",copyAsLatex)
             .putBoolean("removeComputationLimit",removeComputationLimit)
             .putString("graphColors",JSONArray(graphColors).toString())
             .putString("variables",variables.toString()).putString("functions",functions.toString()).putString("assumptions",assumptions.toString())
@@ -856,7 +858,11 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
     fun editCalcValue(value:Editor) {if(busy)return;calcSession?.let{session->if(value.source!=session.input.source)calcUndoHistory=(calcUndoHistory+session.input).takeLast(100);calcSession=session.copy(input=value)};error=""}
     fun insertCalcValue(text:String,inside:Int=text.length,operand:Boolean=true) {
         val session=calcSession ?: return
-        editCalcValue(if(operand)session.input.insertOperand(text,inside) else session.input.insert(text,inside))
+        val input=session.input
+        val converted=LatexInput.convert(text,input.source.substring(0,minOf(input.cursor,input.anchor)),input.source.substring(maxOf(input.cursor,input.anchor)))
+        val value=converted ?: text
+        val cursor=if(converted!=null)value.length else inside
+        editCalcValue(if(operand)input.insertOperand(value,cursor) else input.insert(value,cursor))
     }
     fun cancelCalc() {job?.cancel();busy=false;calcSession=null;calcUndoHistory=emptyList();error="";schedulePreview()}
     fun submitCalcValue() {

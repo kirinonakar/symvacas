@@ -720,7 +720,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                         Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(16.dp)) {
                             m.regressionParameters.sortedWith(compareBy({listOf("f","ADC","D","Dstar").indexOf(it.first).let {index->if(index<0)Int.MAX_VALUE else index}},{it.first})).forEach {(name,value)->
                                 val label=parameterLabels[name]?.let {if(it=="Intercept")tr(it) else it} ?: if(name=="Dstar")"D*" else name
-                                val displayedValue=ResultDisplayFormat.formatText(value,m.resultDisplayMode,m.thousandsSeparator,maxFractionDigits=m.displayDigits)
+                                val displayedValue=ResultDisplayFormat.formatText(value,m.resultDisplayMode,m.thousandsSeparator,maxFractionDigits=m.displayDigits,preserveSmallValues=true)
                                 val korean=isKorean()
                                 TextButton(onClick={
                                     clipboard.setText(AnnotatedString(displayedValue))

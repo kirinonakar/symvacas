@@ -69,34 +69,34 @@ import org.json.JSONArray
     Panel("Equation solver","") {
         Choices(listOf("Linear","Quadratic","Cubic","System","General","dsolve","pdsolve"),kind,{m.equationKind=it;m.error=""},translate=false)
         if(kind=="dsolve") {
-            Field(m.equationOde,"Differential equation",Modifier.fillMaxWidth()){m.equationOde=it}
+            MathField(m.equationOde,"Differential equation",Modifier.fillMaxWidth()){m.equationOde=it}
             EquationInputPreview(m.equationOde,m.inputFont)
-            Field(m.equationOdeFunction,"Dependent function",Modifier.fillMaxWidth()){m.equationOdeFunction=it}
-            Field(m.equationOdeVariable,"Independent variable",Modifier.fillMaxWidth()){m.equationOdeVariable=it}
-            Field(m.equationOdeInitial,"Initial conditions (optional)",Modifier.fillMaxWidth()){m.equationOdeInitial=it}
+            MathField(m.equationOdeFunction,"Dependent function",Modifier.fillMaxWidth()){m.equationOdeFunction=it}
+            MathField(m.equationOdeVariable,"Independent variable",Modifier.fillMaxWidth()){m.equationOdeVariable=it}
+            MathField(m.equationOdeInitial,"Initial conditions (optional)",Modifier.fillMaxWidth()){m.equationOdeInitial=it}
             Text(tr("Example: y(0)=1 or [y(0)=1,y(1)=2]"),style=MaterialTheme.typography.bodySmall)
         }else if(kind=="pdsolve") {
-            Field(m.equationPde,"Partial differential equation",Modifier.fillMaxWidth()){m.equationPde=it}
+            MathField(m.equationPde,"Partial differential equation",Modifier.fillMaxWidth()){m.equationPde=it}
             EquationInputPreview(m.equationPde,m.inputFont)
-            Field(m.equationPdeFunction,"Dependent function",Modifier.fillMaxWidth()){m.equationPdeFunction=it}
+            MathField(m.equationPdeFunction,"Dependent function",Modifier.fillMaxWidth()){m.equationPdeFunction=it}
             Field(m.equationPdeHint,"Hint (optional)",Modifier.fillMaxWidth()){m.equationPdeHint=it}
         }else if(kind=="System") {
-            OutlinedTextField(equations,{m.equationSystem=it},Modifier.fillMaxWidth().keepInputVisible(),label={Text("One equation per line")},minLines=2)
+            MathField(equations,"One equation per line",Modifier.fillMaxWidth(),translate=false,multiline=true){m.equationSystem=it}
             EquationInputPreview(equations,m.inputFont,multiline=true)
-            Field(variables,"Variables · comma separated",Modifier.fillMaxWidth(),translate=false){m.equationVariables=it}
+            MathField(variables,"Variables · comma separated",Modifier.fillMaxWidth(),translate=false){m.equationVariables=it}
         }else {
-            Field(variable,"Solve for",Modifier.fillMaxWidth(),translate=false){m.equationVariable=it}
+            MathField(variable,"Solve for",Modifier.fillMaxWidth(),translate=false){m.equationVariable=it}
             if(kind=="General") {
-                Field(equation,"Equation",Modifier.fillMaxWidth(),translate=false){m.equationGeneral=it}
+                MathField(equation,"Equation",Modifier.fillMaxWidth(),translate=false){m.equationGeneral=it}
                 EquationInputPreview(equation,m.inputFont)
             }
             else {
                 Text(when(degree){1->"a x + b = 0";2->"a x² + b x + c = 0";else->"a x³ + b x² + c x + d = 0"})
-                Row(horizontalArrangement=Arrangement.spacedBy(6.dp)){(0..degree).forEach{i->Field(coefficients[i],('a'+i).toString(),Modifier.weight(1f),translate=false){v->m.equationCoefficients=coefficients.toMutableList().apply{set(i,v)}}}}
+                Row(horizontalArrangement=Arrangement.spacedBy(6.dp)){(0..degree).forEach{i->MathField(coefficients[i],('a'+i).toString(),Modifier.weight(1f),translate=false){v->m.equationCoefficients=coefficients.toMutableList().apply{set(i,v)}}}}
                 EquationInputPreview(polynomial,m.inputFont)
             }
             Choices(listOf("Exact","Numeric"),if(numerical)"Numeric" else "Exact",{m.equationNumeric=it=="Numeric"},translate=false)
-            if(numerical)Field(guess,"Initial guess",Modifier.fillMaxWidth(),translate=false){m.equationGuess=it}
+            if(numerical)MathField(guess,"Initial guess",Modifier.fillMaxWidth(),translate=false){m.equationGuess=it}
         }
         CalculationButton("Solve",m.busy,m.inputVersion,onCancel={m.cancel()},enabled=!m.busy,onClick={
             val command=when(kind) {
@@ -129,8 +129,8 @@ import org.json.JSONArray
             val expansionDescription=tr(if(expanded)"Expanded" else "Collapsed")
             val clipboard=LocalClipboardManager.current
             val language=LocalLanguage.current
-            val copyText=remember(report.toString(),m.displayDigits,language) {
-                solutionStepsCopyText(report,m.displayDigits){translateLabel(it,language)}
+            val copyText=remember(report.toString(),m.displayDigits,language,m.copyAsLatex) {
+                solutionStepsCopyText(report,m.displayDigits,m.copyAsLatex){translateLabel(it,language)}
             }
             HorizontalDivider()
             Row(Modifier.fillMaxWidth()) {
@@ -204,10 +204,10 @@ import org.json.JSONArray
         DisableSelection {Box(Modifier.fillMaxWidth().combinedClickable(onClick=::selectFormula,onLongClick=::selectFormula)
             .horizontalScroll(rememberScrollState()).semantics {contentDescription=text}){MathNode(displayTree,m.outputFont)}}
         if(selectionOpen)AlertDialog(onDismissRequest={selectionOpen=false},title={Text(tr("Select formula"))},text={
-            OutlinedTextField(selectedText,{selectedText=it},readOnly=true,maxLines=8,modifier=Modifier.fillMaxWidth())
+            MathClipboard {OutlinedTextField(selectedText,{selectedText=it},readOnly=true,maxLines=8,modifier=Modifier.fillMaxWidth())}
         },confirmButton={TextButton(onClick={
             val range=selectedText.selection
-            clipboard.setText(AnnotatedString(if(range.collapsed)text else text.substring(range.min,range.max)))
+            clipboard.setText(AnnotatedString(if(m.copyAsLatex&&(range.collapsed||range.min==0&&range.max==text.length))latexTree(displayTree) else mathCopyText(if(range.collapsed)text else text.substring(range.min,range.max),m.copyAsLatex)))
             selectionOpen=false
         }){Text(tr("Copy"))}},dismissButton={TextButton(onClick={selectionOpen=false}){Text(tr("Close"))}})
     }

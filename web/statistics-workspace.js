@@ -24,7 +24,7 @@ import {registerStatisticsHeader} from './statistics-headers.js';
 import {statisticsGroupedColumn,defaultStatisticsGroupValues} from './statistics-group-column.js';
 
 export function regressionGraphSource(source,digits=10,variable='x') {
-  function rounded(node){return {...node,value:node.kind==='number'?roundNumber(node.value,digits):node.kind==='symbol'&&node.value===variable?'x':node.value,args:node.args.map(rounded)};}
+  function rounded(node){return {...node,value:node.kind==='number'?roundNumber(node.value,digits,true):node.kind==='symbol'&&node.value===variable?'x':node.value,args:node.args.map(rounded)};}
   return astSource(rounded(parse(latexInput(source))));
 }
 
@@ -589,7 +589,7 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
       statisticsPlot(chart,statisticsGraph.rows,{...options,series:panel.series});return section;
     }));
   }
-  function render(){statisticsControls();if(!$('statistics-grid').hidden)statisticsGrid();if(statisticsGraph){drawStatisticsGraph();if(statisticsGraph.captions)renderFormulas($('regression-caption'),statisticsGraph.captions,{digits:state.digits});for(const [name,n] of statisticsGraph.parameters||[])$('regression-caption').append(element('span',`${regressionParameterName(name,statisticsGraph.parameterLabels)} = ${roundNumber(String(n),state.digits)}`,'regression-parameter'));
+  function render(){statisticsControls();if(!$('statistics-grid').hidden)statisticsGrid();if(statisticsGraph){drawStatisticsGraph();if(statisticsGraph.captions)renderFormulas($('regression-caption'),statisticsGraph.captions,{digits:state.digits,preserveSmallValues:true});for(const [name,n] of statisticsGraph.parameters||[])$('regression-caption').append(element('span',`${regressionParameterName(name,statisticsGraph.parameterLabels)} = ${roundNumber(String(n),state.digits,true)}`,'regression-parameter'));
     const snapshot=statisticsGraph.result;
     const copyOptions={digits:state.digits,regressionVariables:statisticsGraph.regressionVariables,regressionPrefix:statisticsGraph.regressionPrefix};
     renderRegressionReport($('regression-inference'),statisticsGraph.report,state.digits,statisticsGraph.parameterLabels,{onCopy:snapshot?()=>ui.clipboard(statisticsResultMarkdown(snapshot,copyOptions)):null,onClear:snapshot?()=>clearResult(snapshot):null});}}

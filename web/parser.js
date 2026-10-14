@@ -145,7 +145,7 @@ export const latexSymbolLabels = Object.fromEntries([
 export function latexInput(input,{prefix='',suffix=''}={}) {
   const functions = new Set(['sin','cos','tan','sec','csc','cot','sinh','cosh','tanh','arcsin','arccos','arctan','ln','exp']);
   const greek = new Set(Object.keys(latexSymbolLabels));
-  const commands = new Set(['int','sum','prod','binom','begin','lim','frac','dfrac','tfrac','sqrt','log','infty','times','cdot','left','right','quad','qquad','le','leq','ge','geq','ne','neq',...functions,...greek]);
+  const commands = new Set(['operatorname','mathrm','int','sum','prod','binom','begin','lim','frac','dfrac','tfrac','sqrt','log','infty','times','cdot','left','right','quad','qquad','le','leq','ge','geq','ne','neq',...functions,...greek]);
   let source = input.trim();
   if (!/^\\[[(]|^\$|\^\s*\{/.test(source) && ![...source.matchAll(/\\([A-Za-z]+)/g)].some(match=>commands.has(match[1]))) return input;
   for (const [open,close] of [['\\[','\\]'],['\\(','\\)'],['$$','$$'],['$','$']]) {
@@ -307,6 +307,7 @@ export function latexInput(input,{prefix='',suffix=''}={}) {
     }
     while (i < text.length) {
       const c = text[i++];
+      if(c==='_'&&text[i]==='{'){const name=body(group());if(!/^[A-Za-z0-9_]+$/.test(name))throw new SyntaxError('Unsupported LaTeX subscript');result+='_'+name;continue;}
       if(c==='(' || c==='{') {
         i--;
         const raw=group(c,c==='('?')':'}');
@@ -319,11 +320,13 @@ export function latexInput(input,{prefix='',suffix=''}={}) {
         continue;
       }
       if (c !== '\\') { result += c === '{' ? '(' : c === '}' ? ')' : c; continue; }
+      if('{}%'.includes(text[i]||'\0')){result+=text[i++];continue;}
       if (',;! '.includes(text[i] || '\0')) { i++; continue; }
       const command = /^[A-Za-z]+/.exec(text.slice(i))?.[0];
       if (!command) throw new SyntaxError('Incomplete LaTeX command');
       i += command.length;
-      if(command==='begin') result+=matrix();
+      if(['operatorname','mathrm'].includes(command)){const name=group();if(!/^[A-Za-z0-9_]+$/.test(name))throw new SyntaxError('Unsupported LaTeX name');result+=name;}
+      else if(command==='begin') result+=matrix();
       else if(command==='int') {
         const limits=bounds(),[expression,variable]=integralExpression();
         result+=`integrate(${expression},${variable}${'_' in limits?`,${limits._},${limits['^']}`:''})`;

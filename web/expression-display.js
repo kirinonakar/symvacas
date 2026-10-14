@@ -2,8 +2,8 @@ import {expressionTree} from './expression-tree.js';
 import {mathDisplay} from './math-display.js';
 
 // Source previews preserve the expression; result captions can round display only.
-export function expressionDisplay(source,{digits=10,roundNumbers=false}={}) {
-  return mathDisplay(expressionTree(source),digits,false,{roundNumbers});
+export function expressionDisplay(source,{digits=10,roundNumbers=false,preserveSmallValues=false}={}) {
+  return mathDisplay(expressionTree(source),digits,false,{roundNumbers,preserveSmallValues});
 }
 
 // An invalid expression must still have selectable source ranges for editing.

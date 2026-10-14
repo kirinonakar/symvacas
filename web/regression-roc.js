@@ -8,7 +8,7 @@ export function regressionROC(report,digits=10,{oob=false}={}){
   if(points.length<2)return null;
   const figure=element('figure');figure.style.margin='12px 0';
   const title=oob?'OOB ROC curve':'ROC curve';
-  figure.append(element('figcaption',`${t(title)} · AUC=${roundNumber(String(report.auc),digits)}`),element('p',t(oob?'ROC/AUC uses OOB predictions; positive class = 1.':'ROC/AUC uses fitted data; positive class = 1.')));
+  figure.append(element('figcaption',`${t(title)} · AUC=${roundNumber(String(report.auc),digits,true)}`),element('p',t(oob?'ROC/AUC uses OOB predictions; positive class = 1.':'ROC/AUC uses fitted data; positive class = 1.')));
   const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
   svg.setAttribute('viewBox','0 0 360 360');svg.setAttribute('role','img');svg.setAttribute('aria-label',t(title));svg.dataset.roc=oob?'oob':'true';svg.style.width='100%';svg.style.maxWidth='360px';svg.style.height='auto';
   const draw=(tag,attributes,label='')=>{const node=document.createElementNS(ns,tag);for(const [key,value] of Object.entries(attributes))node.setAttribute(key,String(value));node.textContent=label;svg.append(node);return node;};
@@ -23,5 +23,5 @@ export function regressionROC(report,digits=10,{oob=false}={}){
   draw('path',{d:points.map(([fpr,tpr],i)=>`${i?'L':'M'}${x(fpr)},${y(tpr)}`).join(' '),stroke:'var(--accent)','stroke-width':2.5,fill:'none','data-roc-curve':'true'});
   draw('text',{x:196,y:351,'text-anchor':'middle','font-size':12,fill:'var(--ink)'},t('False positive rate (FPR)'));
   draw('text',{x:0,y:0,transform:'translate(14 162) rotate(-90)','text-anchor':'middle','font-size':12,fill:'var(--ink)'},t('Sensitivity (TPR)'));
-  figure.append(svg);appendPlotExportButtons(svg,oob?'symvacas-oob-roc':'symvacas-roc',{captions:[{text:`${t(title)} · AUC=${roundNumber(String(report.auc),digits)}`}]});return figure;
+  figure.append(svg);appendPlotExportButtons(svg,oob?'symvacas-oob-roc':'symvacas-roc',{captions:[{text:`${t(title)} · AUC=${roundNumber(String(report.auc),digits,true)}`}]});return figure;
 }

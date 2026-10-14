@@ -12,9 +12,11 @@ import {createCalculatorKeypad} from './calculator-keypad.js';
 import {createWorkspaces} from './workspaces.js';
 import {createAppDialogs} from './app-dialogs.js';
 import {bindKeyPress} from './keypad.js';
+import {bindMathCopy} from './latex-output.js';
 import {graphColorsForTheme} from './graph-colors.js';
 
 const saved=readState(),state=createAppState(saved,navigator.language),ui=createAppUI();
+bindMathCopy(document,()=>state.copyAsLatex&&['scientific','graph','equation'].includes(value('mode')));
 setLanguage(state.language);
 setComputationLimitsRemoved(state.removeComputationLimit);
 restoreFields(state);

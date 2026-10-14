@@ -40,7 +40,7 @@ import kotlin.math.abs
     }
     fun value(objectValue:JSONObject,key:String):String {
         val raw=objectValue.optString(key).takeUnless {objectValue.isNull(key)||it.isBlank()} ?: return "—"
-        return ResultDisplayFormat.formatText(raw,ResultDisplayMode.OFF,false,maxFractionDigits=digits)
+        return ResultDisplayFormat.formatText(raw,ResultDisplayMode.OFF,false,maxFractionDigits=digits,preserveSmallValues=true)
     }
     val bayesian=report.optBoolean("bayesian")
     val machineLearning=report.optString("model").isNotBlank()&&!bayesian
@@ -179,7 +179,7 @@ import kotlin.math.abs
         if(residuals.size>100)Text(tr("Showing first 100 rows; copy includes all rows."),fontSize=11.sp,color=colors.muted)
         TextButton(onClick={
             val keys=listOf("row","observed","fitted","residual","standardized","leverage","cook","deviance")+(if(predictive)listOf("predictiveLow","predictiveHigh") else emptyList())
-            clipboard.setText(AnnotatedString(keys.joinToString(",")+"\n"+residuals.joinToString("\n") {row->keys.joinToString(","){key->if(row.isNull(key))"" else ResultDisplayFormat.formatText(row.optString(key),ResultDisplayMode.OFF,false,maxFractionDigits=digits)}}))
+            clipboard.setText(AnnotatedString(keys.joinToString(",")+"\n"+residuals.joinToString("\n") {row->keys.joinToString(","){key->if(row.isNull(key))"" else ResultDisplayFormat.formatText(row.optString(key),ResultDisplayMode.OFF,false,maxFractionDigits=digits,preserveSmallValues=true)}}))
         }) {Text(tr("Copy residual CSV"))}
     }
 }

@@ -53,7 +53,7 @@ internal fun statisticsReportFor(result:JSONObject?,source:String,analyses:Set<S
 }
 
 internal fun statisticsCellText(m:CalculatorModel,cell:JSONObject)=ResultDisplayFormat.resultText(cell,true,false,
-    m.resultDisplayMode,m.thousandsSeparator,m.engineeringConversion,m.engineeringShift,false,false,m.displayDigits)
+    m.resultDisplayMode,m.thousandsSeparator,m.engineeringConversion,m.engineeringShift,false,false,m.displayDigits,preserveSmallValues=true)
 
 @Composable internal fun StatisticsTextTable(headers:List<String>,rows:List<List<String>>,headerSize:Int=12,cellSize:Int=13) {
     val c=LocalInstrument.current

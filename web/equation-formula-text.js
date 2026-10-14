@@ -1,13 +1,13 @@
 import {roundNumber} from './display-format.js';
 
 // Copy the displayed intermediate expression, including unevaluated grouping.
-export function equationFormulaText(node,digits=10){
+export function equationFormulaText(node,digits=10,preserveSmallValues=false){
   const {kind,value='',args=[]}=node;
-  const parts=args.map(arg=>equationFormulaText(arg,digits));
+  const parts=args.map(arg=>equationFormulaText(arg,digits,preserveSmallValues));
   const part=index=>parts[index]||'';
   const operand=index=>['sum','product','unary','relation','fraction','power'].includes(args[index]?.kind)?`(${part(index)})`:part(index);
   switch(kind){
-    case 'number':case 'text':case 'float':return roundNumber(value,digits);
+    case 'number':case 'text':case 'float':return roundNumber(value,digits,preserveSmallValues);
     case 'parentheses':case 'group':return `(${part(0)})`;
     case 'unary':return value+operand(0);
     case 'sum':return parts.map((text,index)=>!index||args[index].kind==='unary'?text:'+'+text).join('');

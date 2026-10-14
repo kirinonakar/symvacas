@@ -29,6 +29,10 @@
 
 Both versions support Korean/English, light/dark/system themes, calculation history, stored variables and editable LaTeX paste. Internal precision is configurable from **3–200 significant digits** (default 30); display precision is separate, and `Ans` and stored variables retain their full value. Trigonometry supports **DEG / RAD / GRAD**.
 
+In Statistics, a nonzero value that would round to zero at the selected display precision automatically expands to two significant digits, including a trailing zero. At 3 display digits, `0.0000123 → 0.000012`, `0.0000103 → 0.000010`, and `0.0000126 → 0.000013`. This applies to results, p-values, regression equations and their copied text; calculation values remain unchanged.
+
+Enable **Copy as LaTeX** in Setup to copy calculator, graph and equation formulas as LaTeX, including selected input and results. This saved option defaults off; full solution copies retain explanatory text and convert their formulas.
+
 Setup includes Android/Web data import/export for variables, saved statistics datasets and custom functions, plus data deletion and a settings reset that preserves those datasets and definitions. The reset clears history and workspace drafts as well as preferences and view state.
 
 ### Step-by-step explanations
@@ -59,12 +63,12 @@ Define `f(x)=x^3-8x+7`, then evaluate `f(2)`. In Cartesian graphing, enter one c
 (-1 + y^2/b^2 + x^2/a^2)^3 - x^2*y^3/(a^2*b^3) = 0
 ```
 
-Supported LaTeX can be pasted directly, with or without `$...$`, `$$...$$`, `\(...\)` or `\[...\]` delimiters:
+Supported LaTeX pasted into calculator, graph and equation inputs is immediately converted to editable calculator syntax, with or without `$...$`, `$$...$$`, `\(...\)` or `\[...\]` delimiters. Graph curves and equation systems retain one expression per line; pasting into a selection preserves surrounding text:
 
 ```latex
-\frac{x^2+1}{x-1}
-\int_{0}^{\infty} e^{-x^2}\cos(2x)\,dx
-\lim_{x \to 0} \frac{\sin x}{x}
+\frac{x^2+1}{x-1} \\
+\int_{0}^{\infty} e^{-x^2}\cos(2x)\,dx \\
+\lim_{x \to 0} \frac{\sin x}{x} \\
 \begin{bmatrix}1 & 2 \\ 3 & 4\end{bmatrix}
 ```
 

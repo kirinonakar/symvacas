@@ -1,6 +1,7 @@
 import {t} from './i18n.js';
 import {mathDisplay} from './math-display.js';
 import {equationFormulaText} from './equation-formula-text.js';
+import {latexFormulaTree,mathCopyText} from './latex-output.js';
 
 export function equationStepTrees(step) {
   const equations=(step.equations||[]).map(formula=>formula.tree).filter(Boolean);
@@ -14,15 +15,15 @@ export function equationStepExplanation(step) {
   return step.explanationParts?.map(part=>t(part.text).replace(/\{(\w+)\}/g,(match,key)=>part.values?.[key]??match)).join(' ')||t(step.explanation||'');
 }
 
-export function solutionStepsCopyText(report,digits=10){
-  const formula=value=>value.tree?equationFormulaText(value.tree,digits):value.exact||'';
+export function solutionStepsCopyText(report,digits=10,copyAsLatex=false){
+  const formula=value=>value.tree?(copyAsLatex?latexFormulaTree(value.tree,digits):equationFormulaText(value.tree,digits)):mathCopyText(value.exact||'',copyAsLatex);
   const blocks=[t('Step-by-step solution')];
   if(report.note)blocks.push(...report.note.split('\n').filter(Boolean).map(t));
   if(report.method)blocks.push(t(report.method));
   const steps=list=>{for(const [index,step] of (list||[]).entries()){
     const lines=[`${index+1}. ${t(step.title)}`,equationStepExplanation(step)];
     if(step.variableOrder)lines.push(formula(step.variableOrder));
-    if(step.operation)lines.push(equationFormulaText(step.operation,digits));
+    if(step.operation)lines.push(copyAsLatex?latexFormulaTree(step.operation,digits):equationFormulaText(step.operation,digits));
     if(step.tree||step.exact)lines.push(formula(step));
     lines.push(...(step.equations||[]).map(formula));
     blocks.push(lines.filter(Boolean).join('\n'));
@@ -54,7 +55,7 @@ export function createEquationSteps(details,body,state,copy) {
     if(!report)return;
     const actions=document.createElement('div');actions.style.textAlign='right';
     const button=document.createElement('button');button.type='button';button.textContent=t('Copy full solution');
-    button.onclick=()=>copy(solutionStepsCopyText(report,state.digits));actions.append(button);body.append(actions);
+    button.onclick=()=>copy(solutionStepsCopyText(report,state.digits,state.copyAsLatex));actions.append(button);body.append(actions);
     if(report.note){const note=document.createElement('p');note.className='hint';note.textContent=report.note.split('\n').map(t).join('\n');body.append(note);}
     if(report.method){const method=document.createElement('p');method.className='step-method';method.textContent=t(report.method);body.append(method);}
     renderSteps(body,report.steps);

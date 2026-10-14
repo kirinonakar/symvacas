@@ -5,6 +5,19 @@ import org.junit.Test
 
 class LatexInputTest {
 
+    @Test fun multilinePastePreservesLinesAndSelectionScope() {
+        val source="\\frac{x+1}{2}\n\n$\\sqrt{x}$\nx=\\frac{1}{3}"
+        assertEquals("(x+1)/2\n\nsqrt(x)\nx=1/3",LatexInput.convertPaste(source,multiline=true))
+        val previous=Editor("x^2\n2x+3\ny=0",6,5)
+        val edit=LatexInput.convertEdit(previous,"x^2\n2$\\frac{1}{5}$+3\ny=0",multiline=true)!!
+        assertEquals("x^2\n2(1/5)+3\ny=0",edit.source)
+        assertEquals(10,edit.cursor)
+        assertNull(LatexInput.convertEdit(Editor("\\frac{1}{2}"),"\\frac{1}{2}"))
+        assertNull(LatexInput.convertPaste("x+1\n\ny=2",multiline=true))
+        assertEquals("(x+1)/2",LatexInput.convertPaste("$$\n\\frac{x+1}{2}\n$$",multiline=true))
+        assertEquals("[[1,2],[3,4]]",LatexInput.convertPaste("\\begin{bmatrix}1&2\\\\\n3&4\\end{bmatrix}",multiline=true))
+    }
+
     @Test fun latexConversionMatchesSharedFixturesAndRejectsInvalidInput() {
         run { // extendedLatexMatchesSharedWebFixtures
             val cases=javaClass.getResourceAsStream("/latex-input.tsv")!!.bufferedReader().readLines()

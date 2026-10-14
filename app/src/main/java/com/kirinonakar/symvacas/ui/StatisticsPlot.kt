@@ -60,7 +60,7 @@ import kotlin.math.abs
             val range=if(curve.isEmpty())points else points+curve
             var x0=range.minOf {it.first};var x1=range.maxOf {it.first};var y0=range.minOf {it.second};var y1=range.maxOf {it.second}
             if(x0==x1){x0-=1;x1+=1};if(y0==y1){y0-=1;y1+=1}
-            val yTicks=(0..4).map {index->val fraction=index/4.0;val value=y0*(1-fraction)+y1*fraction;value to graphDisplayNumber(value,displayDigits)}
+            val yTicks=(0..4).map {index->val fraction=index/4.0;val value=y0*(1-fraction)+y1*fraction;value to graphDisplayNumber(value,displayDigits,preserveSmallValues=true)}
             val scatterLeft=max(left,yTicks.maxOf {text.measureText(it.second)}+8.dp.toPx())
             val scatterWidth=size.width-scatterLeft-right
             fun px(x:Double)=scatterLeft+((x-x0)/(x1-x0)).toFloat()*scatterWidth
@@ -71,7 +71,7 @@ import kotlin.math.abs
                 drawLine(c.muted,Offset(scatterLeft-3.dp.toPx(),y),Offset(scatterLeft,y),1.dp.toPx())
                 drawContext.canvas.nativeCanvas.drawText(label,scatterLeft-text.measureText(label)-6.dp.toPx(),y+3.dp.toPx(),text)
             }
-            val widestX=if(xDateOrigin!=null)text.measureText("2000-12-31") else max(text.measureText(graphDisplayNumber(x0,displayDigits)),text.measureText(graphDisplayNumber(x1,displayDigits)))
+            val widestX=if(xDateOrigin!=null)text.measureText("2000-12-31") else max(text.measureText(graphDisplayNumber(x0,displayDigits,preserveSmallValues=true)),text.measureText(graphDisplayNumber(x1,displayDigits,preserveSmallValues=true)))
             val divisions=(scatterWidth/(widestX+12.dp.toPx())).toInt().coerceIn(1,4)
             val xTicks=(0..divisions).map {index->
                 val fraction=index.toDouble()/divisions
@@ -79,7 +79,7 @@ import kotlin.math.abs
             }.distinct()
             xTicks.forEach {value->
                 val x=px(value)
-                val label=xDateOrigin?.let {origin->runCatching {origin.plusDays(value.roundToLong()).toString()}.getOrNull()} ?: graphDisplayNumber(value,displayDigits)
+                val label=xDateOrigin?.let {origin->runCatching {origin.plusDays(value.roundToLong()).toString()}.getOrNull()} ?: graphDisplayNumber(value,displayDigits,preserveSmallValues=true)
                 drawLine(c.grid,Offset(x,top),Offset(x,top+height),1.dp.toPx())
                 drawLine(c.muted,Offset(x,top+height),Offset(x,top+height+3.dp.toPx()),1.dp.toPx())
                 val labelWidth=text.measureText(label)
@@ -106,7 +106,7 @@ import kotlin.math.abs
                 val fraction=if(data.minimum==data.maximum)1.0 else i/4.0
                 val value=(data.maximum/scale*(1-fraction)+data.minimum/scale*fraction)*scale;val y=top+height*fraction.toFloat()
                 drawLine(c.grid,Offset(left,y),Offset(left+width,y),1.dp.toPx())
-                val label=graphDisplayNumber(value,displayDigits)
+                val label=graphDisplayNumber(value,displayDigits,preserveSmallValues=true)
                 drawContext.canvas.nativeCanvas.drawText(label,left-text.measureText(label)-5.dp.toPx(),y+3.dp.toPx(),text)
             }
             drawLine(c.muted,Offset(left,baseline),Offset(left+width,baseline),1.dp.toPx())
@@ -121,7 +121,7 @@ import kotlin.math.abs
                     if(value!=null&&position!=null) {
                         val y=top+height*position.toFloat();val x=center-groupWidth/2+seriesIndex*lane
                         drawRect(series[seriesIndex].third.copy(alpha=.78f),Offset(x+lane*.05f,minOf(y,baseline)),androidx.compose.ui.geometry.Size(lane*.9f,abs(y-baseline)))
-                        val valueText=graphDisplayNumber(value,displayDigits)
+                        val valueText=graphDisplayNumber(value,displayDigits,preserveSmallValues=true)
                         drawContext.canvas.nativeCanvas.drawText(valueText,x+lane/2-text.measureText(valueText)/2,y+(if(value<0)12 else -3).dp.toPx(),text)
                     }
                 }
@@ -144,7 +144,7 @@ import kotlin.math.abs
             data.values.forEachIndexed {index,value->
                 val center=left+width*data.positions[index].toFloat()
                 if(data.values.size<=10||index==0||index==data.values.lastIndex||index%ceil(data.values.size/8.0).toInt()==0) {
-                    val label=graphDisplayNumber(value,displayDigits)
+                    val label=graphDisplayNumber(value,displayDigits,preserveSmallValues=true)
                     drawContext.canvas.nativeCanvas.drawText(label,center-text.measureText(label)/2,top+height+16.dp.toPx(),text)
                 }
                 data.counts.forEachIndexed {seriesIndex,counts->
@@ -168,10 +168,10 @@ import kotlin.math.abs
             for(i in 0..4) {
                 val value=peak*i/4;val y=py(value)
                 drawLine(c.grid,Offset(left,y),Offset(left+width,y),1.dp.toPx())
-                val label=if(histogramKde)java.math.BigDecimal(histogramDensityNumber(value,data)).round(java.math.MathContext(4)).stripTrailingZeros().toString().replace("E","e") else graphDisplayNumber(value,displayDigits)
+                val label=if(histogramKde)java.math.BigDecimal(histogramDensityNumber(value,data)).round(java.math.MathContext(4)).stripTrailingZeros().toString().replace("E","e") else graphDisplayNumber(value,displayDigits,preserveSmallValues=true)
                 drawContext.canvas.nativeCanvas.drawText(label,left-text.measureText(label)-5.dp.toPx(),y+3.dp.toPx(),text)
                 val position=data.viewMinimum+(data.viewMaximum-data.viewMinimum)*i/4.0
-                val tick=graphDisplayNumber((data.minimum+position*data.span)*data.scale,displayDigits)
+                val tick=graphDisplayNumber((data.minimum+position*data.span)*data.scale,displayDigits,preserveSmallValues=true)
                 drawContext.canvas.nativeCanvas.drawText(tick,px(position)-text.measureText(tick)/2,top+height+16.dp.toPx(),text)
             }
             data.heights.forEachIndexed {seriesIndex,buckets->buckets.forEachIndexed {index,value->
@@ -272,7 +272,7 @@ import kotlin.math.abs
             Box(Modifier.alignBy(MathAxis)){MathNode(fitEquation,12f)}
             if(showCorrelation) {
                 MathText("    r = ",12f,Modifier.alignBy(MathAxis))
-                MathText(correlation?.let {"%.3f".format(java.util.Locale.US,it)} ?: "—",12f,Modifier.alignBy(MathAxis))
+                MathText(correlation?.let {graphDisplayNumber(it,displayDigits,preserveSmallValues=true)} ?: "—",12f,Modifier.alignBy(MathAxis))
             }
         }
     }

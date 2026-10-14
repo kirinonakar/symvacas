@@ -66,6 +66,7 @@ export function createAppState(saved={},browserLanguage='en') {
   state.autoCloseBrackets=saved.autoCloseBrackets!==false;
   state.wordWrap=!!saved.wordWrap;
   state.calcModeStepByStep=saved.calcModeStepByStep===true;
+  state.copyAsLatex=saved.copyAsLatex===true;
   state.persistHistory=saved.persistHistory!==false;
   state.haptics=!!saved.haptics;state.sound=!!saved.sound;
   state.inputFont=Math.max(10,Math.min(42,Number(saved.inputFont)||24));

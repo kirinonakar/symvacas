@@ -1,4 +1,4 @@
-self.SYMVACAS_CACHE = 'symvacas-static-1259d4cccbeb401d';
+self.SYMVACAS_CACHE = 'symvacas-static-b07bfc84271c420f';
 self.SYMVACAS_ASSETS = [
   "./",
   "./advanced-statistics-schema.js",
@@ -56,10 +56,12 @@ self.SYMVACAS_ASSETS = [
   "./input-cursor.js",
   "./input-navigation.js",
   "./keypad.js",
+  "./latex-output.js",
   "./LICENSE",
   "./logistic-comparison-plot.js",
   "./logistic-comparison.js",
   "./math-display.js",
+  "./math-input.js",
   "./math-roots.js",
   "./matrix-workspace.js",
   "./model-comparison.js",

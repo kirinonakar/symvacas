@@ -1,4 +1,5 @@
 export const nativeKorean = {
+  "Copy as LaTeX": "LaTeX 형식으로 복사",
   "Preview shortened; analysis uses all rows.": "미리보기는 줄여 표시하며 분석에는 모든 행을 사용합니다.",
   "Nested model comparison": "중첩 모형 비교",
   "Nested logistic model comparison": "중첩 로지스틱 모형 비교",

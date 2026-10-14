@@ -137,7 +137,7 @@ test('copied equations and numeric strings use current display digits and visibl
     {title:'Summary',columns:['Metric','Value'],rows:[['Fitted expression',{exact:'unrounded source'}]]},
     {title:'coefficients',columns:['Parameter','Estimate'],rows:[['b1','0.123456'],['b0','1.987654']]}
   ]}};
-  for(const [digits,equation,slope] of [[0,'y = 0*x+2','0'],[3,'y = 0.123*x+1.988','0.123'],[6,'y = 0.123456*x+1.987654','0.123456']]){
+  for(const [digits,equation,slope] of [[0,'y = 0.12*x+2','0.12'],[3,'y = 0.123*x+1.988','0.123'],[6,'y = 0.123456*x+1.987654','0.123456']]){
     const copied=statisticsResultMarkdown(result,{digits});
     assert.ok(copied.includes(`### Regression equation\n\n\x60\x60\x60text\n${equation}\n\x60\x60\x60`));
     assert.ok(copied.includes(`| b1 | ${slope} |`));assert.ok(!copied.includes('unrounded source'));

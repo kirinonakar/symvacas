@@ -73,6 +73,7 @@ import com.kirinonakar.symvacas.ui.theme.LocalInstrument
         Row(verticalAlignment=Alignment.CenterVertically) { Text(tr("Key sound"),Modifier.weight(1f)); Switch(m.sound,{m.sound=it;m.save()}) }
         Row(verticalAlignment=Alignment.CenterVertically) { Text(tr("Save history locally"),Modifier.weight(1f)); Switch(m.persistHistory,{m.persistHistory=it;m.save()}) }
         Row(verticalAlignment=Alignment.CenterVertically) { Text(tr("Bracket auto-close"),Modifier.weight(1f)); Switch(m.autoCloseBrackets,{m.autoCloseBrackets=it;m.save()}) }
+        Row(verticalAlignment=Alignment.CenterVertically) { Checkbox(m.copyAsLatex,{m.copyAsLatex=it;m.save()}); Text(tr("Copy as LaTeX")) }
         Row(verticalAlignment=Alignment.CenterVertically) { Text(tr("Remove computation limit"),Modifier.weight(1f)); Switch(m.removeComputationLimit,{m.removeComputationLimit=it;m.recalculatePreview();m.save()}) }
         Text(tr("Disables app time, workload, input size and exponent limits. Result size and precision settings stay unchanged; manual cancellation remains available."),fontSize=11.sp,color=LocalInstrument.current.muted)
         Row(verticalAlignment=Alignment.CenterVertically) { Text(tr("Calc mode step by step"),Modifier.weight(1f)); Switch(m.calcModeStepByStep,{m.calcModeStepByStep=it;m.recalculatePreview();m.save()}) }

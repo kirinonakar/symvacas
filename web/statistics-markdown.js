@@ -12,19 +12,19 @@ export function regressionEquationCopyText(result,{digits=10,regressionVariables
     const rename=node=>({...node,value:node.kind==='symbol'?(regressionVariables[node.value]||node.value):node.value,args:(node.args||[]).map(rename)});
     const tree=rename(parse(latexInput(source)));
     const logistic=report.fitScale==='binomial'||String(report.model||'').includes('logistic');
-    return (regressionPrefix??(logistic?'P(y = 1) = ':'y = '))+equationFormulaText(tree,digits);
+    return (regressionPrefix??(logistic?'P(y = 1) = ':'y = '))+equationFormulaText(tree,digits,true);
   }catch{return null;}
 }
 
 export function statisticsFormattedCopyCell(value,options={}){
-  const settings={...options,decimal:true,mixed:false},digits=options.digits??10;
+  const settings={...options,preserveSmallValues:true,decimal:true,mixed:false},digits=options.digits??10;
   const tree=resultDisplayTree(value,settings);
   const complex=node=>['sum','product','binary','function','call','root','power'].includes(node.kind)||(node.args||[]).some(complex);
   const notation=tree?.kind==='product'&&tree.args?.[1]?.kind==='power'&&tree.args[1].args?.[0]?.value==='10';
-  if(tree&&!notation&&complex(tree))return equationFormulaText(tree,digits);
+  if(tree&&!notation&&complex(tree))return equationFormulaText(tree,digits,true);
   const source=value.decimal||value.exact||'';
   if(tree?.kind==='text'&&/[+*/^()]/.test(source)){
-    try{return equationFormulaText(parse(latexInput(source)),digits);}catch{}
+    try{return equationFormulaText(parse(latexInput(source)),digits,true);}catch{}
   }
   return resultText(value,settings);
 }
@@ -36,6 +36,7 @@ export function markdownCell(value){
 }
 
 export function statisticsResultMarkdown(result,options={}){
+  options={...options,preserveSmallValues:true};
   const report=result.statisticsReport||result.statisticsCopyReport;
   if(!report)return resultText(result,options);
   const blocks=['## '+markdownCell(t(report.title))],line=values=>'| '+values.join(' | ')+' |';
@@ -54,7 +55,7 @@ export function statisticsResultMarkdown(result,options={}){
       table.push(line(section.columns.map((column,index)=>{
       const value=row[index];
       const text=value&&typeof value==='object'?statisticsFormattedCopyCell(value,settings):index===0&&rowIndex===section.totalRow||['Metric','Check','Interpretation','Sample','Role','R²','Kind','Effect','Intercept / drift','Status'].includes(column)||column==='Parameter'&&['arima','sarima'].includes(report.analysis)||column==='Value'&&['Intercept / drift','Fit status'].includes(row[0])?t(String(value??'')):
-        dedicated&&/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(String(value))?roundNumber(String(value),options.digits??10):String(value??'');
+        dedicated&&/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(String(value))?roundNumber(String(value),options.digits??10,true):String(value??'');
       return markdownCell(text);
     })));}
     if(table.length>2)blocks.push('### '+markdownCell(t(section.title))+'\n\n'+table.join('\n'));

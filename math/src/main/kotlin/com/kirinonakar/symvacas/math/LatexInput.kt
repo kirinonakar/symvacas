@@ -5,7 +5,7 @@ object LatexInput {
     private val functions = setOf("sin","cos","tan","sec","csc","cot","sinh","cosh","tanh","arcsin","arccos","arctan","ln","exp")
     val symbolLabels = mapOf("alpha" to "α","beta" to "β","gamma" to "γ","delta" to "δ","epsilon" to "ϵ","varepsilon" to "ε","zeta" to "ζ","eta" to "η","theta" to "θ","vartheta" to "ϑ","iota" to "ι","kappa" to "κ","varkappa" to "ϰ","lambda" to "λ","mu" to "μ","nu" to "ν","xi" to "ξ","pi" to "π","varpi" to "ϖ","rho" to "ρ","varrho" to "ϱ","sigma" to "σ","varsigma" to "ς","tau" to "τ","upsilon" to "υ","phi" to "ϕ","varphi" to "φ","chi" to "χ","psi" to "ψ","omega" to "ω","Gamma" to "Γ","Delta" to "Δ","Theta" to "Θ","Lambda" to "Λ","Xi" to "Ξ","Pi" to "Π","Sigma" to "Σ","Upsilon" to "Υ","Phi" to "Φ","Psi" to "Ψ","Omega" to "Ω")
     private val greek = symbolLabels.keys
-    private val commands = setOf("int","sum","prod","binom","begin","lim","frac","dfrac","tfrac","sqrt","log","infty","times","cdot","left","right","quad","qquad","le","leq","ge","geq","ne","neq") + functions + greek
+    private val commands = setOf("operatorname","mathrm","int","sum","prod","binom","begin","lim","frac","dfrac","tfrac","sqrt","log","infty","times","cdot","left","right","quad","qquad","le","leq","ge","geq","ne","neq") + functions + greek
     private val commandPattern = Regex("""\\([A-Za-z]+)""")
     private val bracedPower = Regex("""\^\s*\{""")
 
@@ -34,23 +34,46 @@ object LatexInput {
         }.getOrNull()
     }
 
-    /** Convert only the inserted text so wrapped LaTeX also works inside an existing expression. */
-    fun convertEdit(previous:Editor,updated:String):Editor? {
+    /** Preserve independent graph/equation lines, including the surrounding line's precedence. */
+    fun convertPaste(input:String,prefix:String="",suffix:String="",multiline:Boolean=false):String? {
+        if(!multiline || '\n' !in input)return convert(input,prefix.substringAfterLast('\n'),suffix.substringBefore('\n'))
+        val lines=input.split('\n')
+        var changed=false
+        val converted=lines.mapIndexed {index,line->
+            val result=convert(line,if(index==0)prefix.substringAfterLast('\n') else "",if(index==lines.lastIndex)suffix.substringBefore('\n') else "")
+            // A wrapped expression or matrix can span physical lines; convert it as one unit.
+            if(result==null && (line.trim().startsWith('$') || line.contains('\\') || bracedPower.containsMatchIn(line)))return convert(input,prefix.substringAfterLast('\n'),suffix.substringBefore('\n'))
+            if(result!=null)changed=true
+            result ?: line
+        }.joinToString("\n")
+        return converted.takeIf {changed}
+    }
+
+    /** Convert only inserted text and leave selection-only updates intact. */
+    fun convertEdit(previous:Editor,updated:String,multiline:Boolean=false):Editor? {
+        if(updated==previous.source)return null
         val start=minOf(previous.cursor,previous.anchor)
         val end=maxOf(previous.cursor,previous.anchor)
         val prefix=previous.source.substring(0,start)
         val suffix=previous.source.substring(end)
         if(updated.length>=prefix.length+suffix.length && updated.startsWith(prefix) && updated.endsWith(suffix)) {
             val inserted=updated.substring(prefix.length,updated.length-suffix.length)
-            convert(inserted,prefix,suffix)?.let {return Editor(prefix+it+suffix,start+it.length)}
+            convertPaste(inserted,prefix,suffix,multiline)?.let {return Editor(prefix+it+suffix,start+it.length)}
+            return null
         }
-        return convert(updated)?.let {Editor(it)}
+        return convertPaste(updated,multiline=multiline)?.let {Editor(it)}
     }
 
     private fun convertBody(source:String):String = buildString {
         var index=0
         while(index<source.length) {
             val c=source[index]
+            if(c=='_' && source.getOrNull(index+1)=='{') {
+                val (raw,next)=group(source,index+1)
+                val name=convertBody(raw)
+                require(name.matches(Regex("[A-Za-z0-9_]+"))) {"Unsupported LaTeX subscript"}
+                append('_').append(name);index=next;continue
+            }
             if(c=='(' || c=='{') {
                 val (raw,next)=group(source,index,c,if(c=='(')')' else '}')
                 var converted=convertBody(raw)
@@ -73,6 +96,7 @@ object LatexInput {
             val start=index
             while(index<source.length && source[index].isLetter())index++
             if(index==start) {
+                if(source[index] in "{}%") {append(source[index]);index++;continue}
                 if(source[index] !in ",;! ")error("Unsupported LaTeX spacing")
                 index++
                 continue
@@ -80,6 +104,11 @@ object LatexInput {
             val command=source.substring(start,index)
             if(command !in commands)error("Unsupported LaTeX command: $command")
             when(command) {
+                "operatorname","mathrm" -> {
+                    val (raw,next)=group(source,index)
+                    require(raw.matches(Regex("[A-Za-z0-9_]+"))) {"Unsupported LaTeX name"}
+                    append(raw);index=next
+                }
                 "begin" -> {
                     val (environment,start)=group(source,index)
                     require(environment in setOf("matrix","pmatrix","bmatrix","Bmatrix","vmatrix","Vmatrix","smallmatrix")) {"Unsupported LaTeX environment"}
