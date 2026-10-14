@@ -60,7 +60,8 @@ class RequestedImprovementsTests(unittest.TestCase):
         self.assertEqual(dispatch(call('limit',binary('/',number(1),x),x,number(0),{'kind':'symbol','value':'right'}))['exact'],'oo')
 
     def test_rank_correlations_ties_exact_and_approximate(self):
-        cases=[('spearman([1,2,3],[1,2,3])','rho',1,1/3),
+        cases=[('pearson([1,2,3,4,5],[2,1,3,4,5])','r',.9,.0373860734684987),
+               ('spearman([1,2,3],[1,2,3])','rho',1,1/3),
                ('kendall([1,2,3],[1,2,3])','tau-b',1,1/3),
                ('kendall([12,2,1,12,2],[1,4,7,1,0])','tau-b',-.47140452079103173,.2827454599327748),
                ('spearman([1,2,2,4,5],[2,1,3,4,5])','rho',.8207826816681233,2/15)]
@@ -71,9 +72,14 @@ class RequestedImprovementsTests(unittest.TestCase):
             self.assertAlmostEqual(float(value[key]),coefficient,places=12)
             self.assertAlmostEqual(float(value['p']),p,places=12)
             self.assertEqual(result['statisticsReport']['analysis'],source.split('(')[0])
-        for name in ('spearman','kendall'):
+        for name in ('pearson','spearman','kendall'):
             self.assertFalse(dispatch(tree(f'{name}([1,1],[2,3])'))['ok'])
             self.assertFalse(dispatch(tree(f'{name}([1,2],[2,3,4])'))['ok'])
+        self.assertFalse(dispatch(tree('pearson([1,2],[2,3])'))['ok'])
+        for tail,expected in [('both',0),('right',1),('left',0)]:
+            value=Engine({}).build(tree(f'pearson([1,2,3],[3,2,1],{tail})'))
+            self.assertEqual(float(value['r']),-1)
+            self.assertEqual(float(value['p']),expected)
 
     def test_float_logistic_matches_high_precision_fit_and_influence(self):
         rng=random.Random(123)

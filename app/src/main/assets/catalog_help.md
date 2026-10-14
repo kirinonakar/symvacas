@@ -814,7 +814,10 @@ NUTS: choose NUTS under Inference method. Prior options: linear `[2.5,0.95,2,1,[
 
 Choose current data, example parameters or an editable analysis expression. Paired comparisons use complete pairs and support subject-ID matching. Enter complete subject rows for repeated measurements; impute treats missing cells as NA.
 
-### Rank correlation
+### Correlation
+
+`pearson` — Pearson correlation. At least three paired finite observations with variation in both columns. Pearson r and t(n - 2) p value; both / left / right. Independent rows; the zero-correlation test assumes a bivariate normal population.
+Example: pearson([1,2,3,4,5],[2,1,3,4,5],both)
 
 `spearman` — Spearman rank correlation. Paired finite observations; average ranks for ties. Both / left / right. Exact permutation p for n <= 8; otherwise approximate t p (small samples may need a permutation test).
 Example: spearman([1,2,2,4,5],[2,1,3,4,5],both)

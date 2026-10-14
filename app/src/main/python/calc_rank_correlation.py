@@ -1,4 +1,4 @@
-"""Paired rank correlation with portable exact and asymptotic tests."""
+"""Paired Pearson and rank correlations with portable significance tests."""
 from collections import Counter
 from itertools import permutations
 import math
@@ -9,19 +9,26 @@ from calc_inference import _numbers, _ranks
 
 
 def calculate(engine, name, args):
-    from calc_statistics import _normal_sf, _t_sf, _mp_result
+    from calc_statistics import _normal_sf, _t_sf, _mp_result, _mpf, pearson_correlation
     require(len(args) in (2,3) and all(isinstance(v,(list,tuple)) for v in args[:2]),
             name+" expects two paired data lists and optional both / left / right")
     x,y=map(_numbers,args[:2]); n=len(x)
-    require(n==len(y) and n>=2,"Rank correlation requires at least two pairs with equal lengths")
-    require(len(set(x))>1 and len(set(y))>1,"Rank correlation is undefined for a constant sample")
+    require(n==len(y) and n>=2,"Correlation requires at least two pairs with equal lengths")
+    require(len(set(x))>1 and len(set(y))>1,"Correlation is undefined for a constant sample")
     tail=str(args[2]) if len(args)==3 else "both"
     require(tail in ("both","left","right"),"Use both, left or right")
     with mp.workdps(engine.precision+15):
         def probability(stat,sf):
             p=sf(abs(stat)); right=p if stat>=0 else 1-p
             return 2*p if tail=="both" else right if tail=="right" else 1-right
-        if name=="spearman":
+        if name=="pearson":
+            require(n>=3,"Pearson significance testing requires at least three pairs")
+            r=min(mp.mpf(1),max(mp.mpf(-1),_mpf(pearson_correlation(x,y),engine.precision+10)))
+            statistic=r*mp.sqrt((n-2)/(1-r*r)) if abs(r)<1 else mp.sign(r)*mp.inf
+            p=_mp_result(probability(statistic,lambda z:_t_sf(z,n-2)),engine)
+            result={"n":n,"r":_mp_result(r,engine),"p":p,"df":n-2,"method":"Pearson t test","alternative":tail}
+            note="Independent paired observations; the Pearson p value assumes a bivariate normal population under the null hypothesis of zero correlation."
+        elif name=="spearman":
             rx,tx=_ranks(x); ry,ty=_ranks(y)
             rx=[int(2*v)-(n+1) for v in rx]; ry=[int(2*v)-(n+1) for v in ry]
             score=sum(a*b for a,b in zip(rx,ry))

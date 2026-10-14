@@ -32,7 +32,7 @@ stats mean median variance stdev mode skewness kurtosis quartiles regression cov
 normpdf normalcdf normcdf normalpdf invnorm tpdf tcdf invt chi2pdf chi2cdf fpdf fcdf binompdf binomcdf poissonpdf poissoncdf geometpdf geometcdf
 exppdf expcdf unifpdf unifcdf gammapdf gammacdf betapdf betacdf lognormpdf lognormcdf
 hgeompdf hgeomcdf nbinompdf nbinomcdf weibullpdf weibullcdf cauchypdf cauchycdf invcauchy
-ttest ttest2 ttestpaired ztest ztest2 chi2test chi2independence fisherexact anova welchanova tukey gameshowell shapiro spearman kendall wilcoxon mannwhitney kruskal tinterval zinterval
+ttest ttest2 ttestpaired ztest ztest2 chi2test chi2independence fisherexact anova welchanova tukey gameshowell shapiro pearson spearman kendall wilcoxon mannwhitney kruskal tinterval zinterval
 tvmfv tvmpv tvmpmt tvmn tvmrate npv irr amort cagr
 """.split())
 _functions = {}

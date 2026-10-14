@@ -217,6 +217,11 @@
     "qty(,m)",
     "convert(,m,cm)"
   ],
+  "Correlation": [
+    "pearson([],[],both)",
+    "spearman([],[],both)",
+    "kendall([],[],both)"
+  ],
   "Reliability & agreement": [
     "cronbach([],raw)",
     "icc([],random,single,0.95)",

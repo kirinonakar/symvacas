@@ -1,13 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fork} from 'node:child_process';
+import {readFileSync} from 'node:fs';
 import {parse} from '../parser.js';
 import {advancedStatisticsSchema as schema} from '../advanced-statistics-schema.js';
 import {guidedStatisticsCommand} from '../advanced-statistics.js';
 import {statisticsRequest} from '../statistics-request.js';
 
-test('rank correlation forms preserve paired rows and execute their shared examples',()=>{
-  for(const id of ['spearman','kendall']){
+test('Correlation catalog and menu contain all three analyses with working paired forms',()=>{
+  const ids=['pearson','spearman','kendall'];
+  const catalog=JSON.parse(readFileSync(new URL('../catalog.json',import.meta.url),'utf8'));
+  assert.deepEqual(catalog.Correlation,ids.map(id=>`${id}([],[],both)`));
+  assert.ok(!('Rank correlation' in catalog));
+  assert.deepEqual(schema.filter(item=>item.group==='Correlation').map(item=>item.id),ids);
+  for(const id of ids){
     const definition=schema.find(item=>item.id===id);
     assert.equal(guidedStatisticsCommand(definition,definition.exampleRows),definition.example);
     assert.equal(guidedStatisticsCommand(definition,[['99','1','2'],['98','3','4']],{first:'1',second:'2',tail:'right'}),`${id}([1,3],[2,4],right)`);
@@ -41,11 +47,11 @@ test('production WASM runs real roots, domain exclusions, ranks, ODE bounds and 
   const rootDerivative=await execute({tree:parse('diff(cbrt(x),x)')});assert.equal(rootDerivative.ok,true,rootDerivative.error);assert.doesNotMatch(rootDerivative.exact,/Derivative|DiracDelta/);assert.ok(rootDerivative.conditions.length);
   const limit=await execute({tree:parse('limit(1/x,x,0)')});assert.equal(limit.ok,false);assert.match(limit.error,/left-hand limit = -oo.*right-hand limit = oo/);
   const undefinedCall=await execute({tree:parse('foo([1,2],[3,4])')});assert.match(undefinedCall.error,/Undefined function: foo/);
-  for(const name of ['spearman','kendall']){
+  for(const name of ['pearson','spearman','kendall']){
     const result=await execute(statisticsRequest(`${name}([1,2,3],[1,2,3])`));
     assert.equal(result.ok,true,result.error);assert.equal(result.statisticsReport.analysis,name);
     const summary=result.statisticsReport.sections.find(section=>section.title==='Summary');
-    assert.ok(Math.abs(Number(summary.rows.find(row=>row[0]==='p')[1].decimal)-1/3)<1e-12);
+    assert.ok(Math.abs(Number(summary.rows.find(row=>row[0]==='p')[1].decimal)-(name==='pearson'?0:1/3))<1e-12);
   }
   for(const [source,kinds] of [['1/x',['vertical','horizontal']],['tan(x)',['vertical','vertical']]]){
     const result=await execute({action:'graphAnalysis',analysis:'asymptotes',trees:[parse(source)],a:-2,b:2});

@@ -24,8 +24,8 @@ def add_example_rows(schema):
         elif item['id']=='propztest2': rows=[[60,100],[45,100]]
         elif item['input']=='none': rows=[]
         elif item['id'] in ('shapiro','padjust','bayesproportion','bayesmean','bayesrate','bayesbootstrap','bootstrapci','arima','sarima','tost'): rows=[[v] for v in first]
-        elif item['id'] in ('tukey','gameshowell','levene','bartlett','kstest','bayescompare','cohend','eta2','tost2','tostpaired','spearman','kendall'):
-            samples=[literal(arg) for arg in (arguments[:2] if item['id'] in ('bayescompare','cohend','tost2','tostpaired','spearman','kendall') else arguments)]; rows=[[sample[i] if i<len(sample) else '' for sample in samples] for i in range(max(map(len,samples)))]
+        elif item['id'] in ('tukey','gameshowell','levene','bartlett','kstest','bayescompare','cohend','eta2','tost2','tostpaired','pearson','spearman','kendall'):
+            samples=[literal(arg) for arg in (arguments[:2] if item['id'] in ('bayescompare','cohend','tost2','tostpaired','pearson','spearman','kendall') else arguments)]; rows=[[sample[i] if i<len(sample) else '' for sample in samples] for i in range(max(map(len,samples)))]
         elif item['id']=='logrank': rows=[r+[i+1] for i,arg in enumerate(arguments) for r in literal(arg)]
         elif item['id']=='dunn': rows=[[sample[i] if i<len(sample) else '' for sample in first] for i in range(max(map(len,first)))]
         else: rows=first

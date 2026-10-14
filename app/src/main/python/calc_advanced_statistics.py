@@ -41,6 +41,7 @@ def dunn(engine, name, a):
 
 # Function names, argument limits and handlers share one registry.
 _ANALYSES = {
+    'pearson': (2, 3, rank_correlation),
     'spearman': (2, 3, rank_correlation),
     'kendall': (2, 3, rank_correlation),
     'metaanalysis': (1, 7, research),

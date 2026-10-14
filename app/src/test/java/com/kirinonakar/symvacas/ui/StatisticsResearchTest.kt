@@ -8,6 +8,19 @@ import org.json.JSONObject
 import java.io.File
 
 class StatisticsResearchTest {
+    @Test fun correlationCatalogAndMenuShareAllThreeWorkingTemplates() {
+        val ids=listOf("pearson","spearman","kendall")
+        assertEquals(ids.map {"$it([],[],both)"},Catalog["Correlation"])
+        assertTrue("Rank correlation" !in Catalog)
+        for(id in ids) {
+            val d=definition(id)
+            assertEquals("Correlation",d.getString("group"))
+            assertEquals(d.getString("example"),guidedStatisticsCommand(d,advancedStatisticsExampleRows(d)))
+            val rows=listOf(listOf("99","1","2"),listOf("98","3","4"),listOf("97","5","6"))
+            val opts=JSONObject().put("first","1").put("second","2").put("tail","right")
+            assertEquals("$id([1,3,5],[2,4,6],right)",guidedStatisticsCommand(d,rows,opts))
+        }
+    }
     @Test fun binaryPatientCountsAndAgreementExamplesUseSharedSelectedRoles() {
         val d=definition("metaanalysis");val rows=advancedStatisticsExampleRows(d,JSONObject().put("layout","binary"))
         assertEquals(4,rows[0].size)

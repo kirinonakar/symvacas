@@ -127,7 +127,7 @@ export function guidedStatisticsCommand(definition,rows,settings={},columnLabels
   }
   if(id==='icc')return `icc(${table(complete(multiple('columns')))},${opts.model},${opts.unit},${opts.level})`;
   if(id==='blandaltman')return `blandaltman(${table(complete([column('first'),column('second')]))},${opts.level},${opts.mode})`;
-  if(['spearman','kendall'].includes(id)){
+  if(['pearson','spearman','kendall'].includes(id)){
     if(column('first')===column('second'))throw new Error('Choose distinct analysis columns');
     const pairs=complete([column('first'),column('second')]);
     return `${id}(${list(pairs.map(row=>row[0]))},${list(pairs.map(row=>row[1]))},${opts.tail})`;

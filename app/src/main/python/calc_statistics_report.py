@@ -30,7 +30,7 @@ TITLES.update({'arima': 'ARIMA / time-series forecast', 'sarima': 'SARIMA / time
 TITLES.update({'metaanalysis':'Meta-analysis','icc':'Intraclass correlation (ICC)', 'blandaltman':'Bland–Altman agreement',
                'tost':'One-sample equivalence (TOST)','tost2':'Independent equivalence (TOST)','tostpaired':'Paired equivalence (TOST)'})
 TITLES['cramerv']='Phi / Cramér’s V'
-TITLES.update({'spearman':'Spearman rank correlation','kendall':'Kendall tau-b correlation'})
+TITLES.update({'pearson':'Pearson correlation','spearman':'Spearman rank correlation','kendall':'Kendall tau-b correlation'})
 
 
 def statistics_report(name, value, precision, labels=None):
@@ -395,6 +395,7 @@ def statistics_report(name, value, precision, labels=None):
     if name=='metaanalysis': priority=['estimate','I² (%)','τ²','Q p']
     if name=='icc': priority=['ICC','p']
     if name=='spearman': priority=['rho','p','n']
+    if name=='pearson': priority=['r','p','n']
     if name=='kendall': priority=['tau-b','p','n']
     if name=='blandaltman': priority=['Bias','Lower agreement limit','Upper agreement limit']
     if name in ('tost','tost2','tostpaired'): priority=['estimate','TOST p','Lower p','Upper p']
@@ -402,6 +403,8 @@ def statistics_report(name, value, precision, labels=None):
     if name=='modelcompare':priority=['F','LRT χ²','Difference χ²','p','ΔR² (B − A)','ΔAUC (B − A)','ΔC-index (B − A)','ΔRMSE (B − A)','ΔAIC (B − A)']
     highlights=[{'label':('χ² p' if name in ('cfa','sem') else 'p value') if key=='p' and name in ('cfa','sem','mcnemar') else key,'value':cell(value[key])} for key in priority if isinstance(value,dict) and key in value and finite(value[key]) is not None][:4]
     report = {'analysis': name, 'title': report_title, 'sections': sections,'highlights':highlights,'plots':plots}
+    if name=='pearson':
+        report['notes']=['Independent paired observations; the Pearson p value assumes a bivariate normal population under the null hypothesis of zero correlation.']
     if name in ('spearman','kendall'):
         report['notes']=['Paired observations must be independent across rows. Spearman uses average ranks for ties; Kendall tau-b adjusts for tied pairs.']
         if name=='spearman' and value.get('method')=='Asymptotic t approximation':

@@ -60,19 +60,22 @@ specs = [
 ]
 specs.append(('logisticcompare','Nested logistic model comparison','중첩 로지스틱 모형 비교','table',',1,crossvalidation,5,0.5,0.95,200,0,[48,0]',str(LOGISTIC_COMPARE_ROWS).replace(' ',''),'Select a binary response, Model A predictors and added Model B predictors. A selected validation dataset, stratified holdout or stratified cross-validation. Compare unpenalized MLE fit (LRT, AIC/BIC) and paired validation AUC, accuracy, log loss, Brier score and calibration. Differences are B minus A.','이항 반응·Model A 설명변수·Model B 추가 설명변수를 선택합니다. 선택한 데이터셋 검증·층화 홀드아웃·층화 교차검증을 지원합니다. 무벌점 MLE 적합도(LRT·AIC/BIC)와 대응 검증 AUC·정확도·Log loss·Brier score·보정 성능을 비교합니다. 차이는 B−A입니다.'))
 specs.append(COMPARISON_SPEC)
-RANK_SPECS=[
+CORRELATION_SPECS=[
+    ('pearson','Pearson correlation','피어슨 상관','groups',',both','[1,2,3,4,5],[2,1,3,4,5]',
+     'At least three paired finite observations with variation in both columns. Pearson r and t(n - 2) p value; both / left / right. Independent rows; the zero-correlation test assumes a bivariate normal population.',
+     '양쪽 열에 변동이 있는 유한 관측값 3쌍 이상. 피어슨 r과 t(n - 2) p값; both / left / right. 행 간 독립이며 무상관 검정은 이변량 정규 모집단을 가정합니다.'),
     ('spearman','Spearman rank correlation','스피어만 순위상관','groups',',both','[1,2,2,4,5],[2,1,3,4,5]',
      'Paired finite observations; average ranks for ties. Both / left / right. Exact permutation p for n <= 8; otherwise approximate t p (small samples may need a permutation test).',
      '대응하는 유한 관측값; 동순위는 평균 순위. both / left / right. n <= 8은 정확 순열 p값, 그 외 t 근사 p값(작은 표본에는 순열 검정이 필요할 수 있음).'),
     ('kendall','Kendall tau-b correlation','켄달 tau-b 상관','groups',',both','[1,2,2,4,5],[2,1,3,4,5]',
      'Paired finite observations; tau-b adjusts for ties. Both / left / right. Exact p without ties for n <= 33; otherwise tie-corrected normal approximation.',
      '대응하는 유한 관측값; tau-b는 동순위를 보정. both / left / right. 동순위 없이 n <= 33이면 정확 p값, 그 외 동순위 보정 정규 근사.')]
-specs.extend(RANK_SPECS)
+specs.extend(CORRELATION_SPECS)
 specs.extend(SOCIAL_SPECS)
 specs.extend(RESEARCH_SPECS)
 # Menu placement and order are shared by Android and Web; function IDs stay stable.
 menus = [
-    ('general', 'Rank correlation', '순위상관', ['spearman','kendall']),
+    ('general', 'Correlation', '상관분석', ['pearson','spearman','kendall']),
     ('preparation', 'Data preparation', '데이터 준비', ['impute']),
     ('general', 'Categorical data', '범주형 자료', ['propztest','propztest2','mcnemar']),
     ('general', 'Reliability & agreement', '신뢰도·일치도', ['cronbach','icc','cohenkappa','blandaltman']),

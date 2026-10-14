@@ -25,6 +25,7 @@ internal val Catalog=linkedMapOf(
     "Vector calculus" to listOf("gradient(,[x,y])","divergence(,[x,y])","curl(,[x,y])","hessian(,[x,y])","jacobian(,[x,y])","laplacian(,[x,y])"),
     "Matrix & vector" to listOf("det()","inverse()","transpose()","rank()","trace()","ref()","rref()","lu()","linsolve(,)","eigenvalues()","eigenvectors()","dot(,)","cross(,)","norm()","normalize()","angle(,)","projection(,)","charpoly(,x)","identity(2)","diag([])","qr()","cholesky()","nullspace()","cofactor()","adjugate()","rowspace()","singularvalues()","frob()","jordan()","dim()","pinv()","ctranspose()","svd()"),
     "Data & units" to listOf("stats([])","mean([])","median([])","variance([])","variance([],0)","stdev([])","stdev([],0)","mode([])","skewness([])","skewness([],0)","kurtosis([])","kurtosis([],0)","quartiles([])","sumdata([])","covariance([],[])","covariance([],[],0)","correlation([],[])","qty(,m)","convert(,m,cm)"),
+    "Correlation" to listOf("pearson([],[],both)","spearman([],[],both)","kendall([],[],both)"),
     "Reliability & agreement" to listOf("cronbach([],raw)","icc([],random,single,0.95)","blandaltman([],0.95,difference)","cohenkappa([],unweighted)","cohenkappa([],linear)","cohenkappa([],quadratic)"),
     "Effect Size" to listOf("cramerv([])"),
     "Research synthesis & equivalence" to listOf("metaanalysis([],pm,0.95,z,1)","tost([],-0.5,0.5,0,0.05)","tost2([],[],-0.5,0.5,welch,0.05)","tostpaired([],[],-0.5,0.5,0.05)"),
