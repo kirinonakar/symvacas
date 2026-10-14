@@ -330,6 +330,57 @@ class ImplicitGraphTests(unittest.TestCase):
             self.assertGreater(len(points),100)
             self.assertTrue(all(abs(point[1])<1e-6 for point in points))
 
+class GraphDispatchTests(unittest.TestCase):
+
+    def graph(self, kind, tree, **options):
+        result = json.loads(calc_engine.dispatch(json.dumps({
+            "action": "graph", "graphKind": kind, "trees": [tree], "angle": "RAD",
+            "min": 0, "max": 2*math.pi, **options,
+        })))
+        self.assertTrue(result["ok"], result.get("error"))
+        return result
+
+    def test_parametric_and_polar_sampling_preserves_trace_parameters(self):
+        t, a = symbol("t"), symbol("a")
+        pair = {"kind": "list", "args": [
+            binary("*", a, {"kind": "call", "value": name, "args": [t]})
+            for name in ("cos", "sin")
+        ]}
+        for kind, tree in (("parametric", pair), ("polar", a)):
+            with self.subTest(kind=kind):
+                result = self.graph(kind, tree, variable="t", parameters={"a": 2})
+                self.assertEqual(["a"], result["parameters"])
+                points, positions = result["curves"][0], result["curveParameters"][0]
+                self.assertEqual(len(points), len(positions))
+                self.assertGreater(len(points), 30)
+                self.assertEqual(0, positions[0])
+                self.assertEqual(2*math.pi, positions[-1])
+                for (px, py), at in zip(points, positions):
+                    self.assertAlmostEqual(2*math.cos(at), px)
+                    self.assertAlmostEqual(2*math.sin(at), py)
+
+    def test_recursive_sequence_keeps_seeds_and_parameter_binding(self):
+        previous = {"kind": "call", "value": "u", "args": [binary("-", symbol("n"), number(1))]}
+        result = self.graph("sequence", binary("*", symbol("a"), previous),
+                            min=0, max=5, initialTrees=[number(1)], parameters={"a": 2})
+        self.assertTrue(result["discrete"])
+        self.assertEqual(["a"], result["parameters"])
+        self.assertEqual([[i, float(2**i)] for i in range(6)], result["curves"][0])
+
+    def test_differential_solution_integrates_both_sides_of_initial_time(self):
+        result = self.graph("differential", binary("*", symbol("a"), y),
+                            min=-.5, max=.5, t0=0, initialValues=[1, -2], parameters={"a": 2})
+        self.assertTrue(result["differential"])
+        self.assertEqual(["a"], result["parameters"])
+        self.assertEqual(17*11, len(result["fields"]))
+        for initial, curve in zip((1, -2), result["curves"]):
+            self.assertIn([0, initial], curve)
+            self.assertAlmostEqual(-.5, curve[0][0])
+            self.assertAlmostEqual(.5, curve[-1][0])
+            for at, value in curve:
+                self.assertAlmostEqual(initial*math.exp(2*at), value, delta=1e-8)
+
+
 class GraphPerformanceTests(unittest.TestCase):
 
     def test_simplification_never_bridges_breaks_or_loses_a_closed_loop(self):

@@ -1,0 +1,180 @@
+"""Bounded graph shading and integration-interval fill polygons."""
+from calc_limits import capped
+from calc_shared import MathError, require
+import math
+import sympy as s
+from calc_graph_common import (
+    _finite_real,
+    graph_function,
+    substitute_parameters,
+)
+from calc_graph_sampling import adaptive_samples
+
+
+def graph_shading(engine, request, items, groups, sliders, xmin, xmax):
+    """[shade] regions: half-plane inequalities and bands between one or two curves."""
+    ymin,ymax = float(request.get("yMin",-5)),float(request.get("yMax",5))
+    require(math.isfinite(ymin) and math.isfinite(ymax) and ymax>ymin,"Shading needs a valid y range")
+    span = ymax-ymin; low_edge,high_edge = ymin-span,ymax+span
+    def clamp(value): return min(max(value,low_edge),high_edge)
+    x = engine.symbol("x"); engine.bindings["x"] = x
+    count = capped(max(200,int(request.get("samples",500))),1200)
+    def endpoint(item, key, default):
+        tree = item.get(key)
+        if tree is None: return default
+        number = _finite_real(s.N(substitute_parameters(engine.build(tree),sliders),engine.precision))
+        require(number is not None,"Shading intervals must be finite numbers")
+        return number
+    def evaluate(function, at):
+        try: return _finite_real(function(at))
+        except (TypeError, ValueError, ZeroDivisionError, OverflowError): return None
+    def samples(expression, a, b):
+        function = graph_function(expression, (x,), sliders)
+        points = []
+        for index in range(count+1):
+            at = a+(b-a)*index/count
+            value = evaluate(function,at)
+            points.append([at,value] if value is not None else None)
+        return points
+    shadings = []
+    for item,group in zip(items,groups):
+        mode = item.get("mode")
+        a,b = endpoint(item,"a",xmin),endpoint(item,"b",xmax)
+        require(a < b,"Shading intervals must be increasing")
+        for bound in item.get("xBounds",[]):
+            require(bound.get("side") in ("lower","upper"), "Invalid shading x bound")
+            expression = engine.build(bound["tree"])
+            require(not expression.has(x,engine.symbol("y")), "Shading x bounds must be constant")
+            at = endpoint({"bound":bound["tree"]},"bound",0)
+            if bound["side"] == "lower": a = max(a,at)
+            else: b = min(b,at)
+        if a >= b:
+            shadings.append({"mode":mode,"boundary":[],"fill":[]})
+            continue
+        if mode == "region":
+            constraints = item.get("constraints") or []
+            require(len(group) == len(constraints) and group, "A shaded region needs inequalities")
+            lower, upper, vertical = [], [], []
+            left, right = max(a,xmin), min(b,xmax)
+            for expression, constraint in zip(group,constraints):
+                axis, side = constraint.get("axis"), constraint.get("side")
+                require(axis in ("x","y") and side in ("lower","upper"), "Invalid shading constraint")
+                require(not expression.has(engine.symbol("y")), "Shading boundaries cannot depend on y")
+                if axis == "x":
+                    require(not expression.has(x), "Shading x bounds must be constant")
+                    at = _finite_real(substitute_parameters(expression,sliders).evalf(engine.precision))
+                    require(at is not None, "Shading x bounds must be finite")
+                    if side == "lower": left = max(left,at)
+                    else: right = min(right,at)
+                    vertical.append(at)
+                else:
+                    (lower if side == "lower" else upper).append(graph_function(expression,(x,),sliders))
+            polygons, boundary, run = [], [], []
+            if left < right:
+                # Intersect every bound at each x; a contradictory region stays empty.
+                for index in range(count+2):
+                    at = left+(right-left)*min(index,count)/count
+                    lows = [evaluate(fn,at) for fn in lower]
+                    highs = [evaluate(fn,at) for fn in upper]
+                    low = max([ymin]+lows) if all(v is not None for v in lows) else None
+                    high = min([ymax]+highs) if all(v is not None for v in highs) else None
+                    if index > count or low is None or high is None or low >= high:
+                        if len(run) >= 2:
+                            top = [[px,hi] for px,lo,hi in run]
+                            bottom = [[px,lo] for px,lo,hi in run]
+                            polygons.append(top+list(reversed(bottom)))
+                        run = []
+                    else: run.append([at,low,high])
+                for expression, constraint in zip(group,constraints):
+                    if constraint["axis"] == "y" and polygons:
+                        line = []
+                        for point in samples(expression,left,right):
+                            if point is not None:
+                                at,value = point
+                                lows,highs = [evaluate(fn,at) for fn in lower],[evaluate(fn,at) for fn in upper]
+                                if not all(v is not None for v in lows+highs) or not max([ymin]+lows)-1e-9 <= value <= min([ymax]+highs)+1e-9: point = None
+                            line.append(point)
+                        boundary.append(line)
+                for at in vertical:
+                    if left <= at <= right:
+                        lows = [evaluate(fn,at) for fn in lower]
+                        highs = [evaluate(fn,at) for fn in upper]
+                        if all(v is not None for v in lows+highs):
+                            lo,hi = max([ymin]+lows),min([ymax]+highs)
+                            if lo < hi: boundary.append([[at,lo],[at,hi]])
+            shadings.append({"mode":mode,"boundary":boundary,"fill":polygons})
+        elif mode == "halfplane":
+            require(len(group) == 1,"A shaded inequality needs one boundary curve")
+            boundary = samples(group[0],a,b)
+            edge = low_edge if item.get("side") == "below" else high_edge
+            polygons=[]; run=[]
+            for point in boundary+[None]:
+                value = None if point is None else point[1]
+                if value is None:
+                    if len(run) >= 2: polygons.append(run+[[run[-1][0],edge],[run[0][0],edge]])
+                    run=[]
+                    continue
+                run.append([point[0],clamp(value)])
+            shadings.append({"mode":mode,"boundary":[boundary],"fill":polygons})
+        elif mode == "band":
+            require(1 <= len(group) <= 2,"[shade] takes one or two functions")
+            first = samples(group[0],a,b)
+            second = samples(group[1],a,b) if len(group) == 2 else [[point[0],0.0] if point else None for point in first]
+            lower,upper = [],[]
+            for bound in item.get("yBounds",[]):
+                require(bound.get("side") in ("lower","upper"), "Invalid shading y bound")
+                expression = engine.build(bound["tree"])
+                require(not expression.has(engine.symbol("y")), "Shading boundaries cannot depend on y")
+                (lower if bound["side"] == "lower" else upper).append(graph_function(expression,(x,),sliders))
+            runs=[]; run=[]; previous=None
+            for index in range(len(first)):
+                low = None if first[index] is None else first[index][1]
+                high = None if second[index] is None else second[index][1]
+                at = a+(b-a)*index/count
+                lows,highs = [evaluate(fn,at) for fn in lower],[evaluate(fn,at) for fn in upper]
+                if low is None or high is None or any(v is None for v in lows+highs):
+                    if len(run) >= 2: runs.append(run)
+                    run=[]; previous=None
+                    continue
+                low,high = max([min(low,high)]+lows),min([max(low,high)]+highs)
+                current = [at,low,high]
+                if previous is not None and (previous[2]-previous[1])*(high-low)<0:
+                    # Retain the entry/exit point when clipping changes within a sample.
+                    delta = previous[2]-previous[1]
+                    fraction = delta/(delta-(high-low))
+                    px = previous[0]+(at-previous[0])*fraction
+                    py = previous[1]+(low-previous[1])*fraction
+                    run.append([px,clamp(py),clamp(py)])
+                if low <= high:
+                    run.append([at,clamp(low),clamp(high)])
+                else:
+                    if len(run) >= 2: runs.append(run)
+                    run=[]
+                previous = current
+            if len(run) >= 2: runs.append(run)
+            polygons = []; boundaries = [[],[]]
+            for segment in runs:
+                top = [[at,max(low,high)] for at,low,high in segment]
+                bottom = [[at,min(low,high)] for at,low,high in segment]
+                polygons.append(top+list(reversed(bottom)))
+                for line,points in zip(boundaries,(bottom,top)):
+                    if line: line.append(None)
+                    line.extend(points)
+            shadings.append({"mode":mode,"boundary":boundaries if lower or upper else [first,second if len(group) == 2 else None],"fill":polygons})
+        else:
+            raise MathError("Unknown shading mode")
+    return shadings
+
+
+def integral_fill(expression, variable, a, b):
+    """Sample the integration interval independently of the simplified viewport curve."""
+    points, _ = adaptive_samples(graph_function(expression,(variable,)),a,b,400,"cartesian")
+    polygons, segment = [], []
+    def flush():
+        if len(segment)>1: polygons.append([[segment[0][0],0.0],*segment,[segment[-1][0],0.0]])
+        segment.clear()
+    for point in points:
+        if point is None: flush()
+        else: segment.append(point)
+    flush()
+    return polygons
