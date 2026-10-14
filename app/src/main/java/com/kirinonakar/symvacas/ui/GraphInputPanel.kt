@@ -46,6 +46,7 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
             Text(if(isKorean())"Cartesian에서 y=x^2, x^2+y^2=9, r=2*cos(3*θ), (cos(t),sin(t))를 함께 표시합니다. Range에서 t와 θ 범위를 각각 설정하세요. 해당 그래프가 있을 때만 표시됩니다." else "Cartesian combines y=x^2, x^2+y^2=9, r=2*cos(3*θ), and (cos(t),sin(t)). Set separate t and θ bounds in Range; each appears when its graph is present.",fontSize=12.sp,color=c.muted)
             Text(if(isKorean())"x^2+y^2<4 또는 y>=x^2-2를 바로 입력해 영역을 채웁니다. 엄격한 부등식은 점선, <=와 >=는 실선 경계를 사용합니다." else "Enter x^2+y^2<4 or y>=x^2-2 to shade directly. Strict inequalities use dashed boundaries; <= and >= use solid boundaries.",fontSize=12.sp,color=c.muted)
             Text(if(isKorean())"수식 앞의 눈 아이콘으로 그래프를 표시하거나 숨깁니다. 3D에서는 표면 불투명도를 조정하고 단면 슬라이더에서 x = c, y = c 또는 z = c를 선택하세요." else "Use the eye before each formula to show or hide its graph. In 3D, adjust Surface opacity and choose x = c, y = c or z = c for the section slider.",fontSize=12.sp,color=c.muted)
+            Text(if(isKorean())"로그 y축은 양수만 표시합니다. 좌표와 분석 결과는 실제 y값을 유지합니다." else "Log y shows positive values only; coordinates and analyses retain actual y values.",fontSize=12.sp,color=c.muted)
             Text(tr("Expressions · one per line"),fontSize=12.sp,color=c.muted)
             Text(tr("One [x(t),y(t)] pair per line"),fontSize=12.sp,color=c.muted)
             Text(tr("r(t) · radians · one curve per line"),fontSize=12.sp,color=c.muted)
@@ -86,6 +87,7 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
                     if(m.graphKind in listOf("cartesian","parametric","polar"))SmallAction("Analyze",active=if(analysis)true else null,shaded=analysis) {onAnalysisToggle()}
                     if(m.graphKind !in listOf("surface","space"))SmallAction("Table",active=if(showTable)true else null,shaded=showTable) {onTableToggle()}
                     if(m.graphKind in listOf("cartesian","parametric","polar"))SmallAction(if(m.radianAxis)"x: π rad" else "x: decimal"){m.radianAxis=!m.radianAxis;m.save()}
+                    if(m.graphKind !in listOf("surface","space"))SmallAction(if(m.yLog)"y: log10" else "y: linear",active=if(m.yLog)true else null,shaded=m.yLog){m.yLog=!m.yLog}
                     SmallAction("Save SVG",enabled=m.graphData!=null&&!exporting){prepareExport("svg")}
                     SmallAction("Save PNG",enabled=m.graphData!=null&&!exporting){prepareExport("png")}
                 }

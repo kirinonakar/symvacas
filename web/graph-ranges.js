@@ -19,6 +19,9 @@ export function createGraphRangeControls({
   const rangePairs=[['graph-theta-min','graph-theta-max'],['graph-parameter-min','graph-parameter-max'],['graph-min','graph-max'],['graph-ymin','graph-ymax'],['graph-xmin','graph-xmax'],['graph-zmin','graph-zmax'],['graph-analysis-a','graph-analysis-b']];
   const pairedSliders=new Map();
 
+  const isLog=id=>state.yLog&&!['surface','space'].includes(value('graph-kind'))&&['graph-ymin','graph-ymax'].includes(id);
+  const coordinate=(id,number)=>isLog(id)?Math.log10(number):number;
+  const rawValue=(id,number)=>isLog(id)?10**number:number;
   function fieldNumber(input){return input.value.trim()===''?NaN:Number(input.dataset.displayValue===input.value?input.dataset.fullValue:input.value);}
 
   function numeric(id){return fieldNumber($(id));}
@@ -34,24 +37,24 @@ export function createGraphRangeControls({
   }
 
   function syncRangePair(pair){
-    const numbers=pair.ids.map(numeric);if(!numbers.every(Number.isFinite))return;
+    const numbers=pair.ids.map(id=>coordinate(id,numeric(id)));if(!numbers.every(Number.isFinite))return;
     const sliders=pair.ids.map(id=>$(id+'-slider')),linked=pair.ids[0]==='graph-analysis-a';
     const [low,high]=linked?analysisRange():[Math.min(...sliders.map(slider=>Number(slider.min)),...numbers),Math.max(...sliders.map(slider=>Number(slider.max)),...numbers)];
     if(!Number.isFinite(high-low)||high<=low)return;
     const positions=numbers.map(number=>Math.max(low,Math.min(high,number)));
-    sliders.forEach((slider,index)=>{slider.min=String(low);slider.max=String(high);slider.value=String(positions[index]);slider.setAttribute('aria-valuetext',displayNumber(positions[index],options().displayDigits));});
+    sliders.forEach((slider,index)=>{slider.min=String(low);slider.max=String(high);slider.value=String(positions[index]);slider.setAttribute('aria-valuetext',displayNumber(rawValue(pair.ids[index],positions[index]),options().displayDigits));});
     pair.track.style.setProperty('--range-start',`${100*(positions[0]-low)/(high-low)}%`);pair.track.style.setProperty('--range-end',`${100*((sliders[1].hidden?positions[0]:positions[1])-low)/(high-low)}%`);
   }
 
   function resetRangeDomain(pair){
     if(pair.ids[0]==='graph-analysis-a'){syncRangePair(pair);return;}
-    const [min,max]=pair.ids.map(numeric),span=max-min;if(!Number.isFinite(span)||span<=0)return;
-    const low=min-span/2,high=max+span/2;if(!Number.isFinite(high-low))return;
+    const [min,max]=pair.ids.map(id=>coordinate(id,numeric(id))),span=max-min;if(!Number.isFinite(span)||span<=0)return;
+    const low=isLog(pair.ids[0])?Math.max(-300,min-span/2):min-span/2,high=isLog(pair.ids[0])?Math.min(300,max+span/2):max+span/2;if(!Number.isFinite(high-low))return;
     for(const id of pair.ids){$(id+'-slider').min=String(low);$(id+'-slider').max=String(high);}
     syncRangePair(pair);
   }
 
-  function showNumber(id,number){const input=$(id);if(!Number.isFinite(number))return;displayField(input,number);const output=$(id+'-value');if(output)output.textContent=displayNumber(number,options().displayDigits);const slider=$(id+'-slider');if(slider){if(number<Number(slider.min))slider.min=String(number);if(number>Number(slider.max))slider.max=String(number);slider.value=String(number);slider.setAttribute('aria-valuetext',displayNumber(number,options().displayDigits));}const pair=pairedSliders.get(id);if(pair)syncRangePair(pair);}
+  function showNumber(id,number){const input=$(id);if(!Number.isFinite(number))return;displayField(input,number);const output=$(id+'-value');if(output)output.textContent=displayNumber(number,options().displayDigits);const slider=$(id+'-slider');if(slider){const at=coordinate(id,number);if(at<Number(slider.min))slider.min=String(at);if(at>Number(slider.max))slider.max=String(at);slider.value=String(at);slider.setAttribute('aria-valuetext',displayNumber(number,options().displayDigits));}const pair=pairedSliders.get(id);if(pair)syncRangePair(pair);}
 
   function renderRangeNumbers(){for(const id of rangeIds){if(value(id)!==''&&document.activeElement!==$(id))showNumber(id,numeric(id));}}
 
@@ -72,11 +75,11 @@ export function createGraphRangeControls({
 
   function initializeRanges(){
     for(const id of rangeIds){const field=$(id);editField(field);for(const name of ['input','change'])field.addEventListener(name,()=>{if(field.dataset.displayValue!==field.value)delete field.dataset.displayValue;const pair=pairedSliders.get(id);if(pair)resetRangeDomain(pair);if(['graph-min','graph-max','graph-parameter-min','graph-parameter-max','graph-theta-min','graph-theta-max','graph-analysis-a'].includes(id))analysisControls();});}
-    for(const id of sliderIds){const field=$(id),slider=document.createElement('input'),current=numeric(id);slider.type='range';slider.id=id+'-slider';slider.min=String(Math.min(-30,current-20));slider.max=String(Math.max(30,current+20));slider.step='any';slider.value=String(current);slider.setAttribute('aria-label',field.closest('label').firstChild.textContent.trim());field.insertAdjacentElement('afterend',slider);
+    for(const id of sliderIds){const field=$(id),slider=document.createElement('input'),current=coordinate(id,numeric(id));slider.type='range';slider.id=id+'-slider';slider.min=String(Math.min(-30,current-20));slider.max=String(Math.max(30,current+20));slider.step='any';slider.value=String(current);slider.setAttribute('aria-label',field.closest('label').firstChild.textContent.trim());field.insertAdjacentElement('afterend',slider);
       slider.oninput=()=>{
-        const number=Number(slider.value),pair=pairedSliders.get(id),partner=pair&&!pair.ids.some(key=>$(key+'-slider').hidden)?pair.ids.find(key=>key!==id):null;
+        const number=rawValue(id,Number(slider.value)),pair=pairedSliders.get(id),partner=pair&&!pair.ids.some(key=>$(key+'-slider').hidden)?pair.ids.find(key=>key!==id):null;
         let bounded=number;
-        if(partner&&Number.isFinite(numeric(partner))){const limit=numeric(partner),gap=Math.max(2e-7,Math.abs(limit)*1e-10);bounded=id===pair.ids[0]?Math.min(number,limit-gap):Math.max(number,limit+gap);}
+        if(partner&&Number.isFinite(numeric(partner))){const limit=numeric(partner),gap=Math.max(isLog(id)?Number.MIN_VALUE:2e-7,Math.abs(limit)*1e-10);bounded=id===pair.ids[0]?Math.min(number,limit-gap):Math.max(number,limit+gap);}
         if(id.startsWith('graph-analysis'))bounded=Math.max(Number(slider.min),Math.min(Number(slider.max),bounded));
         showNumber(id,bounded);if(!id.startsWith('graph-analysis')){state.bounds=currentBounds();render();}else renderRangeNumbers();
       };

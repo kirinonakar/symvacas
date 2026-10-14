@@ -366,6 +366,9 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
     internal var animationPhase
         get()=graphState.animationPhase
         set(value) {graphState.animationPhase=value}
+    var yLog
+        get()=graphState.yLog
+        set(value) {graphState.yLog=value;graphState.ensurePositiveY();clearGraphTangent();save()}
     var radianAxis
         get()=graphState.radianAxis
         set(value) {graphState.radianAxis=value}

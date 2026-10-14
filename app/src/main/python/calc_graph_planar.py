@@ -52,7 +52,7 @@ def inequality_parts(engine, tree):
     return right, before + [(left-right if op.startswith("<") else right-left, op in ("<", ">"))] + after
 
 
-def contour_curve(expression, x, y, sliders, xmin, xmax, ymin, ymax, count):
+def contour_curve(expression, x, y, sliders, xmin, xmax, ymin, ymax, count, logarithmic=False):
     numeric = substitute_parameters(expression, sliders)
     require(numeric != 0, "Equation is true everywhere; enter a curve equation")
     program = _square_free_graph(expression, x, y)
@@ -63,7 +63,11 @@ def contour_curve(expression, x, y, sliders, xmin, xmax, ymin, ymax, count):
             square_free = polynomial.sqf_part()
             if square_free.total_degree() != polynomial.total_degree():
                 program, sliders = square_free.as_expr(), None
-    return implicit_samples(graph_function(program, (x, y), sliders), xmin, xmax, ymin, ymax, count)
+    function=graph_function(program, (x, y), sliders)
+    if logarithmic:
+        points=implicit_samples(lambda px,py:function(px,10**py),xmin,xmax,math.log10(ymin),math.log10(ymax),count)
+        return [[p[0],10**p[1]] if p is not None else None for p in points]
+    return implicit_samples(function, xmin, xmax, ymin, ymax, count)
 
 
 def graph_cartesian(engine, request, trees, xmin, xmax):
@@ -123,13 +127,13 @@ def graph_cartesian(engine, request, trees, xmin, xmax):
                             if value is not None and xmin<value<xmax: boundaries.add(value)
                     except (s.PolynomialError,NotImplementedError,ValueError): pass
         if not boundaries:
-            points, parameters = adaptive_samples(function, xmin, xmax, count, "cartesian",screen_bounds=(xmin,xmax,ymin,ymax))
+            points, parameters = adaptive_samples(function, xmin, xmax, count, "cartesian",screen_bounds=(xmin,xmax,ymin,ymax),logarithmic=bool(request.get("yLog")))
         else:
             breaks=[xmin]+sorted(boundaries)+[xmax];points=[];parameters=[]
             for low,high in zip(breaks,breaks[1:]):
                 left=math.nextafter(low,high) if low in boundaries else low
                 right=math.nextafter(high,low) if high in boundaries else high
-                part,positions=adaptive_samples(function,left,right,max(100,int(count*(high-low)/(xmax-xmin))),"cartesian",screen_bounds=(xmin,xmax,ymin,ymax))
+                part,positions=adaptive_samples(function,left,right,max(100,int(count*(high-low)/(xmax-xmin))),"cartesian",screen_bounds=(xmin,xmax,ymin,ymax),logarithmic=bool(request.get("yLog")))
                 for edge,index in ((low,0),(high,-1)):
                     if edge not in boundaries or part[index] is None: continue
                     try: actual=_finite_real(function(edge))
@@ -157,11 +161,11 @@ def graph_cartesian(engine, request, trees, xmin, xmax):
             start = float(request.get(low_key, request.get("parameterMin", 0)))
             end = float(request.get(high_key, request.get("parameterMax", 2*math.pi)))
             require(math.isfinite(start) and math.isfinite(end) and end > start, "Invalid parameter range")
-            points, positions = adaptive_samples(graph_function(expression, (t,), parameter_sliders), start, end, count, kind)
+            points, positions = adaptive_samples(graph_function(expression, (t,), parameter_sliders), start, end, count, kind,screen_bounds=(xmin,xmax,ymin,ymax),logarithmic=bool(request.get("yLog")))
             points, positions = simplify_samples(points, positions, request, start, end)
             implicit.append(False)
         elif kind == "inequality":
-            region = inequality_shading(inequalities[index], x, y, sliders, xmin, xmax, ymin, ymax, count)
+            region = inequality_shading(inequalities[index], x, y, sliders, xmin, xmax, ymin, ymax, count,bool(request.get("yLog")))
             region["sourceIndex"] = index
             natural_shadings.append(region)
             points = region.pop("curve")
@@ -169,7 +173,7 @@ def graph_cartesian(engine, request, trees, xmin, xmax):
         elif function is not None and not substitute_parameters(function, sliders).has(s.zoo, s.nan, s.oo, -s.oo):
             points = sample(function); implicit.append(False)
         else:
-            points = contour_curve(residual, x, y, sliders, xmin, xmax, ymin, ymax, contour_count); implicit.append(True)
+            points = contour_curve(residual, x, y, sliders, xmin, xmax, ymin, ymax, contour_count,bool(request.get("yLog"))); implicit.append(True)
         curves.append(points)
         curve_parameters.append(positions)
         curve_kinds.append(kind)
@@ -223,7 +227,7 @@ def graph_implicit(engine, request, trees, xmin, xmax):
     count = capped(max(80, int(math.sqrt(max(1, int(request.get("samples", 500))))*8)),240)
     curves = []
     for expression in expressions:
-        curves.append(contour_curve(expression, x, y, sliders, xmin, xmax, ymin, ymax, count))
+        curves.append(contour_curve(expression, x, y, sliders, xmin, xmax, ymin, ymax, count,bool(request.get("yLog"))))
     return {"curves": curves, "implicit": True, "parameters": sorted(names)}
 
 
@@ -241,7 +245,7 @@ def graph_parametric(engine, request, trees, start, end, kind):
     curve_parameters=[]
     for expression in expressions:
         function=graph_function(expression, (var,), sliders)
-        samples, sample_parameters = adaptive_samples(function, start, end, count, kind)
+        samples, sample_parameters = adaptive_samples(function, start, end, count, kind,logarithmic=bool(request.get("yLog")))
         samples, sample_parameters = simplify_samples(samples, sample_parameters, request, start, end)
         curves.append(samples)
         if kind in ("parametric","polar"): curve_parameters.append(sample_parameters)

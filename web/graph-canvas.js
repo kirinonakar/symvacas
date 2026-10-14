@@ -1,3 +1,4 @@
+import {yFraction,logYTicks,yScaleSegment,clipYPolygon,yScaleLine} from './graph-y-scale.js';
 import {displayNumber} from './display-format.js';
 import {integralPolygons} from './graph-integral.js';
 import {clipGraphSegment} from './graph-geometry.js';
@@ -12,11 +13,13 @@ const surfaceGeometry=new WeakMap();
 
 // One persistent bitmap per workspace, with a backing store sized for its
 // actual CSS width and device pixel ratio. Geometry uses the gesture viewBox.
-export function plotGraph(container,result,bounds,{colors=defaultGraphColors,digits=10,dots=false,selected=0,analysis=null,trace=null,integral=null,radianAxis=false,halfHeight=false,heightScale=halfHeight?.5:1,surfaceView={},hiddenCurves=[],hiddenShadings=[],contextFactory=null}={}){
+export function plotGraph(container,result,bounds,{colors=defaultGraphColors,digits=10,dots=false,selected=0,analysis=null,trace=null,integral=null,radianAxis=false,yLog=false,halfHeight=false,heightScale=halfHeight?.5:1,surfaceView={},hiddenCurves=[],hiddenShadings=[],contextFactory=null}={}){
   const scale=[1,.5,2].includes(heightScale)?heightScale:1;
   const h=460*scale,ih=h-2*pad;
   const {xmin,xmax,ymin,ymax}=bounds;
+  yLog=yLog&&!result.surface;
   if(![xmin,xmax,ymin,ymax].every(Number.isFinite)||xmax<=xmin||ymax<=ymin)throw new Error('Enter finite values with minimum < maximum');
+  if(yLog&&ymin<=0)throw new Error('Log y requires 0 < y min < y max');
   let canvas=container.querySelector('canvas');
   if(!canvas){canvas=document.createElement('canvas');canvas.setAttribute('role','img');container.replaceChildren(canvas);}
   canvas.setAttribute('aria-label',result.surface?'3D surface graph':'Function graph');
@@ -34,8 +37,9 @@ export function plotGraph(container,result,bounds,{colors=defaultGraphColors,dig
   // Size in CSS pixels: readable on mobile without growing too large on desktop.
   const labelSize=Math.max(10,Math.min(12,cssWidth/100+6));
   ctx.lineJoin='round';ctx.lineCap='round';ctx.font=`${labelSize*w/cssWidth}px system-ui`;ctx.fillStyle=muted;
-  const yLabels=Array.from({length:9},(_,i)=>displayNumber(ymax-(ymax-ymin)*i/8,digits));
-  const left=result.surface?pad:Math.max(pad,Math.ceil(Math.max(...yLabels.filter((_,i)=>i%2===0).map(label=>ctx.measureText(label).width)))+16),iw=w-left-pad;
+  const yTicks=yLog?logYTicks(ymin,ymax):null;
+  const yLabels=yLog?yTicks.map(value=>displayNumber(value,digits)):Array.from({length:9},(_,i)=>displayNumber(ymax-(ymax-ymin)*i/8,digits));
+  const left=result.surface?pad:Math.max(pad,Math.ceil(Math.max(...yLabels.filter((_,i)=>yLog||i%2===0).map(label=>ctx.measureText(label).width)))+16),iw=w-left-pad;
   // Gestures must use the same plot rectangle as the rendered curves.
   canvas.dataset.plotLeft=String(left);canvas.dataset.plotWidth=String(iw);
   // Share the actual axis insets, including the plot border, with analysis tracks.
@@ -130,7 +134,7 @@ export function plotGraph(container,result,bounds,{colors=defaultGraphColors,dig
     }
     return canvas;
   }
-  const x=v=>left+(v-xmin)/(xmax-xmin)*iw,y=v=>h-pad-(v-ymin)/(ymax-ymin)*ih,project=p=>[x(p[0]),y(p[1])];
+  const x=v=>left+(v-xmin)/(xmax-xmin)*iw,y=v=>h-pad-yFraction(v,ymin,ymax,yLog)*ih,project=p=>[x(p[0]),y(p[1])];
   let ticks=Array.from({length:11},(_,i)=>xmin+(xmax-xmin)*i/10);
   if(radianAxis){const step=Math.PI*2**Math.ceil(Math.log2((xmax-xmin)/Math.PI/8)),first=Math.ceil(xmin/step);ticks=Array.from({length:Math.min(9,Math.max(0,Math.floor(xmax/step)-first+1))},(_,i)=>(first+i)*step);}
   ctx.textAlign='center';
@@ -139,17 +143,18 @@ export function plotGraph(container,result,bounds,{colors=defaultGraphColors,dig
     if(radianAxis||i%2===0){const label=radianAxis?piLabel(n,digits):displayNumber(n,digits),half=ctx.measureText(label).width/2;ctx.fillText(label,Math.max(half+8,Math.min(w-half-8,x(n))),h-14);}
   }
   ctx.textAlign='right';
-  for(let i=0;i<=8;i++){const at=pad+ih*i/8;ctx.globalAlpha=.25;line([left,at],[w-pad,at],'#a4b8ab');ctx.globalAlpha=1;if(i%2===0)ctx.fillText(yLabels[i],left-8,at+4);}
+  if(yLog){for(const [i,value] of yTicks.entries()){const at=y(value);ctx.globalAlpha=.25;line([left,at],[w-pad,at],'#a4b8ab');ctx.globalAlpha=1;ctx.fillText(yLabels[i],left-8,at+4);}}
+  else for(let i=0;i<=8;i++){const at=pad+ih*i/8;ctx.globalAlpha=.25;line([left,at],[w-pad,at],'#a4b8ab');ctx.globalAlpha=1;if(i%2===0)ctx.fillText(yLabels[i],left-8,at+4);}
   clip();
   if(xmin<=0&&xmax>=0)line([x(0),pad],[x(0),h-pad]);
   if(ymin<=0&&ymax>=0)line([left,y(0)],[w-pad,y(0)]);
-  for(const [i,shade] of (result.shadings||[]).entries()){if(hiddenShadings.includes(i))continue;for(const points of shade.fill||[])polygon(points.map(project),colors[(shade.sourceIndex??shade.shadeIndex??i)%colors.length],.16);}
-  ctx.beginPath();for(const [at,value,slope] of result.fields||[]){const angle=Math.atan(slope*(xmax-xmin)/(ymax-ymin)*ih/iw),dx=7*Math.cos(angle),dy=-7*Math.sin(angle);ctx.moveTo(x(at)-dx,y(value)-dy);ctx.lineTo(x(at)+dx,y(value)+dy);}ctx.strokeStyle=muted;ctx.globalAlpha=.6;ctx.lineWidth=1;ctx.stroke();ctx.globalAlpha=1;
+  for(const [i,shade] of (result.shadings||[]).entries()){if(hiddenShadings.includes(i))continue;for(const points of shade.fill||[])polygon((yLog?clipYPolygon(points,bounds):points).map(project),colors[(shade.sourceIndex??shade.shadeIndex??i)%colors.length],.16);}
+  ctx.beginPath();for(const [at,value,slope] of result.fields||[]){if(yLog&&value<=0)continue;const angle=Math.atan((yLog?slope/(value*Math.LN10):slope)*(xmax-xmin)/(yLog?Math.log10(ymax)-Math.log10(ymin):ymax-ymin)*ih/iw),dx=7*Math.cos(angle),dy=-7*Math.sin(angle);ctx.moveTo(x(at)-dx,y(value)-dy);ctx.lineTo(x(at)+dx,y(value)+dy);}ctx.strokeStyle=muted;ctx.globalAlpha=.6;ctx.lineWidth=1;ctx.stroke();ctx.globalAlpha=1;
   const path=(points,i)=>{
     if(hiddenCurves.includes(i))return;
     const color=colors[i%colors.length];ctx.setLineDash(result.curveStyles?.[i]==='dashed'?[6,4]:[]);ctx.beginPath();let previous=null,pen=null;
     for(const point of points){
-      const segment=clipGraphSegment(previous,point,bounds);previous=finite(point)?point:null;
+      const segment=yScaleSegment(previous,point,bounds,yLog);previous=finite(point)?point:null;
       if(!segment){pen=null;continue;}
       const [a,b]=segment;
       if(!pen||a[0]!==pen[0]||a[1]!==pen[1])ctx.moveTo(...project(a));
@@ -159,11 +164,16 @@ export function plotGraph(container,result,bounds,{colors=defaultGraphColors,dig
     if(dots)for(const point of points)if(finite(point)&&point[0]>=xmin&&point[0]<=xmax&&point[1]>=ymin&&point[1]<=ymax)circle(project(point),3,color);
   };
   (result.curves||[]).forEach((curve,i)=>{if(i!==selected)path(curve,i);});if(result.curves?.[selected])path(result.curves[selected],selected);
-  if(integral)for(const points of analysis?.integralFill||integralPolygons(result.curves?.[selected]||[],integral))polygon(points.map(project),colors[selected%colors.length],.18);
-  if(analysis?.line?.length===2){const segment=clipGraphSegment(...analysis.line,bounds);if(segment){ctx.setLineDash([6,4]);line(...segment.map(project),accent,2);ctx.setLineDash([]);}}
-  for(const asymptote of analysis?.lines||[]){const segment=clipGraphSegment(...asymptote,bounds);if(segment){ctx.setLineDash([6,4]);line(...segment.map(project),accent,2);ctx.setLineDash([]);}}
-  for(const point of analysis?.points||[])if(finite(point))circle(project(point),5,accent);
-  if(finite(trace)){ctx.setLineDash([3,3]);line([x(trace[0]),pad],[x(trace[0]),h-pad]);ctx.setLineDash([]);circle(project(trace),6,colors[selected%colors.length]);}
+  if(integral)for(const points of analysis?.integralFill||integralPolygons(result.curves?.[selected]||[],integral))polygon((yLog?clipYPolygon(points,bounds):points).map(project),colors[selected%colors.length],.18);
+  function overlay(points){
+    ctx.setLineDash([6,4]);ctx.beginPath();
+    for(let i=1;i<points.length;i++){const segment=yScaleSegment(points[i-1],points[i],bounds,yLog);if(segment){ctx.moveTo(...project(segment[0]));ctx.lineTo(...project(segment[1]));}}
+    ctx.strokeStyle=accent;ctx.lineWidth=2;ctx.stroke();ctx.setLineDash([]);
+  }
+  if(analysis?.line?.length===2)overlay(yScaleLine(...analysis.line,bounds,yLog));
+  for(const asymptote of analysis?.lines||[])overlay(yScaleLine(...asymptote,bounds,yLog));
+  for(const point of analysis?.points||[])if(finite(point)&&(!yLog||point[1]>0))circle(project(point),5,accent);
+  if(finite(trace)&&(!yLog||trace[1]>0)){ctx.setLineDash([3,3]);line([x(trace[0]),pad],[x(trace[0]),h-pad]);ctx.setLineDash([]);circle(project(trace),6,colors[selected%colors.length]);}
   ctx.restore();return canvas;
 }
 

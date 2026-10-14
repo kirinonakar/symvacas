@@ -7,6 +7,8 @@ import androidx.compose.runtime.staticCompositionLocalOf
 val LocalLanguage = staticCompositionLocalOf { "en" }
 
 private val korean = mapOf(
+    "y: linear" to "y: 선형", "y: log10" to "y: 로그",
+    "Log y requires 0 < y min < y max" to "로그 y축은 0 < y min < y max 범위가 필요합니다.",
     "Independent A/B arms with sample means, sample SDs and n ≥ 2. MD = mean A−mean B; SE² = SD A²/n A + SD B²/n B, same measurement units across studies. SMD uses pooled within-study SD and approximate Hedges correction J=1−3/(4(n A+n B−2)−1); variance = (n A+n B)/(n A n B) + g²/(2(n A+n B−3.94)), matching statsmodels. SMD assumes comparable constructs and common within-study variance; align outcome direction before analysis. Paired arms require covariance. For independent-arm change outcomes, supply the means and SDs of the changes, not separate before/after summaries." to "독립 A·B군의 표본평균·표본 SD·n ≥ 2를 입력합니다. MD=평균 A−평균 B, SE²=SD A²/n A+SD B²/n B이며 연구 간 같은 측정 단위가 필요합니다. SMD는 연구 내 합동 SD와 근사 Hedges 보정 J=1−3/(4(n A+n B−2)−1), 분산 (n A+n B)/(n A n B)+g²/(2(n A+n B−3.94))로 statsmodels와 같습니다. SMD는 비교 가능한 구성개념·연구 내 공통 분산을 가정하며 결과 방향을 통일하세요. 대응 두 군에는 공분산이 필요합니다. 독립 두 군의 변화량 비교에는 변화량 자체의 평균·SD를 입력하며 별도의 전후 요약으로 대체하지 마세요.",
     "Effect-size context" to "효과크기 기준 차원",
     "Reliability & agreement" to "신뢰도·일치도", "Mean difference (A − B)" to "평균차 (A − B)",

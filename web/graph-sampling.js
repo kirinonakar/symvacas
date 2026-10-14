@@ -10,6 +10,7 @@ export function graphSamplingInterval(callback,{setTimer=setTimeout,clearTimer=c
 
 export function graphPreviewRequest(request){
   if(!['cartesian','implicit'].includes(request.graphKind))return {...request,samples:200};
+  if(request.yLog){const span=Math.log10(request.yMax)-Math.log10(request.yMin),dx=(request.xMax-request.xMin)*.15;return {...request,min:request.min-dx,max:request.max+dx,xMin:request.xMin-dx,xMax:request.xMax+dx,yMin:10**(Math.log10(request.yMin)-span*.15),yMax:10**(Math.log10(request.yMax)+span*.15),samples:200};}
   const dx=(request.xMax-request.xMin)*.15,dy=(request.yMax-request.yMin)*.15;
   return {...request,min:request.min-dx,max:request.max+dx,xMin:request.xMin-dx,xMax:request.xMax+dx,yMin:request.yMin-dy,yMax:request.yMax+dy,samples:200};
 }

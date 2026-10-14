@@ -113,7 +113,7 @@ def graph_differential(engine, request, trees, start, end):
     for ix in range(nx):
         at=start+(end-start)*(ix+0.5)/nx
         for iy in range(ny):
-            value=ymin+(ymax-ymin)*(iy+0.5)/ny
+            value=10**(math.log10(ymin)+(math.log10(ymax)-math.log10(ymin))*(iy+0.5)/ny) if request.get("yLog") else ymin+(ymax-ymin)*(iy+0.5)/ny
             dy=slope(at,value)
             if dy is not None: fields.append([at,value,dy])
     return {"curves":curves,"fields":fields,"differential":True,"parameters":sorted(names)}

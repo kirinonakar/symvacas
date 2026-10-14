@@ -83,15 +83,18 @@ import kotlin.math.*
     }})
 }
 
-@Composable internal fun RangeAxisEditor(axis:String,minimum:String,maximum:String,initialMin:Double,initialMax:Double,displayDigits:Int,onMin:(String)->Unit,onMax:(String)->Unit) {
+@Composable internal fun RangeAxisEditor(axis:String,minimum:String,maximum:String,initialMin:Double,initialMax:Double,displayDigits:Int,onMin:(String)->Unit,onMax:(String)->Unit,logarithmic:Boolean=false) {
+    val scale=com.kirinonakar.symvacas.math.GraphYScale(logarithmic)
     fun sliderBounds(min:Double?,max:Double?):Pair<Double,Double>? {
         if(min==null||max==null||!min.isFinite()||!max.isFinite())return null
-        val span=max-min
+        if(logarithmic&&(min<=0||max<=0))return null
+        val low=scale.coordinate(min);val high=scale.coordinate(max)
+        val span=high-low
         if(!span.isFinite()||span<=0.0)return null
-        val start=min-span/2;val end=max+span/2
+        val start=if(logarithmic)(low-span/2).coerceAtLeast(-300.0) else low-span/2;val end=if(logarithmic)(high+span/2).coerceAtMost(300.0) else high+span/2
         return if(start.isFinite()&&end.isFinite()&&(end-start).isFinite()&&end>start)start to end else null
     }
-    var bounds by remember(axis) {mutableStateOf(sliderBounds(initialMin,initialMax) ?: (-10.0 to 10.0))}
+    var bounds by remember(axis,logarithmic) {mutableStateOf(sliderBounds(initialMin,initialMax) ?: (-10.0 to 10.0))}
     val range=bounds.second-bounds.first
     Text("$axis range",fontSize=12.sp,color=LocalInstrument.current.muted)
     Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
@@ -104,11 +107,11 @@ import kotlin.math.*
             sliderBounds(minimum.toDoubleOrNull(),it.toDoubleOrNull())?.let {next->bounds=next}
         }
     }
-    val low=(((minimum.toDoubleOrNull()?.takeIf(Double::isFinite) ?: bounds.first)-bounds.first)/range).coerceIn(0.0,1.0).toFloat()
-    val high=(((maximum.toDoubleOrNull()?.takeIf(Double::isFinite) ?: bounds.second)-bounds.first)/range).coerceIn(0.0,1.0).toFloat()
+    val low=(((minimum.toDoubleOrNull()?.let {scale.coordinate(it)}?.takeIf(Double::isFinite) ?: bounds.first)-bounds.first)/range).coerceIn(0.0,1.0).toFloat()
+    val high=(((maximum.toDoubleOrNull()?.let {scale.coordinate(it)}?.takeIf(Double::isFinite) ?: bounds.second)-bounds.first)/range).coerceIn(0.0,1.0).toFloat()
     CompactRangeSlider(value=low.coerceAtMost(high)..high.coerceAtLeast(low),onValueChange={selected->
-            onMin((bounds.first+selected.start*range).toString())
-            onMax((bounds.first+selected.endInclusive*range).toString())
+            onMin(scale.value(bounds.first+selected.start*range).toString())
+            onMax(scale.value(bounds.first+selected.endInclusive*range).toString())
         },modifier=Modifier.fillMaxWidth())
 }
 

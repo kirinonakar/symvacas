@@ -54,6 +54,9 @@ internal class GraphState(private val prefs:SharedPreferences) {
     var graphAnimating by mutableStateOf(false)
     var animationPhase=0.0
     private val animationOffsets=mutableMapOf<String,Double>()
+    var yLog by mutableStateOf(prefs.getBoolean("yLog",false))
+    init {ensurePositiveY()}
+    fun ensurePositiveY() {if(yLog&&graphKind !in listOf("surface","space")){val range=com.kirinonakar.symvacas.math.GraphYScale(true).positiveRange(yMin,yMax);yMin=range.first;yMax=range.second}}
     var radianAxis by mutableStateOf(prefs.getBoolean("radianAxis",false))
     private data class InputSnapshot(val source:String,val derivative:Int?,val secondDerivative:Int?,val parameters:Map<String,GraphParameter>,val hiddenKeys:Set<String>)
     private val inputUndo=mutableStateMapOf<String,List<InputSnapshot>>()
@@ -122,6 +125,7 @@ internal class GraphState(private val prefs:SharedPreferences) {
         } else if(kind!="cartesian" && xMin == -10.0 && xMax == 10.0 && yMin == -5.0 && yMax == 5.0) {
             xMin=-3.0;xMax=3.0;yMin=-3.0;yMax=3.0
         }
+        ensurePositiveY()
         return true
     }
 
@@ -230,7 +234,7 @@ internal class GraphState(private val prefs:SharedPreferences) {
             .putBoolean("surfaceAutoDensity",surfaceAutoDensity).putFloat("surfaceZoom",surfaceZoom)
             .putString("parameterMin",parameterMin.toString()).putString("parameterMax",parameterMax.toString())
             .putString("thetaMin",thetaMin.toString()).putString("thetaMax",thetaMax.toString())
-            .putBoolean("radianAxis",radianAxis).putString("graphParameters",parameters.toString())
+            .putBoolean("yLog",yLog).putBoolean("radianAxis",radianAxis).putString("graphParameters",parameters.toString())
     }
 }
 

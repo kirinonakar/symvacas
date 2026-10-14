@@ -1,4 +1,4 @@
-self.SYMVACAS_CACHE = 'symvacas-static-9b1f9076ad4be167';
+self.SYMVACAS_CACHE = 'symvacas-static-2e9513e2339e681c';
 self.SYMVACAS_ASSETS = [
   "./",
   "./advanced-statistics-schema.js",
@@ -57,6 +57,7 @@ self.SYMVACAS_ASSETS = [
   "./graph-svg-context.js",
   "./graph-view.js",
   "./graph-workspace.js",
+  "./graph-y-scale.js",
   "./i18n.js",
   "./index.html",
   "./input-cursor.js",

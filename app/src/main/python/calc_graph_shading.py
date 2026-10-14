@@ -180,7 +180,7 @@ def integral_fill(expression, variable, a, b):
     return polygons
 
 
-def inequality_shading(parts, x, y, sliders, xmin, xmax, ymin, ymax, samples):
+def inequality_shading(parts, x, y, sliders, xmin, xmax, ymin, ymax, samples, logarithmic=False):
     """Clip bounded triangles by signed residuals, preserving holes and undefined cells.
 
     Full cells become horizontal strips to bound transport size. Boundary cells
@@ -195,8 +195,9 @@ def inequality_shading(parts, x, y, sliders, xmin, xmax, ymin, ymax, samples):
             result = [_finite_real(fn(px, py)) for fn in functions]
             return result if all(v is not None for v in result) else None
         except (TypeError, ValueError, ZeroDivisionError, OverflowError): return None
+    def y_at(j): return 10**(math.log10(ymin)+(math.log10(ymax)-math.log10(ymin))*j/count) if logarithmic else ymin+j*dy
     def row(j):
-        return [(xmin+i*dx, ymin+j*dy, values(xmin+i*dx, ymin+j*dy)) for i in range(count+1)]
+        return [(xmin+i*dx, y_at(j), values(xmin+i*dx, y_at(j))) for i in range(count+1)]
     fill, boundary = [], []
     previous = row(0)
     for j in range(count):
@@ -208,8 +209,8 @@ def inequality_shading(parts, x, y, sliders, xmin, xmax, ymin, ymax, samples):
                 if run is None: run = i
                 continue
             if run is not None:
-                fill.append([[xmin+run*dx,ymin+j*dy],[xmin+i*dx,ymin+j*dy],
-                             [xmin+i*dx,ymin+(j+1)*dy],[xmin+run*dx,ymin+(j+1)*dy]])
+                fill.append([[xmin+run*dx,y_at(j)],[xmin+i*dx,y_at(j)],
+                             [xmin+i*dx,y_at(j+1)],[xmin+run*dx,y_at(j+1)]])
                 run = None
             if not cell: continue
             for ids in ((0,1,2),(0,2,3)):

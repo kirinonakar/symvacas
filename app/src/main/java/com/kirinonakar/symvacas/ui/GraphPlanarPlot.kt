@@ -21,6 +21,7 @@ import com.kirinonakar.symvacas.calculator.CalculatorModel
 import com.kirinonakar.symvacas.math.PiAxis
 import com.kirinonakar.symvacas.math.GraphZoom
 import com.kirinonakar.symvacas.math.GraphClip
+import com.kirinonakar.symvacas.math.GraphYScale
 import kotlin.math.*
 import com.kirinonakar.symvacas.ui.theme.InstrumentColors
 
@@ -35,6 +36,7 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
     var other by state.other
     var pointAt by state.pointAt
     val tangentAction by state.tangentAction
+    val yAxis=remember(m.yLog){GraphYScale(m.yLog)}
     val analysisCurveKey=if(selectedDerivativeOrder==0)selected else -selectedDerivativeOrder
     val allCurves=data.allCurves
     val curves=data.curves
@@ -52,7 +54,7 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
     val latestSelectedRowKind by rememberUpdatedState(selectedRowKind)
     val activeCurveIndex=graphSelectedCurveIndex(selected,selectedDerivativeOrder,if(derivativeCurve!=null)derivativeIndex else -1,if(secondDerivativeCurve!=null)secondDerivativeIndex else -1)
     val latestTraceCurve by rememberUpdatedState(if(selectedDerivativeOrder==0)curves.getOrNull(selected) else if(m.isGraphVisible(selected,if(selectedDerivativeOrder==1)"derivative" else "secondDerivative"))allCurves.getOrNull(activeCurveIndex) else emptyList())
-    val transform=Modifier.pointerInput(m.graphKind) {awaitEachGesture {
+    val transform=Modifier.pointerInput(m.graphKind,m.yLog) {awaitEachGesture {
             awaitFirstDown(requireUnconsumed=false)
             var axis:String?=null
             var totalPan=Offset.Zero
@@ -75,11 +77,12 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
                         }else axis=null
                         if(dragging) {
                             onViewportDragging(true)
-                            val w=m.xMax-m.xMin;val h=m.yMax-m.yMin
-                            val anchorX=m.xMin+w*previous.x/size.width;val anchorY=m.yMax-h*previous.y/size.height
-                            val newW=(w/zx).coerceIn(2e-7,2e8);val newH=(h/zy).coerceIn(2e-7,2e8)
+                            val w=m.xMax-m.xMin
+                            val anchorX=m.xMin+w*previous.x/size.width
+                            val yView=yAxis.view(m.yMin,m.yMax,previous.y/size.height.toDouble(),current.y/size.height.toDouble(),zy)
+                            val newW=(w/zx).coerceIn(2e-7,2e8)
                             m.xMin=anchorX-newW*current.x/size.width;m.xMax=m.xMin+newW
-                            m.yMax=anchorY+newH*current.y/size.height;m.yMin=m.yMax-newH
+                            m.yMin=yView.first;m.yMax=yView.second
                             event.changes.forEach{it.consume()}
                         }
                     }
@@ -91,9 +94,10 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
     }}
     if(m.graphKind !in listOf("surface","space"))CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
         Row(Modifier.horizontalScroll(rememberScrollState()),verticalAlignment=Alignment.CenterVertically) {
-            SmallAction("−") { val cx=(m.xMin+m.xMax)/2;val cy=(m.yMin+m.yMax)/2;val halfX=(m.xMax-m.xMin);val halfY=(m.yMax-m.yMin);m.xMin=cx-halfX;m.xMax=cx+halfX;m.yMin=cy-halfY;m.yMax=cy+halfY }
-            SmallAction("+") { val cx=(m.xMin+m.xMax)/2;val cy=(m.yMin+m.yMax)/2;val halfX=(m.xMax-m.xMin)/4;val halfY=(m.yMax-m.yMin)/4;m.xMin=cx-halfX;m.xMax=cx+halfX;m.yMin=cy-halfY;m.yMax=cy+halfY }
-            SmallAction("Fit Y") {val ys=curves.flatMap {it.filterNotNull()}.filter {it.first in m.xMin..m.xMax && it.second.isFinite()}.map {it.second};if(ys.isNotEmpty()){val lo=ys.min();val hi=ys.max();val pad=max((hi-lo)*.12,if(hi==lo)1.0 else 1e-6);m.yMin=lo-pad;m.yMax=hi+pad;m.save()} }
+            fun zoom(factor:Double) {val cx=(m.xMin+m.xMax)/2;val half=(m.xMax-m.xMin)/2/factor;val view=yAxis.view(m.yMin,m.yMax,.5,.5,factor);m.xMin=cx-half;m.xMax=cx+half;m.yMin=view.first;m.yMax=view.second}
+            SmallAction("−") {zoom(.5)}
+            SmallAction("+") {zoom(2.0)}
+            SmallAction("Fit Y") {val ys=curves.flatMap {it.filterNotNull()}.filter {it.first in m.xMin..m.xMax}.map {it.second};yAxis.fit(ys)?.let {m.yMin=it.first;m.yMax=it.second;m.save()} }
             SmallAction("Undo",enabled=m.canUndoGraph) {m.undoGraph()}
             SmallAction("Reset") {
                 when(m.graphKind) {
@@ -102,19 +106,19 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
                     "differential"->{m.xMin=-5.0;m.xMax=5.0;m.yMin=-3.0;m.yMax=5.0;m.parameterMin=-5.0;m.parameterMax=5.0}
                     else->{m.xMin=-10.0;m.xMax=10.0;m.yMin=-5.0;m.yMax=5.0}
                 }
-                m.trace=null;m.save()
+                m.graphState.ensurePositiveY();m.trace=null;m.save()
             }
         }
     }
     Box(Modifier.fillMaxWidth().height(plotHeight).clipToBounds()) {
         val derivativeDash=remember {PathEffect.dashPathEffect(floatArrayOf(10f,6f))}
-        ExportableGraphCanvas(Modifier.fillMaxSize().clipToBounds().background(c.display).then(transform).pointerInput(m.graphKind,selected,selectedDerivativeOrder) { detectTapGestures { p ->
+        ExportableGraphCanvas(Modifier.fillMaxSize().clipToBounds().background(c.display).then(transform).pointerInput(m.graphKind,selected,selectedDerivativeOrder,m.yLog) { detectTapGestures { p ->
                     val target=m.xMin+(m.xMax-m.xMin)*p.x/size.width
-                    val targetY=m.yMax-(m.yMax-m.yMin)*p.y/size.height
-                    val xSpan=m.xMax-m.xMin;val ySpan=m.yMax-m.yMin
+                    val targetY=yAxis.atFraction(1-p.y/size.height.toDouble(),m.yMin,m.yMax)
+                    val xSpan=m.xMax-m.xMin;val ySpan=yAxis.coordinate(m.yMax)-yAxis.coordinate(m.yMin)
                     if(xSpan<=0.0 || ySpan<=0.0)return@detectTapGestures
                     if(selectedDerivativeOrder!=0 && m.graphAnalysis?.optString("analysis") in listOf("tangent","tangentangle") && m.graphAnalysis?.optJSONArray("line")!=null) {
-                        val point=latestTraceCurve?.let {graphTracePointAtX(it,target,targetY)}
+                        val point=latestTraceCurve?.let {graphTracePointAtX(it,target,targetY,m.yLog)}
                         m.trace=point
                         if(point!=null){pointAt=target.toString();m.analyzeGraph(tangentAction,pointAt,pointAt,analysisCurveKey,other)}
                         return@detectTapGestures
@@ -124,12 +128,13 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
                         var nearestPoint:Pair<Double,Double>?=null
                         fun considerPoint(curveIndex:Int,pointIndex:Int,point:Pair<Double,Double>) {
                             val dx=(point.first-target)/xSpan*size.width
-                            val dy=(point.second-targetY)/ySpan*size.height
+                            if(m.yLog&&point.second<=0)return
+                            val dy=(yAxis.coordinate(point.second)-yAxis.coordinate(targetY))/ySpan*size.height
                             val distance=hypot(dx,dy)
                             if(distance<nearestDistance) {nearestCurve=curveIndex;nearestIndex=pointIndex;nearestDistance=distance;nearestPoint=point}
                         }
                         latestCurves.forEachIndexed {curveIndex,curve->
-                            if(m.graphKind=="cartesian" && m.graphData?.optJSONArray("curveKinds")?.optString(curveIndex,"cartesian") !in listOf("parametric","polar"))graphTracePointAtX(curve,target,targetY)?.let {considerPoint(curveIndex,-1,it)}
+                            if(m.graphKind=="cartesian" && m.graphData?.optJSONArray("curveKinds")?.optString(curveIndex,"cartesian") !in listOf("parametric","polar"))graphTracePointAtX(curve,target,targetY,m.yLog)?.let {considerPoint(curveIndex,-1,it)}
                             else curve.forEachIndexed {pointIndex,point->point?.let {considerPoint(curveIndex,pointIndex,it)}}
                         }
                         val point=nearestPoint
@@ -145,16 +150,16 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
                         }
                     }
                     val curve=latestTraceCurve
-                    m.trace=if(m.graphKind=="cartesian" && latestSelectedRowKind !in listOf("parametric","polar"))curve?.let {graphTracePointAtX(it,target,targetY)}
-                    else curve?.filterNotNull()?.minByOrNull { ((it.first-target)/xSpan).pow(2)+((it.second-targetY)/ySpan).pow(2) }
+                    m.trace=if(m.graphKind=="cartesian" && latestSelectedRowKind !in listOf("parametric","polar"))curve?.let {graphTracePointAtX(it,target,targetY,m.yLog)}
+                    else curve?.filterNotNull()?.filter { !m.yLog||it.second>0 }?.minByOrNull { ((it.first-target)/xSpan).pow(2)+((yAxis.coordinate(it.second)-yAxis.coordinate(targetY))/ySpan).pow(2) }
                 } }.semantics { contentDescription="Graph with ${curves.size} curves. Pinch to zoom, drag to pan, tap to trace${if(m.graphAnalysis?.optString("analysis") in listOf("tangent","tangentangle"))" or move the tangent" else ""}. Use Range and Analyze for accessible controls." },c.display,exports) {
             val xlo=m.xMin;val xhi=m.xMax
             fun px(x:Double)=((x-xlo)/(xhi-xlo)*size.width).toFloat()
-            fun py(y:Double)=(size.height-(y-m.yMin)/(m.yMax-m.yMin)*size.height).toFloat()
+            fun py(y:Double)=(size.height-yAxis.fraction(y,m.yMin,m.yMax)*size.height).toFloat()
             fun curvePath(points:List<Pair<Double,Double>?>):Path {
                 val path=Path();var previous:Pair<Double,Double>?=null;var pen:Pair<Double,Double>?=null
                 points.forEach {point->
-                    val segment=GraphClip.segment(previous,point,xlo,xhi,m.yMin,m.yMax)
+                    val segment=yAxis.segment(previous,point,xlo,xhi,m.yMin,m.yMax)
                     previous=point
                     if(segment==null){pen=null;return@forEach}
                     val (a,b)=segment
@@ -174,10 +179,8 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
                     drawLine(c.grid,Offset(px(x),0f),Offset(px(x),size.height))
                     drawContext.canvas.nativeCanvas.drawText(if(m.radianAxis)PiAxis.label(x){graphDisplayNumber(it,m.displayDigits)} else graphDisplayNumber(x,m.displayDigits),px(x)+3,size.height-8,paint)
                 }
-                val firstY=ceil(m.yMin/sy)*sy
-                for(index in 0..64) {
-                    val y=firstY+index*sy
-                    if(!y.isFinite() || y>m.yMax)break
+                val ticks=if(m.yLog)yAxis.ticks(m.yMin,m.yMax) else {val firstY=ceil(m.yMin/sy)*sy;(0..64).map {firstY+it*sy}.filter {it.isFinite()&&it<=m.yMax}}
+                for(y in ticks) {
                     drawLine(c.grid,Offset(0f,py(y)),Offset(size.width,py(y)))
                     drawContext.canvas.nativeCanvas.drawText(graphDisplayNumber(y,m.displayDigits),4f,py(y)-3,paint)
                 }
@@ -187,7 +190,8 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
                     val entry=m.graphData?.optJSONArray("shadings")?.optJSONObject(si)
                     val colorIndex=if(entry?.has("sourceIndex")==true)entry.optInt("sourceIndex",si) else entry?.optInt("shadeIndex",si) ?: si
                     val shadeColor=c.curves[colorIndex%c.curves.size]
-                    shading.first.forEach { polygon->
+                    shading.first.forEach {rawPolygon->
+                        val polygon=if(m.yLog)yAxis.polygon(rawPolygon,xlo,xhi,m.yMin,m.yMax) else rawPolygon
                         if(polygon.size>=3) {
                             val path=Path()
                             polygon.forEachIndexed { pointIndex,point->if(pointIndex==0)path.moveTo(px(point.first),py(point.second)) else path.lineTo(px(point.first),py(point.second)) }
@@ -199,7 +203,8 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
                         drawPath(curvePath(line),shadeColor.copy(alpha=.85f),style=Stroke(1.6.dp.toPx()))
                     }
                 }
-                integralFill.forEach {polygon->
+                integralFill.forEach {rawPolygon->
+                    val polygon=if(m.yLog)yAxis.polygon(rawPolygon,xlo,xhi,m.yMin,m.yMax) else rawPolygon
                     if(polygon.size>=3) {
                         val path=Path()
                         polygon.forEachIndexed {i,point->if(i==0)path.moveTo(px(point.first),py(point.second)) else path.lineTo(px(point.first),py(point.second))}
@@ -224,8 +229,10 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
                         val field=fieldData?.optJSONArray(index) ?: continue
                         val x=field.optDouble(0);val y=field.optDouble(1);val slope=field.optDouble(2)
                         if(!x.isFinite()||!y.isFinite()||!slope.isFinite())continue
-                        val dy=(slope*dx).coerceIn(-(m.yMax-m.yMin)/14,(m.yMax-m.yMin)/14)
-                        drawLine(c.muted.copy(alpha=.55f),Offset(px(x-dx/2),py(y-dy/2)),Offset(px(x+dx/2),py(y+dy/2)),1.dp.toPx())
+                        if(m.yLog&&y<=0)continue
+                        val angle=atan((if(m.yLog)slope/(y*ln(10.0)) else slope)*(xhi-xlo)/(yAxis.coordinate(m.yMax)-yAxis.coordinate(m.yMin))*size.height/size.width)
+                        val sx=6.dp.toPx()*cos(angle).toFloat();val sy=-6.dp.toPx()*sin(angle).toFloat();val at=Offset(px(x),py(y))
+                        drawLine(c.muted.copy(alpha=.55f),Offset(at.x-sx,at.y-sy),Offset(at.x+sx,at.y+sy),1.dp.toPx())
                     }
                 }
                 markers.forEachIndexed {index,point ->
@@ -236,17 +243,9 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
                         drawContext.canvas.nativeCanvas.drawText("${index+1}",at.x+9.dp.toPx(),at.y-9.dp.toPx(),paint)
                     }
                 }
-                tangent?.let { line->
-                    GraphClip.segment(line[0],line[1],xlo,xhi,m.yMin,m.yMax)?.let {(a,b)->
-                        drawLine(c.accent.copy(alpha=.75f),Offset(px(a.first),py(a.second)),Offset(px(b.first),py(b.second)),1.5.dp.toPx(),pathEffect=PathEffect.dashPathEffect(floatArrayOf(16f,8f)))
-                    }
-                }
-                asymptoteLines.forEach {line->
-                    GraphClip.segment(line[0],line[1],xlo,xhi,m.yMin,m.yMax)?.let {(a,b)->
-                        drawLine(c.accent.copy(alpha=.75f),Offset(px(a.first),py(a.second)),Offset(px(b.first),py(b.second)),1.5.dp.toPx(),pathEffect=PathEffect.dashPathEffect(floatArrayOf(16f,8f)))
-                    }
-                }
-                m.trace?.let { p ->
+                tangent?.let {line->drawPath(curvePath(yAxis.linePoints(line[0],line[1],xlo,xhi,m.yMin,m.yMax)),c.accent.copy(alpha=.75f),style=Stroke(1.5.dp.toPx(),pathEffect=PathEffect.dashPathEffect(floatArrayOf(16f,8f))))}
+                asymptoteLines.forEach {line->drawPath(curvePath(yAxis.linePoints(line[0],line[1],xlo,xhi,m.yMin,m.yMax)),c.accent.copy(alpha=.75f),style=Stroke(1.5.dp.toPx(),pathEffect=PathEffect.dashPathEffect(floatArrayOf(16f,8f))))}
+                m.trace?.takeIf {!m.yLog||it.second>0}?.let { p ->
                     val at=Offset(px(p.first),py(p.second))
                     drawLine(c.muted,Offset(at.x,0f),Offset(at.x,size.height),1.dp.toPx(),pathEffect=PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(),3.dp.toPx())))
                     drawCircle(c.display,8.dp.toPx(),at)

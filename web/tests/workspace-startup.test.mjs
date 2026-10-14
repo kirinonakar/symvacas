@@ -502,3 +502,19 @@ test('many graph formulas retain every eye and preserve wheel scrolling through 
   graphs.dispose();const disposed=new window.WheelEvent('wheel',{deltaY:80,bubbles:true,cancelable:true});strip.dispatchEvent(disposed);assert.equal(disposed.defaultPrevented,false);
   assert.deepEqual(errors,[]);
 });
+
+
+test('log y toggle saves positive bounds, logarithmic paired slider values, and applies to sampling and gestures',async context=>{
+  const {get,graphs,requests,errors}=graphFixture(context,{source:'10^x',saved:{yLog:true,ranges:{'graph-ymin':.01,'graph-ymax':100}}});
+  assert.equal(get('graph-y-scale').getAttribute('aria-pressed'),'true');
+  assert.equal(graphs.snapshot().yLog,true);
+  const slider=get('graph-ymin-slider');closeNumber(Number(slider.value),-2);
+  slider.value='0';slider.oninput();slider.onchange();closeNumber(graphs.snapshot().ranges['graph-ymin'],1);
+  await graphs.run();assert.equal(requests.at(-1).yLog,true);assert.equal(requests.at(-1).yMin,1);
+  get('graph-zoom-in').click();assert.ok(graphs.snapshot().ranges['graph-ymin']>0);
+  get('graph-reset').click();assert.ok(graphs.snapshot().ranges['graph-ymin']>0);
+  get('graph-y-scale').click();assert.equal(graphs.snapshot().yLog,false);assert.equal(get('graph-y-scale').getAttribute('aria-pressed'),'false');
+  get('graph-kind').value='surface';get('graph-kind').onchange();assert.equal(get('graph-y-scale').hidden,true);
+  assert.deepEqual(errors,[]);
+});
+function closeNumber(actual,expected){assert.ok(Math.abs(actual-expected)<1e-9,`${actual} != ${expected}`);}

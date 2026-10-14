@@ -61,6 +61,11 @@ test('packaged graph modules execute every graph kind in the production WASM wor
   const separateRanges=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:['(cos(t),sin(t))','r=2cos(3θ)'].map(source=>graphInputTree(source)),
     min:-4,max:4,yMin:-4,yMax:4,parameterMin:1,parameterMax:2,thetaMin:-.5,thetaMax:.5});
   assert.deepEqual(separateRanges.curveParameters.map(values=>[values[0],values.at(-1)]),[[1,2],[-.5,.5]]);
+  const logarithmic=await graph('cartesian','10^x',{min:-3,max:3,yMin:.001,yMax:1000,yLog:true});
+  assert.ok(logarithmic.curves[0].filter(Boolean).length<=10);
+  for(const [x,y] of logarithmic.curves[0].filter(Boolean))assert.ok(Math.abs(x-Math.log10(y))<1e-10);
+  const logImplicit=await graph('cartesian','x^2+y^2=1',{min:-2,max:2,yMin:.001,yMax:2,yLog:true});
+  for(const [x,y] of logImplicit.curves[0].filter(Boolean)){assert.ok(y>0);assert.ok(Math.abs(x*x+y*y-1)<1e-4);}
   const thetaPolar=await graph('polar','r=2*cos(3*theta)',{variable:'t',min:0,max:2*Math.PI});
   assert.ok(thetaPolar.curveParameters[0].length>30);
   const sequence=await graph('sequence','2*u(n-1)',{min:0,max:5,initialTrees:[parse('1')]});

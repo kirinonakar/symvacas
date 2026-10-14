@@ -58,6 +58,32 @@ class MixedGraphTests(unittest.TestCase):
                 radius=2*math.cos(3*at)
                 self.assertAlmostEqual(radius*math.cos(at),point[0],delta=1e-10)
                 self.assertAlmostEqual(radius*math.sin(at),point[1],delta=1e-10)
+    def test_log_y_retains_real_values_and_simplifies_exponentials_in_log_coordinates(self):
+        exponential=op("^",num(10),x)
+        result=self.run_graph(exponential,yLog=True,yMin=.001,yMax=1000,min=-3,max=3)
+        points=list(filter(None,result["curves"][0]))
+        self.assertLessEqual(len(points),10)
+        for px,py in points:self.assertAlmostEqual(px,math.log10(py),delta=1e-9)
+        result=self.run_graph(x,yLog=True,yMin=.001,yMax=1,min=-1,max=1)
+        points=list(filter(None,result["curves"][0]))
+        self.assertGreater(len(points),10)
+        self.assertTrue(all(py>0 for px,py in points))
+        for px,py in points:self.assertAlmostEqual(px,py)
+    def test_log_implicit_shading_and_derivatives_use_positive_actual_coordinates(self):
+        result=self.run_graph(rel("=",circle,num(1)),yLog=True,yMin=.001,yMax=2,min=-2,max=2)
+        self.assertTrue(result["curves"][0])
+        for px,py in filter(None,result["curves"][0]):
+            self.assertGreater(py,0);self.assertAlmostEqual(1,px*px+py*py,delta=1e-4)
+        result=self.run_graph(rel("<",op("*",x,y),num(1)),yLog=True,yMin=.01,yMax=100)
+        self.assertTrue(result["shadings"][0]["fill"])
+        for polygon in result["shadings"][0]["fill"]:
+            self.assertTrue(all(.00999<=point[1]<=100.001 for point in polygon))
+        result=self.run_graph(x2,yLog=True,yMin=.01,yMax=10,derivativeSelected=0)
+        for px,py in filter(None,result["curves"][result["derivativeCurveIndex"]]):
+            self.assertGreater(py,0);self.assertAlmostEqual(2*px,py)
+    def test_log_y_rejects_nonpositive_bounds(self):
+        result=json.loads(dispatch(json.dumps({"action":"graph","graphKind":"cartesian","trees":[x],"min":-1,"max":1,"yLog":True,"yMin":0,"yMax":10})))
+        self.assertFalse(result["ok"]);self.assertIn("Log y requires",result["error"])
     def test_disk_area_and_strict_boundary(self):
         result=self.run_graph(rel("<",circle,num(4)))
         self.assertEqual(["dashed"],result["curveStyles"])

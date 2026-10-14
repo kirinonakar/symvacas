@@ -9,6 +9,7 @@ import kotlinx.coroutines.*
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.coroutines.resume
+import kotlin.math.pow
 
 internal fun graphInputTree(source:String,kind:String="cartesian",removeComputationLimit:Boolean=false):Expr {
     val tree=Parser(LatexInput.convert(source) ?: source,removeComputationLimit=removeComputationLimit).parse()
@@ -118,18 +119,18 @@ internal object CalculatorGraphActions {
         val secondDerivativeSelected=graphSecondDerivativeSelected?.takeIf {graphKind=="cartesian" && it in trees.indices}
         val source=graphSource;val kind=graphKind;val min=if(kind in listOf("cartesian","implicit","surface"))xMin else if(kind=="polar")thetaMin else parameterMin;val max=if(kind in listOf("cartesian","implicit","surface"))xMax else if(kind=="polar")thetaMax else parameterMax
         val paramMin=parameterMin;val paramMax=parameterMax;val polarMin=thetaMin;val polarMax=thetaMax
-        val viewYMin=yMin;val viewYMax=yMax;val parameters=graphState.parameterPayload()
+        val viewYMin=yMin;val viewYMax=yMax;val logY=yLog&&kind !in listOf("surface","space");val parameters=graphState.parameterPayload()
         val initials=sequenceInitials;val differentialSeeds=differentialInitials;val initialTime=differentialT0
         val environment=request("graph").put("angle","RAD").toString()
         val request=request("graph").put("angle","RAD").put("trees",JSONArray(trees)).put("graphKind",kind)
             .put("variable",when(kind){"cartesian","implicit","surface"->"x";"sequence"->"n";else->"t"})
             .put("min",min).put("max",max).put("samples",if(graphAnimating || preview)200 else 500).put("xMin",xMin).put("xMax",xMax).put("yMin",viewYMin).put("yMax",viewYMax)
-            .put("parameters",parameters).put("parameterMin",paramMin).put("parameterMax",paramMax).put("thetaMin",polarMin).put("thetaMax",polarMax)
+            .put("yLog",logY).put("parameters",parameters).put("parameterMin",paramMin).put("parameterMax",paramMax).put("thetaMin",polarMin).put("thetaMax",polarMax)
         if(preview && kind in listOf("cartesian","implicit")) {
             // Sample a small margin so the next pointer frames already have data.
             val dx=(max-min)*.15;val dy=(viewYMax-viewYMin)*.15
             request.put("min",min-dx).put("max",max+dx).put("xMin",min-dx).put("xMax",max+dx)
-                .put("yMin",viewYMin-dy).put("yMax",viewYMax+dy)
+                .put("yMin",if(logY)10.0.pow(kotlin.math.log10(viewYMin)-(kotlin.math.log10(viewYMax)-kotlin.math.log10(viewYMin))*.15) else viewYMin-dy).put("yMax",if(logY)10.0.pow(kotlin.math.log10(viewYMax)+(kotlin.math.log10(viewYMax)-kotlin.math.log10(viewYMin))*.15) else viewYMax+dy)
         }
         if(derivativeSelected!=null)request.put("derivativeSelected",derivativeSelected)
         if(secondDerivativeSelected!=null)request.put("secondDerivativeSelected",secondDerivativeSelected)
@@ -171,7 +172,7 @@ internal object CalculatorGraphActions {
                 val domainMatches=if(kind in listOf("cartesian","implicit","surface"))preview || min==xMin && max==xMax else if(kind=="polar")min==thetaMin && max==thetaMax else min==parameterMin && max==parameterMax
                 // Keep useful preview geometry even if another pan happened while
                 // Python was running. The Canvas projects it into the latest view.
-                if(source==graphSource && kind==graphKind && derivativeSelected==graphDerivativeSelected && secondDerivativeSelected==graphSecondDerivativeSelected && domainMatches && (kind!="cartesian" || paramMin==parameterMin && paramMax==parameterMax && polarMin==thetaMin && polarMax==thetaMax) && (preview || viewYMin==yMin && viewYMax==yMax) && initials==sequenceInitials && differentialSeeds==differentialInitials && initialTime==differentialT0 && environment==request("graph").put("angle","RAD").toString() && (graphAnimating || parameters.toString()==graphState.parameterPayload().toString())) {
+                if(source==graphSource && kind==graphKind && logY==(yLog&&graphKind !in listOf("surface","space")) && derivativeSelected==graphDerivativeSelected && secondDerivativeSelected==graphSecondDerivativeSelected && domainMatches && (kind!="cartesian" || paramMin==parameterMin && paramMax==parameterMax && polarMin==thetaMin && polarMax==thetaMax) && (preview || viewYMin==yMin && viewYMax==yMax) && initials==sequenceInitials && differentialSeeds==differentialInitials && initialTime==differentialT0 && environment==request("graph").put("angle","RAD").toString() && (graphAnimating || parameters.toString()==graphState.parameterPayload().toString())) {
                     if(response.optBoolean("ok")) {
                     } else error=response.optString("error")
                     graphState.applyPlotResponse(response,signature)

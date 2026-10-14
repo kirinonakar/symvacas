@@ -11,18 +11,20 @@ internal fun graphTracePointAtX(
     curve:List<Pair<Double,Double>?>,
     x:Double,
     targetY:Double,
+    logarithmic:Boolean=false,
 ):Pair<Double,Double>? {
     if(!x.isFinite() || !targetY.isFinite())return null
+    val scale=com.kirinonakar.symvacas.math.GraphYScale(logarithmic)
     var nearest:Pair<Double,Double>?=null
     var distance=Double.POSITIVE_INFINITY
     var previous:Pair<Double,Double>?=null
     fun consider(y:Double) {
-        if(!y.isFinite())return
-        val nextDistance=abs(y-targetY)
+        if(!y.isFinite() || logarithmic&&y<=0)return
+        val nextDistance=abs(scale.coordinate(y)-scale.coordinate(targetY))
         if(nearest==null || nextDistance<distance) {nearest=x to y;distance=nextDistance}
     }
     for(sample in curve) {
-        val point=sample?.takeIf {it.first.isFinite() && it.second.isFinite()}
+        val point=sample?.takeIf {it.first.isFinite() && it.second.isFinite() && (!logarithmic || it.second>0)}
         if(point!=null) {
             if(point.first==x)consider(point.second)
             previous?.let {start->
@@ -30,7 +32,7 @@ internal fun graphTracePointAtX(
                     if(start.first==point.first)consider(targetY.coerceIn(minOf(start.second,point.second),maxOf(start.second,point.second)))
                     else {
                         val fraction=(x-start.first)/(point.first-start.first)
-                        consider(start.second*(1-fraction)+point.second*fraction)
+                        consider(scale.atFraction(fraction,start.second,point.second))
                     }
                 }
             }

@@ -118,6 +118,11 @@ def simplify_samples(points, parameters, request, start, end):
     ymin, ymax = float(request.get("yMin", -5)), float(request.get("yMax", 5))
     if not all(map(math.isfinite, (xmin, xmax, ymin, ymax))) or xmax <= xmin or ymax <= ymin:
         return points, parameters
+    source_points = points
+    if request.get("yLog"):
+        if ymin <= 0: return points, parameters
+        points = [[p[0], math.log10(p[1])] if p is not None and p[1] > 0 else None for p in points]
+        ymin, ymax = math.log10(ymin), math.log10(ymax)
     sx, sy = 800/(xmax-xmin), 800/(ymax-ymin)
     keep = set()
     def reduce_run(first, last):
@@ -174,10 +179,10 @@ def simplify_samples(points, parameters, request, start, end):
             first = i
     if first is not None: reduce_run(first, len(points)-1)
     indices = sorted(keep)
-    return [points[i] for i in indices], [parameters[i] for i in indices]
+    return [source_points[i] if points[i] is not None else None for i in indices], [parameters[i] for i in indices]
 
 
-def adaptive_samples(function, start, end, base_count, kind="cartesian",screen_bounds=None):
+def adaptive_samples(function, start, end, base_count, kind="cartesian",screen_bounds=None,logarithmic=False):
     """Sample coarsely first, then add points where the curve bends or breaks."""
     def point(at):
         try:
@@ -186,9 +191,11 @@ def adaptive_samples(function, start, end, base_count, kind="cartesian",screen_b
             else:
                 y = float(function(at)); x = at
                 if kind == "polar": x, y = y*math.cos(at), y*math.sin(at)
-            return [x, y] if math.isfinite(x) and math.isfinite(y) and abs(x) < 1e100 and abs(y) < 1e100 else None
+            return [x, y] if (not logarithmic or y > 0) and math.isfinite(x) and math.isfinite(y) and abs(x) < 1e100 and abs(y) < 1e100 else None
         except (TypeError, ValueError, ZeroDivisionError, OverflowError):
             return None
+    if logarithmic and screen_bounds:
+        screen_bounds=(*screen_bounds[:2],math.log10(screen_bounds[2]),math.log10(screen_bounds[3]))
     intervals = capped(max(100, base_count),512)
     values = {start + (end-start)*i/intervals: None for i in range(1,intervals)}
     # Preserve nextafter endpoints: interpolation can round an open endpoint
@@ -207,6 +214,10 @@ def adaptive_samples(function, start, end, base_count, kind="cartesian",screen_b
         if middle==left or middle==right: return
         actual = point(middle)
         a, b = values[left], values[right]
+        if logarithmic:
+            a=[a[0],math.log10(a[1])] if a is not None else None
+            b=[b[0],math.log10(b[1])] if b is not None else None
+            actual=[actual[0],math.log10(actual[1])] if actual is not None else None
         # Skip all-undefined probes and monotone probes well outside the view.
         # Keep a full viewport of margin and still refine turns near reentry.
         if screen_bounds and a is None and b is None and actual is None:
@@ -228,7 +239,7 @@ def adaptive_samples(function, start, end, base_count, kind="cartesian",screen_b
                 if min(a[1],b[1],actual[1])<=view_high and max(a[1],b[1],actual[1])>=view_low:
                     split=split or abs(actual[1]-linear[1])*800/(view_high-view_low)>.2
         if split:
-            values[middle] = actual
+            values[middle] = point(middle) if logarithmic else actual
             refine(left, middle, depth+1)
             refine(middle, right, depth+1)
     coarse = sorted(values)

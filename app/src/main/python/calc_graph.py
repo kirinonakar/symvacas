@@ -68,6 +68,9 @@ def graph(engine, request):
     trees = request.get("trees",[])
     start,end = float(request.get("min",-10)),float(request.get("max",10))
     require(math.isfinite(start) and math.isfinite(end) and end>start,"Invalid graph range")
+    if request.get("yLog") and kind not in ("surface", "space"):
+        ymin,ymax=float(request.get("yMin",.01)),float(request.get("yMax",10))
+        require(math.isfinite(ymin) and math.isfinite(ymax) and 0 < ymin < ymax, "Log y requires 0 < y min < y max")
     if kind == "implicit":
         return graph_implicit(engine, request, trees, start, end)
     if kind == "cartesian":

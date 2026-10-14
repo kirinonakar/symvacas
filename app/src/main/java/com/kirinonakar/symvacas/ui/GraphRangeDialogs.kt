@@ -28,7 +28,7 @@ import kotlin.math.*
     var autoZ by remember {mutableStateOf(m.zMin==null || m.zMax==null)}
     AlertDialog(onDismissRequest={onDismiss()},title={Text(tr("Graph range"))},text={Column(Modifier.verticalScroll(rememberScrollState())) {
                 RangeAxisEditor(if(m.graphKind=="sequence")"n" else "x",xmin,xmax,m.xMin,m.xMax,m.displayDigits,{xmin=it},{xmax=it})
-                RangeAxisEditor("y",ymin,ymax,m.yMin,m.yMax,m.displayDigits,{ymin=it},{ymax=it})
+                RangeAxisEditor("y",ymin,ymax,m.yMin,m.yMax,m.displayDigits,{ymin=it},{ymax=it},logarithmic=m.yLog&&m.graphKind !in listOf("surface","space"))
                 if(m.graphKind in listOf("surface","space")) {
                     SmallAction("Reset ranges") {
                         val extent=if(m.graphKind=="space")5.0 else 3.0
@@ -48,7 +48,7 @@ import kotlin.math.*
                     val usesTheta="theta" in rangeAxes
                     val pa=thetaMin.toDoubleOrNull();val pb=thetaMax.toDoubleOrNull()
                     val usesZ=m.graphKind in listOf("surface","space")&&!autoZ
-                    if(values.any {it==null||!it.isFinite()} || values[0]!!>=values[1]!! || values[2]!!>=values[3]!! || (usesT&&(ta==null||tb==null||!ta.isFinite()||!tb.isFinite()||ta>=tb)) || (usesTheta&&(pa==null||pb==null||!pa.isFinite()||!pb.isFinite()||pa>=pb)) || (usesZ&&(za==null||zb==null||!za.isFinite()||!zb.isFinite()||za>=zb))) m.error="Enter finite increasing ranges" else {
+                    if(values.any {it==null||!it.isFinite()} || values[0]!!>=values[1]!! || values[2]!!>=values[3]!! || (m.yLog&&m.graphKind !in listOf("surface","space")&&(values[2]!!<=0)) || (usesT&&(ta==null||tb==null||!ta.isFinite()||!tb.isFinite()||ta>=tb)) || (usesTheta&&(pa==null||pb==null||!pa.isFinite()||!pb.isFinite()||pa>=pb)) || (usesZ&&(za==null||zb==null||!za.isFinite()||!zb.isFinite()||za>=zb))) m.error="Enter finite increasing ranges" else {
                         m.xMin=values[0]!!;m.xMax=values[1]!!;m.yMin=values[2]!!;m.yMax=values[3]!!
                         if(m.graphKind in listOf("surface","space")){m.zMin=if(autoZ)null else za;m.zMax=if(autoZ)null else zb}
                         if(m.graphKind=="sequence"){m.parameterMin=values[0]!!;m.parameterMax=values[1]!!}
