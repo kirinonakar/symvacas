@@ -21,6 +21,7 @@ from calc_graph_sampling import (
     simplify_samples,
 )
 from calc_graph_shading import graph_shading, inequality_shading
+from calc_graph_contours import scaled_contour
 
 
 def planar_tree_spec(tree):
@@ -53,10 +54,12 @@ def inequality_parts(engine, tree):
 
 
 def contour_curve(expression, x, y, sliders, xmin, xmax, ymin, ymax, count, logarithmic=False):
+    scaled = scaled_contour(expression, x, y, sliders, xmin, xmax, ymin, ymax, count, logarithmic)
+    if scaled is not None: return scaled
     numeric = substitute_parameters(expression, sliders)
     require(numeric != 0, "Equation is true everywhere; enter a curve equation")
     program = _square_free_graph(expression, x, y)
-    bound = substitute_parameters(program, sliders)
+    bound = numeric if program == expression else substitute_parameters(program, sliders)
     if bound.is_polynomial(x, y):
         polynomial = s.Poly(bound, x, y)
         if polynomial.total_degree() <= 12:

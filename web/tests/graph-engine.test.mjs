@@ -31,6 +31,21 @@ test('packaged graph modules execute every graph kind in the production WASM wor
   const cartesian=await graph('cartesian','a*x',{parameters:{a:2},derivativeSelected:0});
   assert.equal(cartesian.derivativeCurveIndex,1);
   for(const [x,y] of cartesian.curves[0])assert.ok(Math.abs(y-2*x)<1e-12);
+  const heartTree=graphInputTree('(-1+y^2/b^2+x^2/a^2)^3-x^2*y^3/(a^2*b^3)=0');
+  for(const [a,b] of [[2,2],[1e-6,2],[2,1e-12],[-1e-80,1e-100],[0,1],[1,0],[-2,-2]]){
+    const heart=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:[heartTree],
+      min:-10,max:10,yMin:-5,yMax:5,samples:200,parameters:{a,b}});
+    assert.deepEqual(heart.parameters,['a','b']);
+    const points=heart.curves[0].filter(Boolean);
+    if(a===0||b===0){assert.deepEqual(points,[]);continue;}
+    assert.ok(points.length>100);
+    for(const [x,y] of points){
+      const u=x/a,v=y/b;
+      assert.ok(Math.abs((u*u+v*v-1)**3-u*u*v**3)<1e-7);
+    }
+    assert.ok(Math.max(...points.map(point=>point[1]/b))>1.23);
+    assert.ok(Math.min(...points.map(point=>point[1]/b))<-.99);
+  }
   for(const [a,b] of [[1,0],[-3,.7],[0,1],[6,2]]){
     const animated=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',
       trees:['a \\cdot \\sin\\left(x+b\\right)','a \\cdot \\cos\\left(x+b\\right) > y'].map(source=>graphInputTree(source)),

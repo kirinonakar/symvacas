@@ -41,7 +41,10 @@ def _compiled_graph(axes, expression):
 def _square_free_graph(expression, x, y):
     if expression.is_polynomial(x, y):
         polynomial = s.Poly(expression, x, y)
-        if polynomial.total_degree() <= 12: return polynomial.sqf_part().as_expr()
+        if polynomial.total_degree() <= 12:
+            square_free = polynomial.sqf_part()
+            if square_free.total_degree() != polynomial.total_degree():
+                return square_free.as_expr()
     return expression
 
 
