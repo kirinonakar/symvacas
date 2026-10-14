@@ -288,6 +288,13 @@ import kotlin.math.*
             val line=m.graphAnalysis?.optJSONArray("line")
             if(line==null||line.length()!=2)null else listOfNotNull(line.optJSONArray(0)?.let {it.getDouble(0) to it.getDouble(1)},line.optJSONArray(1)?.let {it.getDouble(0) to it.getDouble(1)}).takeIf {it.size==2}
         }
+        val asymptoteLines=remember(m.graphAnalysis) {
+            val lines=m.graphAnalysis?.optJSONArray("lines")
+            (0 until (lines?.length() ?: 0)).mapNotNull {index->
+                val line=lines?.optJSONArray(index)
+                if(line==null||line.length()!=2)null else listOfNotNull(line.optJSONArray(0)?.let {it.getDouble(0) to it.getDouble(1)},line.optJSONArray(1)?.let {it.getDouble(0) to it.getDouble(1)}).takeIf {it.size==2}
+            }
+        }
         val visibleSources=m.graphSource.lines().filter(String::isNotBlank).take(graphSourceLimit(m.graphKind))
         val sources=visibleSources.filter {!(m.graphKind=="cartesian" && isGraphShading(it))}.take(graphCurveLimit(m.graphKind))
         val analysisCurveKey=if(selectedDerivativeOrder==0)selected else -selectedDerivativeOrder
@@ -542,6 +549,11 @@ import kotlin.math.*
                         drawLine(c.accent.copy(alpha=.75f),Offset(px(a.first),py(a.second)),Offset(px(b.first),py(b.second)),1.5.dp.toPx(),pathEffect=PathEffect.dashPathEffect(floatArrayOf(16f,8f)))
                     }
                 }
+                asymptoteLines.forEach {line->
+                    GraphClip.segment(line[0],line[1],xlo,xhi,m.yMin,m.yMax)?.let {(a,b)->
+                        drawLine(c.accent.copy(alpha=.75f),Offset(px(a.first),py(a.second)),Offset(px(b.first),py(b.second)),1.5.dp.toPx(),pathEffect=PathEffect.dashPathEffect(floatArrayOf(16f,8f)))
+                    }
+                }
                 m.trace?.let { p ->
                     val at=Offset(px(p.first),py(p.second))
                     drawLine(c.muted,Offset(at.x,0f),Offset(at.x,size.height),1.dp.toPx(),pathEffect=PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(),3.dp.toPx())))
@@ -586,7 +598,7 @@ import kotlin.math.*
                 }
             }
             Row(Modifier.horizontalScroll(rememberScrollState())) {
-                val actions=if(m.graphKind=="cartesian")listOf("Root","Y-intercept","Intersection","Intersection angle","Minimum","Maximum","Inflection","Derivative","Tangent","Tangent angle","Integral","Arc length") else listOf("Root","Y-intercept","Minimum","Maximum","Inflection","Derivative","Tangent","Tangent angle","Integral","Arc length")
+                val actions=if(m.graphKind=="cartesian")listOf("Root","Y-intercept","Intersection","Intersection angle","Minimum","Maximum","Inflection","Derivative","Tangent","Tangent angle","Integral","Arc length","Asymptotes") else listOf("Root","Y-intercept","Minimum","Maximum","Inflection","Derivative","Tangent","Tangent angle","Integral","Arc length")
                 actions.forEach { action->
                     val key=action.lowercase().replace(" ","").replace("-","")
                     val isTangent=key in listOf("tangent","tangentangle")
@@ -616,12 +628,18 @@ import kotlin.math.*
             }
             if(m.graphAnalysisBusy)Text(if(isKorean())"분석 중…" else "Analyzing…",fontSize=12.sp,color=c.muted)
             m.graphAnalysis?.let {result->
-                val name=when(result.optString("analysis")){"tangentangle"->tr("Tangent angle");"intersectionangle"->tr("Intersection angle");"yintercept"->tr("Y-intercept");"arclength"->"Arc length";"inflection"->"Inflection";"tangent"->"Tangent slope";"intersection"->"Intersection";"minimum"->"Minimum";"maximum"->"Maximum";"integral"->"Integral";else->result.optString("analysis").replaceFirstChar {it.uppercase()}}
+                val name=when(result.optString("analysis")){"asymptotes"->tr("Asymptotes");"tangentangle"->tr("Tangent angle");"intersectionangle"->tr("Intersection angle");"yintercept"->tr("Y-intercept");"arclength"->"Arc length";"inflection"->"Inflection";"tangent"->"Tangent slope";"intersection"->"Intersection";"minimum"->"Minimum";"maximum"->"Maximum";"integral"->"Integral";else->result.optString("analysis").replaceFirstChar {it.uppercase()}}
                 val angleResult=result.optString("unit")=="deg"
                 if(angleResult)Text(tr(if(result.optString("analysis")=="tangentangle")"Tangent angle: inclination from the positive x axis (0° ≤ θ < 180°)." else "Intersection angle: smaller angle between tangents (0°–90°)."),fontSize=12.sp,color=c.muted)
                 if(result.has("value"))Text("$name = ${graphDisplayNumber(result.optDouble("value"),m.displayDigits)}"+if(angleResult)"° (${graphDisplayNumber(result.optDouble("radians"),m.displayDigits)} rad)" else "",fontSize=16.sp)
                 else if(result.optBoolean("vertical"))Text("$name · vertical tangent",fontSize=13.sp)
+                else if(result.optString("analysis")=="asymptotes")Text("$name · ${result.optInt("count")}",fontSize=13.sp)
                 else Text("$name · ${result.optInt("count")} point(s)${if(result.optBoolean("truncated"))" · first 80 shown" else ""}",fontSize=13.sp)
+                val asymptotes=result.optJSONArray("asymptotes")
+                for(index in 0 until (asymptotes?.length() ?: 0)) {
+                    asymptotes!!.getJSONObject(index).optJSONObject("tree")?.let {tree->MathNode(tree,16f)}
+                }
+                if(result.optString("note").isNotBlank())Text(result.optString("note"),fontSize=12.sp,color=c.muted)
                 markers.forEachIndexed {i,p->
                     val angle=result.optJSONArray("angles")?.optJSONObject(i)
                     val angleText=if(angle==null)"" else if(angle.isNull("value"))" · ${tr("Tangent is undefined at this point")}" else " · ${graphDisplayNumber(angle.optDouble("value"),m.displayDigits)}° (${graphDisplayNumber(angle.optDouble("radians"),m.displayDigits)} rad)"

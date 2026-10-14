@@ -1616,6 +1616,7 @@ export const nativeKorean = {
   "Root": "근",
   "Y-intercept": "y절편",
   "Intersection": "교점",
+  "Asymptotes": "점근선",
   "Inflection": "변곡점",
   "Derivative": "도함수",
   "Tangent": "접선",

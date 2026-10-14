@@ -233,6 +233,12 @@ def fit_multivariate(engine, rows, logistic=False, firth_mode="auto"):
     require(2<=width<=9 and all(len(row)==width for row in rows), "Use one to eight predictors and the response in the last column")
     for row in rows: _numbers(row)
     require(len(rows)>width, "Add more data points than fit parameters")
+    if logistic and len(rows)>=500 and firth_mode=="auto":
+        require(all(row[-1] in (0,1) for row in rows) and 0<sum(row[-1] for row in rows)<len(rows),
+                "Logistic response must contain both 0 and 1")
+        from calc_logistic_float import fit
+        try: return fit(engine,rows)
+        except (MathError,ValueError,OverflowError,ZeroDivisionError): pass
     with mp.workdps(engine.precision+20):
         values = [[_mpf(v,engine.precision) for v in row] for row in rows]
         n, p = len(rows), width

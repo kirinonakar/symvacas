@@ -69,7 +69,7 @@ Example: sign(-5)
 Example: sqrt(16)
 `cbrt(x)` — 세제곱근.
 Example: cbrt(27)
-`nthroot(x,n)` — x의 실수 n제곱근.
+`nthroot(x,n)` — 홀수 정수 차수는 음수 입력에서도 실수 근을, 그 외 차수는 주근을 사용합니다.
 Example: nthroot(81,4)
 `atan2(y,x)` — 점 (x,y)의 각도를 네 사분면을 고려해 구합니다.
 Example: atan2(1,1)
@@ -341,7 +341,7 @@ Example: polar(2,pi/3)
 Example: rectpolar(1+i)
 
 ## ODE & transforms
-`dsolve(eq,y(t),t)` — 상미분방정식을 풉니다.
+`dsolve(eq,y(t),t)` — 상미분방정식을 풉니다. 분류는 3초, 선택한 풀이 방법은 8초로 제한합니다. 기호 풀이가 어려우면 초기값을 입력한 수치 미분방정식 그래프를 사용하세요.
 Example: dsolve(diff(y(t),t)=y(t),y(t),t)
 `laplace(f,t,s)` — 시간 변수 t에서 s로 라플라스 변환합니다.
 Example: laplace(sin(t),t,s)
@@ -813,6 +813,14 @@ NUTS: 추론 방법에서 NUTS를 선택합니다. 사전 옵션: 선형 `[2.5,0
 ## 고급 통계
 
 현재 데이터·예제·직접 입력한 분석 식 중 입력 방식을 선택합니다. 대응 분석은 완전한 쌍을 사용하며 대상 ID로 연결할 수 있습니다. 반복측정은 대상별 완전한 행을 입력하세요. 결측 셀은 impute에서 NA로 처리합니다.
+
+### 순위상관
+
+`spearman` — 스피어만 순위상관. 대응하는 유한 관측값; 동순위는 평균 순위. both / left / right. n <= 8은 정확 순열 p값, 그 외 t 근사 p값(작은 표본에는 순열 검정이 필요할 수 있음).
+Example: spearman([1,2,2,4,5],[2,1,3,4,5],both)
+
+`kendall` — 켄달 tau-b 상관. 대응하는 유한 관측값; tau-b는 동순위를 보정. both / left / right. 동순위 없이 n <= 33이면 정확 p값, 그 외 동순위 보정 정규 근사.
+Example: kendall([1,2,2,4,5],[2,1,3,4,5],both)
 
 ### 데이터 준비
 

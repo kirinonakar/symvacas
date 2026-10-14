@@ -69,7 +69,7 @@ Example: sign(-5)
 Example: sqrt(16)
 `cbrt(x)` — Cube root.
 Example: cbrt(27)
-`nthroot(x,n)` — Real n-th root of x.
+`nthroot(x,n)` — Odd integer orders use the real root, including negative inputs; other orders use the principal root.
 Example: nthroot(81,4)
 `atan2(y,x)` — Angle of the point (x,y) across all four quadrants.
 Example: atan2(1,1)
@@ -341,7 +341,7 @@ Example: polar(2,pi/3)
 Example: rectpolar(1+i)
 
 ## ODE & transforms
-`dsolve(eq,y(t),t)` — Solve an ordinary differential equation.
+`dsolve(eq,y(t),t)` — Solve an ordinary differential equation. Classification is limited to 3 seconds and the selected method to 8 seconds. If symbolic solving is unavailable, use the numerical differential-equation graph with an initial value.
 Example: dsolve(diff(y(t),t)=y(t),y(t),t)
 `laplace(f,t,s)` — Laplace transform from the time variable t to s.
 Example: laplace(sin(t),t,s)
@@ -813,6 +813,14 @@ NUTS: choose NUTS under Inference method. Prior options: linear `[2.5,0.95,2,1,[
 ## Advanced statistics
 
 Choose current data, example parameters or an editable analysis expression. Paired comparisons use complete pairs and support subject-ID matching. Enter complete subject rows for repeated measurements; impute treats missing cells as NA.
+
+### Rank correlation
+
+`spearman` — Spearman rank correlation. Paired finite observations; average ranks for ties. Both / left / right. Exact permutation p for n <= 8; otherwise approximate t p (small samples may need a permutation test).
+Example: spearman([1,2,2,4,5],[2,1,3,4,5],both)
+
+`kendall` — Kendall tau-b correlation. Paired finite observations; tau-b adjusts for ties. Both / left / right. Exact p without ties for n <= 33; otherwise tie-corrected normal approximation.
+Example: kendall([1,2,2,4,5],[2,1,3,4,5],both)
 
 ### Data preparation
 

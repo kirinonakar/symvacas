@@ -25,7 +25,7 @@ test('all shared analyses have one menu, grouped order, guided forms and local r
   }
   const ids=section=>schema.filter(item=>item.section===section).map(item=>item.id);
   assert.deepEqual(ids('preparation'),['impute']);
-  assert.deepEqual(ids('general'),['propztest','propztest2','mcnemar','cronbach','icc','cohenkappa','blandaltman']);
+  assert.deepEqual(ids('general'),['spearman','kendall','propztest','propztest2','mcnemar','cronbach','icc','cohenkappa','blandaltman']);
   assert.deepEqual(ids('tests'),['shapiro','kstest','levene','bartlett','tukey','gameshowell','dunn','twowayanova','ancova','manova','repeatedanova','friedman','cohend','eta2','cramerv','phi','padjust','tinterval','zinterval','tost','tost2','tostpaired']);
   assert.equal(schema.find(item=>item.id==='phi').hidden,true);
   assert.equal(schema.find(item=>item.id==='cramerv').group,'Effect Size');

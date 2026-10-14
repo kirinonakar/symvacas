@@ -75,11 +75,20 @@ LOGISTIC_COMPARE_ROWS=[[-2,0,0],[-2,1,0],[-1,0,0],[-1,1,1],[0,0,0],[0,1,1],[1,0,
 specs.append(('logisticcompare','Nested logistic model comparison','중첩 로지스틱 모형 비교','table',',1,crossvalidation,5,0.5,0.95,200,0,[48,0]',str(LOGISTIC_COMPARE_ROWS).replace(' ',''),'Select a binary response, Model A predictors and added Model B predictors. A selected validation dataset, stratified holdout or stratified cross-validation. Compare unpenalized MLE fit (LRT, AIC/BIC) and paired validation AUC, accuracy, log loss, Brier score and calibration. Differences are B minus A.','이항 반응·Model A 설명변수·Model B 추가 설명변수를 선택합니다. 선택한 데이터셋 검증·층화 홀드아웃·층화 교차검증을 지원합니다. 무벌점 MLE 적합도(LRT·AIC/BIC)와 대응 검증 AUC·정확도·Log loss·Brier score·보정 성능을 비교합니다. 차이는 B−A입니다.'))
 from statistics_comparison_schema import SPEC as COMPARISON_SPEC, HELP as COMPARISON_HELP, forms as comparison_forms, examples as comparison_examples
 specs.append(COMPARISON_SPEC)
+RANK_SPECS=[
+    ('spearman','Spearman rank correlation','스피어만 순위상관','groups',',both','[1,2,2,4,5],[2,1,3,4,5]',
+     'Paired finite observations; average ranks for ties. Both / left / right. Exact permutation p for n <= 8; otherwise approximate t p (small samples may need a permutation test).',
+     '대응하는 유한 관측값; 동순위는 평균 순위. both / left / right. n <= 8은 정확 순열 p값, 그 외 t 근사 p값(작은 표본에는 순열 검정이 필요할 수 있음).'),
+    ('kendall','Kendall tau-b correlation','켄달 tau-b 상관','groups',',both','[1,2,2,4,5],[2,1,3,4,5]',
+     'Paired finite observations; tau-b adjusts for ties. Both / left / right. Exact p without ties for n <= 33; otherwise tie-corrected normal approximation.',
+     '대응하는 유한 관측값; tau-b는 동순위를 보정. both / left / right. 동순위 없이 n <= 33이면 정확 p값, 그 외 동순위 보정 정규 근사.')]
+specs.extend(RANK_SPECS)
 specs.extend(SOCIAL_SPECS)
 specs.extend(RESEARCH_SPECS)
 schema = [{'id':id_,'label':label,'ko':ko,'input':layout,'suffix':suffix,'example':f'{id_}({data}{suffix})','help':help_,'helpKo':helpko} for id_,label,ko,layout,suffix,data,help_,helpko in specs]
 # Menu placement and order are shared by Android and Web; function IDs stay stable.
 menus = [
+    ('general', 'Rank correlation', '순위상관', ['spearman','kendall']),
     ('preparation', 'Data preparation', '데이터 준비', ['impute']),
     ('general', 'Categorical data', '범주형 자료', ['propztest','propztest2','mcnemar']),
     ('general', 'Reliability & agreement', '신뢰도·일치도', ['cronbach','icc','cohenkappa','blandaltman']),
@@ -300,6 +309,10 @@ for spec in SOCIAL_SPECS:
 for spec in RESEARCH_SPECS:
     form_help[spec[0]]=(spec[6],spec[7])
     USES[spec[0]]=(spec[1]+'.',spec[2]+'.')
+for spec in RANK_SPECS:
+    forms[spec[0]]=[col('first','First column','첫째 열',0),col('second','Second column','둘째 열',1),field('tail','Alternative','대립가설','choice','both',[('both','Two-sided','양측'),('left','Negative association','음의 상관'),('right','Positive association','양의 상관')])]
+    form_help[spec[0]]=(spec[6],spec[7])
+    USES[spec[0]]=(spec[1]+'.',spec[2]+'.')
 for item in schema:
     if item['id'] in ('propztest','propztest2','tinterval','zinterval'): item['example']=definitions[item['id']]['example']
     if item['id'] not in forms: continue
@@ -322,8 +335,8 @@ for item in schema:
     elif item['id']=='propztest2': rows=[[60,100],[45,100]]
     elif item['input']=='none': rows=[]
     elif item['id'] in ('shapiro','padjust','bayesproportion','bayesmean','bayesrate','bayesbootstrap','bootstrapci','arima','sarima','tost'): rows=[[v] for v in first]
-    elif item['id'] in ('tukey','gameshowell','levene','bartlett','kstest','bayescompare','cohend','eta2','tost2','tostpaired'):
-        samples=[literal(arg) for arg in (arguments[:2] if item['id'] in ('bayescompare','cohend','tost2','tostpaired') else arguments)]; rows=[[sample[i] if i<len(sample) else '' for sample in samples] for i in range(max(map(len,samples)))]
+    elif item['id'] in ('tukey','gameshowell','levene','bartlett','kstest','bayescompare','cohend','eta2','tost2','tostpaired','spearman','kendall'):
+        samples=[literal(arg) for arg in (arguments[:2] if item['id'] in ('bayescompare','cohend','tost2','tostpaired','spearman','kendall') else arguments)]; rows=[[sample[i] if i<len(sample) else '' for sample in samples] for i in range(max(map(len,samples)))]
     elif item['id']=='logrank': rows=[r+[i+1] for i,arg in enumerate(arguments) for r in literal(arg)]
     elif item['id']=='dunn': rows=[[sample[i] if i<len(sample) else '' for sample in first] for i in range(max(map(len,first)))]
     else: rows=first

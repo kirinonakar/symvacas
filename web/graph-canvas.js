@@ -151,6 +151,7 @@ export function plotGraph(container,result,bounds,{colors=defaultGraphColors,dig
   (result.curves||[]).forEach((curve,i)=>{if(i!==selected)path(curve,i);});if(result.curves?.[selected])path(result.curves[selected],selected);
   if(integral)for(const points of analysis?.integralFill||integralPolygons(result.curves?.[selected]||[],integral))polygon(points.map(project),colors[selected%colors.length],.18);
   if(analysis?.line?.length===2){const segment=clipGraphSegment(...analysis.line,bounds);if(segment){ctx.setLineDash([6,4]);line(...segment.map(project),accent,2);ctx.setLineDash([]);}}
+  for(const asymptote of analysis?.lines||[]){const segment=clipGraphSegment(...asymptote,bounds);if(segment){ctx.setLineDash([6,4]);line(...segment.map(project),accent,2);ctx.setLineDash([]);}}
   for(const point of analysis?.points||[])if(finite(point))circle(project(point),5,accent);
   if(finite(trace)){ctx.setLineDash([3,3]);line([x(trace[0]),pad],[x(trace[0]),h-pad]);ctx.setLineDash([]);circle(project(trace),6,colors[selected%colors.length]);}
   ctx.restore();return canvas;

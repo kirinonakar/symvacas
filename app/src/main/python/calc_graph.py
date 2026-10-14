@@ -97,6 +97,11 @@ def bind_graph_parameters(engine, request):
 def graph(engine, request):
     bind_graph_parameters(engine,request)
     kind = request.get("graphKind","cartesian")
+    axes={"cartesian":("x","y"),"implicit":("x","y"),"surface":("x","y","z"),
+          "space":("t",),"differential":("t","y")}.get(kind,(request.get("variable","x"),))
+    if kind != "sequence":
+        for name in axes:
+            if engine.symbol(name).is_real is not True: engine.symbols[name]=s.Symbol(name,real=True)
     trees = request.get("trees",[])
     start,end = float(request.get("min",-10)),float(request.get("max",10))
     require(math.isfinite(start) and math.isfinite(end) and end>start,"Invalid graph range")
@@ -176,6 +181,9 @@ def contour_curve(expression, x, y, sliders, xmin, xmax, ymin, ymax, count):
     return implicit_samples(graph_function(program, (x, y), sliders), xmin, xmax, ymin, ymax, count)
 
 def graph_cartesian(engine, request, trees, xmin, xmax):
+    for name in ("x","y"):
+        if engine.symbol(name).is_real is not True:
+            engine.symbols[name]=s.Symbol(name,real=True)
     x, y = engine.symbol("x"), engine.symbol("y")
     engine.bindings.update({"x": x, "y": y})
     raw = graph_expressions(engine, trees, ("x", "y"))
@@ -1156,7 +1164,8 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
     size = len(trees) if _expressions is None else len(_expressions)
     require(0 <= selected < size, "Select a function")
     action = request.get("analysis", "root")
-    require(action in ("root","yintercept","intersection","intersectionangle","minimum","maximum","inflection","derivative","tangent","tangentangle","integral","arclength"), "Unknown graph analysis")
+    require(action in ("root","yintercept","intersection","intersectionangle","minimum","maximum","inflection","derivative","tangent","tangentangle","integral","arclength","asymptotes"), "Unknown graph analysis")
+    require(action != "asymptotes" or kind == "cartesian", "Asymptotes require a Cartesian function")
     require(not pair_analysis or kind == "cartesian", "Intersections need two Cartesian functions")
     if pair_analysis: require(0 <= other < size and other != selected, "Select two different functions")
     fixed_intercept = action == "yintercept" and kind == "cartesian"
@@ -1235,6 +1244,10 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
             raw = graph_expressions(engine, trees, ("x","y")) if _expressions is None else _expressions
         sliders = {symbol:value for symbol,value in resolved_parameters(engine,request,raw,{"x","y"}).items() if symbol not in (x,y)}
         curves = [cartesian_curve(substitute_parameters(expression,sliders),x,y) for expression in raw]
+        if action == "asymptotes":
+            require(curves[selected][0] is not None,"Asymptotes require an explicit function y=f(x)")
+            from calc_asymptotes import analyze
+            return analyze(curves[selected][0],x,a,b,request)
         if action == "intersectionangle":
             response = graph_analysis(engine,{**request,"analysis":"intersection"},tuple(substitute_parameters(expression,sliders) for expression in raw))
             angles = []

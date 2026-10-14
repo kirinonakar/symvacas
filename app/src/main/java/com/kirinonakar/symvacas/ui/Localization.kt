@@ -1160,6 +1160,7 @@ private val korean = mapOf(
     "Graph types" to "그래프 종류", "Plot" to "그리기", "Range" to "범위", "Analyze" to "분석", "Table" to "표",
     "Animate" to "애니메이션", "Stop" to "중지", "Parameters ▾" to "매개변수 ▾", "Parameters ▸" to "매개변수 ▸",
     "Fit Y" to "Y 범위 맞춤", "Root" to "근", "Y-intercept" to "y절편", "Intersection" to "교점", "Minimum" to "최솟값",
+    "Asymptotes" to "점근선",
     "Maximum" to "최댓값", "Inflection" to "변곡점", "Derivative" to "도함수", "Tangent" to "접선",
     "Tangent angle" to "접선 각도", "Intersection angle" to "교점 각도",
     "Tangent angle: inclination from the positive x axis (0° ≤ θ < 180°)." to "접선 각도: 양의 x축 기준 기울기각 (0° ≤ θ < 180°).",

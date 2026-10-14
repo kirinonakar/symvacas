@@ -1,5 +1,159 @@
 [
   {
+    "id": "spearman",
+    "label": "Spearman rank correlation",
+    "ko": "스피어만 순위상관",
+    "input": "groups",
+    "suffix": ",both",
+    "example": "spearman([1,2,2,4,5],[2,1,3,4,5],both)",
+    "help": "Paired finite observations; average ranks for ties. Both / left / right. Exact permutation p for n <= 8; otherwise approximate t p (small samples may need a permutation test).",
+    "helpKo": "대응하는 유한 관측값; 동순위는 평균 순위. both / left / right. n <= 8은 정확 순열 p값, 그 외 t 근사 p값(작은 표본에는 순열 검정이 필요할 수 있음).",
+    "section": "general",
+    "group": "Rank correlation",
+    "groupKo": "순위상관",
+    "controls": [
+      {
+        "key": "first",
+        "label": "First column",
+        "ko": "첫째 열",
+        "type": "column",
+        "default": 0
+      },
+      {
+        "key": "second",
+        "label": "Second column",
+        "ko": "둘째 열",
+        "type": "column",
+        "default": 1
+      },
+      {
+        "key": "tail",
+        "label": "Alternative",
+        "ko": "대립가설",
+        "type": "choice",
+        "default": "both",
+        "choices": [
+          {
+            "id": "both",
+            "label": "Two-sided",
+            "ko": "양측"
+          },
+          {
+            "id": "left",
+            "label": "Negative association",
+            "ko": "음의 상관"
+          },
+          {
+            "id": "right",
+            "label": "Positive association",
+            "ko": "양의 상관"
+          }
+        ]
+      }
+    ],
+    "formHelp": "Paired finite observations; average ranks for ties. Both / left / right. Exact permutation p for n <= 8; otherwise approximate t p (small samples may need a permutation test).",
+    "formHelpKo": "대응하는 유한 관측값; 동순위는 평균 순위. both / left / right. n <= 8은 정확 순열 p값, 그 외 t 근사 p값(작은 표본에는 순열 검정이 필요할 수 있음).",
+    "exampleRows": [
+      [
+        "1",
+        "2"
+      ],
+      [
+        "2",
+        "1"
+      ],
+      [
+        "2",
+        "3"
+      ],
+      [
+        "4",
+        "4"
+      ],
+      [
+        "5",
+        "5"
+      ]
+    ]
+  },
+  {
+    "id": "kendall",
+    "label": "Kendall tau-b correlation",
+    "ko": "켄달 tau-b 상관",
+    "input": "groups",
+    "suffix": ",both",
+    "example": "kendall([1,2,2,4,5],[2,1,3,4,5],both)",
+    "help": "Paired finite observations; tau-b adjusts for ties. Both / left / right. Exact p without ties for n <= 33; otherwise tie-corrected normal approximation.",
+    "helpKo": "대응하는 유한 관측값; tau-b는 동순위를 보정. both / left / right. 동순위 없이 n <= 33이면 정확 p값, 그 외 동순위 보정 정규 근사.",
+    "section": "general",
+    "group": "Rank correlation",
+    "groupKo": "순위상관",
+    "controls": [
+      {
+        "key": "first",
+        "label": "First column",
+        "ko": "첫째 열",
+        "type": "column",
+        "default": 0
+      },
+      {
+        "key": "second",
+        "label": "Second column",
+        "ko": "둘째 열",
+        "type": "column",
+        "default": 1
+      },
+      {
+        "key": "tail",
+        "label": "Alternative",
+        "ko": "대립가설",
+        "type": "choice",
+        "default": "both",
+        "choices": [
+          {
+            "id": "both",
+            "label": "Two-sided",
+            "ko": "양측"
+          },
+          {
+            "id": "left",
+            "label": "Negative association",
+            "ko": "음의 상관"
+          },
+          {
+            "id": "right",
+            "label": "Positive association",
+            "ko": "양의 상관"
+          }
+        ]
+      }
+    ],
+    "formHelp": "Paired finite observations; tau-b adjusts for ties. Both / left / right. Exact p without ties for n <= 33; otherwise tie-corrected normal approximation.",
+    "formHelpKo": "대응하는 유한 관측값; tau-b는 동순위를 보정. both / left / right. 동순위 없이 n <= 33이면 정확 p값, 그 외 동순위 보정 정규 근사.",
+    "exampleRows": [
+      [
+        "1",
+        "2"
+      ],
+      [
+        "2",
+        "1"
+      ],
+      [
+        "2",
+        "3"
+      ],
+      [
+        "4",
+        "4"
+      ],
+      [
+        "5",
+        "5"
+      ]
+    ]
+  },
+  {
     "id": "impute",
     "label": "Missing-value imputation",
     "ko": "결측치 대체",

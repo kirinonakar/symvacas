@@ -2,6 +2,29 @@
 import sys
 import time
 from threading import get_ident
+from contextlib import contextmanager
+from contextvars import ContextVar
+
+_active_budget = ContextVar("symvacas_active_budget", default=None)
+
+class SolverTimeLimit(BaseException):
+    """Stop one symbolic solver without swallowing request cancellation."""
+
+@contextmanager
+def solver_phase(seconds):
+    budget=_active_budget.get()
+    if budget is None:
+        with Budget(seconds=max(60,seconds+1)) as local:
+            with solver_phase(seconds): yield
+        return
+    previous=budget.phase_deadline
+    budget.phase_deadline=min(previous,time.monotonic()+seconds)
+    try:
+        budget.check()
+        yield
+        budget.check()
+    finally:
+        budget.phase_deadline=previous
 
 
 class ExecutionStopped(BaseException):
@@ -17,6 +40,8 @@ class Budget:
         self.tracing = False
         self.owner = get_ident()
         self.ticks = 256
+        self.phase_deadline = float("inf")
+        self.active_token = None
 
     def check(self):
         if self.cancelled is not None and self.cancelled():
@@ -25,6 +50,8 @@ class Budget:
         if self.steps <= 0 or time.monotonic() > self.deadline:
             self.stop()
             raise ExecutionStopped("Computation limit reached. Reduce expression complexity.")
+        if time.monotonic() > self.phase_deadline:
+            raise SolverTimeLimit("Symbolic solver time limit reached")
 
     def tick(self, code, offset):
         # Monitoring is interpreter-wide; requests only own their worker thread.
@@ -47,6 +74,7 @@ class Budget:
 
     def __enter__(self):
         self.check()
+        self.active_token=_active_budget.set(self)
         monitoring = getattr(sys, "monitoring", None)
         if monitoring is not None:
             for tool_id in (5, 4, 3, 2, 1, 0):
@@ -71,6 +99,9 @@ class Budget:
         return self
 
     def stop(self):
+        if self.active_token is not None:
+            _active_budget.reset(self.active_token)
+            self.active_token=None
         if self.tool_id is not None:
             tool_id, self.tool_id = self.tool_id, None
             monitoring = sys.monitoring

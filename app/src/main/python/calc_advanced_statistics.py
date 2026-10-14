@@ -8,6 +8,7 @@ shared by calculator expressions and the Python catalog.
 import mpmath as mp
 from calc_shared import MathError, require
 from calc_advanced_common import convert
+from calc_rank_correlation import calculate as rank_correlation
 from calc_advanced_inference import calculate as inference
 from calc_advanced_survival import calculate as survival
 from calc_advanced_longitudinal import calculate as longitudinal
@@ -40,6 +41,8 @@ def dunn(engine, name, a):
 
 # Function names, argument limits and handlers share one registry.
 _ANALYSES = {
+    'spearman': (2, 3, rank_correlation),
+    'kendall': (2, 3, rank_correlation),
     'metaanalysis': (1, 7, research),
     'icc': (1, 4, research),
     'blandaltman': (1, 3, research),

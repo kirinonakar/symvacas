@@ -35,6 +35,10 @@ def _is_percentage(node):
         node = node["args"][0]
     return node.get("kind") == "call" and node.get("value") == "percent"
 
+def _real_calculus(node):
+    return (node.get("kind") == "call" and node.get("value") in ("abs", "sign", "cbrt", "nthroot")
+            or any(_real_calculus(child) for child in node.get("args", [])))
+
 def oversized_rational_power(base, exponent):
     """Estimate the larger exact numerator/denominator before SymPy expands it."""
     if limits_removed() or not (base.is_Rational and exponent.is_Integer): return False
@@ -318,6 +322,9 @@ class Engine:
                     independent=self.symbol(n["value"])
                     if value in ("minimum","maximum") and independent.is_real is not True:
                         independent=s.Symbol(n["value"],real=True)
+                    elif value == "diff" and independent.is_real is None and _real_calculus(args[0]):
+                        independent=s.Symbol(n["value"],**independent.assumptions0,real=True)
+                        self.note="Differentiated over the real domain."
                     self.bindings[n["value"]] = independent
         try:
             if value in ("impute", "cfa", "sem"):
@@ -445,7 +452,10 @@ class Engine:
                    else round(scaled))
             rounded=s.Rational(units,1)/scale
             return rounded if rounded.is_Integer else s.Float(rounded,max(self.precision,15,len(str(abs(rounded.p)))))
-        basic = {"sqrt": s.sqrt, "cbrt": lambda x: s.real_root(x,3), "nthroot": s.root, "abs": s.Abs,
+        if name == "nthroot":
+            require(len(a)==2 and a[1]!=0,"nthroot expects an expression and a nonzero root order")
+            return s.real_root(a[0],a[1]) if a[1].is_integer and a[1].is_odd else s.root(a[0],a[1])
+        basic = {"sqrt": s.sqrt, "cbrt": lambda x: s.real_root(x,3), "abs": s.Abs,
                  "floor": s.floor, "ceil": s.ceiling, "ceiling": s.ceiling, "iPart": s.floor, "frac": s.frac,
                  "sign": s.sign, "gamma": s.gamma,
                  "erf":s.erf,"erfc":s.erfc,"Ei":s.Ei,"Si":s.Si,"Ci":s.Ci,"zeta":s.zeta,
@@ -465,6 +475,22 @@ class Engine:
                  "polar": lambda r,t: r*(s.cos(t)+s.I*s.sin(t)), "rectpolar": lambda z: [s.Abs(z),s.arg(z)]}
         if name in ("log","ln"): require(a[0]!=0,"Domain ERROR: logarithm of zero")
         if name=="log" and len(a)>1: require(a[1] not in (0,1),"Domain ERROR: invalid logarithm base")
+        if name == "diff":
+            if len(a)==2 and isinstance(a[1],s.Symbol) and a[1].is_real:
+                root=nodes[0]
+                if root.get("kind")=="call" and root.get("value") in ("cbrt","nthroot"):
+                    order=s.Integer(3) if root["value"]=="cbrt" else self.build(root["args"][1])
+                    if order.is_Integer and order.is_odd and order>1 and a[0]==s.real_root(a[1],order):
+                        self.conditions.append(s.Ne(a[1],0))
+                        return 1/(order*s.Abs(a[1])**(1-1/order))
+            result=s.diff(*a)
+            if len(a)==2 and isinstance(a[1],s.Symbol) and a[1].is_real:
+                # A continuous real root has no distributional jump at zero.
+                # Remove only delta terms whose multiplier vanishes there.
+                delta=s.DiracDelta(a[1])
+                coefficient=s.expand(result).coeff(delta)
+                if coefficient.subs(a[1],0)==0: result=result.xreplace({delta:s.Integer(0)})
+            return result
         if name in basic: return basic[name](*a)
         if name in ("mod","divmod"):
             require(len(a)==2,name+" expects two arguments")
@@ -584,7 +610,19 @@ class Engine:
             equation=ode_equation(a[0]); dependent=a[1]
             function=dependent.func if isinstance(dependent, AppliedUndef) else dependent
             conditions=initial_conditions(a[3],dependent,a[2]) if len(a)==4 else None
-            return s.dsolve(equation, fun=function, x=a[2], ics=conditions) if conditions else s.dsolve(equation, fun=function, x=a[2])
+            from calc_runtime import solver_phase, SolverTimeLimit
+            from sympy.solvers.ode import classify_ode
+            function=function(a[2]) if isinstance(function,type) else function
+            try:
+                with solver_phase(3):
+                    classification=classify_ode(equation,function,dict=True)
+                hint=classification.get("default")
+                require(hint and hint != "lie_group",
+                        "No practical symbolic ODE method was found. Try the numerical differential-equation graph with an initial value.")
+                with solver_phase(8):
+                    return s.dsolve(equation,func=function,hint=hint,ics=conditions)
+            except SolverTimeLimit as exc:
+                raise MathError("Symbolic ODE solving stopped after its method time limit. Try the numerical differential-equation graph with an initial value.") from exc
         if name in ("laplace","fourier"):
             require(len(a)==3, name+" expects an expression, time variable and transform variable")
             result=(s.laplace_transform if name=="laplace" else s.fourier_transform)(a[0],a[1],a[2])
@@ -644,6 +682,14 @@ class Engine:
             if isinstance(a[1],Relational): var,point = a[1].lhs,a[1].rhs; direction = str(a[2]) if len(a)>2 else "+-"
             else: var,point = a[1],a[2]; direction = str(a[3]) if len(a)>3 else "+-"
             direction = {"left":"-","right":"+","both":"+-"}.get(direction,direction)
+            if direction == "+-" and point.is_finite is True:
+                left=s.limit(a[0],var,point,dir="-")
+                right=s.limit(a[0],var,point,dir="+")
+                equal=True if left==right else (left-right).equals(0)
+                if equal is False:
+                    raise MathError("Two-sided limit does not exist: left-hand limit = "+str(left)+
+                                    ", right-hand limit = "+str(right)+". Use left or right for a one-sided limit.")
+                if equal is True: return left
             return s.limit(a[0],var,point,dir=direction)
         if name == "series": return s.series(a[0],a[1],a[2] if len(a)>2 else 0,int(a[3]) if len(a)>3 else 6)
         if name in ("sum", "product"):
@@ -742,6 +788,14 @@ class Engine:
                         self.note="Partial solutions from the auxiliary solver; additional Lambert W branches may exist. This is not the complete solution set."
             if isinstance(result,s.FiniteSet):
                 result=s.FiniteSet(*(root for root in result if all(condition.subs(var,root)!=s.false for condition in self.conditions)))
+            else:
+                for condition in (self.conditions if conditions is None else conditions):
+                    if not condition.has(var): continue
+                    if isinstance(condition,s.Unequality):
+                        excluded=s.solveset(condition.lhs-condition.rhs,var,domain=domain)
+                        result=s.Complement(result,excluded)
+                    else:
+                        result=result.intersect(s.ConditionSet(var,condition,domain))
             if result.has(s.ConditionSet): self.note = (self.note+" " if self.note else "")+"Symbolic solution not found; ConditionSet describes unresolved solutions, not proof that a root exists. For a real root, try nsolve(expr,x,a,b) on a continuous interval with a sign change."
             return result
         if name == "nsolve":
@@ -941,6 +995,8 @@ class Engine:
             try: return self.build(function["body"])
             finally: self.bindings = old; self.resolving.remove(name)
         if name.isidentifier():
+            require(all(isinstance(value,s.Expr) for value in a),
+                    "Undefined function: "+name+". Define it before passing lists or matrices.")
             return s.Function(name)(*a)
         raise MathError("Unknown function: " + name)
 

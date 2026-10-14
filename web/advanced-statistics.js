@@ -127,6 +127,11 @@ export function guidedStatisticsCommand(definition,rows,settings={},columnLabels
   }
   if(id==='icc')return `icc(${table(complete(multiple('columns')))},${opts.model},${opts.unit},${opts.level})`;
   if(id==='blandaltman')return `blandaltman(${table(complete([column('first'),column('second')]))},${opts.level},${opts.mode})`;
+  if(['spearman','kendall'].includes(id)){
+    if(column('first')===column('second'))throw new Error('Choose distinct analysis columns');
+    const pairs=complete([column('first'),column('second')]);
+    return `${id}(${list(pairs.map(row=>row[0]))},${list(pairs.map(row=>row[1]))},${opts.tail})`;
+  }
   if(id==='tost')return `tost(${list(values(column('column')))},${opts.lower},${opts.upper},${opts.reference},${opts.alpha})`;
   if(['tost2','tostpaired'].includes(id)){
     const plan=statisticsComparisonData(rows,opts,{paired:id==='tostpaired',strict:true});

@@ -121,6 +121,11 @@ internal fun guidedStatisticsCommand(definition:JSONObject,rows:List<List<String
         }
         "icc"->"icc(${table(complete(multiple("columns")))},${opts["model"]},${opts["unit"]},${opts["level"]})"
         "blandaltman"->"blandaltman(${table(complete(listOf(col("first"),col("second"))))},${opts["level"]},${opts["mode"]})"
+        "spearman","kendall"->{
+            require(col("first")!=col("second")) {"Choose distinct analysis columns"}
+            val pairs=complete(listOf(col("first"),col("second")))
+            "$id(${vector(pairs.map {it[0]})},${vector(pairs.map {it[1]})},${opts["tail"]})"
+        }
         "tost"->"tost(${vector(values(col("column")))},${opts["lower"]},${opts["upper"]},${opts["reference"]},${opts["alpha"]})"
         "tost2","tostpaired"->{
             val plan=statisticsComparisonData(rows,opts,paired=id=="tostpaired",strict=true)
