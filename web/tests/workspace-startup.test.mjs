@@ -71,6 +71,124 @@ test('calculator, graph and equation production inputs convert pasted LaTeX imme
   assert.deepEqual(errors,[]);
 });
 
+function graphFixture(context,{source='a*x',execute,saved={},displayDigits=3}={}){
+  const {window,errors}=fixture(context),get=id=>window.document.getElementById(id);
+  // Exercise the real DOM and controllers; drawing pixels is outside this DOM test.
+  window.HTMLCanvasElement.prototype.getContext=()=>null;
+  get('graph-source').value=source;
+  const requests=[];
+  const graphs=createGraphWorkspace({
+    execute:async request=>{requests.push(request);return execute?execute(request):{ok:true,parameters:['a'],curves:[[[-1,-1],[0,0],[1,1]]]};},
+    options:()=>({displayDigits,angle:'RAD'}),onError:message=>errors.push(message),persist:()=>{},isBusy:()=>false,saved,
+  });
+  context.after(()=>graphs.dispose());
+  return {window,get,graphs,requests,errors};
+}
+
+test('graph parameter edits keep full precision and Undo restores maps used by the controls',async context=>{
+  const {window,get,graphs,errors}=graphFixture(context);
+  await graphs.run();
+  const parameter=()=>window.document.querySelector('[data-parameter-value="a"]');
+  parameter().value='7.123456789';parameter().onchange();
+  assert.equal(graphs.snapshot().parameters.a,7.123456789);
+  get('graph-source').value='x';get('graph-source').oninput();
+  parameter().value='9';parameter().onchange();
+  get('graph-undo').onclick();
+  assert.equal(get('graph-source').value,'a*x');
+  assert.equal(graphs.snapshot().parameters.a,7.123456789);
+  parameter().value='11';parameter().onchange();
+  assert.equal(graphs.snapshot().parameters.a,11);
+  const toggle=window.document.querySelector('[data-animate-parameter="a"]');
+  toggle.checked=false;toggle.onchange();
+  assert.equal(graphs.snapshot().animationEnabled.a,false);
+  assert.deepEqual(errors,[]);
+});
+
+test('graph paired sliders preserve restored precision and prevent crossing',context=>{
+  const {get,graphs,errors}=graphFixture(context,{saved:{ranges:{'graph-min':-1.23456789,'graph-max':2.34567891}}});
+  assert.equal(graphs.snapshot().ranges['graph-min'],-1.23456789);
+  get('graph-min').onfocus();assert.equal(get('graph-min').value,'-1.23456789');
+  get('graph-min').onblur();assert.equal(graphs.snapshot().ranges['graph-min'],-1.23456789);
+  const slider=get('graph-min-slider');slider.value=slider.max;slider.oninput();
+  const ranges=graphs.snapshot().ranges;
+  assert.ok(ranges['graph-min']<ranges['graph-max']);
+  get('graph-analysis-visible-range').onclick();
+  assert.equal(graphs.snapshot().ranges['graph-analysis-a'],ranges['graph-min']);
+  assert.equal(graphs.snapshot().ranges['graph-analysis-b'],ranges['graph-max']);
+  assert.deepEqual(errors,[]);
+});
+
+test('graph formula selections analyze first and second derivatives of the same source',async context=>{
+  const {window,get,graphs,requests,errors}=graphFixture(context,{source:'x^2',execute:async request=>request.action==='graphAnalysis'?
+    {ok:true,analysis:request.analysis,points:[[0,0]],count:1}:
+    {ok:true,parameters:[],curves:[[[0,0],[1,1]],[[0,0],[1,2]],[[0,2],[1,2]]],
+      derivativeSelected:0,derivativeCurveIndex:1,derivativeExpression:'2*x',secondDerivativeSelected:0,secondDerivativeCurveIndex:2,secondDerivativeExpression:'2'}});
+  get('graph-derivative').checked=true;get('graph-derivative').onchange();
+  get('graph-second-derivative').checked=true;get('graph-second-derivative').onchange();
+  await graphs.run();
+  const first=window.document.querySelector('.graph-formula-select[aria-label="f1′"]');
+  first.onclick();
+  assert.equal(window.document.querySelector('.graph-formula-select[aria-label="f1′"]').getAttribute('aria-pressed'),'true');
+  get('graph-other').value='-2';get('graph-other').onchange();
+  get('graph-analysis-action').value='intersection';get('graph-analysis-action').onchange();
+  await get('graph-analysis-run').onclick();
+  const request=requests.at(-1);
+  assert.equal(request.action,'graphAnalysis');
+  assert.deepEqual([request.selected,request.selectedDerivativeOrder,request.other,request.otherDerivativeOrder],[0,1,0,2]);
+  assert.ok(get('graph-analysis-result').querySelector('.analysis-point'));
+  get('graph-analysis-clear').onclick();assert.equal(get('graph-analysis-result').children.length,0);
+  assert.deepEqual(errors,[]);
+});
+
+test('graph discards an analysis response after its source changes',async context=>{
+  let complete;
+  const {get,graphs,errors}=graphFixture(context,{source:'x',execute:request=>request.action==='graphAnalysis'?
+    new Promise(resolve=>{complete=resolve;}):{ok:true,parameters:[],curves:[[[-1,-1],[0,0],[1,1]]]}});
+  await graphs.run();
+  const analysis=get('graph-analysis-run').onclick();
+  get('graph-source').value='x+1';get('graph-source').oninput();
+  complete({ok:true,analysis:'root',points:[[0,0]],count:1});
+  await analysis;
+  assert.equal(get('graph-analysis-result').children.length,0);
+  assert.equal(graphs.snapshot().sources.cartesian,'x+1');
+  assert.deepEqual(errors,[]);
+});
+
+test('graph ignores an obsolete sampling response and runs the current source',async context=>{
+  let complete,calls=0;
+  const {get,graphs,requests,errors}=graphFixture(context,{source:'x',execute:()=>++calls===1?
+    new Promise(resolve=>{complete=resolve;}):{ok:true,parameters:[],curves:[[[-1,0],[0,1],[1,2]]]}});
+  const previous=graphs.run();
+  get('graph-source').value='x+1';get('graph-source').oninput();
+  complete({ok:false,error:'Obsolete request'});
+  await previous;
+  assert.deepEqual(errors,[]);
+  await graphs.run();
+  assert.equal(requests.length,2);
+  assert.equal(requests.at(-1).trees[0].value,'+');
+  assert.equal(get('graph-table').querySelectorAll('tbody tr').length,3);
+  assert.deepEqual(errors,[]);
+});
+
+test('graph animation updates enabled parameters and disposal cancels scheduled frames',async context=>{
+  const {window,get,graphs,requests,errors}=graphFixture(context);
+  const frames=new Map();let frameId=0;
+  window.requestAnimationFrame=callback=>{frames.set(++frameId,callback);return frameId;};
+  window.cancelAnimationFrame=id=>frames.delete(id);
+  await graphs.run();
+  get('graph-animate').onclick();
+  assert.equal(get('graph-animate').getAttribute('aria-pressed'),'true');
+  const [id,callback]=frames.entries().next().value;frames.delete(id);callback(0);
+  await Promise.resolve();await Promise.resolve();
+  assert.ok(requests.length>1);
+  assert.equal(requests.at(-1).samples,200);
+  assert.equal(graphs.snapshot().parameters.a,1);
+  graphs.dispose();
+  assert.equal(frames.size,0);
+  assert.equal(get('graph-animate').getAttribute('aria-pressed'),'false');
+  assert.deepEqual(errors,[]);
+});
+
 test('raincloud menu restores grouping and orientation, redraws and persists orientation changes',context=>{
   const {window,state,workspaces,errors}=fixture(context,{fields:{mode:'statistics','statistics-kind':'xy','statistics-data':'group,value\nA,1\nA,2\nB,3','statistics-plot-type':'raincloud','statistics-plot-grouping':'first','statistics-plot-orientation':'vertical'}},{ready:false},true);
   const get=id=>window.document.getElementById(id);

@@ -7,11 +7,12 @@ import {advancedStatisticsSchema as schema} from '../advanced-statistics-schema.
 import {guidedStatisticsCommand} from '../advanced-statistics.js';
 import {statisticsRequest} from '../statistics-request.js';
 
-test('Correlation catalog and menu contain all three analyses with working paired forms',()=>{
+test('General statistics catalog and Correlation menu contain all three analyses with working paired forms',()=>{
   const ids=['pearson','spearman','kendall'];
   const catalog=JSON.parse(readFileSync(new URL('../catalog.json',import.meta.url),'utf8'));
-  assert.deepEqual(catalog.Correlation,ids.map(id=>`${id}([],[],both)`));
-  assert.ok(!('Rank correlation' in catalog));
+  const templates=ids.map(id=>`${id}([],[],both)`);
+  assert.deepEqual(catalog['General statistics'].filter(source=>ids.includes(source.split('(')[0])),templates);
+  for(const template of templates)assert.equal(Object.values(catalog).flat().filter(source=>source===template).length,1);
   assert.deepEqual(schema.filter(item=>item.group==='Correlation').map(item=>item.id),ids);
   for(const id of ids){
     const definition=schema.find(item=>item.id===id);

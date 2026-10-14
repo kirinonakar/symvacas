@@ -8,10 +8,11 @@ import org.json.JSONObject
 import java.io.File
 
 class StatisticsResearchTest {
-    @Test fun correlationCatalogAndMenuShareAllThreeWorkingTemplates() {
+    @Test fun generalStatisticsCatalogAndCorrelationMenuShareAllThreeWorkingTemplates() {
         val ids=listOf("pearson","spearman","kendall")
-        assertEquals(ids.map {"$it([],[],both)"},Catalog["Correlation"])
-        assertTrue("Rank correlation" !in Catalog)
+        val templates=ids.map {"$it([],[],both)"}
+        assertEquals(templates,Catalog.getValue("General statistics").filter {it.substringBefore("(") in ids})
+        for(template in templates)assertEquals(1,Catalog.values.flatten().count {it==template})
         for(id in ids) {
             val d=definition(id)
             assertEquals("Correlation",d.getString("group"))
