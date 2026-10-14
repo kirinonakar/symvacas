@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {graphSamplingInterval,graphPreviewRequest,graphSamplingIdentity} from '../graph-sampling.js';
+import {createGraphComputation} from '../graph-computation.js';
 
 function clock(){
   let now=0,id=0;const timers=new Map();
@@ -43,4 +44,42 @@ test('sampling identity rejects changed expressions, derivatives, parameters and
     const preview=graphPreviewRequest(other);
     assert.deepEqual([preview.min,preview.max],[0,10]);
   }
+});
+
+test('animation requests run in the background and stopping rejects an old frame before precise refinement',async()=>{
+  const state={animation:{},active:false,running:false,pending:false,viewDragging:false,revision:0,analysisRevision:0,parameters:{a:1},derivative:null,secondDerivative:null};
+  const fields={'graph-source':'a*sin(x)','graph-status':'','graph-min':-10,'graph-max':10};
+  const requests=[];let complete,draws=0,renders=0;
+  const noop=()=>{};
+  const computation=createGraphComputation({
+    $:id=>({get textContent(){return fields[id];},set textContent(value){fields[id]=value;}}),
+    state,surface:{},kind:()=> 'cartesian',value:id=>fields[id]??'',numeric:id=>Number(fields[id]??0),
+    expressions:()=>[fields['graph-source']],sourceDrafts:{cartesian:fields['graph-source']},
+    currentBounds:()=>({xmin:-10,xmax:10,ymin:-5,ymax:5}),options:()=>({}),
+    execute:(request,options)=>{requests.push({request,options});return new Promise(resolve=>{complete=resolve;});},
+    isBusy:()=>false,isReady:()=>true,onError:message=>assert.fail(message),
+    clearPlot:noop,parameterControls:noop,selections:noop,persist:noop,densityControls:noop,
+    queueDraw:()=>draws++,render:()=>renders++,viewSampler:{schedule:noop}
+  });
+  let running=computation.run();
+  assert.equal(requests[0].options.background,true);
+  assert.equal(requests[0].request.samples,200);
+  const first={ok:true,curves:[[[0,0]]],parameters:['a']};
+  complete(first);await running;
+  assert.equal(state.result,first);assert.equal(draws,1);assert.equal(renders,0);
+
+  running=computation.run();
+  state.parameters.a=2;state.animation=null;state.pending=true;
+  complete({ok:true,curves:[[[0,99]]],parameters:['a']});await running;
+  assert.equal(state.result,first,'a pre-stop parameter frame cannot overwrite the final state');
+  assert.equal(state.pending,true);
+  assert.equal(draws,1);
+
+  running=computation.run();
+  assert.equal(requests[2].options.background,false);
+  assert.equal(requests[2].request.samples,500);
+  assert.deepEqual(requests[2].request.parameters,{a:2});
+  const final={ok:true,curves:[[[0,0]]],parameters:['a']};
+  complete(final);await running;
+  assert.equal(state.result,final);assert.equal(renders,1);assert.equal(state.pending,false);
 });

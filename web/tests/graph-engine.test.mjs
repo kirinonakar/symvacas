@@ -31,6 +31,29 @@ test('packaged graph modules execute every graph kind in the production WASM wor
   const cartesian=await graph('cartesian','a*x',{parameters:{a:2},derivativeSelected:0});
   assert.equal(cartesian.derivativeCurveIndex,1);
   for(const [x,y] of cartesian.curves[0])assert.ok(Math.abs(y-2*x)<1e-12);
+  for(const [a,b] of [[1,0],[-3,.7],[0,1],[6,2]]){
+    const animated=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',
+      trees:['a \\cdot \\sin\\left(x+b\\right)','a \\cdot \\cos\\left(x+b\\right) > y'].map(source=>graphInputTree(source)),
+      parameters:{a,b},min:-10,max:10,yMin:-5,yMax:5,samples:200});
+    assert.deepEqual(animated.parameters,['a','b']);
+    const shade=animated.shadings[0];
+    assert.deepEqual(shade.boundaryStyles,['dashed']);
+    assert.ok(shade.fill.length<=5);
+    assert.ok(JSON.stringify(animated).length<60000);
+    for(const [x,y] of animated.curves[0].filter(Boolean))assert.ok(Math.abs(y-a*Math.sin(x+b))<1e-10);
+    for(const [x,y] of shade.boundary[0].filter(Boolean))assert.ok(Math.abs(y-a*Math.cos(x+b))<1e-8);
+    for(const polygon of shade.fill)for(const [x,y] of polygon){assert.ok(y<=a*Math.cos(x+b)+1e-8);assert.ok(y>=-5&&y<=5);}
+    const band=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',
+      trees:[graphInputTree('a \\cdot \\sin\\left(x+b\\right) < y < a \\cdot \\cos\\left(x+b\\right)')],
+      parameters:{a,b},min:-10,max:10,yMin:-5,yMax:5,samples:200});
+    assert.deepEqual(band.shadings[0].boundaryStyles,['dashed','dashed']);
+    assert.ok(band.shadings[0].fill.length<=5);
+    if(a===0){assert.deepEqual(band.shadings[0].fill,[]);assert.deepEqual(band.shadings[0].boundary,[[],[]]);}
+    for(const polygon of band.shadings[0].fill)for(const [x,y] of polygon){
+      assert.ok(y>=a*Math.sin(x+b)-1e-8&&y<=a*Math.cos(x+b)+1e-8);
+      assert.ok(y>=-5&&y<=5);
+    }
+  }
   const implicit=await graph('implicit','x^2+y^2=1');
   const contour=implicit.curves[0].filter(Boolean);
   assert.ok(contour.length>20);

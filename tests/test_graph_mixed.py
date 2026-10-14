@@ -24,6 +24,114 @@ class MixedGraphTests(unittest.TestCase):
             "min":-4,"max":4,"yMin":-4,"yMax":4,"samples":500,"angle":"RAD",**options})))
         self.assertTrue(result["ok"],result)
         return result
+    def test_animated_sine_and_cosine_halfplane_keep_exact_boundary_and_small_fill(self):
+        phase=op("+",x,sym("b"))
+        sine=op("*",sym("a"),call("sin",phase))
+        cosine=op("*",sym("a"),call("cos",phase))
+        from calc_graph_common import _compiled_graph
+        for a,b in ((1,0),(3,.7),(-3,1.2),(0,2)):
+            result=self.run_graph(sine,rel(">",cosine,y),parameters={"a":a,"b":b},samples=200,min=-10,max=10,yMin=-5,yMax=5)
+            self.assertEqual(["a","b"],result["parameters"])
+            shade=result["shadings"][0]
+            self.assertEqual(["dashed"],shade["boundaryStyles"])
+            self.assertEqual(1,len(shade["fill"]))
+            self.assertLess(len(json.dumps(result)),60000)
+            for px,py in filter(None,result["curves"][0]):self.assertAlmostEqual(a*math.sin(px+b),py,delta=1e-10)
+            for px,py in filter(None,shade["boundary"][0]):self.assertAlmostEqual(a*math.cos(px+b),py,delta=1e-10)
+            for left,right in zip(shade["boundary"][0],shade["boundary"][0][1:]):
+                if left is None or right is None: continue
+                for fraction in (.25,.5,.75):
+                    at=left[0]+(right[0]-left[0])*fraction
+                    line=left[1]+(right[1]-left[1])*fraction
+                    self.assertLessEqual(abs(line-a*math.cos(at+b))*800/10,.6)
+            for polygon in shade["fill"]:
+                for px,py in polygon:self.assertLessEqual(py,a*math.cos(px+b)+1e-9)
+            if a==1: misses=_compiled_graph.cache_info().misses
+        self.assertEqual(misses,_compiled_graph.cache_info().misses)
+
+    def test_explicit_halfplane_clips_viewport_and_reverses_parameter_coefficient(self):
+        for a in (-2,2,0):
+            result=self.run_graph(rel("<=",op("*",sym("a"),y),x2),parameters={"a":a},samples=200)
+            for polygon in result["shadings"][0]["fill"]:
+                for px,py in polygon:
+                    self.assertTrue(-4<=px<=4 and -4<=py<=4)
+                    self.assertLessEqual(a*py-px*px,1e-8)
+        # The boundary lies entirely above or below the viewport.
+        for boundary,operator,full in ((10,"<",True),(-10,"<",False),(10,">",False),(-10,">",True)):
+            shade=self.run_graph(rel(operator,y,num(boundary)))["shadings"][0]
+            self.assertEqual([[]],shade["boundary"])
+            area=sum(abs(sum(p[0]*q[1]-q[0]*p[1] for p,q in zip(poly,poly[1:]+poly[:1])))/2 for poly in shade["fill"])
+            self.assertAlmostEqual(64 if full else 0,area)
+
+    def test_explicit_log_halfplane_keeps_full_regions_below_nonpositive_boundary(self):
+        for operator,full in ((">",True),("<",False)):
+            shade=self.run_graph(rel(operator,y,num(-1)),yLog=True,yMin=.01,yMax=100)["shadings"][0]
+            self.assertEqual([[]],shade["boundary"])
+            self.assertEqual(full,bool(shade["fill"]))
+            for poly in shade["fill"]:
+                for px,py in poly:self.assertTrue(.01<=py<=100)
+        shade=self.run_graph(rel(">",y,call("sin",x)),yLog=True,yMin=.01,yMax=10,samples=200)["shadings"][0]
+        for poly in shade["fill"]:
+            for px,py in poly:self.assertGreaterEqual(py-math.sin(px),-1e-8)
+        for px,py in filter(None,shade["boundary"][0]):self.assertAlmostEqual(py,math.sin(px),delta=1e-8)
+
+    def test_explicit_halfplane_excludes_domain_cuts_and_variable_y_coefficients(self):
+        import sympy as s
+        from calc_graph_shading import _explicit_inequality
+        sx,sy=s.symbols("x y",real=True)
+        for expression in (sy-1/sx,sy-s.tan(sx),sy-s.sqrt(sx),sx*sy-1,sy-s.Piecewise((0,sx<0),(1,True)),sy**2-sx):
+            self.assertIsNone(_explicit_inequality(expression,sx,sy))
+
+    def test_animated_chained_sine_cosine_band_preserves_empty_regions_and_area(self):
+        phase=op("+",x,sym("b"))
+        sine=op("*",sym("a"),call("sin",phase))
+        cosine=op("*",sym("a"),call("cos",phase))
+        for a,b in ((1,0),(3,.7),(-3,1.2),(0,2),(6,2)):
+            shade=self.run_graph(rel("<",rel("<",sine,y),cosine),parameters={"a":a,"b":b},
+                min=-10,max=10,yMin=-5,yMax=5,samples=200)["shadings"][0]
+            self.assertEqual(["dashed","dashed"],shade["boundaryStyles"])
+            self.assertLessEqual(len(shade["fill"]),5)
+            if a==0:
+                self.assertEqual([],shade["fill"]);self.assertEqual([[],[]],shade["boundary"])
+            for index,line in enumerate(shade["boundary"]):
+                for px,py in filter(None,line):
+                    self.assertAlmostEqual(a*(math.sin(px+b) if index==0 else math.cos(px+b)),py,delta=1e-8)
+                    self.assertLessEqual(a*math.sin(px+b),py+1e-8)
+                    self.assertLessEqual(py,a*math.cos(px+b)+1e-8)
+                for left,right in zip(line,line[1:]):
+                    if left is None or right is None: continue
+                    for fraction in (.25,.5,.75):
+                        at=left[0]+(right[0]-left[0])*fraction
+                        interpolated=left[1]+(right[1]-left[1])*fraction
+                        expected=a*(math.sin(at+b) if index==0 else math.cos(at+b))
+                        self.assertLessEqual(abs(interpolated-expected)*800/10,.6)
+            area=0
+            for polygon in shade["fill"]:
+                area+=abs(sum(p[0]*q[1]-q[0]*p[1] for p,q in zip(polygon,polygon[1:]+polygon[:1])))/2
+                for px,py in polygon:
+                    self.assertTrue(-10<=px<=10 and -5<=py<=5)
+                    self.assertLessEqual(a*math.sin(px+b),py+1e-8)
+                    self.assertLessEqual(py,a*math.cos(px+b)+1e-8)
+                # The top and bottom chains share x positions; their midpoint
+                # belongs to one connected band, never to an empty gap.
+                top=polygon[:len(polygon)//2];bottom=list(reversed(polygon[len(polygon)//2:]))
+                for upper,lower in zip(top,bottom):
+                    self.assertEqual(upper[0],lower[0]);self.assertGreaterEqual(upper[1],lower[1])
+            expected=sum(max(0,min(5,a*math.cos(-10+20*(i+.5)/20000+b))-max(-5,a*math.sin(-10+20*(i+.5)/20000+b))) for i in range(20000))*20/20000
+            self.assertAlmostEqual(expected,area,delta=.08)
+
+    def test_explicit_band_coincident_strictness_and_log_clipping(self):
+        # An inclusive copy must not paint over a strict boundary.
+        shade=self.run_graph(rel(">=",rel("<",y,num(1)),y))["shadings"][0]
+        self.assertEqual(["dashed","solid"],shade["boundaryStyles"])
+        self.assertEqual([],shade["boundary"][1])
+        for source in (rel("<",rel("<",num(1),y),num(0)),rel("<",rel("<",num(0),y),num(0))):
+            shade=self.run_graph(source)["shadings"][0]
+            self.assertEqual([],shade["fill"]);self.assertFalse(any(any(line) for line in shade["boundary"]))
+        shade=self.run_graph(rel("<",rel("<=",num(-1),y),call("sin",x)),yLog=True,yMin=.01,yMax=10,samples=200)["shadings"][0]
+        for polygon in shade["fill"]:
+            for px,py in polygon:
+                self.assertTrue(.01<=py<=10);self.assertLessEqual(py,math.sin(px)+1e-8)
     def test_requested_four_rows_keep_source_indices_coordinates_and_parameters(self):
         result=self.run_graph(rel("=",y,x2),rel("=",circle,num(9)),rose,pair,derivativeSelected=0,
                               variables={"theta":num(99),"t":num(99)})

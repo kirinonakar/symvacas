@@ -65,7 +65,7 @@ export function createGraphComputation({
       if(!value('graph-source').trim()){clearPlot();parameterControls([],true);selections();render();persist();return;}
       const preview=state.viewDragging&&['cartesian','implicit','differential'].includes(kind()),baseRequest=makeRequest(),request=preview?graphPreviewRequest(baseRequest):baseRequest,identity=graphSamplingIdentity(baseRequest),token=++state.revision,source=value('graph-source'),graphKind=kind();
       const nextSignature=JSON.stringify([source,graphKind,state.parameters,state.derivative,state.secondDerivative]);if(nextSignature!==state.signature){state.analysis=null;state.trace=null;state.integral=null;state.analysisRevision++;state.signature=nextSignature;}
-      const response=await execute(request,{background:preview});if(token!==state.revision||source!==value('graph-source')||graphKind!==kind()||!state.animation&&identity!==graphSamplingIdentity(makeRequest()))return;
+      const response=await execute(request,{background:preview||!!state.animation});if(token!==state.revision||source!==value('graph-source')||graphKind!==kind()||!state.animation&&identity!==graphSamplingIdentity(makeRequest()))return;
       if(!response.ok){onError(response.error);return;}
       state.result=response;state.bounds=currentBounds();$('graph-status').textContent='';parameterControls(response.parameters);
       if(state.animation||state.viewDragging)queueDraw();else{selections();render();persist();}

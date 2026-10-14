@@ -44,7 +44,7 @@ def planar_tree_spec(tree):
 def inequality_parts(engine, tree):
     # Chained relations are nested AST nodes, not boolean-valued operands.
     if tree.get("kind") != "relation":
-        return engine.build(tree), []
+        return graph_expressions(engine, [tree], ("x", "y"))[0], []
     left, before = inequality_parts(engine, tree["args"][0])
     right, after = inequality_parts(engine, tree["args"][1])
     op = tree["value"]

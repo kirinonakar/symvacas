@@ -488,6 +488,7 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
     internal var job: Job? = null
     internal var graphJob: Job? = null
     internal var graphRequestSignature: String? = null
+    internal val graphSourceCache = GraphSourceCache()
     internal var graphPendingPlot: (() -> Unit)? = null
     internal var analysisJob: Job? = null
     internal var regressionJob: Job? = null

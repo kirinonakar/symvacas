@@ -66,7 +66,7 @@ import kotlin.math.*
         }
         scrollToSection=null
     }
-    val parameterSignature=m.graphParameters.entries.joinToString(","){"${it.key}=${it.value.value}"}
+    val parameterSignature=if(m.graphAnimating)"animation" else m.graphParameters.entries.joinToString(","){"${it.key}=${it.value.value}"}
     LaunchedEffect(m.graphSource,m.graphDerivativeSelected,m.graphSecondDerivativeSelected,m.xMin,m.xMax,m.yMin,m.yMax,m.yLog,m.zMin,m.zMax,m.graphKind,m.parameterMin,m.parameterMax,m.thetaMin,m.thetaMax,m.sequenceInitials,m.differentialInitials,m.differentialT0,if(m.graphAnimating)"animation" else parameterSignature,m.surfaceSamples,m.surfaceAutoDensity,if(m.graphKind=="surface" && m.surfaceAutoDensity)m.surfaceZoom else 1f,viewportDragging) { if(!m.graphAnimating && !viewportDragging){delay(350);m.plot(auto=true)} }
     LaunchedEffect(viewportDragging) {
         if(viewportDragging) {

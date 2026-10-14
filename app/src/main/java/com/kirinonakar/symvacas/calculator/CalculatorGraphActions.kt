@@ -98,31 +98,21 @@ internal object CalculatorGraphActions {
         continuation.invokeOnCancellation {Handler(Looper.getMainLooper()).post {clock.removeFrameCallback(callback)}}
     }
     fun CalculatorModel.performPlot(auto: Boolean = false, preview: Boolean = false) {
-        val limit=graphCurveLimit(graphKind)
         // Coalesce animation ticks before reparsing or allocating another request.
         if((graphAnimating || preview) && graphJob?.isActive==true) {graphPendingPlot={performPlot(auto,preview)};return}
-        val trees=mutableListOf<JSONObject>()
-        val shadings=JSONArray()
-        try {
-            graphSource.lines().filter { it.isNotBlank() }.take(graphSourceLimit(graphKind)).forEach { raw->
-                val line=raw.trim()
-                if(isGraphShading(line)) {
-                    if(graphKind!="cartesian")throw SyntaxException("Shading is available on Cartesian graphs",0)
-                    if(shadings.length()<4)shadings.put(graphShadeEntry(graphShadingBody(line),removeComputationLimit))
-                    return@forEach
-                }
-                if(trees.size<limit) trees+=JSONObject(graphInputTree(line,graphKind,removeComputationLimit).json())
-            }
-        } catch(e:Exception) { error=e.message ?: "Syntax ERROR"; return }
-        if(trees.isEmpty() && shadings.length()==0) { if(!auto)error="Enter a function"; return }
-        val derivativeSelected=graphDerivativeSelected?.takeIf {graphKind=="cartesian" && it in trees.indices}
-        val secondDerivativeSelected=graphSecondDerivativeSelected?.takeIf {graphKind=="cartesian" && it in trees.indices}
+        val program=try {graphSourceCache.get(graphSource,graphKind,removeComputationLimit)}
+            catch(e:Exception) {error=e.message ?: "Syntax ERROR";return}
+        val trees=program.trees;val shadings=program.shadings
+        if(trees.length()==0 && shadings.length()==0) { if(!auto)error="Enter a function"; return }
+        val derivativeSelected=graphDerivativeSelected?.takeIf {graphKind=="cartesian" && it in 0 until trees.length()}
+        val secondDerivativeSelected=graphSecondDerivativeSelected?.takeIf {graphKind=="cartesian" && it in 0 until trees.length()}
         val source=graphSource;val kind=graphKind;val min=if(kind in listOf("cartesian","implicit","surface"))xMin else if(kind=="polar")thetaMin else parameterMin;val max=if(kind in listOf("cartesian","implicit","surface"))xMax else if(kind=="polar")thetaMax else parameterMax
         val paramMin=parameterMin;val paramMax=parameterMax;val polarMin=thetaMin;val polarMax=thetaMax
         val viewYMin=yMin;val viewYMax=yMax;val logY=yLog&&kind !in listOf("surface","space");val parameters=graphState.parameterPayload()
         val initials=sequenceInitials;val differentialSeeds=differentialInitials;val initialTime=differentialT0
-        val environment=request("graph").put("angle","RAD").toString()
-        val request=request("graph").put("angle","RAD").put("trees",JSONArray(trees)).put("graphKind",kind)
+        val baseRequest=request("graph").put("angle","RAD")
+        val environment=baseRequest.toString()
+        val request=baseRequest.put("trees",trees).put("graphKind",kind)
             .put("variable",when(kind){"cartesian","implicit","surface"->"x";"sequence"->"n";else->"t"})
             .put("min",min).put("max",max).put("samples",if(graphAnimating || preview)200 else 500).put("xMin",xMin).put("xMax",xMax).put("yMin",viewYMin).put("yMax",viewYMax)
             .put("yLog",logY).put("parameters",parameters).put("parameterMin",paramMin).put("parameterMax",paramMax).put("thetaMin",polarMin).put("thetaMax",polarMax)
