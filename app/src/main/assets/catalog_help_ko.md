@@ -253,10 +253,28 @@ Example: nsolve(cos(x)-x,x,0,1)
 Example: nintegrate(sin(x),x,0,pi)
 `nderivative(expr,x,a)` — x=a에서 수치 미분합니다.
 Example: nderivative(sin(x),x,0)
-`minimum(expr,x,a,b)` — [a,b] 구간에서 expr의 최솟값을 구합니다.
+`minimum(expr,x,a,b[,mode])` — [a,b]에서 실제로 도달하는 최솟값을 구합니다. 꺾이는 점·정의역 경계·분모의 영점과 한쪽 극한을 검사합니다. mode: closed(기본), open, leftopen, rightopen. 각각 [a,b], (a,b), (a,b], [a,b)입니다. 경계값에 접근만 하거나 해당 방향으로 무한히 커지는 경우 최솟값은 없습니다.
 Example: minimum(x^2,x,-1,2)
-`maximum(expr,x,a,b)` — [a,b] 구간에서 expr의 최댓값을 구합니다.
+`minimum(abs(x),x,-2,2)` — 미분 불가능한 x=0에서도 최솟값 0에 도달합니다.
+Example: minimum(abs(x),x,-2,2) → 0
+`minimum(x,x,0,1,closed)` — 닫힌 구간 [0,1]은 x=0을 포함하므로 최솟값은 0입니다.
+Example: minimum(x,x,0,1,closed) → 0
+`minimum(x,x,0,1,open)` — 열린 구간 (0,1)의 하한은 0이지만 도달하지 못하므로 최솟값은 없습니다. leftopen도 같습니다.
+Example: minimum(x,x,0,1,open) → 최솟값 없음
+`minimum(sqrt(x),x,-2,2)` — 실수 정의역은 [0,2]이며 정의역 경계 x=0에서 최솟값 0에 도달합니다.
+Example: minimum(sqrt(x),x,-2,2) → 0
+`minimum(1/x^2,x,-2,2)` — x=0은 제외됩니다. 최솟값 1/4은 x=-2와 x=2에서 도달합니다.
+Example: minimum(1/x^2,x,-2,2) → 1/4
+`minimum(x^2*(x/x),x,-2,2)` — 약분해도 원래 식의 x=0은 제외됩니다. 하한 0에 도달하지 못합니다.
+Example: minimum(x^2*(x/x),x,-2,2) → 최솟값 없음
+`maximum(expr,x,a,b[,mode])` — [a,b]에서 실제로 도달하는 최댓값을 구합니다. 꺾이는 점·정의역 경계·분모의 영점과 한쪽 극한을 검사합니다. mode: closed(기본), open, leftopen, rightopen. 각각 [a,b], (a,b), (a,b], [a,b)입니다. 경계값에 접근만 하거나 해당 방향으로 무한히 커지는 경우 최댓값은 없습니다.
 Example: maximum(x^2,x,-1,2)
+`maximum(abs(x),x,-2,2)` — 닫힌 구간의 양 끝 x=-2와 x=2에서 최댓값 2에 도달합니다.
+Example: maximum(abs(x),x,-2,2) → 2
+`maximum(abs(x),x,-2,2,open)` — 열린 구간에서는 상한 2에 도달하지 못하므로 최댓값은 없습니다.
+Example: maximum(abs(x),x,-2,2,open) → 최댓값 없음
+`maximum(1/x^2,x,-2,2)` — x=0으로 접근할 때 위로 무한히 커지므로 최댓값은 없습니다.
+Example: maximum(1/x^2,x,-2,2) → 최댓값 없음
 `piecewise([expr,cond],...)` — 조건별로 값이 다른 조각별 함수를 만듭니다.
 Example: piecewise([1,x>0],[0,true])
 
@@ -295,8 +313,8 @@ Example: quo(x^3-1,x-1,x)
 Example: rem(x^3-1,x-1,x)
 `resultant(a,b,x)` — x에 대한 두 다항식의 종결식을 구합니다.
 Example: resultant(x^2-1,x-2,x)
-`discriminant(poly,x)` — 판별분석 (LDA/QDA). x에 대한 다항식의 판별식을 구합니다.
-Example: discriminant(x^2-4x+3,x)
+`discriminant(poly,x)` — 다항식의 판별식. x에 대한 다항식의 판별식을 구합니다.
+Example: discriminant(x^2-4x+3,x) → 4
 `domain(expr,x)` — x에 대한 수식의 실수 정의역을 구합니다.
 Example: domain(1/(x-1),x)
 `range(expr,x)` — 정의역에서 수식의 치역을 구합니다.

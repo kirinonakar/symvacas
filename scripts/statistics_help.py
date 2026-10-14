@@ -233,6 +233,9 @@ def enrich_help(text, korean=False):
     def entry(match):
         signature,description=match.group(1),match.group(2)
         name=signature.split('(')[0]
+        if name=='discriminant':
+            description=('다항식의 판별식. x에 대한 다항식의 판별식을 구합니다.' if korean else 'Polynomial discriminant. Computes the discriminant of a polynomial in x.')
+            return '`'+signature+'` — '+description
         if name not in USES: return match.group(0)
         usage=USES[name][index]
         if usage not in description: description=usage+' '+description

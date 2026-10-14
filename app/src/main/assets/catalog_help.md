@@ -253,10 +253,28 @@ Example: nsolve(cos(x)-x,x,0,1)
 Example: nintegrate(sin(x),x,0,pi)
 `nderivative(expr,x,a)` — Numeric derivative evaluated at x = a.
 Example: nderivative(sin(x),x,0)
-`minimum(expr,x,a,b)` — Minimum value of expr on the interval [a,b].
+`minimum(expr,x,a,b[,mode])` — Attained minimum of expr on [a,b], checking cusps, domain boundaries, denominator zeroes and one-sided limits. Optional mode: closed (default), open, leftopen, rightopen for [a,b], (a,b), (a,b], [a,b). An unattained boundary bound or an unbounded direction has no minimum.
 Example: minimum(x^2,x,-1,2)
-`maximum(expr,x,a,b)` — Maximum value of expr on the interval [a,b].
+`minimum(abs(x),x,-2,2)` — The minimum 0 is attained at x=0 even though the derivative is undefined there.
+Example: minimum(abs(x),x,-2,2) → 0
+`minimum(x,x,0,1,closed)` — The closed interval [0,1] includes x=0, so the minimum is 0.
+Example: minimum(x,x,0,1,closed) → 0
+`minimum(x,x,0,1,open)` — On (0,1), the infimum is 0 but is not attained, so no minimum exists. The same applies to leftopen.
+Example: minimum(x,x,0,1,open) → no minimum
+`minimum(sqrt(x),x,-2,2)` — The real domain in this interval is [0,2]; the minimum 0 is attained at the domain boundary x=0.
+Example: minimum(sqrt(x),x,-2,2) → 0
+`minimum(1/x^2,x,-2,2)` — x=0 is excluded. The minimum 1/4 is attained at both x=-2 and x=2.
+Example: minimum(1/x^2,x,-2,2) → 1/4
+`minimum(x^2*(x/x),x,-2,2)` — Even after cancellation, x=0 remains excluded from the original expression. The infimum 0 is not attained.
+Example: minimum(x^2*(x/x),x,-2,2) → no minimum
+`maximum(expr,x,a,b[,mode])` — Attained maximum of expr on [a,b], checking cusps, domain boundaries, denominator zeroes and one-sided limits. Optional mode: closed (default), open, leftopen, rightopen for [a,b], (a,b), (a,b], [a,b). An unattained boundary bound or an unbounded direction has no maximum.
 Example: maximum(x^2,x,-1,2)
+`maximum(abs(x),x,-2,2)` — The maximum 2 is attained at both endpoints x=-2 and x=2.
+Example: maximum(abs(x),x,-2,2) → 2
+`maximum(abs(x),x,-2,2,open)` — On the open interval, the supremum 2 is not attained, so no maximum exists.
+Example: maximum(abs(x),x,-2,2,open) → no maximum
+`maximum(1/x^2,x,-2,2)` — The function is unbounded above as x approaches 0, so no maximum exists.
+Example: maximum(1/x^2,x,-2,2) → no maximum
 `piecewise([expr,cond],...)` — Piecewise-defined function.
 Example: piecewise([1,x>0],[0,true])
 
@@ -295,8 +313,8 @@ Example: quo(x^3-1,x-1,x)
 Example: rem(x^3-1,x-1,x)
 `resultant(a,b,x)` — Resultant of two polynomials in x.
 Example: resultant(x^2-1,x-2,x)
-`discriminant(poly,x)` — Discriminant analysis (LDA/QDA). Discriminant of a polynomial in x.
-Example: discriminant(x^2-4x+3,x)
+`discriminant(poly,x)` — Polynomial discriminant. Computes the discriminant of a polynomial in x.
+Example: discriminant(x^2-4x+3,x) → 4
 `domain(expr,x)` — Real domain of the expression in x.
 Example: domain(1/(x-1),x)
 `range(expr,x)` — Range of the expression over its domain.

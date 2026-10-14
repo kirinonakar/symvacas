@@ -20,6 +20,7 @@ from calc_finance import finance_value
 from calc_integrals import rational_trig_primitive, log_arctan_primitive
 from calc_solutions import affine_exponential_solutions
 from calc_number_theory import bounded_divisors
+from calc_extrema import extrema_candidates
 from calc_statistics_report import BASIC as BASIC_STATISTICS
 
 MAX_EXACT_DIGITS = 100000
@@ -313,7 +314,11 @@ class Engine:
                 if varnode["kind"] == "relation": candidates = [varnode["args"][0]]
                 if value in ("rsolve", "pdsolve") and varnode["kind"] == "call": candidates = varnode.get("args", [])
             for n in candidates:
-                if n["kind"] == "symbol": self.bindings[n["value"]] = self.symbol(n["value"])
+                if n["kind"] == "symbol":
+                    independent=self.symbol(n["value"])
+                    if value in ("minimum","maximum") and independent.is_real is not True:
+                        independent=s.Symbol(n["value"],real=True)
+                    self.bindings[n["value"]] = independent
         try:
             if value in ("impute", "cfa", "sem"):
                 # NA is a missing-data token inside these analyses; elsewhere it
@@ -345,13 +350,18 @@ class Engine:
             if value=='modelcompare' and value not in self.functions:
                 from calc_model_comparison import literal_options
                 values=[a['value'] if index in (2,3) and a.get('kind')=='symbol' else literal_options(self,a) if index==8 else build(a) for index,a in enumerate(args)]
+            elif value in ("minimum","maximum") and value not in self.functions:
+                values=[s.Symbol(a['value']) if index==4 and a.get('kind')=='symbol' else build(a) for index,a in enumerate(args)]
             else:values = [build(a) for a in args]
             if value=="subs" and len(values)==3:
                 updated=[condition.subs(values[1],values[2]) for condition in self.conditions[condition_start:]]
                 require(all(c!=s.false for c in updated),"Domain ERROR: substitution at an excluded value")
                 self.conditions[condition_start:]=[c for c in updated if c!=s.true]
                 return values[0].subs(values[1],values[2])
-            result = self.call(value, values, args)
+            result = self.call(value, values, args, conditions=self.conditions[condition_start:])
+            if value in ("minimum","maximum") and value not in self.functions:
+                # The bound variable has been eliminated from this scalar result.
+                self.conditions[condition_start:]=[c for c in self.conditions[condition_start:] if not c.has(values[1])]
             if (self.request.get("equationSteps") and node is self.request.get("tree")
                     and value in ("solve", "nsolve", "dsolve", "desolve", "pdsolve") and len(values) > 1):
                 self.equation_step_input = (value, values)
@@ -368,7 +378,7 @@ class Engine:
             return result
         finally:
             self.bindings = old
-    def call(self, name, a, nodes):
+    def call(self, name, a, nodes, conditions=None):
         if name == "Ans":
             require("Ans" in self.variables, "Ans has no reusable result yet")
             return self.call_answer(self.variables["Ans"], a)
@@ -749,7 +759,14 @@ class Engine:
             return result
         if name in ("nintegrate", "minimum", "maximum"):
             if name in ("minimum", "maximum"):
-                return (s.minimum if name=="minimum" else s.maximum)(a[0],a[1],s.Interval(a[2],a[3]))
+                require(len(a) in (4,5), name+" expects expr,x,a,b and optional closed/open/leftopen/rightopen")
+                require(isinstance(a[1],s.Symbol), "Choose an independent variable")
+                mode=str(a[4]) if len(a)==5 else "closed"
+                require(mode in ("closed","open","leftopen","rightopen"), "Use closed, open, leftopen or rightopen")
+                require(a[2].is_extended_real is True and a[3].is_extended_real is True and a[2]<=a[3], "Invalid extrema interval")
+                interval=s.Interval(a[2],a[3],left_open=mode in ("open","leftopen"),right_open=mode in ("open","rightopen"))
+                entries=extrema_candidates(a[0],a[1],interval,name,conditions=self.conditions if conditions is None else conditions)
+                return entries[0][1]
             result = numeric_integral(a[0],a[1],a[2],a[3],self.precision)
             require(not result.has(s.Integral), "Numerical convergence failed")
             return result

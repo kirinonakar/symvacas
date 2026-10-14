@@ -84,6 +84,8 @@ def __getattr__(name):
     def calculate(*args):
         engine = Engine({"angle":"RAD", "functions":_functions, "variables":_variables, "assumptions":_assumptions})
         values = [_sympify(value) for value in args]
+        if name in ("minimum","maximum") and len(args)==5 and isinstance(args[4],str):
+            values[4]=sp.Symbol(args[4])
         nodes = [{"kind":"symbol", "value":str(value)} for value in args]
         return engine.call(name, values, nodes)
 
