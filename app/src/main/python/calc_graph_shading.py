@@ -66,10 +66,12 @@ def graph_shading(engine, request, items, groups, sliders, xmin, xmax):
                     require(at is not None, "Shading x bounds must be finite")
                     if side == "lower": left = max(left,at)
                     else: right = min(right,at)
-                    vertical.append(at)
+                    vertical.append((at,constraint))
                 else:
                     (lower if side == "lower" else upper).append(graph_function(expression,(x,),sliders))
-            polygons, boundary, run = [], [], []
+            polygons, boundary, styles, run = [], [], [], []
+            strict_y = [graph_function(expr,(x,),sliders) for expr,constraint in zip(group,constraints)
+                        if constraint["axis"]=="y" and constraint.get("strict")]
             if left < right:
                 # Intersect every bound at each x; a contradictory region stays empty.
                 for index in range(count+2):
@@ -93,16 +95,21 @@ def graph_shading(engine, request, items, groups, sliders, xmin, xmax):
                                 at,value = point
                                 lows,highs = [evaluate(fn,at) for fn in lower],[evaluate(fn,at) for fn in upper]
                                 if not all(v is not None for v in lows+highs) or not max([ymin]+lows)-1e-9 <= value <= min([ymax]+highs)+1e-9: point = None
+                                if point is not None and not constraint.get("strict") and any((v:=evaluate(fn,at)) is not None and abs(v-value)<=1e-9*max(1,abs(value)) for fn in strict_y): point = None
                             line.append(point)
                         boundary.append(line)
-                for at in vertical:
+                        styles.append("dashed" if constraint.get("strict") else "solid")
+                for at,constraint in vertical:
+                    if not constraint.get("strict") and any(other.get("strict") and abs(px-at)<=1e-9*max(1,abs(at)) for px,other in vertical): continue
                     if left <= at <= right:
                         lows = [evaluate(fn,at) for fn in lower]
                         highs = [evaluate(fn,at) for fn in upper]
                         if all(v is not None for v in lows+highs):
                             lo,hi = max([ymin]+lows),min([ymax]+highs)
-                            if lo < hi: boundary.append([[at,lo],[at,hi]])
-            shadings.append({"mode":mode,"boundary":boundary,"fill":polygons})
+                            if lo < hi:
+                                boundary.append([[at,lo],[at,hi]])
+                                styles.append("dashed" if constraint.get("strict") else "solid")
+            shadings.append({"mode":mode,"boundary":boundary,"boundaryStyles":styles,"fill":polygons})
         elif mode == "halfplane":
             require(len(group) == 1,"A shaded inequality needs one boundary curve")
             boundary = samples(group[0],a,b)
@@ -115,28 +122,32 @@ def graph_shading(engine, request, items, groups, sliders, xmin, xmax):
                     run=[]
                     continue
                 run.append([point[0],clamp(value)])
-            shadings.append({"mode":mode,"boundary":[boundary],"fill":polygons})
+            shadings.append({"mode":mode,"boundary":[boundary],"boundaryStyles":["dashed" if item.get("strict") else "solid"],"fill":polygons})
         elif mode == "band":
             require(1 <= len(group) <= 2,"[shade] takes one or two functions")
             first = samples(group[0],a,b)
             second = samples(group[1],a,b) if len(group) == 2 else [[point[0],0.0] if point else None for point in first]
-            lower,upper = [],[]
+            lower,upper,bound_functions = [],[],[]
             for bound in item.get("yBounds",[]):
                 require(bound.get("side") in ("lower","upper"), "Invalid shading y bound")
                 expression = engine.build(bound["tree"])
                 require(not expression.has(engine.symbol("y")), "Shading boundaries cannot depend on y")
-                (lower if bound["side"] == "lower" else upper).append(graph_function(expression,(x,),sliders))
-            runs=[]; run=[]; previous=None
+                function = graph_function(expression,(x,),sliders)
+                (lower if bound["side"] == "lower" else upper).append(function)
+                bound_functions.append((function,bound))
+            runs=[]; run=[]; previous=None; envelopes=[]
             for index in range(len(first)):
                 low = None if first[index] is None else first[index][1]
                 high = None if second[index] is None else second[index][1]
                 at = a+(b-a)*index/count
                 lows,highs = [evaluate(fn,at) for fn in lower],[evaluate(fn,at) for fn in upper]
                 if low is None or high is None or any(v is None for v in lows+highs):
+                    envelopes.append(None)
                     if len(run) >= 2: runs.append(run)
                     run=[]; previous=None
                     continue
                 low,high = max([min(low,high)]+lows),min([max(low,high)]+highs)
+                envelopes.append((low,high) if low <= high else None)
                 current = [at,low,high]
                 if previous is not None and (previous[2]-previous[1])*(high-low)<0:
                     # Retain the entry/exit point when clipping changes within a sample.
@@ -152,15 +163,47 @@ def graph_shading(engine, request, items, groups, sliders, xmin, xmax):
                     run=[]
                 previous = current
             if len(run) >= 2: runs.append(run)
-            polygons = []; boundaries = [[],[]]
+            polygons = []
             for segment in runs:
                 top = [[at,max(low,high)] for at,low,high in segment]
                 bottom = [[at,min(low,high)] for at,low,high in segment]
                 polygons.append(top+list(reversed(bottom)))
-                for line,points in zip(boundaries,(bottom,top)):
-                    if line: line.append(None)
-                    line.extend(points)
-            shadings.append({"mode":mode,"boundary":boundaries if lower or upper else [first,second if len(group) == 2 else None],"fill":polygons})
+            boundaries = [first,second if len(group) == 2 else None]
+            styles = ["solid","solid"]
+            if bound_functions:
+                # Draw each actual boundary with its own inclusion rule. A clipped
+                # envelope can switch between a function and a strict inequality.
+                candidates = [(first,False),(second,False)]+[
+                    ([[point[0],evaluate(fn,point[0])] if point else None for point in first],bound.get("strict",False))
+                    for fn,bound in bound_functions]
+                boundaries,styles = [],[]
+                for points,strict in candidates:
+                    line=[]
+                    for point,envelope in zip(points,envelopes):
+                        visible = point is not None and point[1] is not None and envelope is not None
+                        if visible:
+                            low,high = envelope; value = point[1]
+                            tolerance = 1e-9*max(1,abs(value),abs(low),abs(high))
+                            visible = abs(value-low)<=tolerance or abs(value-high)<=tolerance
+                            # Strictness wins when coincident constraints meet.
+                            if visible and not strict:
+                                visible = not any(bound.get("strict") and (v:=evaluate(fn,point[0])) is not None and abs(v-value)<=tolerance for fn,bound in bound_functions)
+                        line.append([point[0],clamp(point[1])] if visible else None)
+                    boundaries.append(line);styles.append("dashed" if strict else "solid")
+                if not polygons: boundaries,styles = [[],[]],["solid","solid"]
+            for bound in item.get("xBounds",[]):
+                at = endpoint({"bound":bound["tree"]},"bound",0)
+                if not bound.get("strict") and any(other.get("strict") and abs(endpoint({"bound":other["tree"]},"bound",0)-at)<=1e-9*max(1,abs(at)) for other in item.get("xBounds",[])): continue
+                if a <= at <= b and xmin <= at <= xmax:
+                    values = [evaluate(graph_function(expr,(x,),sliders),at) for expr in group]
+                    if len(values)==1: values.append(0.)
+                    lows,highs = [evaluate(fn,at) for fn in lower],[evaluate(fn,at) for fn in upper]
+                    if all(v is not None for v in values+lows+highs):
+                        low,high = max([min(values)]+lows),min([max(values)]+highs)
+                        if low < high:
+                            boundaries.append([[at,clamp(low)],[at,clamp(high)]])
+                            styles.append("dashed" if bound.get("strict") else "solid")
+            shadings.append({"mode":mode,"boundary":boundaries,"boundaryStyles":styles,"fill":polygons})
         else:
             raise MathError("Unknown shading mode")
     return shadings
@@ -178,6 +221,41 @@ def integral_fill(expression, variable, a, b):
         else: segment.append(point)
     flush()
     return polygons
+
+
+def _join_boundary_segments(segments, xmin, xmax, ymin, ymax, logarithmic=False):
+    """Stitch triangle edges into paths so dash phase survives cell boundaries."""
+    def key(point):
+        y_fraction = ((math.log10(point[1])-math.log10(ymin))/(math.log10(ymax)-math.log10(ymin))
+                      if logarithmic else (point[1]-ymin)/(ymax-ymin))
+        return (round((point[0]-xmin)/(xmax-xmin)*1e9),round(y_fraction*1e9))
+    nodes,edges = {},set()
+    for a,b in segments:
+        ka,kb = key(a),key(b)
+        edge = tuple(sorted((ka,kb)))
+        if ka == kb or edge in edges: continue
+        edges.add(edge)
+        for start,end,point in ((ka,kb,a),(kb,ka,b)):
+            if start not in nodes: nodes[start] = (point,set())
+            nodes[start][1].add(end)
+    result=[]
+    def walk(start):
+        line=[nodes[start][0]]; current=start
+        while nodes[current][1]:
+            following=nodes[current][1].pop()
+            nodes[following][1].discard(current)
+            line.append(nodes[following][0]);current=following
+            if current == start or len(nodes[current][1]) != 1: break
+        if len(line)>1:
+            if result: result.append(None)
+            result.extend(line)
+    # Start open contours at endpoints; then consume closed contours.
+    for start,(_,neighbors) in nodes.items():
+        if len(neighbors)!=2:
+            while neighbors: walk(start)
+    for start,(_,neighbors) in nodes.items():
+        while neighbors: walk(start)
+    return result
 
 
 def inequality_shading(parts, x, y, sliders, xmin, xmax, ymin, ymax, samples, logarithmic=False):
@@ -198,7 +276,7 @@ def inequality_shading(parts, x, y, sliders, xmin, xmax, ymin, ymax, samples, lo
     def y_at(j): return 10**(math.log10(ymin)+(math.log10(ymax)-math.log10(ymin))*j/count) if logarithmic else ymin+j*dy
     def row(j):
         return [(xmin+i*dx, y_at(j), values(xmin+i*dx, y_at(j))) for i in range(count+1)]
-    fill, boundary = [], []
+    fill, segments = [], [[] for _ in parts]
     previous = row(0)
     for j in range(count):
         current = row(j+1); run = None
@@ -250,6 +328,12 @@ def inequality_shading(parts, x, y, sliders, xmin, xmax, ymin, ymax, samples, lo
                                 if not inside(va,l): lo=max(lo,t)
                                 else: hi=min(hi,t)
                         if lo < hi:
-                            boundary += [[a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])] for t in (lo,hi)] + [None]
+                            segments[k].append([[a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])] for t in (lo,hi)])
         previous = current
-    return {"mode":"inequality", "fill":fill, "boundary":[], "curve":boundary}
+    boundaries = [_join_boundary_segments(lines,xmin,xmax,ymin,ymax,logarithmic) for lines in segments]
+    curve=[]
+    for line in boundaries:
+        if curve and line: curve.append(None)
+        curve.extend(line)
+    return {"mode":"inequality", "fill":fill, "boundary":boundaries,
+            "boundaryStyles":["dashed" if strict else "solid" for _,strict in parts], "curve":curve}

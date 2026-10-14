@@ -6,12 +6,24 @@ import com.kirinonakar.symvacas.calculator.normalizeGraphColors
 import com.kirinonakar.symvacas.ui.graphTracePointAtX
 import com.kirinonakar.symvacas.calculator.graphAnalysisTarget
 import com.kirinonakar.symvacas.calculator.GraphAnalysisTarget
+import com.kirinonakar.symvacas.calculator.graphShadeEntry
 import org.json.JSONArray
 import org.junit.Assert.*
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class GraphFormulaTest {
+    @Test fun shadingKeepsStrictnessForReversedChainedAndBandConstraints() {
+        for((source,strict) in listOf("y<x" to true,"x>y" to true,"y>=x" to false,"x<=y" to false)) {
+            assertEquals(strict,graphShadeEntry(source).getBoolean("strict"))
+        }
+        val constraints=graphShadeEntry("-1<x<=1, 2>=y>x").getJSONArray("constraints")
+        assertEquals(listOf(true,false,false,true),(0 until constraints.length()).map {constraints.getJSONObject(it).getBoolean("strict")})
+        val band=graphShadeEntry("sin(x), cos(x), -1<x<=2, y<0")
+        assertTrue(band.getJSONArray("xBounds").getJSONObject(0).getBoolean("strict"))
+        assertFalse(band.getJSONArray("xBounds").getJSONObject(1).getBoolean("strict"))
+        assertTrue(band.getJSONArray("yBounds").getJSONObject(0).getBoolean("strict"))
+    }
     @Test fun parameterRangesAppearOnlyForCorrespondingCurveKinds() {
         assertEquals(emptySet<String>(),graphRangeAxes("y=x^2\nx^2+y^2=9","cartesian"))
         assertEquals(setOf("t"),graphRangeAxes("(cos(t),sin(t))","cartesian"))

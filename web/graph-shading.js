@@ -16,7 +16,7 @@ export function graphShadings(source,kind){
       if(!['<','<=','>','>='].includes(relation.value)||!isLeft&&!isRight)throw new Error('Enter y < f(x) or y > f(x)');
       const boundary=isLeft?right:left;
       if((function hasY(node){return node.kind==='symbol'&&node.value==='y'||(node.args||[]).some(hasY);})(boundary))throw new Error('Shading boundaries cannot depend on y');
-      item={mode:'halfplane',side:(isLeft?relation.value.startsWith('<'):relation.value.startsWith('>'))?'below':'above',trees:[isLeft?right:left]};
+      item={mode:'halfplane',side:(isLeft?relation.value.startsWith('<'):relation.value.startsWith('>'))?'below':'above',strict:!relation.value.includes('='),trees:[isLeft?right:left]};
     }else if(trees.some(tree=>tree.kind==='relation')){
       const boundaries=[],constraints=[];
       const has=(node,name)=>node.kind==='symbol'&&node.value===name||(node.args||[]).some(child=>has(child,name));
@@ -27,7 +27,7 @@ export function graphShadings(source,kind){
         const axis=node=>node.kind==='symbol'&&['x','y'].includes(node.value)?node.value:null;
         const onLeft=!!axis(a),name=axis(a)||axis(b),boundary=onLeft?b:a;
         if(!name||has(boundary,'y')||name==='x'&&has(boundary,'x'))throw new Error('Enter x bounds or y < f(x) inequalities');
-        constraints.push({axis:name,side:(onLeft?node.value.startsWith('<'):node.value.startsWith('>'))?'upper':'lower'});
+        constraints.push({axis:name,side:(onLeft?node.value.startsWith('<'):node.value.startsWith('>'))?'upper':'lower',strict:!node.value.includes('=')});
         boundaries.push(boundary);
         return [...left,...right];
       }
@@ -35,7 +35,7 @@ export function graphShadings(source,kind){
       const functions=trees.filter(tree=>tree.kind!=='relation');
       if(functions.length){
         if(functions.length>2)throw new Error('Use one or two shading functions with x and y bounds');
-        const bounds=axis=>constraints.flatMap((constraint,index)=>constraint.axis===axis?[{side:constraint.side,tree:boundaries[index]}]:[]);
+        const bounds=axis=>constraints.flatMap((constraint,index)=>constraint.axis===axis?[{side:constraint.side,strict:constraint.strict,tree:boundaries[index]}]:[]);
         item={mode:'band',trees:functions,xBounds:bounds('x'),yBounds:bounds('y')};
       }else item={mode:'region',trees:boundaries,constraints};
     }else if(trees.length>2){

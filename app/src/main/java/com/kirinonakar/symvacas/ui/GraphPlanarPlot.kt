@@ -199,8 +199,10 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
                             drawPath(path,shadeColor.copy(alpha=.15f))
                         }
                     }
-                    shading.second.forEach { line->
-                        drawPath(curvePath(line),shadeColor.copy(alpha=.85f),style=Stroke(1.6.dp.toPx()))
+                    shading.second.forEachIndexed { bi,line->
+                        val width=if(entry?.has("sourceIndex")==true) {if(selectedDerivativeOrder==0 && entry.optInt("sourceIndex")==selected)4.dp.toPx() else 1.5.dp.toPx()} else 1.6.dp.toPx()
+                        val dashed=entry?.optJSONArray("boundaryStyles")?.optString(bi)=="dashed"
+                        drawPath(curvePath(line),shadeColor.copy(alpha=.85f),style=Stroke(width,cap=if(dashed)StrokeCap.Butt else StrokeCap.Round,join=StrokeJoin.Round,pathEffect=if(dashed)PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(),4.dp.toPx())) else null))
                     }
                 }
                 integralFill.forEach {rawPolygon->
@@ -214,7 +216,10 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
                 }
                 curves.forEachIndexed { ci,points ->
                     val color=c.curves[ci%c.curves.size]
-                    drawPath(curvePath(points),color,style=Stroke(if(selectedDerivativeOrder==0 && ci==selected)4.dp.toPx() else 1.5.dp.toPx(),cap=StrokeCap.Round,join=StrokeJoin.Round,pathEffect=if(m.graphData?.optJSONArray("curveStyles")?.optString(ci)=="dashed")PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(),4.dp.toPx())) else null))
+                    val shades=m.graphData?.optJSONArray("shadings")
+                    val drawnBoundary=(0 until (shades?.length() ?: 0)).any {index->shades?.optJSONObject(index)?.let {it.optInt("sourceIndex",-1)==ci && it.has("boundaryStyles")}==true}
+                    val dashed=m.graphData?.optJSONArray("curveStyles")?.optString(ci)=="dashed"
+                    if(!drawnBoundary)drawPath(curvePath(points),color,style=Stroke(if(selectedDerivativeOrder==0 && ci==selected)4.dp.toPx() else 1.5.dp.toPx(),cap=if(dashed)StrokeCap.Butt else StrokeCap.Round,join=StrokeJoin.Round,pathEffect=if(dashed)PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(),4.dp.toPx())) else null))
                 }
                 derivativeCurve?.takeIf {m.graphDerivativeSelected?.let {m.isGraphVisible(it,"derivative")}==true}?.let {points->
                     drawPath(curvePath(points),c.accent,style=Stroke(if(selectedDerivativeOrder==1)4.dp.toPx() else 2.5.dp.toPx(),cap=StrokeCap.Round,join=StrokeJoin.Round,pathEffect=derivativeDash))

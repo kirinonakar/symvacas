@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {fork} from 'node:child_process';
 import {parse} from '../parser.js';
 import {graphInputTree} from '../graph-input.js';
+import {graphShadings} from '../graph-shading.js';
 
 test('packaged graph modules execute every graph kind in the production WASM worker', {timeout:60000}, async t=>{
   const worker=fork(new URL('./worker-bridge.mjs',import.meta.url),[],{execArgv:['--experimental-wasm-jspi']});
@@ -52,6 +53,12 @@ test('packaged graph modules execute every graph kind in the production WASM wor
   assert.deepEqual(mixed.parameters,[]);
   assert.deepEqual(mixed.curveStyles.slice(4),['dashed','solid']);
   assert.deepEqual(mixed.shadings.map(shade=>shade.sourceIndex),[4,5]);
+  assert.deepEqual(mixed.shadings.map(shade=>shade.boundaryStyles),[['dashed'],['solid']]);
+  assert.ok(mixed.shadings[0].boundary[0].length>100);
+  assert.ok(!mixed.shadings[0].boundary[0].includes(null));
+  const shaded=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:[],min:-4,max:4,yMin:-4,yMax:4,
+    shadings:graphShadings('[s] -1<x<=1, -2<=y<x\n[s] y>x','cartesian')});
+  assert.deepEqual(shaded.shadings.map(shade=>shade.boundaryStyles),[['solid','dashed','dashed','solid'],['dashed']]);
   for(const [index,shade] of mixed.shadings.entries()){
     assert.ok(shade.fill.length);
     for(const polygon of shade.fill)for(const [x,y] of polygon){

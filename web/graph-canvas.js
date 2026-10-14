@@ -150,9 +150,8 @@ export function plotGraph(container,result,bounds,{colors=defaultGraphColors,dig
   if(ymin<=0&&ymax>=0)line([left,y(0)],[w-pad,y(0)]);
   for(const [i,shade] of (result.shadings||[]).entries()){if(hiddenShadings.includes(i))continue;for(const points of shade.fill||[])polygon((yLog?clipYPolygon(points,bounds):points).map(project),colors[(shade.sourceIndex??shade.shadeIndex??i)%colors.length],.16);}
   ctx.beginPath();for(const [at,value,slope] of result.fields||[]){if(yLog&&value<=0)continue;const angle=Math.atan((yLog?slope/(value*Math.LN10):slope)*(xmax-xmin)/(yLog?Math.log10(ymax)-Math.log10(ymin):ymax-ymin)*ih/iw),dx=7*Math.cos(angle),dy=-7*Math.sin(angle);ctx.moveTo(x(at)-dx,y(value)-dy);ctx.lineTo(x(at)+dx,y(value)+dy);}ctx.strokeStyle=muted;ctx.globalAlpha=.6;ctx.lineWidth=1;ctx.stroke();ctx.globalAlpha=1;
-  const path=(points,i)=>{
-    if(hiddenCurves.includes(i))return;
-    const color=colors[i%colors.length];ctx.setLineDash(result.curveStyles?.[i]==='dashed'?[6,4]:[]);ctx.beginPath();let previous=null,pen=null;
+  const strokePath=(points,color,width,style)=>{
+    ctx.setLineDash(style==='dashed'?[6,4]:[]);ctx.lineCap=style==='dashed'?'butt':'round';ctx.beginPath();let previous=null,pen=null;
     for(const point of points){
       const segment=yScaleSegment(previous,point,bounds,yLog);previous=finite(point)?point:null;
       if(!segment){pen=null;continue;}
@@ -160,7 +159,18 @@ export function plotGraph(container,result,bounds,{colors=defaultGraphColors,dig
       if(!pen||a[0]!==pen[0]||a[1]!==pen[1])ctx.moveTo(...project(a));
       ctx.lineTo(...project(b));pen=b;
     }
-    ctx.strokeStyle=color;ctx.lineWidth=i===selected?4:2;ctx.stroke();ctx.setLineDash([]);
+    ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();ctx.setLineDash([]);ctx.lineCap='round';
+  };
+  const shadedSources=new Set();
+  for(const [i,shade] of (result.shadings||[]).entries()){
+    if(shade.sourceIndex!==undefined&&shade.boundaryStyles)shadedSources.add(shade.sourceIndex);
+    if(hiddenShadings.includes(i))continue;
+    const color=colors[(shade.sourceIndex??shade.shadeIndex??i)%colors.length];
+    for(const [j,boundary] of (shade.boundary||[]).entries())if(boundary)strokePath(boundary,color,shade.sourceIndex!==undefined?(shade.sourceIndex===selected?4:2):1.6,shade.boundaryStyles?.[j]);
+  }
+  const path=(points,i)=>{
+    if(hiddenCurves.includes(i))return;
+    const color=colors[i%colors.length];if(!shadedSources.has(i))strokePath(points,color,i===selected?4:2,result.curveStyles?.[i]);
     if(dots)for(const point of points)if(finite(point)&&point[0]>=xmin&&point[0]<=xmax&&point[1]>=ymin&&point[1]<=ymax)circle(project(point),3,color);
   };
   (result.curves||[]).forEach((curve,i)=>{if(i!==selected)path(curve,i);});if(result.curves?.[selected])path(result.curves[selected],selected);

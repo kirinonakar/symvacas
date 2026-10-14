@@ -40,7 +40,7 @@ internal fun graphShadeEntry(body:String,removeComputationLimit:Boolean=false):J
         val boundary=if(onLeft)right else left
         require(boundary.nodes().none {it.kind=="symbol" && it.value=="y"}) {"Shading boundaries cannot depend on y"}
         val below=if(onLeft)relation.value.startsWith("<") else relation.value.startsWith(">")
-        entry.put("mode","halfplane").put("side",if(below)"below" else "above").put("trees",JSONArray(listOf(JSONObject(boundary.json()))))
+        entry.put("mode","halfplane").put("side",if(below)"below" else "above").put("strict",!relation.value.contains('=')).put("trees",JSONArray(listOf(JSONObject(boundary.json()))))
     } else if(parsed.any {it.kind=="relation"}) {
         val boundaries=mutableListOf<Expr>();val constraints=JSONArray()
         fun axis(node:Expr)=node.value.takeIf {node.kind=="symbol" && it in listOf("x","y")}
@@ -53,7 +53,7 @@ internal fun graphShadeEntry(body:String,removeComputationLimit:Boolean=false):J
             val boundary=if(onLeft)b else a
             require(boundary.nodes().none {it.kind=="symbol" && (it.value=="y" || name=="x" && it.value=="x")}) {"Enter x bounds or y < f(x) inequalities"}
             val upper=if(onLeft)node.value.startsWith("<") else node.value.startsWith(">")
-            constraints.put(JSONObject().put("axis",name).put("side",if(upper)"upper" else "lower"))
+            constraints.put(JSONObject().put("axis",name).put("side",if(upper)"upper" else "lower").put("strict",!node.value.contains('=')))
             boundaries+=boundary
             return left+right
         }
@@ -63,7 +63,7 @@ internal fun graphShadeEntry(body:String,removeComputationLimit:Boolean=false):J
             require(functions.size<=2) {"Use one or two shading functions with x and y bounds"}
             fun bounds(axis:String)=JSONArray(boundaries.mapIndexedNotNull {index,tree->
                 val constraint=constraints.getJSONObject(index)
-                if(constraint.getString("axis")!=axis)null else JSONObject().put("side",constraint.getString("side")).put("tree",JSONObject(tree.json()))
+                if(constraint.getString("axis")!=axis)null else JSONObject().put("side",constraint.getString("side")).put("strict",constraint.getBoolean("strict")).put("tree",JSONObject(tree.json()))
             })
             entry.put("mode","band").put("trees",JSONArray(functions.map {JSONObject(it.json())})).put("xBounds",bounds("x")).put("yBounds",bounds("y"))
         } else entry.put("mode","region").put("trees",JSONArray(boundaries.map {JSONObject(it.json())})).put("constraints",constraints)
