@@ -63,7 +63,7 @@ def build_form_help(definitions, rank_specs):
      'logrank':('Compare exactly two groups; other event values are censored.','두 그룹을 비교합니다. 발생 값 이외는 중도절단입니다.'),
      'survivalanalysis':('Kaplan–Meier curves · log-rank · Cox; other event values are censored.','Kaplan–Meier 곡선 · log-rank · Cox. 발생 값 이외는 중도절단입니다.'),
      'cox':('Proportional hazards; Breslow/Efron ties, optional entry column for left truncation and a scaled-Schoenfeld PH check.','비례위험; Breslow/Efron 동률, 선택적 진입시간 열(좌측 절단), 스케일된 Schoenfeld PH 검정.'),
-     'repeatedanova':('One row per subject; one or two within factors with GG corrections.','행마다 한 대상. 일·이요인 반복측정·GG 보정입니다.'),
+     'repeatedanova':(definitions['repeatedanova']['help'],definitions['repeatedanova']['helpKo']),
      'mixedmodel':('Gaussian random intercept + up to three random slopes; REML (default) / ML, singular-fit diagnostics and subject BLUPs. ICC for random slopes is at x=0. Slopes: 0, a position or 1,2. Wald z inference. Optional fourth argument: profile (ML fixed-effect profile CI) or [bootstrap,200,0] (parametric fixed-effect percentile CI); alternative CI omit Wald p-values. Reports logLik/AIC/BIC; compare REML criteria only with identical fixed effects and data. Nonconverged fits withhold Wald inference.','Gaussian 랜덤 절편 + 최대 3개 랜덤 기울기; REML(기본)·ML, singular 진단·대상별 BLUP. 기울기 모형의 ICC는 x=0 기준. 기울기: 0, 번호 또는 1,2. Wald z 추론. 선택적 넷째 인수: profile(ML 고정효과 프로파일 구간), [bootstrap,200,0](모수적 고정효과 백분위 구간); 대안 구간은 Wald p값을 생략합니다. logLik/AIC/BIC 제공; REML 비교는 같은 고정효과·자료에서만 가능합니다. 미수렴 적합의 Wald 추론은 표시하지 않습니다.'),
      'glmm':('Random intercept, optionally one correlated random slope (seventh argument: selected predictor position, 0 = none). Slopes use two-dimensional Laplace (third argument 1), use [],offset,likelihood before the slope position. Covariance and conditional modes are reported in original units. Random intercept: binomial / Poisson / NB2. ML quadrature (15 default, 1 Laplace, 7-31); conditional effects. Count families support log offset or positive exposure. Few-subject Wald inference may be unreliable. Integration checks compare likelihood at another point count, including Laplace/31 points; optional sixth argument refit compares coefficients and suppresses CI/p if shifts exceed 0.1 SE. To omit offsets use [],offset before refit.','랜덤 절편 또는 절편 + 상관 기울기 1개. 선택적 일곱째 인수: 선택한 설명변수 번호(0 없음). 기울기는 Laplace(셋째 인수 1), 3개 이상 대상 내 설명변수 변화가 필요합니다. ICC는 x=0 기준이며 singular·식별 불가 적합은 Wald 추론을 생략합니다. 이항·포아송·NB2. ML 적분(기본 15점, 1 Laplace, 7~31); 조건부 효과. 빈도 분포는 로그 오프셋·양수 노출량 지원. 소수 대상의 Wald 추론은 부정확할 수 있습니다. Laplace·31점도 다른 적분점의 우도를 비교합니다. 선택적 여섯째 인수 refit은 재적합 계수를 비교하고 0.1 SE 초과 변동이면 CI·p값을 생략합니다. 오프셋이 없으면 refit 앞에 [],offset을 사용합니다.'),
      'poissonreg':('Log-link counts; choose predictors, response and optional offset / positive exposure.','로그 연결 빈도 모형; 설명변수·반응·선택적 오프셋·양수 노출량.'),
@@ -83,6 +83,8 @@ def build_form_help(definitions, rank_specs):
     form_help['sarima'] = (definitions['sarima']['help'],definitions['sarima']['helpKo'])
     for spec in [*SOCIAL_SPECS, *RESEARCH_SPECS, *EXTENSION_SPECS, *rank_specs]:
         form_help[spec[0]] = (spec[6], spec[7])
+    for id_ in ('scheffe','dunnett','conover'):
+        form_help[id_]=(definitions[id_]['help'],definitions[id_]['helpKo'])
     return form_help
 
 
@@ -109,6 +111,9 @@ def append_research_help(schema):
 
 def catalog_uses(rank_specs):
     uses = dict(USES)
+    uses.update({'scheffe':('Compare means with simultaneous protection for all linear contrasts.','모든 선형 대비를 보호하며 평균을 비교합니다.'),
+                 'dunnett':('Compare each treatment group with a chosen control.','각 처리군을 선택한 대조군과 비교합니다.'),
+                 'conover':('Compare pooled mean ranks after Kruskal–Wallis.','Kruskal–Wallis 이후 전체 평균순위를 비교합니다.')})
     for id_ in ("arima", "sarima"):
         uses[id_] = ("Forecast equally spaced time-series observations.", "일정한 간격의 시계열 관측값을 예측합니다.")
     for spec in [*SOCIAL_SPECS, *RESEARCH_SPECS, *EXTENSION_SPECS, *rank_specs]:

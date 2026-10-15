@@ -30,6 +30,7 @@ from calc_advanced_limited import calculate as limited
 from calc_advanced_sem import calculate as sem
 from calc_advanced_timeseries import calculate as timeseries
 from calc_posthoc import dunn_comparisons
+from calc_posthoc_extended import calculate as extended_posthoc
 from calc_logistic_comparison import calculate as logistic_comparison
 from calc_model_comparison import calculate as model_comparison
 from calc_advanced_research import calculate as research
@@ -42,11 +43,14 @@ from calc_design_power import calculate as design_power
 
 
 def dunn(engine, name, a):
-    return dunn_comparisons(a[0],engine,str(a[1]) if len(a)>1 else 'holm')
+    return dunn_comparisons(a[0],engine,str(a[1]) if len(a)>1 else 'holm',method=name)
 
 
 # Function names, argument limits and handlers share one registry.
 _ANALYSES = {
+    'scheffe': (1, 1, extended_posthoc),
+    'dunnett': (1, 2, extended_posthoc),
+    'conover': (1, 2, dunn),
     'omega': (1, 2, reliability_omega),
     'bayesttest': (2, 9, bayesian_tests),
     'bayesanova': (1, 6, bayesian_tests),

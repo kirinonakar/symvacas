@@ -2367,6 +2367,201 @@
     ]
   },
   {
+    "id": "scheffe",
+    "label": "Scheffé post-hoc test",
+    "ko": "Scheffé 사후검정",
+    "input": "table",
+    "suffix": "",
+    "example": "scheffe([[1,2,4,5],[2,3,5,8],[4,6,7,9]])",
+    "help": "Independent normal groups with equal variances. List of sample lists; pairwise differences, adjusted F p values and 95% intervals protected across all linear contrasts.",
+    "helpKo": "등분산·정규성의 독립 그룹. 표본 목록들의 목록을 입력합니다. 모든 선형 대비를 보호하는 쌍별 차이·F 보정 p값·95% 동시 구간을 제공합니다.",
+    "section": "tests",
+    "group": "Post-hoc comparisons",
+    "groupKo": "사후비교",
+    "controls": [
+      {
+        "key": "grouping",
+        "label": "Grouping",
+        "ko": "그룹 구성",
+        "type": "choice",
+        "default": "columns",
+        "choices": [
+          {
+            "id": "columns",
+            "label": "Columns",
+            "ko": "열별 그룹"
+          },
+          {
+            "id": "groups",
+            "label": "Group / value columns",
+            "ko": "그룹·값 열"
+          }
+        ]
+      },
+      {
+        "key": "columns",
+        "label": "Group columns",
+        "ko": "그룹 열",
+        "type": "columns",
+        "default": "auto",
+        "when": {
+          "grouping": [
+            "columns"
+          ]
+        }
+      },
+      {
+        "key": "group",
+        "label": "Group column",
+        "ko": "그룹 열",
+        "type": "column",
+        "default": 0,
+        "when": {
+          "grouping": [
+            "groups"
+          ]
+        }
+      },
+      {
+        "key": "value",
+        "label": "Value column",
+        "ko": "값 열",
+        "type": "column",
+        "default": 1,
+        "when": {
+          "grouping": [
+            "groups"
+          ]
+        }
+      }
+    ],
+    "formHelp": "Independent normal groups with equal variances. List of sample lists; pairwise differences, adjusted F p values and 95% intervals protected across all linear contrasts.",
+    "formHelpKo": "등분산·정규성의 독립 그룹. 표본 목록들의 목록을 입력합니다. 모든 선형 대비를 보호하는 쌍별 차이·F 보정 p값·95% 동시 구간을 제공합니다.",
+    "exampleRows": [
+      [
+        "1",
+        "2",
+        "4"
+      ],
+      [
+        "2",
+        "3",
+        "6"
+      ],
+      [
+        "4",
+        "5",
+        "7"
+      ],
+      [
+        "5",
+        "8",
+        "9"
+      ]
+    ]
+  },
+  {
+    "id": "dunnett",
+    "label": "Dunnett control comparisons",
+    "ko": "Dunnett 대조군 비교",
+    "input": "table",
+    "suffix": ",1",
+    "example": "dunnett([[1,2,4,5],[2,3,5,8],[4,6,7,9]],1)",
+    "help": "Independent normal groups with equal variances. List of sample lists, then control group number (1-based, default 1). Two-sided single-step adjusted p values and 95% simultaneous intervals via numerical multivariate-t integration. Differences are treatment minus control.",
+    "helpKo": "등분산·정규성의 독립 그룹. 표본 목록들의 목록과 대조군 번호(1부터, 기본 1)를 입력합니다. 다변량 t 수치적분의 양측 단일단계 보정 p값·95% 동시 구간. 차이는 처리군−대조군입니다.",
+    "section": "tests",
+    "group": "Post-hoc comparisons",
+    "groupKo": "사후비교",
+    "controls": [
+      {
+        "key": "grouping",
+        "label": "Grouping",
+        "ko": "그룹 구성",
+        "type": "choice",
+        "default": "columns",
+        "choices": [
+          {
+            "id": "columns",
+            "label": "Columns",
+            "ko": "열별 그룹"
+          },
+          {
+            "id": "groups",
+            "label": "Group / value columns",
+            "ko": "그룹·값 열"
+          }
+        ]
+      },
+      {
+        "key": "columns",
+        "label": "Group columns",
+        "ko": "그룹 열",
+        "type": "columns",
+        "default": "auto",
+        "when": {
+          "grouping": [
+            "columns"
+          ]
+        }
+      },
+      {
+        "key": "group",
+        "label": "Group column",
+        "ko": "그룹 열",
+        "type": "column",
+        "default": 0,
+        "when": {
+          "grouping": [
+            "groups"
+          ]
+        }
+      },
+      {
+        "key": "value",
+        "label": "Value column",
+        "ko": "값 열",
+        "type": "column",
+        "default": 1,
+        "when": {
+          "grouping": [
+            "groups"
+          ]
+        }
+      },
+      {
+        "key": "control",
+        "label": "Control group number (group order, 1-based)",
+        "ko": "대조군 번호 (그룹 순서, 1부터)",
+        "type": "number",
+        "default": "1"
+      }
+    ],
+    "formHelp": "Independent normal groups with equal variances. List of sample lists, then control group number (1-based, default 1). Two-sided single-step adjusted p values and 95% simultaneous intervals via numerical multivariate-t integration. Differences are treatment minus control.",
+    "formHelpKo": "등분산·정규성의 독립 그룹. 표본 목록들의 목록과 대조군 번호(1부터, 기본 1)를 입력합니다. 다변량 t 수치적분의 양측 단일단계 보정 p값·95% 동시 구간. 차이는 처리군−대조군입니다.",
+    "exampleRows": [
+      [
+        "1",
+        "2",
+        "4"
+      ],
+      [
+        "2",
+        "3",
+        "6"
+      ],
+      [
+        "4",
+        "5",
+        "7"
+      ],
+      [
+        "5",
+        "8",
+        "9"
+      ]
+    ]
+  },
+  {
     "id": "dunn",
     "label": "Dunn post-hoc test",
     "ko": "Dunn 사후검정",
@@ -2482,6 +2677,129 @@
       [
         "4",
         "6",
+        "8",
+        "9"
+      ]
+    ]
+  },
+  {
+    "id": "conover",
+    "label": "Conover–Iman post-hoc test",
+    "ko": "Conover–Iman 사후검정",
+    "input": "table",
+    "suffix": ",holm",
+    "example": "conover([[1,2,4,5],[2,3,5,8],[4,6,7,9]],holm)",
+    "help": "Independent ordinal/continuous groups after a significant Kruskal–Wallis test. List of sample lists, then holm (default), bonferroni, fdr or none. Pooled midranks, tie-corrected residual-rank variance and two-sided t p values.",
+    "helpKo": "유의한 Kruskal–Wallis 검정 후 독립 순서형·연속형 그룹을 비교합니다. 표본 목록들의 목록과 holm(기본)·bonferroni·fdr·none. 전체 평균순위·동점 보정 잔차 순위분산·양측 t p값을 제공합니다.",
+    "section": "tests",
+    "group": "Post-hoc comparisons",
+    "groupKo": "사후비교",
+    "controls": [
+      {
+        "key": "grouping",
+        "label": "Grouping",
+        "ko": "그룹 구성",
+        "type": "choice",
+        "default": "columns",
+        "choices": [
+          {
+            "id": "columns",
+            "label": "Columns",
+            "ko": "열별 그룹"
+          },
+          {
+            "id": "groups",
+            "label": "Group / value columns",
+            "ko": "그룹·값 열"
+          }
+        ]
+      },
+      {
+        "key": "columns",
+        "label": "Group columns",
+        "ko": "그룹 열",
+        "type": "columns",
+        "default": "auto",
+        "when": {
+          "grouping": [
+            "columns"
+          ]
+        }
+      },
+      {
+        "key": "group",
+        "label": "Group column",
+        "ko": "그룹 열",
+        "type": "column",
+        "default": 0,
+        "when": {
+          "grouping": [
+            "groups"
+          ]
+        }
+      },
+      {
+        "key": "value",
+        "label": "Value column",
+        "ko": "값 열",
+        "type": "column",
+        "default": 1,
+        "when": {
+          "grouping": [
+            "groups"
+          ]
+        }
+      },
+      {
+        "key": "adjustment",
+        "label": "P-value adjustment",
+        "ko": "p값 보정",
+        "type": "choice",
+        "default": "holm",
+        "choices": [
+          {
+            "id": "holm",
+            "label": "Holm",
+            "ko": "Holm"
+          },
+          {
+            "id": "bonferroni",
+            "label": "Bonferroni",
+            "ko": "Bonferroni"
+          },
+          {
+            "id": "fdr",
+            "label": "FDR (BH)",
+            "ko": "FDR (BH)"
+          },
+          {
+            "id": "none",
+            "label": "None",
+            "ko": "None"
+          }
+        ]
+      }
+    ],
+    "formHelp": "Independent ordinal/continuous groups after a significant Kruskal–Wallis test. List of sample lists, then holm (default), bonferroni, fdr or none. Pooled midranks, tie-corrected residual-rank variance and two-sided t p values.",
+    "formHelpKo": "유의한 Kruskal–Wallis 검정 후 독립 순서형·연속형 그룹을 비교합니다. 표본 목록들의 목록과 holm(기본)·bonferroni·fdr·none. 전체 평균순위·동점 보정 잔차 순위분산·양측 t p값을 제공합니다.",
+    "exampleRows": [
+      [
+        "1",
+        "2",
+        "4"
+      ],
+      [
+        "2",
+        "3",
+        "6"
+      ],
+      [
+        "4",
+        "5",
+        "7"
+      ],
+      [
+        "5",
         "8",
         "9"
       ]
@@ -2995,8 +3313,8 @@
     "input": "table",
     "suffix": ",1",
     "example": "repeatedanova([[2,4,5],[3,4,7],[4,7,8],[2,3,6],[5,6,7]],1)",
-    "help": "Rows=subjects, columns=conditions. Second-factor levels: 1 = one-way, 2+ = two-way (first factor slowest); GG corrections.",
-    "helpKo": "행=대상, 열=조건. 둘째 요인 수준: 1=일요인, 2 이상=이요인(첫 요인 최외곽); GG 보정.",
+    "help": "Rows=subjects, columns=conditions. Second-factor levels: 1 = one-way, 2+ = two-way (first factor slowest). Effect-specific Mauchly chi-square approximation, GG/HF epsilon, corrected degrees of freedom and p values. Two levels imply sphericity; singular covariance makes Mauchly unavailable. Reports per-condition n, mean and sample SD, plus Helmert contrast diagnostics. Paired post-hoc comparisons include mean differences and pointwise 95% t intervals; Holm adjusts p values only.",
+    "helpKo": "행=대상, 열=조건. 둘째 요인 수준: 1=일요인, 2 이상=이요인(첫 요인 최외곽). 효과별 Mauchly χ² 근사·GG/HF ε·보정 자유도·p값. 2수준에서는 구형성이 자동 성립하며 공분산이 특이하면 Mauchly는 계산 불가로 표시합니다. 조건별 n·평균·표본 표준편차와 Helmert 대비 진단을 제공합니다. 대응 사후비교는 평균차·개별 95% t 신뢰구간을 포함하며 Holm은 p값에만 적용합니다.",
     "section": "tests",
     "group": "Group comparisons",
     "groupKo": "그룹 비교",
@@ -3103,8 +3421,8 @@
         "default": "1"
       }
     ],
-    "formHelp": "One row per subject; one or two within factors with GG corrections.",
-    "formHelpKo": "행마다 한 대상. 일·이요인 반복측정·GG 보정입니다.",
+    "formHelp": "Rows=subjects, columns=conditions. Second-factor levels: 1 = one-way, 2+ = two-way (first factor slowest). Effect-specific Mauchly chi-square approximation, GG/HF epsilon, corrected degrees of freedom and p values. Two levels imply sphericity; singular covariance makes Mauchly unavailable. Reports per-condition n, mean and sample SD, plus Helmert contrast diagnostics. Paired post-hoc comparisons include mean differences and pointwise 95% t intervals; Holm adjusts p values only.",
+    "formHelpKo": "행=대상, 열=조건. 둘째 요인 수준: 1=일요인, 2 이상=이요인(첫 요인 최외곽). 효과별 Mauchly χ² 근사·GG/HF ε·보정 자유도·p값. 2수준에서는 구형성이 자동 성립하며 공분산이 특이하면 Mauchly는 계산 불가로 표시합니다. 조건별 n·평균·표본 표준편차와 Helmert 대비 진단을 제공합니다. 대응 사후비교는 평균차·개별 95% t 신뢰구간을 포함하며 Holm은 p값에만 적용합니다.",
     "exampleRows": [
       [
         "2",

@@ -1,6 +1,6 @@
 import {statisticsComparisonData} from './statistics-comparison-data.js';
 
-export const socialAnalysisIds=new Set(['cronbach','efa','cfa','sem','manova','mediation','moderation','cramerv','phi','cohenkappa','dunn','discriminantanalysis','quantreg','zeroinflated','tobit','hcluster']);
+export const socialAnalysisIds=new Set(['cronbach','efa','cfa','sem','manova','mediation','moderation','cramerv','phi','cohenkappa','dunn','conover','scheffe','dunnett','discriminantanalysis','quantreg','zeroinflated','tobit','hcluster']);
 
 export function socialStatisticsPlan(id,rows,opts,columnLabels=[]){
   const n=Math.max(0,...rows.map(row=>row.length)),labels={};
@@ -22,11 +22,19 @@ export function socialStatisticsPlan(id,rows,opts,columnLabels=[]){
   const label=(at,fallback)=>columnLabels[at]||fallback;
   const featureLabels=indices=>indices.forEach((at,i)=>{labels[`feature:${i+1}`]=label(at,`Feature ${i+1}`);});
   let expression;
-  if(id==='dunn'){
+  if(['dunn','conover','scheffe','dunnett'].includes(id)){
     const plan=statisticsComparisonData(rows,opts,{all:true});
     if(plan.samples.length<2)throw new Error('Choose at least two groups');
     plan.labels.forEach((at,i)=>{labels[`sample:${i+1}`]=opts.grouping==='groups'?at:label(Number(at),`Sample ${i+1}`);});
-    expression=`dunn(${table(plan.samples)},${opts.adjustment})`;
+    let suffix='';
+    if(['dunn','conover'].includes(id))suffix=`,${opts.adjustment||'holm'}`;
+    if(id==='dunnett'){
+      const raw=String(opts.control??'1'),control=Number(raw);
+      if(!/^[+-]?\d+$/.test(raw)||!Number.isInteger(control)||control<1||control>plan.samples.length)throw new Error('Choose a valid control group number');
+      suffix=`,${control}`;
+    }
+    if(['scheffe','dunnett'].includes(id)&&plan.samples.some(sample=>sample.length<2))throw new Error('Enter at least two observations in each group');
+    expression=`${id}(${table(plan.samples)}${suffix})`;
   }else if(['cronbach','efa','cfa','sem','hcluster'].includes(id)){
     const multigroup=['cfa','sem'].includes(id)&&opts.groupMode==='multi',group=multigroup?col('group'):null;
     const missing=opts.estimator==='wlsmv'?'complete':opts.missing||'complete';

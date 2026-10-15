@@ -13,6 +13,7 @@ class SEMEstimationTests(unittest.TestCase):
 
     def test_independent_estimates_inference_and_fit_corrections(self):
         for case in self.cases:
+            self.assertLessEqual(case['tolerance'],2e-6)
             with self.subTest(function=case['function'],options=case['arguments'][1:]):
                 result=run(case['function'],*case['arguments'])
                 diagnostics=result['diagnostics']

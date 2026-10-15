@@ -495,6 +495,25 @@ Review shape, outliers and study design:
 
 Select by the data structure and target quantity. Rank-based location comparisons require appropriate distribution shapes or symmetry. Repeated conditions are measurements of the same subjects.
 
+### Choosing a post-hoc test
+
+```text
+Compare differences between groups
+├─ Parametric tests
+│  ├─ All pairs of groups → Tukey
+│  ├─ Each treatment vs a control → Dunnett
+│  ├─ Complex mean contrasts → Scheffé
+│  └─ Unequal variances → Games–Howell
+├─ Nonparametric tests
+│  └─ After Kruskal–Wallis → Dunn / Conover
+│     ├─ Conservative approach → Dunn + Holm
+│     └─ Emphasis on power → Conover + Holm
+└─ Repeated-measures data
+   └─ After Friedman → Separate paired post-hoc tests
+```
+
+Tukey, Dunnett and Scheffé assume equal variances across independent groups. Interpret Conover after a significant Kruskal–Wallis test. Scheffé protects all linear contrasts; this app reports pairwise mean differences. After Friedman, this app provides paired Wilcoxon comparisons with Holm adjustment.
+
 Choose by purpose, measurement scale and study design. Use Welch for unequal-variance means. One-way ANOVA defaults to Welch with Games–Howell; equal-variance ANOVA adds Tukey. Enter known population SDs for z tests.
 
 Raw-data t tests, t intervals, ANOVA and Tukey include sample summaries, assumption checks, Q–Q plots and distributions. t tests add effect sizes and two-sided 95% mean intervals; ANOVA adds η² and automatic post-hoc comparisons; Tukey/Games–Howell add overall ANOVA. Paired t checks differences; ANCOVA and factorial linear models check residuals. Enter raw observations for normality checks.
@@ -882,8 +901,17 @@ Example: tukey([1,2,4,5],[2,3,5,8])
 `gameshowell` — Compare each pair of independent group means without equal variances, with adjusted p values and simultaneous intervals. All pairwise mean comparisons for independent groups with unequal variances.
 Example: gameshowell([1,2,4,5],[2,3,5,8])
 
+`scheffe` — Compare means with simultaneous protection for all linear contrasts. Independent normal groups with equal variances. List of sample lists; pairwise differences, adjusted F p values and 95% intervals protected across all linear contrasts.
+Example: scheffe([[1,2,4,5],[2,3,5,8],[4,6,7,9]])
+
+`dunnett` — Compare each treatment group with a chosen control. Independent normal groups with equal variances. List of sample lists, then control group number (1-based, default 1). Two-sided single-step adjusted p values and 95% simultaneous intervals via numerical multivariate-t integration. Differences are treatment minus control.
+Example: dunnett([[1,2,4,5],[2,3,5,8],[4,6,7,9]],1)
+
 `dunn` — Dunn post-hoc test. List of independent sample lists, then holm (default), bonferroni, fdr or none. Pooled midranks, tie correction, two-sided normal p values. Retains the Kruskal–Wallis pooled rank scale.
 Example: dunn([[1,2,4],[2,3,6],[3,5,8],[4,7,9]],holm)
+
+`conover` — Compare pooled mean ranks after Kruskal–Wallis. Independent ordinal/continuous groups after a significant Kruskal–Wallis test. List of sample lists, then holm (default), bonferroni, fdr or none. Pooled midranks, tie-corrected residual-rank variance and two-sided t p values.
+Example: conover([[1,2,4,5],[2,3,5,8],[4,6,7,9]],holm)
 
 ### Group comparisons
 
@@ -896,7 +924,7 @@ Example: ancova([[1,1,3],[1,2,5],[1,3,4],[1,4,8],[2,2,6],[2,3,7],[2,4,9],[2,5,8]
 `manova` — MANOVA. One-way: group column followed by response columns. Factorial: manova(data,factorial,factor count,interaction order), categorical factors first; Type III tests with sum contrasts. Repeated: manova(wide data,repeated,occasions), one subject per row and equal-sized response blocks in occasion order. Tests mean equality across occasions using within-subject contrasts. Reports Pillai, Wilks Rao, Hotelling–Lawley F and Roy upper-bound F. Use complete data and nonsingular residual covariance; independent subjects and normal errors are assumed, with equal group covariance for independent-group designs.
 Example: manova([[1,1.987,1.448],[1,3.103,3.608],[1,5.16,4.848],[1,1.995,-0.304],[1,1.802,2.591],[1,5.242,5.082],[1,3.057,2.034],[1,4.576,5.573],[2,5.08,3.415],[2,2.502,3.058],[2,4.23,4.595],[2,2.86,0.955],[2,3.16,2.341],[2,1.101,2.67],[2,3.503,2.178],[2,3.623,2.605],[3,4.285,4.069],[3,3.301,2.832],[3,2.857,3.272],[3,0.449,3.013],[3,3.447,2.311],[3,2.401,1.025],[3,3.54,2.99],[3,3.67,3.472]])
 
-`repeatedanova` — Compare repeated conditions within the same subjects in a balanced design. Rows=subjects, columns=conditions. Second-factor levels: 1 = one-way, 2+ = two-way (first factor slowest); GG corrections.
+`repeatedanova` — Compare repeated conditions within the same subjects in a balanced design. Rows=subjects, columns=conditions. Second-factor levels: 1 = one-way, 2+ = two-way (first factor slowest). Effect-specific Mauchly chi-square approximation, GG/HF epsilon, corrected degrees of freedom and p values. Two levels imply sphericity; singular covariance makes Mauchly unavailable. Reports per-condition n, mean and sample SD, plus Helmert contrast diagnostics. Paired post-hoc comparisons include mean differences and pointwise 95% t intervals; Holm adjusts p values only.
 Example: repeatedanova([[2,4,5],[3,4,7],[4,7,8],[2,3,6],[5,6,7]],1)
 
 `friedman` — Compare three or more matched conditions by within-subject ranks; chi-square approximation with tie correction. Rows are independent subjects; columns are at least three repeated conditions. Complete matched rows, midranks and tie correction. Chi-square approximation; small samples or few conditions can give inaccurate p values. Reports Kendall W.

@@ -247,7 +247,9 @@ def _confidence_level(value):
 
 def _shapiro_wilk(data):
     """Shapiro-Wilk W with Royston's AS R94 p-value approximation (3 <= n <= 5000)."""
-    values = flatten(data)
+    # Derived diagnostics (contrasts/model residuals) also pass native numbers.
+    # Normalize numeric primitives only; never parse text as an expression.
+    values = [s.sympify(value) if isinstance(value,(int,float)) else value for value in flatten(data)]
     n = len(values)
     require(3 <= n <= 5000, "Shapiro-Wilk needs 3 to 5000 values")
     for value in values: _real_value(value, "Shapiro-Wilk values must be real numbers")
@@ -257,6 +259,12 @@ def _shapiro_wilk(data):
         raise MathError("Shapiro-Wilk values must be finite numbers")
     require(all(math.isfinite(value) for value in ordered), "Shapiro-Wilk values must be finite numbers")
     spread = ordered[-1] - ordered[0]
+    if not math.isfinite(spread):
+        # Opposite-sign finite values can overflow during subtraction.
+        # Shapiro–Wilk is affine invariant, so rescale before taking the range.
+        magnitude=max(abs(value) for value in ordered)
+        ordered=[value/magnitude for value in ordered]
+        spread=ordered[-1]-ordered[0]
     require(math.isfinite(spread) and spread > 0, "Shapiro-Wilk needs a finite range with variation")
     # Affine scaling keeps the centered sum of squares stable for small or large units.
     scaled = [(value - ordered[0])/spread for value in ordered]

@@ -4,6 +4,7 @@ import math
 import mpmath as mp
 from calc_shared import MathError, require
 from calc_statistics import _f_sf
+from calc_sphericity import corrections, helmert
 from calc_advanced_common import (
     dot, inference, integer, inverse, logistic, mean, newton, option, softplus,
     standardized_design, table,
@@ -11,7 +12,7 @@ from calc_advanced_common import (
 
 
 def repeated_anova(engine, a):
-    """Balanced one- or two-factor within-subjects ANOVA with GG corrections."""
+    """Balanced within-subjects ANOVA with effect-specific sphericity diagnostics."""
     rows=table(a[0],2,2); n=len(rows); k=len(rows[0])
     factor2=integer(a[1],1,20,capacity=True) if len(a)>1 else 1
     if factor2==1:
@@ -19,12 +20,8 @@ def repeated_anova(engine, a):
         total=sum((v-overall)**2 for r in rows for v in r); sscondition=n*sum((mean(c)-overall)**2 for c in cols); sssubject=k*sum((mean(r)-overall)**2 for r in rows); error=total-sscondition-sssubject
         require(error>1e-12, 'Repeated-measures residual variation is required')
         df1=k-1; df2=(n-1)*(k-1); f=(sscondition/df1)/(error/df2)
-        # Greenhouse–Geisser epsilon from double-centered covariance.
-        cov=[[sum((rows[t][i]-mean(cols[i]))*(rows[t][j]-mean(cols[j])) for t in range(n))/(n-1) for j in range(k)] for i in range(k)]
-        cm=[mean(r) for r in cov]; gm=mean(cm); centered=[[cov[i][j]-cm[i]-cm[j]+gm for j in range(k)] for i in range(k)]
-        epsilon=min(1,max(1/df1,sum(centered[i][i] for i in range(k))**2/(df1*sum(v*v for r in centered for v in r))))
-        engine.note += ' Balanced one-factor repeated measures: rows=subjects, columns=conditions. Includes Greenhouse–Geisser correction.'
-        return {'F':f,'df1':df1,'df2':df2,'p':float(_f_sf(f,df1,df2)),'partial eta2':sscondition/(sscondition+error),'GG epsilon':epsilon,'GG p':float(_f_sf(f,df1*epsilon,df2*epsilon))}
+        engine.note += ' Balanced one-factor repeated measures: rows=subjects, columns=conditions. Mauchly sphericity test and Greenhouse–Geisser / Huynh–Feldt corrections.'
+        return {'F':f,'df1':df1,'df2':df2,'p':float(_f_sf(f,df1,df2)),'partial eta2':sscondition/(sscondition+error),**corrections(rows,f)}
     require(k%factor2==0,'Condition count must be divisible by the second-factor levels')
     second=k//factor2; require(second>=2 and factor2>=2,'Two-way repeated measures need two or more levels per factor')
     overall=mean(sum(rows,[]))
@@ -39,25 +36,17 @@ def repeated_anova(engine, a):
     second_error=second*sum((subject_second[s][j]-second_means[j]-subject_means[s]+overall)**2 for s in range(n) for j in range(factor2))
     within=total-subject_ss; interaction_error=within-first_ss-second_ss-interaction_ss-first_error-second_error
     require(min(first_error,second_error,interaction_error)>1e-12,'Repeated-measures residual variation is required')
-    def epsilon(variables,dimension):
-        size=len(variables[0]); columns=list(zip(*variables))
-        centered=[[sum((variables[t][i]-mean(columns[i]))*(variables[t][j]-mean(columns[j])) for t in range(len(variables)))/(len(variables)-1) for j in range(size)] for i in range(size)]
-        rows_mean=[mean(r) for r in centered]; grand=mean(rows_mean)
-        starred=[[centered[i][j]-rows_mean[i]-rows_mean[j]+grand for j in range(size)] for i in range(size)]
-        require(sum(v*v for r in starred for v in r)>0,'Greenhouse–Geisser correction needs contrast variation')
-        return min(1,max(1/dimension,sum(starred[i][i] for i in range(size))**2/(dimension*sum(v*v for r in starred for v in r))))
-    def helmert(levels): return [[1/math.sqrt(u*(u+1)) if j<u else -u/math.sqrt(u*(u+1)) if j==u else 0.0 for j in range(levels)] for u in range(1,levels)]
     contrasts_first,contrasts_second=helmert(second),helmert(factor2)
     residual_rows=[[rows[s][i*factor2+j]-subject_first[s][i]-subject_second[s][j]+subject_means[s] for i in range(second) for j in range(factor2)] for s in range(n)]
     interaction_variables=[[sum(contrasts_first[u][i]*contrasts_second[v][j]*row[i*factor2+j] for i in range(second) for j in range(factor2)) for v in range(factor2-1) for u in range(second-1)] for row in residual_rows]
     effects={'A':(first_ss,second-1,first_error,(n-1)*(second-1)),'B':(second_ss,factor2-1,second_error,(n-1)*(factor2-1)),'AB':(interaction_ss,(second-1)*(factor2-1),interaction_error,(n-1)*(second-1)*(factor2-1))}
-    adjustments={'A':epsilon(subject_first,second-1),'B':epsilon(subject_second,factor2-1),'AB':epsilon(interaction_variables,(second-1)*(factor2-1))}
+    variables={'A':subject_first,'B':subject_second,'AB':interaction_variables}
     result={'first factor levels':second,'second factor levels':factor2,'subject df':n-1}
     for key,(effect,degree1,error,degree2) in effects.items():
         value=(effect/degree1)/(error/degree2)
         result[key+' F']=value; result[key+' df1']=degree1; result[key+' df2']=degree2; result[key+' p']=float(_f_sf(value,degree1,degree2))
-        result[key+' GG epsilon']=adjustments[key]; result[key+' GG p']=float(_f_sf(value,degree1*adjustments[key],degree2*adjustments[key]))
-    engine.note += ' Balanced two-way within-subjects ANOVA: rows=subjects, columns list the first factor (slowest) crossed with the second factor. Greenhouse–Geisser corrections per effect.'
+        result.update({key+' '+label:v for label,v in corrections(variables[key],value,contrast=key=='AB').items()})
+    engine.note += ' Balanced two-way within-subjects ANOVA: rows=subjects, columns list the first factor (slowest) crossed with the second factor. Mauchly and GG/HF corrections per effect.'
     return result
 
 

@@ -20,6 +20,8 @@ def build_forms():
     forms={
         'shapiro':[col('column','Sample column','표본 열',0)],
         'tukey':group_fields,'gameshowell':group_fields,
+        'scheffe':group_fields,
+        'dunnett':group_fields+[field('control','Control group number (group order, 1-based)','대조군 번호 (그룹 순서, 1부터)','number','1')],
         'pca':[multi('columns','Feature columns','변수 열'),field('components','Components','주성분 수','number','2'),field('standardize','Scaling','척도','choice','1',[('1','Standardize (sample SD)','표준화 (표본 표준편차)'),('0','Center only','중심화만')])],
         'bayesbootstrap':[field('layout','Data layout','자료 구성','choice','single',[('single','Single sample','단일 표본'),('columns','Two columns','두 컬럼'),('groups','Group / value columns','그룹·값 컬럼')]),
             dict(col('column','Sample column','표본 열',0),when={'layout':['single']}),
@@ -110,6 +112,7 @@ def build_forms():
     forms['propztest']=[proportion_layout]+proportion_counts+[dict(col('column','Sample column','표본 열',0),when={'layout':['binary']}),dict(field('successValue','Success value','성공 값','text','1'),when={'layout':['binary']}),field('p0','Null proportion p0','귀무가설 비율 p0','number','0.5'),proportion_tail]
     forms['propztest2']=[proportion_layout]+proportion_counts+[dict(f,when={**f.get('when',{}),'layout':['binary']}) for f in two_fields]+[dict(field('successValue','Success value','성공 값','text','1'),when={'layout':['binary']}),proportion_tail]
     forms.update(social_forms(field,col,multi,group_fields))
+    forms['conover']=forms['dunn']
     time_fields = [col('column','Series column','시계열 값 열',-1),field('dateMode','Time labels','시간 표시','choice','auto',[('auto','Detect date column','날짜 열 자동 인식'),('index','Observation index','관측 순서'),('dates','Date / year column','날짜·연도 열')]),dict(col('dateColumn','Date / year column','날짜·연도 열',0),when={'dateMode':['auto','dates']}),field('p','AR order p','AR 차수 p','number','1'),field('d','Differencing d','차분 차수 d','number','1'),field('q','MA order q','MA 차수 q','number','0')]
     forecast_fields = [field('horizon','Forecast horizon','예측 길이','number','12'),field('level','Prediction level','예측구간 수준','number','0.95'),field('trend','Intercept / drift','절편·드리프트','choice','auto',[('auto','Auto (AICc)','자동 (AICc)'),('none','None','없음'),('constant','Constant / drift','상수·드리프트')])]
     forms['arima'] = time_fields + forecast_fields

@@ -42,6 +42,17 @@ def normal_views(values, label):
             {'label':label,'edges':[lo+i*width for i in range(bins+1)],'counts':counts,'n':n})
 
 
+def sample_summary(sample,label,heading='Sample'):
+    try:
+        data=[float(v) for v in sample]
+        if data and all(math.isfinite(v) for v in data):
+            return {heading:label,'n':len(data),'Mean':statistics.mean(data),'SD':statistics.stdev(data) if len(data)>1 else None,
+                    'Median':statistics.median(data),'Minimum':min(data),'Maximum':max(data)}
+    except (TypeError,ValueError,OverflowError):
+        pass
+    return {heading:label,'n':len(sample),'status':'Summary exceeds plotting numeric range'}
+
+
 def companion_report(report, name, value, inputs, precision, labels=None, residuals=None):
     if isinstance(value, dict) and 'Column comparisons' in value: return report
     if name in ('ttest2', 'ttestpaired') and isinstance(value, dict) and 'Comparisons' in value:
@@ -52,7 +63,7 @@ def companion_report(report, name, value, inputs, precision, labels=None, residu
     nodes=inputs[2] if inputs and inputs[0]==name else []
     if name in ('ttest','ttest2','ttestpaired','ztest','ztest2','tinterval','zinterval','anova','welchanova','tukey','gameshowell','shapiro','wilcoxon','mannwhitney','kruskal'):
         args=_tail_argument(args,nodes)[1]
-    samples=[]; notes=[]; extras=[]; diagnostics=[]
+    samples=[]; notes=[]; extras=[]; diagnostics=[]; condition_summary=[]
     normality=False; variance=False
     if name in ('propztest','propztest2'):
         notes.append('Proportion z tests assume independent binary observations and use a normal approximation without continuity correction. Expected successes and failures are checked under the null hypothesis.')
@@ -79,13 +90,13 @@ def companion_report(report, name, value, inputs, precision, labels=None, residu
             extras.append(('Effect size',effect))
         except (MathError,ValueError,ZeroDivisionError,OverflowError) as error:
             extras.append(('Effect size',{'status':'unavailable','reason':str(error)}))
-    elif name in ('anova','welchanova','tukey','gameshowell','levene','bartlett','eta2'):
-        samples=[flatten(group) for group in args if isinstance(group,(list,tuple))]
-        normality=name in ('anova','welchanova','tukey','gameshowell','bartlett')
-        variance=name in ('anova','welchanova','tukey','gameshowell')
-        if name in ('anova','welchanova','tukey','gameshowell'):
+    elif name in ('anova','welchanova','tukey','gameshowell','scheffe','dunnett','levene','bartlett','eta2'):
+        samples=[flatten(group) for group in (args[0] if name in ('scheffe','dunnett') else args) if isinstance(group,(list,tuple))]
+        normality=name in ('anova','welchanova','tukey','gameshowell','scheffe','dunnett','bartlett')
+        variance=name in ('anova','welchanova','tukey','gameshowell','scheffe','dunnett')
+        if name in ('anova','welchanova','tukey','gameshowell','scheffe','dunnett'):
             extras.append(('Effect size',grouped_test(proxy,'eta2',samples)))
-            if name=='tukey': extras.append(('Overall ANOVA',statistical_test(proxy,'anova',samples,[])))
+            if name in ('tukey','scheffe','dunnett'): extras.append(('Overall ANOVA',statistical_test(proxy,'anova',samples,[])))
             if name=='gameshowell':extras.append(('Overall Welch ANOVA',statistical_test(proxy,'welchanova',samples,[])))
             if name in ('anova','welchanova','tukey'):
                 method='gameshowell' if name=='welchanova' else 'tukey'
@@ -93,7 +104,11 @@ def companion_report(report, name, value, inputs, precision, labels=None, residu
                 except (MathError,ValueError,ZeroDivisionError,OverflowError) as error:extras.append(('Post-hoc comparisons',{'status':'unavailable','reason':str(error)}))
             if name in ('welchanova','gameshowell'):
                 notes.append('Welch ANOVA and Games–Howell do not require equal variances. The variance check is descriptive. η² is a descriptive sums-of-squares effect size, not derived from the Welch F statistic.')
-            notes.append('Post-hoc comparisons use 95% simultaneous intervals and studentized-range adjusted p values. Pairwise estimates are first group minus second group. Review all comparisons together; the global test and individual pairs answer different questions.')
+            notes.append('Post-hoc comparisons use 95% simultaneous intervals. Scheffé protects all linear contrasts; Dunnett protects the selected treatment-minus-control family; Tukey/Games–Howell use studentized-range adjusted p values. Review all comparisons together; the global test and individual pairs answer different questions.')
+    elif name in ('dunn','conover') and args:
+        samples=[flatten(group) for group in args[0]]
+        extras.append(('Overall Kruskal–Wallis',statistical_test(proxy,'kruskal',samples,[])))
+        notes.append('Rank comparisons use pooled midranks across all selected groups. A location interpretation requires similar distribution shapes. Conover–Iman is a post-hoc procedure following a significant Kruskal–Wallis test.')
     elif name=='shapiro' and args: samples=[flatten(args[0])]
     elif name=='wilcoxon' and args:
         samples=[[x-y for x,y in zip(args[0],args[1])]] if len(args)==2 else [flatten(args[0])]
@@ -108,16 +123,19 @@ def companion_report(report, name, value, inputs, precision, labels=None, residu
     elif name in ('repeatedanova','friedman') and args:
         conditions=[list(column) for column in zip(*args[0])]
         condition_labels={i:labels.get('feature:'+str(i+1),'Condition '+str(i+1)) for i in range(len(conditions))}
+        condition_summary=[sample_summary(sample,condition_labels[i],'Condition') for i,sample in enumerate(conditions)]
         proxy.request={'statisticsTermLabels':{'sample:'+str(i+1):label for i,label in condition_labels.items()}}
         if len(conditions)>2:
             method='ttestpaired' if name=='repeatedanova' else 'wilcoxon'
             extras.append(('Paired t post-hoc (Holm)' if method=='ttestpaired' else 'Wilcoxon post-hoc (Holm)',holm_comparisons(conditions,method,proxy)))
             notes.append('Repeated-condition post-hoc comparisons preserve subject matching and adjust all pairwise p values with Holm. Paired t comparisons assume normal differences; Wilcoxon comparisons assume symmetric differences for a location interpretation. The global and pairwise tests answer different questions.')
+            if name=='repeatedanova':
+                notes.append('Paired t mean differences are first condition minus second condition. The 95% confidence intervals are pointwise (unadjusted); Holm adjusts p values only.')
         if name=='repeatedanova':
             samples=[[sum(float(conditions[j][row]) for j in range(i))-i*float(conditions[i][row]) for row in range(len(conditions[0]))] for i in range(1,len(conditions))]
             labels={'sample:'+str(i):'Within-subject contrast '+str(i) for i in range(1,len(conditions))}
             normality=True
-            notes.append('Repeated-measures normality checks use within-subject Helmert contrasts across independent subjects. Review the contrast Q–Q plots, Greenhouse–Geisser corrected p values and sphericity assumptions.')
+            notes.append('Repeated-measures normality checks use within-subject Helmert contrasts across independent subjects. Review the contrast Q–Q plots, Mauchly sphericity test and Greenhouse–Geisser / Huynh–Feldt corrected p values. A nonsignificant Mauchly test does not establish sphericity.')
     elif name in ('ancova','twowayanova','linearmodel') and residuals:
         samples=residuals['groups']; normality=True; variance=True
         labels={'sample:'+str(i+1):label for i,label in enumerate(residuals['labels'])}
@@ -134,12 +152,7 @@ def companion_report(report, name, value, inputs, precision, labels=None, residu
     qq=[]; distributions=[]; summary=[]
     for i,sample in enumerate(samples):
         label=labels.get('sample:'+str(i+1), 'Sample '+str(i+1))
-        try:
-            data=[float(v) for v in sample]
-            if data and all(math.isfinite(v) for v in data):
-                summary.append({'Sample':label,'n':len(data),'Mean':statistics.mean(data),'SD':statistics.stdev(data) if len(data)>1 else None,'Median':statistics.median(data),'Minimum':min(data),'Maximum':max(data)})
-        except (TypeError,ValueError,OverflowError):
-            summary.append({'Sample':label,'n':len(sample),'status':'Summary exceeds plotting numeric range'})
+        summary.append(sample_summary(sample,label))
         views=normal_views(sample,label)
         if views: qq.append(views[0]); distributions.append(views[1])
         if normality:
@@ -190,7 +203,8 @@ def companion_report(report, name, value, inputs, precision, labels=None, residu
         effects=contingency_effects(value['observed'])
         notes.append(effects.pop('Note',''))
         extras.append(('Effect size',effects))
-    for title,data in [('Sample summaries',summary),*extras]:
+    summary_title='Contrast summaries' if name=='repeatedanova' else 'Sample summaries'
+    for title,data in [('Condition summaries',condition_summary),(summary_title,summary),*extras]:
         if data:
             supplement=statistics_report('cramerv' if title=='Effect size' and name in ('chi2independence','fisherexact') else name,data,precision,{} if title=='Effect size' and name in ('chi2independence','fisherexact') else labels)
             for section in supplement['sections']:
@@ -198,6 +212,11 @@ def companion_report(report, name, value, inputs, precision, labels=None, residu
                 if title=='Effect size' and name in ('chi2independence','fisherexact') and section['title']=='Summary':section['title']='Effect-size context'
                 elif section['title']=='Summary' or section['title']==report['title']: section['title']=title
             report['sections'].extend(section for section in supplement['sections'] if section['title']!='Compared columns')
+            if title=='Paired t post-hoc (Holm)':
+                for plot in supplement.get('plots',[]):
+                    if plot.get('kind')=='intervals':
+                        plot.update(title='Paired mean differences (95% CI, unadjusted)',reference=0,
+                                    caption='Pointwise 95% paired t intervals; Holm adjustment applies to p values only.')
             report.setdefault('plots',[]).extend(supplement.get('plots',[]))
     if diagnostics:
         # Format numeric cells through the same decimal/table contract as the primary result.

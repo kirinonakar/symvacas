@@ -2,7 +2,7 @@
   "sources": [
     "SciPy normal CDF quadrature and bounded polychoric likelihood optimization",
     "NumPy full influence covariance and SciPy numerical-Jacobian DWLS sandwich",
-    "lavaan scaled.shifted T3 formula",
+    "lavaan scaled.shifted T3 formula (formula reference only; not direct lavaan output)",
     "SciPy joint raw-unit mean/covariance ML"
   ],
   "cases": [
@@ -1485,7 +1485,7 @@
           0.48362430185589966
         ]
       ],
-      "tolerance": 0.0003
+      "tolerance": 2e-06
     },
     {
       "function": "cfa",
@@ -2966,7 +2966,7 @@
           0.6295024558075355
         ]
       ],
-      "tolerance": 0.0003
+      "tolerance": 2e-06
     },
     {
       "function": "sem",
@@ -5445,7 +5445,7 @@
           0.33642170255126513
         ]
       ],
-      "tolerance": 0.0003
+      "tolerance": 2e-06
     },
     {
       "function": "cfa",
@@ -8174,7 +8174,7 @@
           0.45010891198501435
         ]
       ],
-      "tolerance": 0.0003
+      "tolerance": 2e-06
     },
     {
       "function": "cfa",
@@ -10903,7 +10903,7 @@
           0.47945130440406325
         ]
       ],
-      "tolerance": 0.0003
+      "tolerance": 2e-06
     },
     {
       "function": "cfa",
@@ -13355,7 +13355,7 @@
           0.41389716755841166
         ]
       ],
-      "tolerance": 0.0005
+      "tolerance": 2e-06
     },
     {
       "function": "cfa",
@@ -15807,7 +15807,7 @@
           0.4523688136980988
         ]
       ],
-      "tolerance": 0.0005
+      "tolerance": 2e-06
     }
   ]
 }

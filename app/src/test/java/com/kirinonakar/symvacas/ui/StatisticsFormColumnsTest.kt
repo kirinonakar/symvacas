@@ -7,6 +7,16 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class StatisticsFormColumnsTest {
+    @Test fun posthocCommandsPreserveUnequalSamplesAndSelectedControl() {
+        val rows=listOf(listOf("1","3","6"),listOf("2","4","8"),listOf("","5","9"))
+        val opts=mapOf("grouping" to "columns","columns" to "2,0,1","control" to "2","adjustment" to "holm")
+        for(id in listOf("scheffe","dunnett","conover")) {
+            val suffix=when(id){"dunnett"->",2";"conover"->",holm";else->""}
+            val plan=socialStatisticsPlan(id,rows,opts,listOf("Placebo","Low","High"))
+            assertEquals("$id([[6,8,9],[1,2],[3,4,5]]$suffix)",plan.expression)
+            assertEquals(mapOf("sample:1" to "High","sample:2" to "Placebo","sample:3" to "Low"),plan.labels)
+        }
+    }
     private val schema=JSONArray(File("src/main/assets/advanced_statistics.json").readText())
     private fun definition(id:String)=(0 until schema.length()).map {schema.getJSONObject(it)}.first {it.getString("id")==id}
 

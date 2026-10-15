@@ -32,6 +32,39 @@ test('production WASM engine computes the research presets against independent r
     }
   }
   assert.equal(done.size,10);
+  const extended=JSON.parse(readFileSync(new URL('../../tests/fixtures/sphericity_posthoc_reference.json',import.meta.url),'utf8'));
+  for(const entry of [extended.cases[3],...extended.cases.slice(4,7)]){
+    const literal=value=>Array.isArray(value)?`[${value.map(literal).join(',')}]`:String(value);
+    const current=++id,pending=receive(data=>data.type==='result'&&data.id===current);
+    worker.send({id:current,request:{...statisticsRequest(`${entry.function}(${entry.arguments.map(literal).join(',')})`),precision:15}});
+    const result=(await pending).result;assert.equal(result.ok,true,`${entry.function}: ${result.error}`);
+    for(const [path,expected] of entry.expected){
+      const section=result.statisticsReport.sections.find(section=>section.title===(path.length===1?'Summary':path[0]));
+      const cell=path.length===1?section.rows.find(row=>row[0]===path[0])[1]:section.rows[path[1]][section.columns.indexOf(path[2])];
+      assert.ok(Math.abs(Number(cell.decimal)-expected)<=entry.tolerance*Math.max(1,Math.abs(expected)),`${entry.function}: ${path}`);
+    }
+  }
+  const repeated=extended.repeated_report;
+  {
+    const current=++id,pending=receive(data=>data.type==='result'&&data.id===current);
+    worker.send({id:current,request:{...statisticsRequest(`repeatedanova(${JSON.stringify(repeated.rows)})`),precision:15,
+      statisticsTermLabels:{'feature:1':'x','feature:2':'y','feature:3':'z'}}});
+    const result=(await pending).result;assert.equal(result.ok,true,result.error);
+    const sections=Object.fromEntries(result.statisticsReport.sections.map(section=>[section.title,section]));
+    const number=(title,row,column)=>Number(sections[title].rows[row][sections[title].columns.indexOf(column)].decimal);
+    assert.deepEqual(sections['Condition summaries'].rows.map(row=>row[0]),['x','y','z']);
+    for(const [i,expected] of repeated.conditions.entries()){
+      assert.ok(Math.abs(number('Condition summaries',i,'Mean')-expected.mean)<1e-12);
+      assert.ok(Math.abs(number('Condition summaries',i,'SD')-expected.sd)<1e-12);
+    }
+    for(const [i,expected] of repeated.contrasts.entries()){
+      assert.ok(Math.abs(number('Assumption checks',i,'Statistic')-expected.W)<2e-8);
+      assert.ok(Math.abs(number('Assumption checks',i,'p value')-expected.p)<2e-7);
+      assert.equal(number('Assumption checks',i,'n'),5);
+    }
+    for(const [i,expected] of repeated.pairs.entries())for(const [column,key] of [['Mean difference','difference'],['Lower 95% CI','lower'],['Upper 95% CI','upper'],['Adjusted p value','holm_p']])
+      assert.ok(Math.abs(number('Paired t post-hoc (Holm)',i,column)-expected[key])<2e-10);
+  }
   for(const analysis of ['chi2independence','fisherexact']){
     const current=++id,pending=receive(data=>data.type==='result'&&data.id===current);
     worker.send({id:current,request:{...statisticsRequest(`${analysis}([0,0,1,1,1],[0,1,0,1,1])`),statisticsTermLabels:{'table:row':'Treatment','table:column':'Outcome'}}});

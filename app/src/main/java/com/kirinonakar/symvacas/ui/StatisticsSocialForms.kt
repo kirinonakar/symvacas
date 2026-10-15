@@ -1,6 +1,6 @@
 package com.kirinonakar.symvacas.ui
 
-internal val socialAnalysisIds=setOf("cronbach","efa","cfa","sem","manova","mediation","moderation","cramerv","phi","cohenkappa","dunn","discriminantanalysis","quantreg","zeroinflated","tobit","hcluster")
+internal val socialAnalysisIds=setOf("cronbach","efa","cfa","sem","manova","mediation","moderation","cramerv","phi","cohenkappa","dunn","conover","scheffe","dunnett","discriminantanalysis","quantreg","zeroinflated","tobit","hcluster")
 
 internal data class SocialStatisticsPlan(val expression:String,val labels:Map<String,String>)
 
@@ -23,10 +23,16 @@ internal fun socialStatisticsPlan(id:String,rows:List<List<String>>,opts:Map<Str
     fun table(values:List<List<String>>)=values.joinToString(",","[","]",transform=::vector)
     fun label(at:Int,fallback:String)=columnLabels.getOrElse(at){fallback}
     val expression=when(id) {
-        "dunn"->{
+        "dunn","conover","scheffe","dunnett"->{
             val plan=statisticsComparisonData(rows,opts,all=true);require(plan.samples.size>=2){"Choose at least two groups"}
             plan.labels.forEachIndexed {i,at->labels["sample:${i+1}"]=if(opts["grouping"]=="groups")at else label(at.toInt(),"Sample ${i+1}")}
-            "dunn(${table(plan.samples)},${opts["adjustment"]})"
+            val suffix=when(id) {
+                "dunn","conover"->",${opts["adjustment"] ?: "holm"}"
+                "dunnett"->{val control=(opts["control"] ?: "1").toIntOrNull();require(control!=null&&control in 1..plan.samples.size){"Choose a valid control group number"};",$control"}
+                else->""
+            }
+            if(id in listOf("scheffe","dunnett"))require(plan.samples.all {it.size>=2}){"Enter at least two observations in each group"}
+            "$id(${table(plan.samples)}$suffix)"
         }
         "cronbach","efa","cfa","sem","hcluster"->{
             val multigroup=id in listOf("cfa","sem")&&opts["groupMode"]=="multi"

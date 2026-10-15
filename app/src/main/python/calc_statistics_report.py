@@ -12,6 +12,7 @@ TITLES = dict(zip('stats mean median variance stdev sumdata quartiles covariance
 TITLES.update({'mode':'Mode', 'skewness':'Skewness', 'kurtosis':'Excess kurtosis'})
 TITLES['logisticcompare']='Nested logistic model comparison'
 TITLES['modelcompare']='Model Comparison'
+TITLES.update({'scheffe':'Scheffé post-hoc test','dunnett':'Dunnett control comparisons','conover':'Conover–Iman post-hoc test'})
 TITLES.update({'propztest':'One-sample proportion z test', 'propztest2':'Two-sample proportion z test',
                'ancova':'ANCOVA', 'glm':'Generalized linear model (GLM)',
                'welchanova':'Welch ANOVA','gameshowell':'Games–Howell','linearmodel':'Factorial linear model / ANOVA', 'twowayanova':'Two-way ANOVA', 'friedman':'Friedman test',

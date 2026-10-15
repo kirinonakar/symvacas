@@ -33,7 +33,7 @@ export function renderStatisticsReport(container,report,{digits=10,onCopy,onClea
   if(report.notes?.length){const notes=element('details','','statistics-result-details');notes.append(element('summary',t('Interpretation & assumptions')));for(const note of report.notes)notes.append(element('p',t(note),'statistics-interpretation'));panel.append(notes);}
   const variablesFirst=report.analysis==='stats'&&report.title!=='Overall';
   const primary=['Summary','ANOVA','Overall model','Overall ANOVA','Overall Welch ANOVA',report.title,...(report.title==='Overall'?['Numeric data','Categorical data']:[]),...(variablesFirst?['Analyzed variables']:[])];
-  const prominent=section=>primary.includes(section.title)||['Model diagnostics','Indicator R²','Explained variance','Latent R²','Summary','Sample summaries','Assumption checks','Effect size','Mean confidence interval (95%, two-sided)','Overall ANOVA','Expected-count diagnostics'].includes(section.title);
+  const prominent=section=>primary.includes(section.title)||['Model diagnostics','Indicator R²','Explained variance','Latent R²','Summary','Sample summaries','Condition summaries','Contrast summaries','Assumption checks','Effect size','Mean confidence interval (95%, two-sided)','Overall ANOVA','Expected-count diagnostics'].includes(section.title);
   const rank=section=>variablesFirst&&section.title==='Analyzed variables'?-1:Number(!primary.includes(section.title));
   const sections=[...report.sections.filter(prominent).sort((a,b)=>rank(a)-rank(b)),...report.sections.filter(section=>!prominent(section))];
   let plotsShown=false;

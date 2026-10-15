@@ -135,7 +135,7 @@ internal fun statisticsCellText(m:CalculatorModel,cell:JSONObject)=ResultDisplay
         }
         val variablesFirst=report.optString("analysis")=="stats"&&report.optString("title")!="Overall"
         val primary=setOf("Summary","ANOVA","Overall model","Overall ANOVA","Overall Welch ANOVA",report.getString("title"))+(if(report.optString("title")=="Overall")setOf("Numeric data","Categorical data") else emptySet())+(if(variablesFirst)setOf("Analyzed variables") else emptySet())
-        val prominent=primary+setOf("Model diagnostics","Indicator R²","Explained variance","Latent R²","Summary","Sample summaries","Assumption checks","Effect size","Mean confidence interval (95%, two-sided)","Overall ANOVA","Expected-count diagnostics")
+        val prominent=primary+setOf("Model diagnostics","Indicator R²","Explained variance","Latent R²","Summary","Sample summaries","Condition summaries","Contrast summaries","Assumption checks","Effect size","Mean confidence interval (95%, two-sided)","Overall ANOVA","Expected-count diagnostics")
         val ordered=(0 until sections.length()).sortedBy {val title=sections.getJSONObject(it).getString("title");if(variablesFirst&&title=="Analyzed variables")-1 else when(title){in primary->0;in prominent->1;else->2}}
         var plotsShown=false
         val shownGroups=mutableSetOf<String>()

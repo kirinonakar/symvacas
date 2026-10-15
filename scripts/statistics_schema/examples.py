@@ -28,7 +28,7 @@ def add_example_rows(schema):
             samples=[literal(arg) for arg in (arguments[:2] if item['id'] in ('bayescompare','cohend','tost2','tostpaired','pearson','spearman','kendall','bayesttest','yuen','winsorcor') else arguments)]; rows=[[sample[i] if i<len(sample) else '' for sample in samples] for i in range(max(map(len,samples)))]
         elif item['id'] in ('bayesanova','trimmedanova'): rows=[[sample[i] if i<len(sample) else '' for sample in first] for i in range(max(map(len,first)))]
         elif item['id']=='logrank': rows=[r+[i+1] for i,arg in enumerate(arguments) for r in literal(arg)]
-        elif item['id']=='dunn': rows=[[sample[i] if i<len(sample) else '' for sample in first] for i in range(max(map(len,first)))]
+        elif item['id'] in ('dunn','conover','scheffe','dunnett'): rows=[[sample[i] if i<len(sample) else '' for sample in first] for i in range(max(map(len,first)))]
         else: rows=first
         item['exampleRows']=[[str(v) for v in row] for row in rows]
         if item['id']=='logisticcompare': item['validationExampleRows']=[[str(v) for v in row] for row in LOGISTIC_COMPARE_ROWS[5:]+LOGISTIC_COMPARE_ROWS[:5]]

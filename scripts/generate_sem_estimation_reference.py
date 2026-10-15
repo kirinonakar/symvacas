@@ -18,7 +18,7 @@ ROOT=Path(__file__).resolve().parents[1]
 cases=[]
 
 
-def add(name,args,expected,tolerance=3e-4):
+def add(name,args,expected,tolerance=2e-6):
     cases.append(dict(function=name,arguments=args,expected=expected,tolerance=tolerance))
 
 
@@ -188,7 +188,7 @@ def ordinal_group_reference(rows,ids,invariance):
         expected += [(['Residual variances',g*p+i,'Variance'],errors[g][i]) for i in range(p)]
         expected += [(['Indicator R²',g*p+i,'R²'],1-errors[g][i]/matrices[g][i,i]) for i in range(p)]
         expected += [(['Loadings',g*p+i,'SE'],np.sqrt(cov[i-1,i-1])) for i in range(1,p)]
-    add('cfa',[rows.tolist(),[1]*p,[],'complete',ids.tolist(),invariance,'wlsmv'],expected,tolerance=5e-4)
+    add('cfa',[rows.tolist(),[1]*p,[],'complete',ids.tolist(),invariance,'wlsmv'],expected)
 
 
 rng=np.random.default_rng(20261011)
@@ -202,5 +202,5 @@ latent=rng.normal(size=140); base=latent[:,None]*[1,.9,1.1,.8]+rng.normal(size=(
 second=base*[1,1.05,.95,1.1]+np.array([.5,.7,.3,.6]); rows=np.vstack([base,second]); ids=np.r_[np.ones(140,dtype=int),np.full(140,2)]
 for invariance in ('scalar','strict'): continuous_reference(rows,ids,invariance)
 for invariance in ('scalar','strict'): ordinal_group_reference(np.digitize(rows,[-.8,.1,1.]),ids,invariance)
-(ROOT/'tests/fixtures/sem_estimation_reference.json').write_text(json.dumps({'sources':['SciPy normal CDF quadrature and bounded polychoric likelihood optimization','NumPy full influence covariance and SciPy numerical-Jacobian DWLS sandwich','lavaan scaled.shifted T3 formula','SciPy joint raw-unit mean/covariance ML'], 'cases':cases},indent=2,allow_nan=False)+'\n',encoding='utf8')
+(ROOT/'tests/fixtures/sem_estimation_reference.json').write_text(json.dumps({'sources':['SciPy normal CDF quadrature and bounded polychoric likelihood optimization','NumPy full influence covariance and SciPy numerical-Jacobian DWLS sandwich','lavaan scaled.shifted T3 formula (formula reference only; not direct lavaan output)','SciPy joint raw-unit mean/covariance ML'], 'cases':cases},indent=2,allow_nan=False)+'\n',encoding='utf8')
 print('Wrote',len(cases),'independent SEM references')

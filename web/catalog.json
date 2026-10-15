@@ -374,6 +374,9 @@
     "padjust([],bonferroni)",
     "padjust([],fdr)",
     "dunn([[],[],[]],holm)",
+    "scheffe([[],[],[]])",
+    "dunnett([[],[],[]],1)",
+    "conover([[],[],[]],holm)",
     "manova([])"
   ],
   "Advanced statistics": [
