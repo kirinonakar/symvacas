@@ -40,7 +40,7 @@ private val ScientificKeys=listOf(
 private val SecondKeys=listOf(
     listOf(KeySpec("simp","simplify()"),KeySpec("factor","factor()","factorint","factorint()"),KeySpec("expand","expand()"),KeySpec("x", "x", "xʸ", "^()"),KeySpec("y",secondary="x²",alternate="^2"),KeySpec("z",secondary="=",alternate="RELATION")),
     listOf(KeySpec("⌊x⌋","floor()","mod","mod(,)","a"),KeySpec("⌈x⌉","ceil()","divmod","divmod(,)","b"),KeySpec("∞","oo","sign","sign()","c"),KeySpec(",",secondary="√",alternate="sqrt()",alpha="d"),KeySpec("{",secondary="[",alternate="["),KeySpec("}",secondary="]",alternate="]")),
-    listOf(KeySpec("MATRIX","MATRIX_INPUT",secondary="n×m",alternate="MATRIX_SIZE",type="action"),KeySpec("det","det()",secondary="Pol",alternate="pol(,)"),KeySpec("inv","inverse()",secondary="Rec",alternate="rec(,)"),KeySpec("T","transpose()"),KeySpec("‖v‖","norm()"),KeySpec("GRAPH","TO_GRAPH",secondary="EQN",alternate="TO_SYSTEM",type="action"))
+    listOf(KeySpec("MATRIX","MATRIX_INPUT",secondary="n×m",alternate="MATRIX_SIZE",type="action"),KeySpec("det","det()",secondary="Pol",alternate="pol(,)"),KeySpec("inv","inverse()",secondary="Rec",alternate="rec(,)"),KeySpec("T","transpose()",secondary="t",alternate="t"),KeySpec("‖v‖","norm()",secondary="θ",alternate="θ"),KeySpec("GRAPH","TO_GRAPH",secondary="EQN",alternate="TO_SYSTEM",type="action"))
 )
 private val NumericKeys=listOf(
     listOf(KeySpec("7",secondary="CONST",alternate="Constants"),KeySpec("8",secondary="CONV",alternate="Units"),KeySpec("9",secondary="CLR",alternate="Clear"),KeySpec("DEL",secondary="INS",alternate="INS",type="danger"),KeySpec("AC",secondary="CLR ALL",alternate="CLR ALL",type="danger")),
@@ -59,7 +59,7 @@ internal val KeypadShortcutGroups:Map<String,List<DisplayShortcut>> by lazy {
     }
     linkedMapOf(
         "Main keys" to choices(listOf(KeySpec("SHIFT"),KeySpec("ALPHA"),KeySpec("MODE",alternate="Scientific/CAS"),KeySpec("2nd","SECOND"),KeySpec("CALC",secondary="SOLVE",alternate="SOLVE",alpha="="),KeySpec("∫","integrate(,x,,)","d/dx","nderivative(,x,)",":"),KeySpec("x⁻¹","^(-1)","x!","!"),KeySpec("logₐ□","log(,)","Σ","sum(,x,,)"),KeySpec("▲","UP"),KeySpec("◀","LEFT"),KeySpec("▶","RIGHT"),KeySpec("▼","DOWN"))+ScientificKeys.flatten()),
-        "2nd keys" to choices(listOf(KeySpec("d/dx","diff(,x)","∫","integrate(,x)"),KeySpec("lim","limit(,x,)"),KeySpec("sinc","sinc()"),KeySpec("Π","product(,x,,)"))+SecondKeys.flatten()),
+        "2nd keys" to choices(listOf(KeySpec("d/dx","diff(,x)","∫","integrate(,x)"),KeySpec("lim","limit(,x,)"),KeySpec("sinc","sinc()",secondary="<",alternate="<"),KeySpec("Π","product(,x,,)",secondary=">",alternate=">"))+SecondKeys.flatten()),
         "Number keys" to choices(NumericKeys.flatten()),
         "ALPHA" to (('A'..'Z')+('a'..'z')).map {letter->DisplayShortcut(letter.toString(),letter.toString())}
     )
@@ -179,7 +179,7 @@ internal fun performKeypadInput(m:CalculatorModel,requestedValue:String,open:(St
                 val row=maxHeight/2
                 val top=listOf(KeySpec("SHIFT",type="utility"),KeySpec("ALPHA",type="utility"),KeySpec("MODE",alternate="Scientific/CAS",type="utility"),KeySpec(if(m.secondKeys)"1st" else "2nd","SECOND",type="utility"))
                 top.forEachIndexed {i,k->val col=if(i<2)i else i+2;Keycap(k,Modifier.offset(x=column*col).width(keyWidth).height(row),m.shift&&k.title=="SHIFT"||m.alpha&&k.title=="ALPHA",onClick={press(k)},onLongClick={pressLong(k)})}
-                val bottom=if(m.secondKeys)listOf(KeySpec("d/dx","diff(,x)","∫","integrate(,x)"),KeySpec("lim","limit(,x,)"),KeySpec("sinc","sinc()"),KeySpec("Π","product(,x,,)")) else listOf(KeySpec("CALC",secondary="SOLVE",alternate="SOLVE",alpha="="),KeySpec("∫","integrate(,x,,)","d/dx","nderivative(,x,)",":"),KeySpec("x⁻¹","^(-1)","x!","!"),KeySpec("logₐ□","log(,)","Σ","sum(,x,,)"))
+                val bottom=if(m.secondKeys)listOf(KeySpec("d/dx","diff(,x)","∫","integrate(,x)"),KeySpec("lim","limit(,x,)"),KeySpec("sinc","sinc()",secondary="<",alternate="<"),KeySpec("Π","product(,x,,)",secondary=">",alternate=">")) else listOf(KeySpec("CALC",secondary="SOLVE",alternate="SOLVE",alpha="="),KeySpec("∫","integrate(,x,,)","d/dx","nderivative(,x,)",":"),KeySpec("x⁻¹","^(-1)","x!","!"),KeySpec("logₐ□","log(,)","Σ","sum(,x,,)"))
                 bottom.forEachIndexed {i,k->val col=if(i<2)i else i+2;Keycap(k,Modifier.offset(x=column*col,y=row).width(keyWidth).height(row),onClick={press(k)},onLongClick={pressLong(k)})}
                 Box(Modifier.offset(x=column*2).width(keyWidth*2+gap).fillMaxHeight(),contentAlignment=Alignment.Center) {
                     Box(Modifier.fillMaxSize(.88f).clip(CircleShape).background(c.scientific).border(1.dp,c.muted.copy(alpha=.3f),CircleShape))

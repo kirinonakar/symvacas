@@ -1,4 +1,4 @@
-self.SYMVACAS_CACHE = 'symvacas-static-b32d4e4ed16238d2';
+self.SYMVACAS_CACHE = 'symvacas-static-0c06e110a9502246';
 self.SYMVACAS_ASSETS = [
   "./",
   "./advanced-statistics-schema.js",

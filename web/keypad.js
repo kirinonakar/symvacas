@@ -10,7 +10,7 @@ export const scientificRows=[
 export const secondRows=[
   [key('simp','simplify()'),key('factor','factor()','factorint','factorint()'),key('expand','expand()'),key('x','x','xʸ','^()'),key('y','y','x²','^2'),key('z','z','=','RELATION')],
   [key('⌊x⌋','floor()','mod','mod(,)','a'),key('⌈x⌉','ceil()','divmod','divmod(,)','b'),key('∞','oo','sign','sign()','c'),key(',',',','√','sqrt()','d'),key('{','{','[','['),key('}','}',']',']')],
-  [key('MATRIX','MATRIX_INPUT','n×m','MATRIX_SIZE','','action'),key('det','det()','Pol','pol(,)'),key('inv','inverse()','Rec','rec(,)'),key('T','transpose()'),key('‖v‖','norm()'),key('GRAPH','TO_GRAPH','EQN','TO_SYSTEM','','action')]
+  [key('MATRIX','MATRIX_INPUT','n×m','MATRIX_SIZE','','action'),key('det','det()','Pol','pol(,)'),key('inv','inverse()','Rec','rec(,)'),key('T','transpose()','t','t'),key('‖v‖','norm()','θ','θ'),key('GRAPH','TO_GRAPH','EQN','TO_SYSTEM','','action')]
 ];
 export const numericRows=[
   [key('7','7','CONST','Constants'),key('8','8','CONV','Units'),key('9','9','CLR','Clear'),key('DEL','DEL','INS','INS','','danger'),key('AC','AC','CLR ALL','CLR ALL','','danger')],
@@ -20,7 +20,7 @@ export const numericRows=[
 ].map(row=>row.map(k=>({...k,type:k.type==='danger'?'danger':'numeric'})));
 export function topKeys(second=false){return [key('SHIFT','SHIFT','','','','utility'),key('ALPHA','ALPHA','','','','utility'),key('MODE','MODE','','Scientific/CAS','','utility'),key(second?'1st':'2nd','SECOND','','','','utility')];}
 export function topFunctions(second=false){return second?
-  [key('d/dx','diff(,x)','∫','integrate(,x)'),key('lim','limit(,x,)'),key('sinc','sinc()'),key('Π','product(,x,,)')]:
+  [key('d/dx','diff(,x)','∫','integrate(,x)'),key('lim','limit(,x,)'),key('sinc','sinc()','<','<'),key('Π','product(,x,,)','>','>')]:
   [key('CALC','CALC','SOLVE','SOLVE','='),key('∫ₐᵇ','integrate(,x,,)','d/dx','nderivative(,x,)',':'),key('x⁻¹','^(-1)','x!','!'),key('logₐ□','log(,)','Σ','sum(,x,,)')];
 }
 
