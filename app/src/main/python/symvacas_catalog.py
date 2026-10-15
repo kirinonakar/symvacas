@@ -73,7 +73,7 @@ def regression_report(data, mode="linear", *options):
         fit_custom_regression(engine, rows, _sympify(options[0]), _sympify(options[1]),
                               _sympify(options[2]) if len(options)>2 else None)
     else:
-        require(len(options)<=1 and (not options or str(mode) in ("polynomial", "logistic", "ridge", "lasso", "elasticnet", "logisticridge", "logisticlasso", "logisticelasticnet", "randomforest", "randomforestclassifier", "randomforestregressor", "bayeslinear", "bayeslogistic")), "Options require polynomial, logistic (firth), Bayesian or machine learning regression")
+        require(len(options)<=1 and (not options or str(mode) in ("polynomial", "logistic", "ridge", "lasso", "elasticnet", "logisticridge", "logisticlasso", "logisticelasticnet", "randomforest", "randomforestclassifier", "randomforestregressor", "svm", "svc", "svr", "bayeslinear", "bayeslogistic")), "Options require polynomial, logistic (firth), Bayesian or machine learning regression")
         fit_regression(engine, rows, str(mode), _sympify(options[0]) if options else None)
     return engine.regression_report
 

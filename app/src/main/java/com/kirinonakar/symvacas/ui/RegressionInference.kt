@@ -31,9 +31,12 @@ import org.json.JSONObject
 import kotlin.math.abs
 
 @Composable internal fun RegressionInference(report:JSONObject,digits:Int,parameterLabels:Map<String,String> = emptyMap(),onCopy:(()->Unit)?=null,onClear:(()->Unit)?=null,clearEnabled:Boolean=true) {
+    val svm=report.optString("model")=="svm"
+    val svmClassification=svm&&report.optString("task")=="classification"
     val colors=LocalInstrument.current
     val clipboard=LocalClipboardManager.current
     var expanded by remember(report) {mutableStateOf(false)}
+    if(svm)Text(tr(if(svmClassification)"SVM classification" else "SVM regression"),fontSize=13.sp,fontWeight=FontWeight.SemiBold)
     if(onCopy!=null)Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
         SmallAction("Copy",fontSize=12.sp,modifier=Modifier.testTag("statistics-regression-copy")){onCopy()}
         if(onClear!=null)SmallAction("Clear",enabled=clearEnabled,fontSize=12.sp,modifier=Modifier.testTag("statistics-regression-clear")){onClear()}
@@ -49,10 +52,11 @@ import kotlin.math.abs
     val metrics=listOf("R²" to "rSquared","Adjusted R²" to "adjustedRSquared","RMSE" to "rmse","Log loss" to "logLoss","Accuracy" to "accuracy","Sensitivity" to "sensitivity","Specificity" to "specificity","OOB C-statistic (AUC)" to "oobAuc","OOB sensitivity" to "oobSensitivity","OOB specificity" to "oobSpecificity","OOB accuracy" to "oobAccuracy","OOB R²" to "oobRSquared","OOB RMSE" to "oobRMSE","Residual SE" to "residualSE",
         "C-statistic (AUC)" to "auc","McFadden R²" to "pseudoRSquared","Deviance" to "deviance","AIC" to "aic","LR p" to "likelihoodP",
         "Durbin–Watson" to "durbinWatson","Residual Shapiro p" to "shapiroP")
-    Text("n=${report.optInt("n")} · "+(if(report.isNull("df"))"" else "df=${report.optInt("df")} · ")+metrics.filter {report.has(it.second)&&(!report.isNull(it.second)||it.second in listOf("rSquared","adjustedRSquared"))}.map {"${tr(it.first)}=${value(report,it.second)}"}.joinToString(" · "),fontSize=11.sp)
+    Text("n=${report.optInt("n")} · "+(if(report.isNull("df"))"" else "df=${report.optInt("df")} · ")+metrics.filter {report.has(it.second)&&(!report.isNull(it.second)||it.second in listOf("rSquared","adjustedRSquared"))}.map {"${tr(if(svmClassification&&it.second=="accuracy")"Training accuracy" else it.first)}=${value(report,it.second)}"}.joinToString(" · "),fontSize=11.sp)
     StatisticsExplanation("Model details",tr(when {
         bayesian->when(report.optString("method")){"nuts"->"NUTS posterior samples; check R-hat, ESS and divergences.";"laplace"->"Gaussian Laplace posterior at the MAP; approximate credible intervals.";else->"Normal-inverse-gamma posterior; exact Student-t credible intervals."}
         report.optString("method")=="firth"->"Firth logistic regression; profile penalized-likelihood intervals."
+        svm&&report.optString("kernel")=="rbf"->"RBF kernel model; predictors standardized."
         machineLearning->"Training fit; ordinary coefficient inference is unavailable."
         report.optString("fitScale")=="binomial"->"Binomial MLE; Wald intervals."
         report.optString("fitScale")=="log(y)"->"Inference in log(y); R² and RMSE in original y units."
@@ -60,7 +64,13 @@ import kotlin.math.abs
         else->"OLS inference; independent errors with constant variance."
     })+(if(bayesian)"\n\n"+tr(if(report.optString("method")=="laplace")"Training probabilities evaluated at the MAP." else "Training predictions evaluated at posterior mean coefficients.") else ""),"statistics-regression-model-help",report)
     if(bayesian)Text("${tr("Prior SD")}=${value(report,"priorSD")} · ${tr("Credible level (0–1)")}=${value(report,"credibleLevel")}",fontSize=11.sp,color=colors.muted)
-    if(machineLearning)Text(if(forest)"${tr("Random Forest")} · ${tr(if(report.optString("task")=="classification")"Binary classification" else "Regression")} · ${tr("Trees")}: ${report.optInt("trees")} · ${tr("Max depth")}: ${report.optInt("maxDepth")} · ${tr("Random seed")}: ${report.optInt("seed")} · OOB n=${report.optInt("oobN")}/${report.optInt("n")}" else "${tr(report.optString("model").removePrefix("logistic"))} · α=${value(report,"alpha")} · ${tr("Selected predictors")}: ${report.optInt("selectedPredictors")} · L1=${value(report,"l1Ratio")}",fontSize=11.sp,color=colors.muted)
+    if(machineLearning)Text(if(svm)"${tr("Model")}: ${if(svmClassification)"SVC" else "SVR"} · ${tr("Kernel")}: ${report.optString("kernel")} · C=${value(report,"C")}${if(report.optString("kernel")=="rbf"&&!report.isNull("gamma"))" · γ=${value(report,"gamma")}" else ""}${if(!svmClassification&&!report.isNull("epsilon"))" · ε=${value(report,"epsilon")}" else ""} · ${tr("Support vectors")}: ${report.optInt("supportVectors")} · ${tr("Iterations")}: ${report.optInt("iterations")}" else if(forest)"${tr("Random Forest")} · ${tr(if(report.optString("task")=="classification")"Binary classification" else "Regression")} · ${tr("Trees")}: ${report.optInt("trees")} · ${tr("Max depth")}: ${report.optInt("maxDepth")} · ${tr("Random seed")}: ${report.optInt("seed")} · OOB n=${report.optInt("oobN")}/${report.optInt("n")}" else "${tr(report.optString("model").removePrefix("logistic"))} · α=${value(report,"alpha")} · ${tr("Selected predictors")}: ${report.optInt("selectedPredictors")} · L1=${value(report,"l1Ratio")}",fontSize=11.sp,color=colors.muted)
+    if(svm)Text(tr("Training data evaluation"),fontSize=12.sp,fontWeight=FontWeight.SemiBold)
+    if(svmClassification) {
+        SvmDecisionEquation(report,digits,parameterLabels)
+        report.optJSONObject("crossValidation")?.takeIf {it.optBoolean("available")}?.let {StatisticsExplanation("Model details",tr("Cross-validation refits standardization in each training fold; C and gamma remain fixed."),"statistics-svm-cv-help",report)}
+        report.optJSONObject("crossValidation")?.let {cv->Text(if(cv.optBoolean("available"))"${tr("Cross-validated accuracy")}=${value(cv,"accuracy")} · ${tr("Stratified cross-validation")} · ${tr("Folds")}=${cv.optInt("folds")} · n=${cv.optInt("n")}" else tr(cv.optString("reason")),fontSize=12.sp)}
+    }
     if(bayesian) {
         if(report.has("varianceShape"))Text("${tr("Variance prior shape")}=${value(report,"varianceShape")} · ${tr("Variance prior scale")}=${value(report,"varianceScale")} · ${tr("Posterior variance mean")}=${value(report,"posteriorVarianceMean")}",fontSize=11.sp,color=colors.muted)
     }
@@ -83,7 +93,7 @@ import kotlin.math.abs
         listOf(parameterName(coefficient),value(coefficient,"estimate"))+(if(bayesian)listOf(value(coefficient,"posteriorSD"),"${value(coefficient,"low")} … ${value(coefficient,"high")}",value(coefficient,"probabilityPositive")) else if(machineLearning)emptyList() else listOf(value(coefficient,"se"),
             "${value(coefficient,"low")} … ${value(coefficient,"high")}",value(coefficient,"p"))) + (if(report.has("nuts"))listOf(value(coefficient,"rHat"),value(coefficient,"bulkEss"),value(coefficient,"tailEss"),value(coefficient,"mcse")) else emptyList()) + (if(hasVif)listOf(value(coefficient,"vif")) else emptyList()) + (if(hasPenalizedOdds)listOf(value(coefficient,"oddsRatio")) else emptyList())
     }
-    Column(Modifier.horizontalScroll(rememberScrollState())) {
+    if(coefficients.isNotEmpty())Column(Modifier.horizontalScroll(rememberScrollState())) {
         Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) {
             headers.forEachIndexed {column,header->
                 // Each column takes the widest header/value, keeping every row aligned.
@@ -105,6 +115,7 @@ import kotlin.math.abs
             array.optJSONObject(index)?.let {c->Text("${parameterName(c)}: ${value(c,"estimate")}",fontSize=11.sp)}
         }}
     }
+    if(svmClassification)SvmDecisionPlot(report.optJSONObject("decisionPlot"),digits,parameterLabels)
     RegressionRoc(report,digits)
     if(report.has("confusionMatrix")) {
         ClassificationMatrix(report,"Training classification")
@@ -113,6 +124,7 @@ import kotlin.math.abs
             RegressionRoc(oob,digits,oob=true)
         }
     }
+    if(svmClassification) {SvmClassificationPredictions(report,digits);return}
     TextButton(onClick={expanded=!expanded}) {Text(tr("Residual diagnostics"))}
     if(expanded) {
         val binomial=report.optString("fitScale")=="binomial"||report.optString("model").startsWith("logistic")
@@ -139,8 +151,8 @@ import kotlin.math.abs
             PlotExportActions(exports,"symvacas-residuals")
         }
         val predictive=bayesian&&!binomial
-        val residualHeaders=((if(binomial)listOf("Observation","Observed","Fitted value","Residual","Pearson residual","Deviance residual","Leverage","Cook's D") else if(bayesian||machineLearning)listOf("Observation","Observed","Fitted value","Residual") else listOf("Observation","Observed","Fitted value","Residual","Standardized","Leverage","Cook's D"))+(if(predictive)listOf("Predictive lower","Predictive upper") else emptyList())).map {tr(it)}
-        val residualKeys=listOf("row","observed","fitted","residual")+(if(binomial)listOf("standardized","deviance","leverage","cook") else if(bayesian||machineLearning)emptyList() else listOf("standardized","leverage","cook"))+(if(predictive)listOf("predictiveLow","predictiveHigh") else emptyList())
+        val residualHeaders=((if(binomial)listOf("Observation","Observed","Fitted value","Residual","Pearson residual","Deviance residual","Leverage","Cook's D") else if(bayesian||machineLearning)listOf("Observation","Observed","Fitted value","Residual") else listOf("Observation","Observed","Fitted value","Residual","Standardized","Leverage","Cook's D"))+(if(svmClassification)listOf("Decision score") else emptyList())+(if(predictive)listOf("Predictive lower","Predictive upper") else emptyList())).map {tr(it)}
+        val residualKeys=listOf("row","observed","fitted","residual")+(if(binomial)listOf("standardized","deviance","leverage","cook") else if(bayesian||machineLearning)emptyList() else listOf("standardized","leverage","cook"))+(if(svmClassification)listOf("decisionScore") else emptyList())+(if(predictive)listOf("predictiveLow","predictiveHigh") else emptyList())
         val residualRows=residuals.take(100)
         val residualGrid=colors.grid
         val residualHeaderStyle=LocalTextStyle.current.copy(fontSize=11.sp,fontWeight=FontWeight.SemiBold)
@@ -178,7 +190,7 @@ import kotlin.math.abs
         }
         if(residuals.size>100)Text(tr("Showing first 100 rows; copy includes all rows."),fontSize=11.sp,color=colors.muted)
         TextButton(onClick={
-            val keys=listOf("row","observed","fitted","residual","standardized","leverage","cook","deviance")+(if(predictive)listOf("predictiveLow","predictiveHigh") else emptyList())
+            val keys=listOf("row","observed","fitted","residual","standardized","leverage","cook","deviance")+(if(svmClassification)listOf("decisionScore") else emptyList())+(if(predictive)listOf("predictiveLow","predictiveHigh") else emptyList())
             clipboard.setText(AnnotatedString(keys.joinToString(",")+"\n"+residuals.joinToString("\n") {row->keys.joinToString(","){key->if(row.isNull(key))"" else ResultDisplayFormat.formatText(row.optString(key),ResultDisplayMode.OFF,false,maxFractionDigits=digits,preserveSmallValues=true)}}))
         }) {Text(tr("Copy residual CSV"))}
     }

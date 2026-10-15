@@ -1,4 +1,4 @@
-self.SYMVACAS_CACHE = 'symvacas-static-a778a091c21da58a';
+self.SYMVACAS_CACHE = 'symvacas-static-48825230bfff577a';
 self.SYMVACAS_ASSETS = [
   "./",
   "./advanced-statistics-schema.js",
@@ -114,6 +114,8 @@ self.SYMVACAS_ASSETS = [
   "./surface-plot.js",
   "./survival-report.js",
   "./svg-export.js",
+  "./svm-decision-equation.js",
+  "./svm-decision-plot.js",
   "./sw.js",
   "./THIRD_PARTY.md",
   "./unit-groups.js",

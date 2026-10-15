@@ -40,6 +40,25 @@ test('fresh page constructs and initializes every workspace without a cached dat
   assert.deepEqual(errors,[]);
 });
 
+test('SVM workspace restores task and kernel controls and updates dependent fields',context=>{
+  const {window,errors}=fixture(context,{fields:{mode:'statistics','statistics-data':'y,a,b\n0,-1,7\n1,1,7',
+    'statistics-kind':'columns','statistics-columns':'3','regression-kind':'svm','regression-svm-task':'classification',
+    'regression-svm-kernel':'linear','regression-svm-c':'2','regression-response':'0','regression-response-auto':false,'regression-response-choice':'0'}});
+  const get=id=>window.document.getElementById(id);
+  assert.equal(get('regression-kind').value,'svm');
+  assert.equal(get('regression-svm').hidden,false);
+  assert.equal(get('regression-forest').hidden,true);
+  assert.equal(get('regression-svm-gamma').closest('label').hidden,true);
+  assert.equal(get('regression-svm-epsilon').closest('label').hidden,true);
+  assert.equal(get('regression-response').value,'0');
+  assert.equal(get('regression-svm-c').value,'2');
+  get('regression-svm-kernel').value='rbf';get('regression-svm-kernel').dispatchEvent(new window.Event('change'));
+  get('regression-svm-task').value='regression';get('regression-svm-task').dispatchEvent(new window.Event('change'));
+  assert.equal(get('regression-svm-gamma').closest('label').hidden,false);
+  assert.equal(get('regression-svm-epsilon').closest('label').hidden,false);
+  assert.deepEqual(errors,[]);
+});
+
 test('calculator, graph and equation production inputs convert pasted LaTeX immediately',async context=>{
   let graphs,calculator;context.after(()=>{calculator?.dispose();graphs?.dispose();});
   const {window,state,errors}=fixture(context),document=window.document,noop=()=>{};

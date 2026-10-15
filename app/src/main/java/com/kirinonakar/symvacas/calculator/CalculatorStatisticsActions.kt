@@ -60,7 +60,7 @@ internal object CalculatorStatisticsActions {
                     val array=response.optJSONArray("curve")
                     statisticsState.regressionCurve=if(array==null)emptyList() else (0 until array.length()).mapNotNull {index->array.optJSONArray(index)?.let {pair->pair.optDouble(0) to pair.optDouble(1)}}
                     statisticsState.regressionFit=response.optString("exact");statisticsState.regressionData=data;statisticsState.regressionMode=fittedMode
-                    statisticsState.regressionResponseColumn=if(fittedMode in listOf("multiple","logistic","polynomial","ridge","lasso","elasticnet","logisticridge","logisticlasso","logisticelasticnet","randomforest","randomforestclassifier","randomforestregressor","bayeslinear","bayeslogistic"))responseColumn else null
+                    statisticsState.regressionResponseColumn=if(fittedMode in listOf("multiple","logistic","polynomial","ridge","lasso","elasticnet","logisticridge","logisticlasso","logisticelasticnet","randomforest","randomforestclassifier","randomforestregressor","svm","svc","svr","bayeslinear","bayeslogistic"))responseColumn else null
                     statisticsState.regressionCorrelation=response.optDouble("correlation",Double.NaN).takeIf(Double::isFinite)
                     val parameters=response.optJSONArray("parameters")
                     statisticsState.regressionReport=response.optJSONObject("regression")

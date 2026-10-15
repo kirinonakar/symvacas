@@ -208,6 +208,11 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
     var bayesianScale by rememberSaveable {mutableStateOf(m.statisticsBayesianScale)}
     val bayesian=regression in listOf("bayeslinear","bayeslogistic")
     var firthMode by rememberSaveable {mutableStateOf("auto")}
+    var svmTask by rememberSaveable {mutableStateOf(m.statisticsSvmTask)}
+    var svmKernel by rememberSaveable {mutableStateOf(m.statisticsSvmKernel)}
+    var svmC by rememberSaveable {mutableStateOf(m.statisticsSvmC)}
+    var svmGamma by rememberSaveable {mutableStateOf(m.statisticsSvmGamma)}
+    var svmEpsilon by rememberSaveable {mutableStateOf(m.statisticsSvmEpsilon)}
     var forestTask by rememberSaveable {mutableStateOf(m.statisticsForestTask)}
     var forestTrees by rememberSaveable {mutableStateOf(m.statisticsForestTrees)}
     var forestDepth by rememberSaveable {mutableStateOf(m.statisticsForestDepth)}
@@ -215,7 +220,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
     var polynomialDegree by rememberSaveable {mutableStateOf(m.statisticsPolynomialDegree)}
     var logisticResponse by rememberSaveable {mutableStateOf(m.statisticsLogisticResponse)}
     val regularized=regression in listOf("linear","multiple","logistic")&&regularization!="none"
-    val fitMode=if(regularized)(if(regression=="logistic")"logistic" else "")+regularization else if(regression=="randomforest")when(forestTask){"classification"->"randomforestclassifier";"regression"->"randomforestregressor";else->"randomforest"} else regression
+    val fitMode=if(regularized)(if(regression=="logistic")"logistic" else "")+regularization else if(regression=="svm")when(svmTask){"classification"->"svc";"regression"->"svr";else->"svm"} else if(regression=="randomforest")when(forestTask){"classification"->"randomforestclassifier";"regression"->"randomforestregressor";else->"randomforest"} else regression
     val regressionColumns=statisticsRegressionColumns(dataKind)
     val responseColumn=logisticResponse.toIntOrNull()?.takeIf {it in regressionColumns.indices} ?: regressionColumns.lastIndex
     LaunchedEffect(dataKind) {if(regressionColumns.isNotEmpty()&&logisticResponse.isNotBlank()&&logisticResponse.toIntOrNull() !in regressionColumns.indices)logisticResponse=regressionColumns.lastIndex.toString()}
@@ -292,7 +297,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
     val defaultHeatMapY=heatMapAxisIndices.drop(heatMapAxisSplit).toSet()
     val heatMapXSelection=parseHeatMapSelection(heatMapXColumns,dataColumns.size,defaultHeatMapX).intersect(validHeatMapAxes)
     val heatMapYSelection=parseHeatMapSelection(heatMapYColumns,dataColumns.size,defaultHeatMapY).intersect(validHeatMapAxes)-heatMapXSelection
-    LaunchedEffect(data,datasetName,dataKind,regression,plotType,plotGrouping,scatterX,scatterY,plotOrientation,histogramKde,heatMapMode,heatMapCorrelation,heatMapXColumns,heatMapYColumns,heatMapClustering,heatMapFit,autoColumns,csv,selected,isNew,customFormula,customVariable,customInitials,polynomialDegree,logisticResponse,lassoAlpha,forestTrees,forestDepth,forestSeed,regularization,l1Ratio,forestTask,bayesianPriorSD,bayesianLevel,bayesianShape,bayesianScale,bayesianMethod,nutsSamples,nutsWarmup,nutsMaxDepth,nutsSeed,nutsChains) {m.statisticsAutoColumns=autoColumns;m.statisticsPlotGrouping=plotGrouping;m.statisticsScatterX=scatterX;m.statisticsScatterY=scatterY;m.statisticsPlotOrientation=plotOrientation;m.statisticsHistogramKde=histogramKde;m.statisticsHeatMapMode=heatMapMode;m.statisticsHeatMapCorrelation=heatMapCorrelation;m.statisticsHeatMapXColumns=if(heatMapAxisIndices.size<2)"" else encodeHeatMapSelection(heatMapXSelection);m.statisticsHeatMapYColumns=if(heatMapAxisIndices.size<2)"" else encodeHeatMapSelection(heatMapYSelection);m.statisticsHeatMapClustering=heatMapClustering;m.statisticsHeatMapFit=heatMapFit;m.saveStatistics(datasetName,data,dataKind,regression,plotType,csv,selected,isNew,customFormula,customVariable,customInitials,polynomialDegree,logisticResponse,lassoAlpha,forestTrees,forestDepth,forestSeed,regularization,l1Ratio,forestTask,bayesianPriorSD,bayesianLevel,bayesianShape,bayesianScale,bayesianMethod,nutsSamples,nutsWarmup,nutsMaxDepth,nutsSeed,nutsChains)}
+    LaunchedEffect(svmTask,svmKernel,svmC,svmGamma,svmEpsilon,data,datasetName,dataKind,regression,plotType,plotGrouping,scatterX,scatterY,plotOrientation,histogramKde,heatMapMode,heatMapCorrelation,heatMapXColumns,heatMapYColumns,heatMapClustering,heatMapFit,autoColumns,csv,selected,isNew,customFormula,customVariable,customInitials,polynomialDegree,logisticResponse,lassoAlpha,forestTrees,forestDepth,forestSeed,regularization,l1Ratio,forestTask,bayesianPriorSD,bayesianLevel,bayesianShape,bayesianScale,bayesianMethod,nutsSamples,nutsWarmup,nutsMaxDepth,nutsSeed,nutsChains) {m.statisticsSvmTask=svmTask;m.statisticsSvmKernel=svmKernel;m.statisticsSvmC=svmC;m.statisticsSvmGamma=svmGamma;m.statisticsSvmEpsilon=svmEpsilon;m.statisticsAutoColumns=autoColumns;m.statisticsPlotGrouping=plotGrouping;m.statisticsScatterX=scatterX;m.statisticsScatterY=scatterY;m.statisticsPlotOrientation=plotOrientation;m.statisticsHistogramKde=histogramKde;m.statisticsHeatMapMode=heatMapMode;m.statisticsHeatMapCorrelation=heatMapCorrelation;m.statisticsHeatMapXColumns=if(heatMapAxisIndices.size<2)"" else encodeHeatMapSelection(heatMapXSelection);m.statisticsHeatMapYColumns=if(heatMapAxisIndices.size<2)"" else encodeHeatMapSelection(heatMapYSelection);m.statisticsHeatMapClustering=heatMapClustering;m.statisticsHeatMapFit=heatMapFit;m.saveStatistics(datasetName,data,dataKind,regression,plotType,csv,selected,isNew,customFormula,customVariable,customInitials,polynomialDegree,logisticResponse,lassoAlpha,forestTrees,forestDepth,forestSeed,regularization,l1Ratio,forestTask,bayesianPriorSD,bayesianLevel,bayesianShape,bayesianScale,bayesianMethod,nutsSamples,nutsWarmup,nutsMaxDepth,nutsSeed,nutsChains)}
     val dateAxis=remember(parsedRows,dataKind) {if(dataColumns.size>1)statisticsDateAxis(parsedRows) else null}
     val numericRows=remember(parsedRows,dateAxis) {statisticsNumericRows(parsedRows,dateAxis)}
     fun vector(column:Int)=numericRows.mapNotNull {it.getOrNull(column)?.takeIf(String::isNotBlank)}.joinToString(",","[","]")
@@ -306,7 +311,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
     LaunchedEffect(scatterColumns) {scatterX=scatterColumns.xColumn;scatterY=scatterColumns.yColumn}
     LaunchedEffect(m.regressionData,m.regressionFit,m.regressionMode,m.regressionResponseColumn) {
         if(dataKind=="xy"&&m.regressionData==data&&m.regressionFit.isNotBlank()) {
-            val response=if(m.regressionMode in listOf("logistic","polynomial","ridge","lasso","elasticnet","logisticridge","logisticlasso","logisticelasticnet","randomforest","randomforestclassifier","randomforestregressor","bayeslinear","bayeslogistic"))m.regressionResponseColumn ?: 1 else 1
+            val response=if(m.regressionMode in listOf("logistic","polynomial","ridge","lasso","elasticnet","logisticridge","logisticlasso","logisticelasticnet","randomforest","randomforestclassifier","randomforestregressor","svm","svc","svr","bayeslinear","bayeslogistic"))m.regressionResponseColumn ?: 1 else 1
             scatterX=1-response;scatterY=response
         }
     }
@@ -458,7 +463,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
             selectedDataKind=if(selectedDataKind.startsWith("columns:"))"columns:$columnCount" else result.kind
         }})
         }
-            val fittedResponse=if(m.regressionMode in listOf("multiple","logistic","polynomial","ridge","lasso","elasticnet","logisticridge","logisticlasso","logisticelasticnet","randomforest","randomforestclassifier","randomforestregressor","bayeslinear","bayeslogistic"))m.regressionResponseColumn?.takeIf {it in regressionColumns.indices} ?: regressionColumns.lastIndex else regressionColumns.lastIndex
+            val fittedResponse=if(m.regressionMode in listOf("multiple","logistic","polynomial","ridge","lasso","elasticnet","logisticridge","logisticlasso","logisticelasticnet","randomforest","randomforestclassifier","randomforestregressor","svm","svc","svr","bayeslinear","bayeslogistic"))m.regressionResponseColumn?.takeIf {it in regressionColumns.indices} ?: regressionColumns.lastIndex else regressionColumns.lastIndex
             val fittedVariables=statisticsRegressionVariables(dataKind,fittedResponse)
             val parameterLabels=statisticsRegressionParameterLabels(dataKind,m.regressionMode,fittedResponse,data)
             val fittedResponseName=regressionColumns.getOrNull(fittedResponse).orEmpty()
@@ -552,20 +557,20 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
             val plotPanels=if(plotType=="Heat map")emptyList() else if(plotType=="Scatter"||namedBars!=null)listOf(StatisticsPlotPanel("",emptyList())) else statisticsPlotPanels(parsedRows,dataKind,plotGrouping,statisticsColumnLabels(data,dataKind))
             plotPanels.forEach {panel->
                 if(panel.label.isNotBlank())Text(panel.label,style=MaterialTheme.typography.titleSmall)
-                StatisticsPlot(plotType,if(plotType=="Scatter")plotPairs else xValues.mapIndexed {i,v->i.toDouble() to v},xValues,yValues,if(fitVisible)m.regressionCurve.orEmpty() else emptyList(),if(fitVisible&&!m.regressionMode.startsWith("randomforest"))m.regressionFit else "",m.displayDigits,fitVisible&&m.regressionMode=="linear",m.regressionCorrelation,tertiary=zValues,allColumns=panel.series,xDateOrigin=scatter.dateAxis?.origin,
+                StatisticsPlot(plotType,if(plotType=="Scatter")plotPairs else xValues.mapIndexed {i,v->i.toDouble() to v},xValues,yValues,if(fitVisible)m.regressionCurve.orEmpty() else emptyList(),if(fitVisible&&m.regressionMode !in listOf("randomforest","randomforestclassifier","randomforestregressor","svm","svc","svr"))m.regressionFit else "",m.displayDigits,fitVisible&&m.regressionMode=="linear",m.regressionCorrelation,tertiary=zValues,allColumns=panel.series,xDateOrigin=scatter.dateAxis?.origin,
                     xAxisLabel=if(fitVisible)fittedVariables["x"] ?: "x" else statisticsColumnLabels(data,dataKind).getOrElse(scatterColumns.xColumn){"x"},yAxisLabel=if(fitVisible)fittedResponseName else statisticsColumnLabels(data,dataKind).getOrElse(scatterColumns.yColumn){"y"},
-                    fitPrefix=if(fitVisible&&(m.regressionMode.startsWith("logistic")||m.regressionMode=="bayeslogistic"))"P($fittedResponseName = 1) = " else if(fitVisible)"$fittedResponseName ≈ " else "y ≈ ",fitVariables=if(fitVisible&&m.regressionMode in listOf("logistic","polynomial","ridge","lasso","elasticnet","logisticridge","logisticlasso","logisticelasticnet","randomforest","randomforestclassifier","randomforestregressor","bayeslinear","bayeslogistic"))fittedVariables else emptyMap(),orientation=plotOrientation,namedBars=namedBars,histogramKde=histogramKde,scatterSeries=if(scatterColumns.groupColumn>=0)scatter.series else null)
+                    fitPrefix=if(fitVisible&&(m.regressionMode.startsWith("logistic")||m.regressionMode=="bayeslogistic"))"P($fittedResponseName = 1) = " else if(fitVisible)"$fittedResponseName ≈ " else "y ≈ ",fitVariables=if(fitVisible&&m.regressionMode in listOf("logistic","polynomial","ridge","lasso","elasticnet","logisticridge","logisticlasso","logisticelasticnet","randomforest","randomforestclassifier","randomforestregressor","svm","svc","svr","bayeslinear","bayeslogistic"))fittedVariables else emptyMap(),orientation=plotOrientation,namedBars=namedBars,histogramKde=histogramKde,scatterSeries=if(scatterColumns.groupColumn>=0)scatter.series else null)
             }
             if(scatter.dateAxis!=null&&plotType=="Scatter")StatisticsExplanation("Plot details",if(isKorean())"회귀식의 x: ${scatter.dateAxis.origin.plusDays(1)} = 1일째" else "Regression x: ${scatter.dateAxis.origin.plusDays(1)} = day 1","statistics-date-regression-help")
         }
         StatisticsSectionToggle("Regression & models",regressionExpanded,"statistics-regression-toggle") {m.setStatisticsSectionExpanded("regression",!regressionExpanded)}
         if(regressionExpanded) {
             Column(verticalArrangement=Arrangement.spacedBy(2.dp)) {
-                if(dataColumns.size>1)Choices(if(dataKind=="xyz"||dataKind.startsWith("columns:"))listOf("multiple","logistic","randomforest","bayeslinear","bayeslogistic") else listOf("linear","quadratic","polynomial","logarithmic","exponential","power","logistic","randomforest","bayeslinear","bayeslogistic","custom"),regression,{selectedMode->
+                if(dataColumns.size>1)Choices(if(dataKind=="xyz"||dataKind.startsWith("columns:"))listOf("multiple","logistic","randomforest","svm","bayeslinear","bayeslogistic") else listOf("linear","quadratic","polynomial","logarithmic","exponential","power","logistic","randomforest","svm","bayeslinear","bayeslogistic","custom"),regression,{selectedMode->
                     regression=selectedMode;plotType=if(dataKind=="xy")"Scatter" else "Histogram"
                     val selectedResponse=responseColumn
-                    if(selectedMode in listOf("custom","polynomial","randomforest","bayeslinear","bayeslogistic")||regularization!="none")m.clearRegression()
-                    if(selectedMode !in listOf("custom","polynomial","randomforest","bayeslinear","bayeslogistic")&&(selectedMode !in listOf("linear","multiple","logistic")||regularization=="none")) {
+                    if(selectedMode in listOf("custom","polynomial","randomforest","svm","bayeslinear","bayeslogistic")||regularization!="none")m.clearRegression()
+                    if(selectedMode !in listOf("custom","polynomial","randomforest","svm","bayeslinear","bayeslogistic")&&(selectedMode !in listOf("linear","multiple","logistic")||regularization=="none")) {
                         val table=statisticsRegressionTable(numericRows,dataKind,selectedMode,selectedResponse)
                         if(table!=null)m.fitRegression("regression($table,$selectedMode)",data,if(selectedMode in listOf("multiple","logistic"))selectedResponse else null)
                         else m.error="Add more data points than fit parameters"
@@ -594,6 +599,18 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                         }
                         Field(forestSeed,"Random seed",Modifier.fillMaxWidth()){m.clearRegression();forestSeed=it}
                     }
+                }
+                if(dataColumns.size>1&&regression=="svm") {
+                    StatisticsSelectionTitle("SVM task")
+                    val tasks=mapOf("Auto (0/1 → classification)" to "auto","Binary classification" to "classification","Regression" to "regression")
+                    Choices(tasks.keys.toList(),tasks.entries.firstOrNull {it.value==svmTask}?.key ?: tasks.keys.first(),{m.clearRegression();svmTask=tasks[it] ?: "auto"})
+                    StatisticsSelectionTitle("Kernel")
+                    val kernels=mapOf("RBF" to "rbf","Linear kernel" to "linear")
+                    Choices(kernels.keys.toList(),kernels.entries.firstOrNull {it.value==svmKernel}?.key ?: "RBF",{m.clearRegression();svmKernel=kernels[it] ?: "rbf"})
+                    Field(svmC,"Penalty C",Modifier.fillMaxWidth()){m.clearRegression();svmC=it}
+                    if(svmKernel=="rbf")Field(svmGamma,"Gamma (auto = 1/p)",Modifier.fillMaxWidth()){m.clearRegression();svmGamma=it}
+                    if(svmTask!="classification")Field(svmEpsilon,"Epsilon (SVR)",Modifier.fillMaxWidth()){m.clearRegression();svmEpsilon=it}
+                    StatisticsExplanation("Model details",tr("SVM predictors are standardized. C > 0; gamma > 0 or auto; epsilon >= 0 in response units. Classification requires 0/1. Metrics use training data."),"statistics-svm-help")
                 }
                 if(dataColumns.size>1&&bayesian) {
                     StatisticsSelectionTitle("Inference method")
@@ -626,7 +643,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                     StatisticsExplanation("Model details",tr("Zero-mean priors include the intercept on standardized predictors; coefficients in original units."),"statistics-prior-help")
                 }
                 if(dataKind!="list"&&regression in listOf("multiple","logistic","bayeslinear","bayeslogistic"))StatisticsExplanation("Model details",tr(if(regression in listOf("logistic","bayeslogistic"))"Selected column is response; others are predictors. Logistic response: 0 or 1." else "Selected column is response; others are predictors."),"statistics-regression-data-help",regression)
-                if(dataColumns.size>1&&(regularized||regression in listOf("multiple","logistic","polynomial","randomforest","bayeslinear","bayeslogistic"))) {
+                if(dataColumns.size>1&&(regularized||regression in listOf("multiple","logistic","polynomial","randomforest","svm","bayeslinear","bayeslogistic"))) {
                     StatisticsSelectionTitle("Dependent variable")
                     val responseLabels=statisticsColumnLabels(data,dataKind)
                     Choices(responseLabels,responseLabels.getOrNull(responseColumn).orEmpty(),{name->m.clearRegression();logisticResponse=responseLabels.indexOf(name).toString()},translate=false)
@@ -641,6 +658,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                     val validOptions=when {
                         bayesian->validNuts&&bayesianPriorSD.toDoubleOrNull()?.let {it.isFinite()&&it>0&&(m.removeComputationLimit||it in 0.000001..1000000.0)}==true&&bayesianLevel.toDoubleOrNull()?.let {it>0&&it<1}==true&&(regression!="bayeslinear"||(bayesianShape.toDoubleOrNull()?.let {it.isFinite()&&it>0}==true&&bayesianScale.toDoubleOrNull()?.let {it.isFinite()&&it>0}==true))
                         regularized->(lassoAlphaCv||lassoAlpha.toDoubleOrNull()?.let {it.isFinite()&&it>0}==true)&&(regularization!="elasticnet"||l1Ratio.toDoubleOrNull()?.let {it in 0.0..1.0}==true)
+                        regression=="svm"->svmC.toDoubleOrNull()?.let {it.isFinite()&&it>0}==true&&(svmKernel=="linear"||svmGamma=="auto"||svmGamma.toDoubleOrNull()?.let {it.isFinite()&&it>0}==true)&&(svmTask=="classification"||svmEpsilon.toDoubleOrNull()?.let {it.isFinite()&&it>=0}==true)
                         regression=="randomforest"->capacityOption(forestTrees,1,200)&&capacityOption(forestDepth,1,20)&&forestSeed.toLongOrNull() in 0L..2147483647L
                         else->true
                     }
@@ -648,6 +666,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                         onCancel={m.cancelRegression()},onClick={table?.let {when {
                         bayesian->m.fitRegression("regression($it,$regression,[$bayesianPriorSD,$bayesianLevel${if(regression=="bayeslinear")",$bayesianShape,$bayesianScale" else ""}$samplerOptions])",data,responseColumn)
                         regularized->{val penalty=if(lassoAlphaCv)"cv" else lassoAlpha;m.fitRegression("regression($it,$fitMode,${if(regularization=="elasticnet")"[$penalty,$l1Ratio]" else penalty})",data,responseColumn)}
+                        regression=="svm"->m.fitRegression("regression($it,$fitMode,[$svmKernel,${svmC.toDouble()},${if(svmKernel=="linear"||svmGamma=="auto")"auto" else svmGamma.toDouble().toString()},${if(svmTask=="classification")0.1 else svmEpsilon.toDouble()}])",data,responseColumn)
                         regression=="randomforest"->m.fitRegression("regression($it,$fitMode,[$forestTrees,$forestDepth,$forestSeed])",data,responseColumn)
                         else->m.fitRegression("regression($it,$regression${if(regression=="logistic"&&firthMode=="firth")",firth" else ""})",data,responseColumn)
                     }}},enabled=table!=null&&validOptions&&!m.busy)
@@ -692,7 +711,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
             }
             if(dataKind!="list"&&m.regressionData==data&&m.regressionFit.isNotBlank()) {
                 Column(verticalArrangement=Arrangement.spacedBy(0.dp)) {
-                    if(!m.regressionMode.startsWith("randomforest")&&(dataKind=="xyz"||dataKind.startsWith("columns:"))) {
+                    if(m.regressionMode !in listOf("randomforest","randomforestclassifier","randomforestregressor","svm","svc","svr")&&(dataKind=="xyz"||dataKind.startsWith("columns:"))) {
                         val equation=remember(m.regressionFit,m.displayDigits,fittedVariables) {regressionFormulaDisplayTree(m.regressionFit,m.displayDigits,fittedVariables)}
                         CompositionLocalProvider(LocalMathMinimumSize provides 8f) {
                             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical=3.dp).testTag("statistics-regression-equation"),
@@ -732,7 +751,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                             }
                         }
                     }
-                    if(dataKind=="xy"&&!m.regressionMode.startsWith("randomforest"))SmallAction("Graph fitted expression"){
+                    if(dataKind=="xy"&&m.regressionMode !in listOf("randomforest","randomforestclassifier","randomforestregressor","svm","svc","svr"))SmallAction("Graph fitted expression"){
                         val fit=if(m.regressionMode=="custom")m.regressionFit.replace(Regex("(?<![A-Za-z0-9_])${Regex.escape(customVariable)}(?![A-Za-z0-9_])"),"x") else m.regressionFit
                         val graphSource=regressionFormulaGraphSource(fit,m.displayDigits)
                         if(graphSource==null)m.error="Could not format fitted expression"

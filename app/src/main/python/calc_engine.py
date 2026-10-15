@@ -270,7 +270,7 @@ def _dispatch(payload, control=None):
                                 else: last.pop("tree",None)
             except (ValueError,TypeError,NotImplementedError,AttributeError):
                 pass
-        if getattr(engine, "regression_report", None) and engine.regression_report.get("model") == "randomforest":
+        if getattr(engine, "regression_report", None) and engine.regression_report.get("model") in ("randomforest", "svm"):
             result.pop("resultAst", None)
             result["reusable"] = False
             result["symbolic"] = False

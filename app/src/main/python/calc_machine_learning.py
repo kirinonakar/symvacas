@@ -276,12 +276,12 @@ def predict_tree(tree, row):
     return tree[0]
 
 
-def classification_metrics(labels, probabilities):
-    """Binary discrimination and threshold metrics; undefined ratios stay None."""
+def classification_metrics(labels, probabilities, threshold=.5):
+    """Binary discrimination from scores and a threshold; undefined ratios stay None."""
     from calc_inference import _binary_roc
     tn = fp = fn = tp = 0
     for actual, probability in zip(labels, probabilities):
-        predicted = probability >= .5
+        predicted = probability >= threshold
         if actual == 1:
             if predicted: tp += 1
             else: fn += 1
@@ -289,7 +289,7 @@ def classification_metrics(labels, probabilities):
             if predicted: fp += 1
             else: tn += 1
     count = len(labels)
-    result = {"n": count, "threshold": .5, "positiveClass": 1,
+    result = {"n": count, "threshold": threshold, "positiveClass": 1,
               "confusionMatrix": [[tn, fp], [fn, tp]],
               "sensitivity": tp/(tp+fn) if tp+fn else None,
               "specificity": tn/(tn+fp) if tn+fp else None,

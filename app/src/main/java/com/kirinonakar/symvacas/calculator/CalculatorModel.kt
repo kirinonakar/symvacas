@@ -406,6 +406,21 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
     val statisticsBayesianShape get()=statisticsState.statisticsBayesianShape
     val statisticsBayesianScale get()=statisticsState.statisticsBayesianScale
     val statisticsLassoAlpha get()=statisticsState.statisticsLassoAlpha
+    var statisticsSvmTask
+        get()=statisticsState.statisticsSvmTask
+        set(value) {statisticsState.statisticsSvmTask=value}
+    var statisticsSvmKernel
+        get()=statisticsState.statisticsSvmKernel
+        set(value) {statisticsState.statisticsSvmKernel=value}
+    var statisticsSvmC
+        get()=statisticsState.statisticsSvmC
+        set(value) {statisticsState.statisticsSvmC=value}
+    var statisticsSvmGamma
+        get()=statisticsState.statisticsSvmGamma
+        set(value) {statisticsState.statisticsSvmGamma=value}
+    var statisticsSvmEpsilon
+        get()=statisticsState.statisticsSvmEpsilon
+        set(value) {statisticsState.statisticsSvmEpsilon=value}
     val statisticsForestTask get()=statisticsState.statisticsForestTask
     val statisticsForestTrees get()=statisticsState.statisticsForestTrees
     val statisticsForestDepth get()=statisticsState.statisticsForestDepth

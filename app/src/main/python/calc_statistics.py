@@ -879,6 +879,9 @@ def pearson_correlation(xs, ys):
     return s.simplify(sum(x*y for x,y in zip(dx,dy))/s.sqrt(vx*vy))
 
 def fit_regression(engine, rows, mode, degree=None):
+    if mode in ("svm", "svc", "svr"):
+        from calc_svm import fit_svm
+        return fit_svm(engine, rows, mode, degree)
     if mode in ("bayeslinear", "bayeslogistic"):
         from calc_bayesian_regression import fit_bayesian
         return fit_bayesian(engine, rows, mode, degree)

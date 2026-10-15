@@ -442,8 +442,60 @@ def statistics_report(name, value, precision, labels=None):
 
 def statistics_copy_report(name, value, details, precision):
     """Copy tables for dedicated reports without changing visible report routing."""
+    if name == 'regression' and details.get('model') == 'svm':
+        classification = details.get('task') == 'classification'
+        data = {'Model': 'SVC' if classification else 'SVR',
+                'Evaluation': 'Training data evaluation', 'n': details['n'],
+                'Kernel': details['kernel'], 'Penalty C': details['C'],
+                'Support vectors': details['supportVectors'], 'Iterations': details['iterations']}
+        for label, key in (('Gamma', 'gamma'), ('Epsilon (SVR)', 'epsilon'),
+                           ('R²', 'rSquared'), ('RMSE', 'rmse'), ('AUC', 'auc'),
+                           ('Accuracy', 'accuracy'), ('Sensitivity', 'sensitivity'), ('Specificity', 'specificity')):
+            if details.get(key) is not None:
+                data['Training accuracy' if classification and key == 'accuracy' else label] = s.sympify(details[key])
+        if details.get('coefficients'):
+            data['Fitted parameters'] = [{'Parameter': row['name'], 'Estimate': s.sympify(row['estimate'])}
+                                         for row in details['coefficients']]
+        if classification:
+            equation = details.get('decisionEquation', {})
+            data['Decision function'] = 'f(x) = '+equation['expression'] if equation.get('expression') else equation.get('formula', '')
+            data['Decision rule'] = 'f(x) >= 0: class 1; f(x) < 0: class 0.'
+            if details['kernel'] == 'rbf' and equation:
+                data['Kernel intercept b'] = equation['intercept']
+                data['Predictor scales'] = [{'Variable': name, 'Scale': scale}
+                                           for name, scale in zip(equation['variables'], equation['scales'])]
+                data['Support vector terms'] = [
+                    {'Observation': term['row'], 'aᵢ': term['coefficient'],
+                     **dict(zip(('vᵢ'+str(i+1) for i in range(len(term['coordinates']))), term['coordinates']))}
+                    for term in equation['supportTerms']]
+            cv = details.get('crossValidation')
+            if cv:
+                data['Cross-validation'] = ({'Method': cv['method'], 'Folds': cv['folds'],
+                                            'Random seed': cv['seed'], 'n': cv['n'],
+                                            'Cross-validated accuracy': cv['accuracy']}
+                                           if cv['available'] else cv['reason'])
+                if cv['available']:
+                    data['Cross-validation predictions'] = [
+                        {'Observation': row['row'], 'Fold': row['fold'], 'Observed class': row['observed'],
+                         'Predicted class': row['predicted']} for row in cv['predictions']]
+            data['Decision threshold'] = details['threshold']
+            data['Classification predictions'] = [
+                {'Observation': row['row'], 'Observed class': int(float(row['observed'])),
+                 'Predicted class': int(float(row['fitted'])), 'Decision score': s.sympify(row['decisionScore']),
+                 'Support vector': 'Yes' if row.get('supportVector') else 'No'} for row in details['residuals']]
+            data['Confusion matrix'] = [dict(zip(('Observed class', 'Predicted 0', 'Predicted 1'), [i]+row))
+                                        for i, row in enumerate(details['confusionMatrix'])]
+        else:
+            data['Residual diagnostics'] = [
+                {'Observation': row['row'], 'Observed': s.sympify(row['observed']),
+                 'Fitted value': s.sympify(row['fitted']), 'Residual': s.sympify(row['residual'])}
+                for row in details['residuals']]
+        data['Warnings'] = details.get('warnings', [])
+        report = statistics_report(name, data, precision)
+        report['title'] = 'SVM classification' if classification else 'SVM regression'
+        return report
     if name == 'regression':
-        data = {'Fitted expression': value, **details}
+        data = {('Model' if details.get('model') == 'svm' else 'Fitted expression'): value, **details}
         report = statistics_report(name, data, precision)
         report['title'] = 'Regression'
     else:

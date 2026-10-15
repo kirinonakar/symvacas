@@ -282,23 +282,29 @@ export function statisticsCategoryLabels(pairs,first,second,shared=false){
   const left=[...new Set(shared?pairs.flat():pairs.map(row=>row[0]))],right=shared?left:[...new Set(pairs.map(row=>row[1]))];
   return {'table:row':first,'table:column':second,...Object.fromEntries(left.map((label,i)=>[`table:row:${i+1}`,label])),...Object.fromEntries(right.map((label,i)=>[`table:column:${i+1}`,label]))};
 }
-export function statisticsCommand(source,{op='stats',column=0,extra='0',tail='two',sigma='1',sigmaY='1',yatesCorrection=true,regression='linear',firth='auto',degree='3',alpha='0.1',l1Ratio='0.5',trees='100',maxDepth='10',seed='0',priorSD='2.5',credibleLevel='0.95',varianceShape='2',varianceScale='1',bayesianMethod='analytic',nutsSamples='500',nutsWarmup='500',nutsMaxDepth='8',nutsSeed='0',nutsChains='2',responseColumn,formula='A*exp(-k*x)+C',variable='x',initials='',grouping='columns',groupColumns='auto',firstGroup='',secondGroup='',groupColumn=0,valueColumn=1,valueColumns,matching='order',subjectColumn=0,anovaMethod='welch',independentMethod='welch',kind}={}){
+export function statisticsCommand(source,{op='stats',column=0,extra='0',tail='two',sigma='1',sigmaY='1',yatesCorrection=true,regression='linear',firth='auto',degree='3',alpha='0.1',l1Ratio='0.5',svmKernel='rbf',svmC='1',svmGamma='auto',svmEpsilon='0.1',trees='100',maxDepth='10',seed='0',priorSD='2.5',credibleLevel='0.95',varianceShape='2',varianceScale='1',bayesianMethod='analytic',nutsSamples='500',nutsWarmup='500',nutsMaxDepth='8',nutsSeed='0',nutsChains='2',responseColumn,formula='A*exp(-k*x)+C',variable='x',initials='',grouping='columns',groupColumns='auto',firstGroup='',secondGroup='',groupColumn=0,valueColumn=1,valueColumns,matching='order',subjectColumn=0,anovaMethod='welch',independentMethod='welch',kind}={}){
   if(grouping==='groups'&&statisticsGroupedColumnTests.has(op)&&valueColumns!==undefined)return statisticsGroupedTestPlan(source,{op,extra,tail,sigma,sigmaY,yatesCorrection,anovaMethod,independentMethod,groupColumn,valueColumn,valueColumns,firstGroup,secondGroup,matching,subjectColumn,kind}).source;
-  if(op==='regression'&&kind&&kind!=='xy'&&!(statisticsColumnCount(kind)>1&&['multiple','logistic','ridge','lasso','elasticnet','logisticridge','logisticlasso','logisticelasticnet','randomforest','randomforestclassifier','randomforestregressor','bayeslinear','bayeslogistic'].includes(regression)))throw new Error('Regression needs x,y data');
+  if(op==='regression'&&kind&&kind!=='xy'&&!(statisticsColumnCount(kind)>1&&['multiple','logistic','ridge','lasso','elasticnet','logisticridge','logisticlasso','logisticelasticnet','randomforest','randomforestclassifier','randomforestregressor','svm','svc','svr','bayeslinear','bayeslogistic'].includes(regression)))throw new Error('Regression needs x,y data');
   const {rows,groups,pairs,categorical,first,second,samples:activeSamples}=statisticsAnalysisData(source,{op,column,grouping,groupColumns,firstGroup,secondGroup,groupColumn,valueColumn,matching,subjectColumn,kind});
   const samples=activeSamples.map(sample=>sample.values),data=samples[0];
   if(!categorical){for(const number of samples.flat().filter(Boolean))parse(number);}
   const tailArgument=tail==='two'?'':','+tail;
   if(op==='regression'){
-    if(['multiple','logistic','ridge','lasso','elasticnet','logisticridge','logisticlasso','logisticelasticnet','randomforest','randomforestclassifier','randomforestregressor','bayeslinear','bayeslogistic'].includes(regression)){
+    if(['multiple','logistic','ridge','lasso','elasticnet','logisticridge','logisticlasso','logisticelasticnet','randomforest','randomforestclassifier','randomforestregressor','svm','svc','svr','bayeslinear','bayeslogistic'].includes(regression)){
       const complete=rows.filter(row=>row.every(Boolean));
-      const flexible=regression.startsWith('bayes')||['ridge','lasso','elasticnet','logisticridge','logisticlasso','logisticelasticnet','randomforest','randomforestclassifier','randomforestregressor','bayeslinear','bayeslogistic'].includes(regression);
+      const flexible=regression.startsWith('bayes')||['ridge','lasso','elasticnet','logisticridge','logisticlasso','logisticelasticnet','randomforest','randomforestclassifier','randomforestregressor','svm','svc','svr','bayeslinear','bayeslogistic'].includes(regression);
       if(flexible?complete.length<2:complete.length<=rows[0].length)throw new Error(flexible?'Regression needs at least two complete rows':'Add more data points than fit parameters');
       const response=responseColumn===undefined?rows[0].length-1:Number(responseColumn);
       if(!Number.isInteger(response)||response<0||response>=rows[0].length)throw new Error('Select a dependent variable column');
       const order=rows[0].map((_,i)=>i).filter(i=>i!==response).concat(response);
       const samplerOptions=bayesianMethod==='nuts'?`,[nuts,${nutsSamples},${nutsWarmup},${nutsMaxDepth},${nutsSeed},${nutsChains}]`:'';
-      const regressionOptions=regression.startsWith('bayes')?`,[${priorSD},${credibleLevel}${regression==='bayeslinear'?`,${varianceShape},${varianceScale}`:''}${samplerOptions}]`:['elasticnet','logisticelasticnet'].includes(regression)?`,[${alpha},${l1Ratio}]`:['ridge','lasso','logisticridge','logisticlasso'].includes(regression)?','+alpha:regression.startsWith('randomforest')?`,[${trees},${maxDepth},${seed}]`:regression==='logistic'&&firth==='firth'?',firth':'';
+      const svm=['svm','svc','svr'].includes(regression);
+      const kernelGamma=svmKernel==='linear'?'auto':svmGamma,regressionEpsilon=regression==='svc'?'0.1':svmEpsilon;
+      if(svm){
+        const positive=v=>String(v).trim()!==''&&Number.isFinite(Number(v))&&Number(v)>0;
+        if(!['linear','rbf'].includes(svmKernel)||!positive(svmC)||(kernelGamma!=='auto'&&!positive(kernelGamma))||String(regressionEpsilon).trim()===''||!Number.isFinite(Number(regressionEpsilon))||Number(regressionEpsilon)<0)throw new Error('Invalid SVM options');
+      }
+      const regressionOptions=svm?`,[${svmKernel},${Number(svmC)},${kernelGamma==='auto'?'auto':Number(kernelGamma)},${Number(regressionEpsilon)}]`:regression.startsWith('bayes')?`,[${priorSD},${credibleLevel}${regression==='bayeslinear'?`,${varianceShape},${varianceScale}`:''}${samplerOptions}]`:['elasticnet','logisticelasticnet'].includes(regression)?`,[${alpha},${l1Ratio}]`:['ridge','lasso','logisticridge','logisticlasso'].includes(regression)?','+alpha:regression.startsWith('randomforest')?`,[${trees},${maxDepth},${seed}]`:regression==='logistic'&&firth==='firth'?',firth':'';
       return `regression(${vector(complete.map(row=>vector(order.map(i=>row[i]))))},${regression}${regressionOptions})`;
     }
     if(pairs.length<2)throw new Error('Regression needs at least two complete x,y rows');
