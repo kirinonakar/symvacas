@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="screenshot.png" alt="SymvaCAS calculator" width="49%" />
-  <img src="heart_ani_cut.avif" alt="SymvaCAS graph animation" width="49%" />
+  <img src="heart_ani_v2.avif" alt="SymvaCAS graph animation" width="49%" />
 </p>
 
 ## Features
