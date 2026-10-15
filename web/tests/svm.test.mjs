@@ -64,6 +64,9 @@ test('packaged WASM SVM returns scores, predictions, ROC and a copyable report',
   assert.equal(plot.querySelectorAll('[data-svm-support]').length,result.regression.supportVectors);
   assert.ok(plot.querySelector('[data-svm-level="0"]'));
   assert.ok(main.querySelector('[data-svm-decision-equation]'));
+  assert.ok([...main.querySelectorAll('th')].some(header=>header.textContent==='Signed coefficient (αᵢyᵢ)'));
+  assert.match(main.textContent,/aᵢ = αᵢyᵢ/);
+  assert.match(markdown,/Signed coefficient/);
   assert.match(main.textContent,/f\(x\).*class 1/);
   assert.doesNotMatch(regressionResidualCSV(result.regression),/residual|standardized/);
   const svrPending=receive(data=>data.type==='result'&&data.id===2);

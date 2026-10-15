@@ -140,6 +140,14 @@ class SvmTests(unittest.TestCase):
                         self.assertAlmostEqual(fn(*point), contour['level'], delta=.012)
             if kernel=='rbf':
                 self.assertFalse(any('linear coefficients' in warning for warning in report['warnings']))
+                from calc_statistics_report import statistics_copy_report
+                copied = statistics_copy_report('regression', 'SVC', report, 15)
+                terms = next(section for section in copied['sections'] if section['title'] == 'Support vector terms')
+                self.assertIn('Signed coefficient (αᵢyᵢ)', terms['columns'])
+                self.assertNotIn('aᵢ', terms['columns'])
+                # The displayed values remain signed alpha*y, not alpha.
+                self.assertTrue(any(term['coefficient'] < 0 for term in eq['supportTerms']))
+                self.assertTrue(any(term['coefficient'] > 0 for term in eq['supportTerms']))
         one = fit([[-2,0],[-1,0],[1,1],[2,1]], 'svc').regression_report['decisionPlot']
         self.assertEqual(one['kind'], 'score')
         self.assertEqual([c['level'] for c in one['contours']], [-1,0,1])
@@ -150,6 +158,24 @@ class SvmTests(unittest.TestCase):
         cv = fit([[0,0],[1,1]], 'svc').regression_report['crossValidation']
         self.assertFalse(cv['available'])
         self.assertIn('two observations', cv['reason'])
+
+    def test_cross_validation_balances_total_and_per_class_fold_sizes(self):
+        for zeros, ones in ((12,12), (7,23), (2,9), (5,5), (11,13), (23,7)):
+            with self.subTest(zeros=zeros, ones=ones):
+                rows = [[i,0] for i in range(zeros)]+[[zeros+i,1] for i in range(ones)]
+                cv = fit(rows, 'svc', ['linear',1,'auto',.1]).regression_report['crossValidation']
+                folds = cv['folds']
+                self.assertEqual(sorted(row['row'] for row in cv['predictions']), list(range(1,len(rows)+1)))
+                totals = [sum(row['fold']==f for row in cv['predictions']) for f in range(1,folds+1)]
+                self.assertLessEqual(max(totals)-min(totals), 1)
+                for label in (0,1):
+                    counts = [sum(row['fold']==f and row['observed']==label for row in cv['predictions']) for f in range(1,folds+1)]
+                    self.assertGreaterEqual(min(counts), 1)
+                    self.assertLessEqual(max(counts)-min(counts), 1)
+                if zeros==ones==12:
+                    self.assertEqual(totals, [5,5,5,5,4])
+                repeated = fit(rows, 'svc', ['linear',1,'auto',.1]).regression_report['crossValidation']
+                self.assertEqual(cv, repeated)
 
 
 if __name__ == "__main__":

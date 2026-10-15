@@ -32,10 +32,12 @@ def build():
             if mode == 'svc':
                 assignment = [0]*len(xs)
                 split_rng = random.Random(0)
+                offset = 0
                 for label in (0, 1):
                     indices = [i for i, y in enumerate(ys) if y == label]
                     split_rng.shuffle(indices)
-                    for j, i in enumerate(indices): assignment[i] = j % 5
+                    for j, i in enumerate(indices): assignment[i] = (offset+j) % 5
+                    offset = (offset+len(indices)) % 5
                 held_out = [0]*len(xs)
                 for fold in range(5):
                     train = [i for i in range(len(xs)) if assignment[i] != fold]

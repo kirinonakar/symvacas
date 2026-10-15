@@ -70,10 +70,14 @@ def _cross_validation(rows, labels, options):
         return {"available": False, "reason": "Cross-validation requires at least two observations in each class."}
     rng = random.Random(0)
     assignment = [0]*len(rows)
+    offset = 0
     for group in groups:
         rng.shuffle(group)
         for i, index in enumerate(group):
-            assignment[index] = i % folds
+            assignment[index] = (offset+i) % folds
+        # Continue the round robin across classes, distributing remainders over
+        # different folds. Both total and per-class fold sizes differ by <= 1.
+        offset = (offset+len(group)) % folds
     predicted = [0]*len(rows)
     for fold in range(folds):
         training = [row for i, row in enumerate(rows) if assignment[i] != fold]

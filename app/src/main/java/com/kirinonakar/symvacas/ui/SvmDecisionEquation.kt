@@ -29,11 +29,12 @@ import org.json.JSONObject
     if(report.optString("kernel")!="rbf")return
     val scales=equation.getJSONArray("scales")
     Text("b=${number(equation.getDouble("intercept"))} · γ=${number(report.getDouble("gamma"))} · "+(0 until scales.length()).joinToString(" · "){"s${it+1}=${number(scales.getDouble(it))}"},fontSize=11.sp)
+    Text(tr("aᵢ = αᵢyᵢ, αᵢ ≥ 0; yᵢ = −1 for class 0, +1 for class 1."),fontSize=11.sp)
     var expanded by remember(report){mutableStateOf(false)}
     TextButton(onClick={expanded=!expanded}){Text(tr("Support vector terms"))}
     if(!expanded)return
     val terms=equation.getJSONArray("supportTerms")
-    val headers=listOf(tr("Observation"),"aᵢ")+variables.indices.map {"vᵢ${it+1}"}
+    val headers=listOf(tr("Observation"),tr("Signed coefficient (αᵢyᵢ)"))+variables.indices.map {"vᵢ${it+1}"}
     Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(14.dp)) {
         headers.forEachIndexed {i,header->Column(Modifier.width(IntrinsicSize.Max)){
             Text(header,fontSize=11.sp,fontWeight=FontWeight.SemiBold)

@@ -461,11 +461,12 @@ def statistics_copy_report(name, value, details, precision):
             data['Decision function'] = 'f(x) = '+equation['expression'] if equation.get('expression') else equation.get('formula', '')
             data['Decision rule'] = 'f(x) >= 0: class 1; f(x) < 0: class 0.'
             if details['kernel'] == 'rbf' and equation:
+                data['Coefficient convention'] = 'aᵢ = αᵢyᵢ, αᵢ ≥ 0; yᵢ = −1 for class 0, +1 for class 1.'
                 data['Kernel intercept b'] = equation['intercept']
                 data['Predictor scales'] = [{'Variable': name, 'Scale': scale}
                                            for name, scale in zip(equation['variables'], equation['scales'])]
                 data['Support vector terms'] = [
-                    {'Observation': term['row'], 'aᵢ': term['coefficient'],
+                    {'Observation': term['row'], 'Signed coefficient (αᵢyᵢ)': term['coefficient'],
                      **dict(zip(('vᵢ'+str(i+1) for i in range(len(term['coordinates']))), term['coordinates']))}
                     for term in equation['supportTerms']]
             cv = details.get('crossValidation')
