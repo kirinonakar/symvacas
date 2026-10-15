@@ -44,7 +44,9 @@ export function createGraphParameterControls({
       const toggleLabel=document.createElement('label'),toggle=document.createElement('input');toggleLabel.className='check graph-parameter-name';toggle.type='checkbox';toggle.checked=state.animationEnabled[name]!==false;toggle.dataset.animateParameter=name;toggle.setAttribute('aria-label',`${t('Animate')}: ${name}`);toggle.onchange=()=>{state.animationEnabled[name]=toggle.checked;if(state.animation&&toggle.checked)state.animation.phases[name]=parameterPhase(name)-state.animation.phase;persist();};toggleLabel.append(toggle,caption);
       input.type='range';input.min=String(limits[0]);input.max=String(limits[1]);input.step='any';input.value=String(state.parameters[name]);caption.dataset.parameter=name;caption.textContent=name;
       input.setAttribute('aria-label',`${t('Parameter value')}: ${name}`);
-      input.oninput=()=>{state.parameters[name]=Number(input.value);if(state.animation)state.animation.phases[name]=parameterPhase(name)-state.animation.phase;syncParameterControls();parameterChanged();};
+      input.oninput=()=>{state.parameters[name]=Number(input.value);if(state.animation)state.animation.phases[name]=parameterPhase(name)-state.animation.phase;syncParameterControls();parameterChanged(true);};
+      const finishDrag=()=>{parameterChanged(false);persist();};
+      input.onchange=finishDrag;input.addEventListener('pointercancel',finishDrag);
       valueInput.type='number';valueInput.step='any';displayField(valueInput,state.parameters[name]);editField(valueInput);valueInput.dataset.parameterValue=name;valueInput.setAttribute('aria-label',`${t('Parameter value')}: ${name}`);
       const applyValue=()=>{
         const number=fieldNumber(valueInput);
@@ -67,9 +69,9 @@ export function createGraphParameterControls({
           next[index]=index===0?Math.min(number,other-gap):Math.max(number,other+gap);
           state.parameterRanges[name]=next;state.parameters[name]=next[0]+(next[1]-next[0])/2;
           if(state.animation)state.animation.phases[name]=parameterPhase(name)-state.animation.phase;
-          syncParameterControls();parameterChanged();
+          syncParameterControls();parameterChanged(true);
         };
-        boundSlider.onchange=persist;rangeTrack.append(boundSlider);
+        boundSlider.onchange=finishDrag;boundSlider.addEventListener('pointercancel',finishDrag);rangeTrack.append(boundSlider);
       }
       bindRangeTrackClick(rangeTrack);
       label.className='graph-parameter-value';label.append(toggleLabel,input,valueInput);ranges.className='form-row';ranges.append(low,high);const group=document.createElement('div');group.className='graph-parameter';group.append(label,ranges,rangeTrack);$('graph-parameters').append(group);

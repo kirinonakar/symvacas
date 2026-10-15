@@ -42,8 +42,8 @@ export function createGraphComputation({
     const yLog=state.yLog&&!['surface','space'].includes(kind());
     if(yLog&&view.ymin<=0)throw new Error('Log y requires 0 < y min < y max');
     if(kind()==='surface')zRange();
-    const request={...options(),action:'graph',angle:'RAD',yLog,graphKind:kind(),trees,shadings,min,max,xMin:view.xmin,xMax:view.xmax,yMin:view.ymin,yMax:view.ymax,surfaceYMin:view.ymin,surfaceYMax:view.ymax,parameterMin:numeric('graph-parameter-min'),parameterMax:numeric('graph-parameter-max'),thetaMin:numeric('graph-theta-min'),thetaMax:numeric('graph-theta-max'),parameters:{...state.parameters},variable:['parametric','polar','space','differential'].includes(kind())?'t':kind()==='sequence'?'n':'x',samples:state.animation?200:500};
-    if(kind()==='space'){[request.surfaceZMin,request.surfaceZMax]=surface.autoZ?[-5,5]:zRange();}if(kind()==='surface'){const density=surfaceSampleCount(view,surface.samples,surface.autoDensity,surface.zoom,hasImplicitSurface(value('graph-source')));request.surfaceSamples=state.animation?Math.min(density,hasImplicitSurface(value('graph-source'))?16:32):density;[request.surfaceZMin,request.surfaceZMax]=surface.autoZ?[view.ymin,view.ymax]:zRange();}
+    const request={...options(),action:'graph',angle:'RAD',yLog,graphKind:kind(),trees,shadings,min,max,xMin:view.xmin,xMax:view.xmax,yMin:view.ymin,yMax:view.ymax,surfaceYMin:view.ymin,surfaceYMax:view.ymax,parameterMin:numeric('graph-parameter-min'),parameterMax:numeric('graph-parameter-max'),thetaMin:numeric('graph-theta-min'),thetaMax:numeric('graph-theta-max'),parameters:{...state.parameters},variable:['parametric','polar','space','differential'].includes(kind())?'t':kind()==='sequence'?'n':'x',samples:state.animation||state.parameterDragging?200:500};
+    if(kind()==='space'){[request.surfaceZMin,request.surfaceZMax]=surface.autoZ?[-5,5]:zRange();}if(kind()==='surface'){const density=surfaceSampleCount(view,surface.samples,surface.autoDensity,surface.zoom,hasImplicitSurface(value('graph-source')));request.surfaceSamples=state.animation||state.parameterDragging?Math.min(density,hasImplicitSurface(value('graph-source'))?16:32):density;[request.surfaceZMin,request.surfaceZMax]=surface.autoZ?[view.ymin,view.ymax]:zRange();}
     if(kind()==='sequence')request.initialTrees=splitTopLevel(value('graph-initial')).map(s=>parse(s));
     if(kind()==='differential'){request.initialValues=splitTopLevel(value('graph-initial')).map(Number);request.t0=numeric('graph-t0');}
     if(state.derivative!==null&&kind()==='cartesian'&&trees[state.derivative])request.derivativeSelected=state.derivative;
@@ -53,22 +53,43 @@ export function createGraphComputation({
 
   function queue(){state.pending=true;densityControls();clearTimeout(state.timer);state.timer=null;if(state.animation||!state.active)return;state.timer=setTimeout(()=>{state.timer=null;if(state.active&&!state.running&&!isBusy()&&isReady())run();},180);}
 
+  function requestParameters(preview=false){
+    state.parameterDragging=preview;state.parameterUpdatePending=true;state.pending=true;
+    clearTimeout(state.timer);state.timer=null;
+    if(state.active&&!state.running&&!isBusy()&&isReady())run();
+  }
+
   function flush(){
     if(state.pendingAnalysis&&!state.running&&!isBusy()&&isReady()){const next=state.pendingAnalysis;state.pendingAnalysis=null;analyze(next.action,next.point);return;}
+    if(state.parameterUpdatePending&&state.pending&&state.active&&!state.running&&!isBusy()&&isReady()){
+      if(!state.parameterFlushQueued){state.parameterFlushQueued=true;queueMicrotask(()=>{
+        state.parameterFlushQueued=false;
+        // Let already queued foreground work take the worker before the next
+        // conflated slider preview, without adding a visible debounce delay.
+        if(state.parameterUpdatePending&&state.pending&&state.active&&!state.running&&!isBusy()&&isReady())run();
+      });}
+      return;
+    }
     if(!state.animation&&state.pending&&state.active&&!state.running&&!isBusy()&&isReady()&&state.timer===null){if(state.viewDragging)viewSampler.schedule();else queue();}
   }
 
   async function run(){
     if(value('graph-source')!==sourceDrafts[kind()])$('graph-source').oninput();
-    clearTimeout(state.timer);state.timer=null;if(state.running||isBusy()||!isReady()){state.pending=true;return;}state.pending=false;state.running=true;
+    clearTimeout(state.timer);state.timer=null;if(state.running||isBusy()||!isReady()){state.pending=true;return;}state.pending=false;state.parameterUpdatePending=false;state.running=true;
     try{
       if(!value('graph-source').trim()){clearPlot();parameterControls([],true);selections();render();persist();return;}
       const preview=state.viewDragging&&['cartesian','implicit','differential'].includes(kind()),baseRequest=makeRequest(),request=preview?graphPreviewRequest(baseRequest):baseRequest,identity=graphSamplingIdentity(baseRequest),token=++state.revision,source=value('graph-source'),graphKind=kind();
       const nextSignature=JSON.stringify([source,graphKind,state.parameters,state.derivative,state.secondDerivative]);if(nextSignature!==state.signature){state.analysis=null;state.trace=null;state.integral=null;state.analysisRevision++;state.signature=nextSignature;}
-      const response=await execute(request,{background:preview||!!state.animation});if(token!==state.revision||source!==value('graph-source')||graphKind!==kind()||!state.animation&&identity!==graphSamplingIdentity(makeRequest()))return;
+      const response=await execute(request,{background:preview||!!state.animation||!!state.parameterDragging});
+      if(token!==state.revision||source!==value('graph-source')||graphKind!==kind())return;
+      if(!state.animation){
+        const current=makeRequest();
+        if(state.parameterDragging)current.parameters=baseRequest.parameters;
+        if(identity!==graphSamplingIdentity(current))return;
+      }
       if(!response.ok){onError(response.error);return;}
       state.result=response;state.bounds=currentBounds();$('graph-status').textContent='';parameterControls(response.parameters);
-      if(state.animation||state.viewDragging)queueDraw();else{selections();render();persist();}
+      if(state.animation||state.viewDragging||state.parameterDragging)queueDraw();else{selections();render();persist();}
     }catch(error){onError(error.message);}finally{state.running=false;flush();}
   }
 
@@ -91,5 +112,5 @@ export function createGraphComputation({
       state.analysis=response;$('graph-status').textContent='';state.integral=action==='integral'&&rowKind==='cartesian'?[a,b]:null;state.trace=response.points?.[0]||state.trace;$('graph-analysis-action').value=action;analysisControls();render();
     }catch(error){if(token===state.analysisRevision)onError(error.message);}finally{flush();}
   }
-  return {makeRequest,queue,flush,run,analyze};
+  return {makeRequest,queue,requestParameters,flush,run,analyze};
 }

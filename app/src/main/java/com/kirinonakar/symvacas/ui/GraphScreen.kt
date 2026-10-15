@@ -23,6 +23,7 @@ import kotlin.math.*
 
 // Coordinates graph panels, selection state, and automatic sampling.
 @Composable fun GraphScreen(m: CalculatorModel) {
+    DisposableEffect(m) {onDispose {m.graphState.parameterDragging=false}}
     val defaults=LocalInstrument.current
     val c=defaults.copy(curves=m.graphColors.mapIndexed {index,hex->hex?.let {Color(android.graphics.Color.parseColor(it))} ?: defaults.curves[index]})
     val focusManager=LocalFocusManager.current
@@ -66,8 +67,8 @@ import kotlin.math.*
         }
         scrollToSection=null
     }
-    val parameterSignature=if(m.graphAnimating)"animation" else m.graphParameters.entries.joinToString(","){"${it.key}=${it.value.value}"}
-    LaunchedEffect(m.graphSource,m.graphDerivativeSelected,m.graphSecondDerivativeSelected,m.xMin,m.xMax,m.yMin,m.yMax,m.yLog,m.zMin,m.zMax,m.graphKind,m.parameterMin,m.parameterMax,m.thetaMin,m.thetaMax,m.sequenceInitials,m.differentialInitials,m.differentialT0,if(m.graphAnimating)"animation" else parameterSignature,m.surfaceSamples,m.surfaceAutoDensity,if(m.graphKind=="surface" && m.surfaceAutoDensity)m.surfaceZoom else 1f,viewportDragging) { if(!m.graphAnimating && !viewportDragging){delay(350);m.plot(auto=true)} }
+    val parameterSignature=if(m.graphAnimating || m.graphState.parameterDragging)"animation" else m.graphParameters.entries.joinToString(","){"${it.key}=${it.value.value}"}
+    LaunchedEffect(m.graphSource,m.graphDerivativeSelected,m.graphSecondDerivativeSelected,m.xMin,m.xMax,m.yMin,m.yMax,m.yLog,m.zMin,m.zMax,m.graphKind,m.parameterMin,m.parameterMax,m.thetaMin,m.thetaMax,m.sequenceInitials,m.differentialInitials,m.differentialT0,parameterSignature,m.graphState.parameterDragging,m.surfaceSamples,m.surfaceAutoDensity,if(m.graphKind=="surface" && m.surfaceAutoDensity)m.surfaceZoom else 1f,viewportDragging) { if(!m.graphAnimating && !m.graphState.parameterDragging && !viewportDragging){delay(350);m.plot(auto=true)} }
     LaunchedEffect(viewportDragging) {
         if(viewportDragging) {
             var sampledView:List<Double>?=null

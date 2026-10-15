@@ -52,6 +52,7 @@ internal class GraphState(private val prefs:SharedPreferences) {
     var shadedInterval by mutableStateOf<Pair<Double,Double>?>(null)
     var graphParameters by mutableStateOf(loadParameters())
     var graphAnimating by mutableStateOf(false)
+    var parameterDragging by mutableStateOf(false)
     var animationPhase=0.0
     private val animationOffsets=mutableMapOf<String,Double>()
     var yLog by mutableStateOf(prefs.getBoolean("yLog",false))
@@ -130,6 +131,7 @@ internal class GraphState(private val prefs:SharedPreferences) {
     }
 
     private fun clearAnalysis(clearGraph:Boolean=true) {
+        parameterDragging=false
         graphDerivativeSelected=null;graphSecondDerivativeSelected=null;graphAnalysis=null;trace=null;shadedInterval=null
         if(clearGraph) {graphData=null;graphResultSignature=null}
     }

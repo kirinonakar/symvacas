@@ -54,6 +54,8 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
     parametersOpen:saved.parametersOpen!==false,
     pendingAnalysis:null,
     viewDragging:false,
+    parameterDragging:false,
+    parameterUpdatePending:false,
     exporting:false,
     selectedDerivativeOrder:0
   };
@@ -203,7 +205,7 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
     if(!Number.isFinite(max-min)||max<=min)throw new Error('Enter finite values with minimum < maximum');
     return [min,max];
   }
-  const {makeRequest,queue,flush,run,analyze}=createGraphComputation({
+  const {makeRequest,queue,requestParameters,flush,run,analyze}=createGraphComputation({
     $,
     analysisControls,
     analysisTarget,
@@ -241,6 +243,7 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
   }
 
   function clearPlot(){
+    graphState.parameterDragging=false;graphState.parameterUpdatePending=false;
     viewSampler.cancel();graphState.viewDragging=false;
     graphState.result=null;graphState.analysis=null;graphState.trace=null;graphState.integral=null;graphState.pendingAnalysis=null;graphState.revision++;graphState.analysisRevision++;
     for(const id of ['graph-plot','graph-table','graph-trace','graph-analysis-result'])$(id).replaceChildren();
@@ -290,7 +293,7 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
     $(id).open=id==='graph-help'?saved[preference]===true:saved[preference]!==false;
     $(id).addEventListener('toggle',persist);
   }
-  function parameterChanged(){graphState.analysisRevision++;graphState.analysis=null;graphState.trace=null;graphState.integral=null;queueDraw();queue();}
+  function parameterChanged(preview=false){graphState.analysisRevision++;graphState.analysis=null;graphState.trace=null;graphState.integral=null;queueDraw();requestParameters(preview);}
 
   function changeView(next,commit=true){
     if(yLog()&&next.ymin<=0){const [ymin,ymax]=positiveYRange(next.ymin,next.ymax);next={...next,ymin,ymax};}
@@ -324,7 +327,6 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
   function heightControls(){const button=$('graph-height-toggle'),label=graphState.heightScale===1?'Half height':graphState.heightScale===.5?'Double height':'Full height';button.dataset.heightScale=String(graphState.heightScale);button.setAttribute('aria-pressed',String(graphState.heightScale!==1));button.setAttribute('aria-label',t(label));button.title=t(label);button.textContent=graphState.heightScale===1?'½':graphState.heightScale===.5?'2×':'1×';}
   $('graph-height-toggle').onclick=()=>{graphState.heightScale=graphState.heightScale===1?.5:graphState.heightScale===.5?2:1;heightControls();render();persist();};heightControls();
   $('graph-reset-ranges').onclick=()=>{surface.autoZ=true;$('graph-auto-z').checked=true;zControls();changeView({xmin:-3,xmax:3,ymin:-3,ymax:3});for(const pair of new Set(pairedSliders.values()))resetRangeDomain(pair);};
-  for(const [id,dx,dy] of [['left',.15,0],['right',-.15,0],['up',0,.15],['down',0,-.15]])$('graph-'+id).onclick=()=>changeView(transformView(graphState.bounds||currentBounds(),{x:.5,y:.5},{x:.5+dx,y:.5+dy},1));
   $('graph-fit').onclick=()=>{if(['surface','space'].includes(kind())){surface.autoZ=true;$('graph-auto-z').checked=true;zControls();render();if(hasImplicitSurface(value('graph-source')))queue();persist();return;}const view=graphState.bounds||currentBounds(),curves=(graphState.result?.curves||[]).slice(0,expressions().length).filter((_,i)=>!visibilitySettings().hiddenCurves.includes(i)),ys=curves.flat().filter(p=>p&&p.every(Number.isFinite)&&p[0]>=view.xmin&&p[0]<=view.xmax).map(p=>p[1]),range=fitYRange(ys,yLog());if(range)changeView({...view,ymin:range[0],ymax:range[1]});};
   $('graph-reset').onclick=()=>{graphState.analysis=null;graphState.trace=null;graphState.integral=null;surface.rotation=35;surface.elevation=32;surface.zoom=1;$('graph-rotation').value='35';$('graph-elevation').value='32';$('graph-surface-zoom').value='1';if(kind()==='sequence'){showNumber('graph-min',0);showNumber('graph-max',20);changeView({xmin:0,xmax:20,ymin:-2,ymax:20});queue();}else if(kind()==='differential'){showNumber('graph-min',-5);showNumber('graph-max',5);changeView({xmin:-5,xmax:5,ymin:-3,ymax:5});}else if(kind()==='implicit'){changeView({xmin:-3,xmax:3,ymin:-3,ymax:3});}else if(['surface','space'].includes(kind())){surface.autoZ=true;$('graph-auto-z').checked=true;zControls();const extent=kind()==='space'?5:3;changeView({xmin:-extent,xmax:extent,ymin:-extent,ymax:extent});}else changeView({xmin:-10,xmax:10,ymin:-5,ymax:5});};
   $('graph-y-scale').onclick=()=>{graphState.yLog=!graphState.yLog;ensurePositiveY();resetRangeDomain(pairedSliders.get('graph-ymin'));yScaleControls();graphState.trace=null;graphState.analysis=null;graphState.integral=null;graphState.analysisRevision++;changeView(currentBounds());queue();persist();};
@@ -410,7 +412,7 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
     $('graph-analysis-run').disabled=!!graphState.animation||isBusy()||!isReady();
     undoControls();
   }
-  function stopAnimation(refine=true){if(!graphState.animation)return;if(graphState.animation.frame!==null)cancelFrame(graphState.animation.frame);graphState.animation=null;if(refine){render();persist();run();}updateButtons();}
+  function stopAnimation(refine=true){graphState.parameterDragging=false;graphState.parameterUpdatePending=false;if(!graphState.animation)return;if(graphState.animation.frame!==null)cancelFrame(graphState.animation.frame);graphState.animation=null;if(refine){render();persist();run();}updateButtons();}
   function animateFrame(timestamp){
     const state=graphState.animation;if(!state)return;state.frame=null;
     const now=Number.isFinite(timestamp)?timestamp:window.performance.now();

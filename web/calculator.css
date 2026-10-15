@@ -419,7 +419,7 @@ input:disabled,select:disabled{opacity:.45;cursor:default}
 .workspace[data-mode]:not([data-mode="scientific"]) :is(.statistics-icon-action,.python-icon-action){padding:8px}
 .workspace[data-mode]:not([data-mode="scientific"]) :is(.statistics-icon-action,.python-icon-action) svg{width:20px;height:20px}
 .workspace[data-mode]:not([data-mode="scientific"]) :is(.graph-toolbar,.probability-actions,.probability-operations,.list-row){column-gap:6px}
-.workspace[data-mode="graph"] :is(#graph-zoom-in,#graph-zoom-out,#graph-left,#graph-right,#graph-up,#graph-down,#graph-animate){width:42px;padding:0;font-size:18px}
+.workspace[data-mode="graph"] :is(#graph-zoom-in,#graph-zoom-out,#graph-animate){width:42px;padding:0;font-size:18px}
 .workspace[data-mode="graph"] #graph-animate svg{width:24px;height:24px}
 .workspace[data-mode="graph"] #graph-height-toggle{width:42px;padding:0;font-size:19px;--workspace-button-bg:var(--panel);--workspace-button-line:var(--line)}
 .workspace[data-mode="graph"] .analysis-point{height:auto;padding:8px 10px}

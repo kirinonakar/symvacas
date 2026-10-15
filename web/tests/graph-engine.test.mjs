@@ -46,6 +46,24 @@ test('packaged graph modules execute every graph kind in the production WASM wor
     assert.ok(Math.max(...points.map(point=>point[1]/b))>1.23);
     assert.ok(Math.min(...points.map(point=>point[1]/b))<-.99);
   }
+  for(const [a,b] of [[4.9,4.9],[-4.9,4.9],[4.9,-4.9],[-4.9,-4.9]]){
+    for(const [min,max,yMin,yMax] of [[-10,10,-5,5],[-1,3,-2,2]]){
+      const heart=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:[heartTree],
+        min,max,yMin,yMax,samples:200,parameters:{a,b}});
+      let visible=false;
+      for(let i=0;i<=2400&&!visible;i++){
+        const u=-1.2+i/1000,c=Math.abs(u)**(2/3),d=c*c-4*u*u+4;
+        if(d>=0)visible=[(c-Math.sqrt(d))/2,(c+Math.sqrt(d))/2]
+          .some(v=>u*a>=min&&u*a<=max&&v*b>=yMin&&v*b<=yMax);
+      }
+      assert.equal(heart.curves[0].some(Boolean),visible);
+      for(const [x,y] of heart.curves[0].filter(Boolean)){
+        assert.ok(x>=min&&x<=max&&y>=yMin&&y<=yMax);
+        const u=x/a,v=y/b;
+        assert.ok(Math.abs((u*u+v*v-1)**3-u*u*v**3)<1e-7);
+      }
+    }
+  }
   for(const [a,b] of [[1,0],[-3,.7],[0,1],[6,2]]){
     const animated=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',
       trees:['a \\cdot \\sin\\left(x+b\\right)','a \\cdot \\cos\\left(x+b\\right) > y'].map(source=>graphInputTree(source)),

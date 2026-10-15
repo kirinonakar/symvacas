@@ -128,7 +128,7 @@ internal object CalculatorGraphActions {
         if(kind=="surface") {
             val implicit=hasImplicitSurface(source)
             val density=SurfaceMesh.sampleCount(xMin,xMax,yMin,yMax,surfaceSamples,surfaceAutoDensity,surfaceZoom.toDouble(),implicit)
-            request.put("surfaceYMin",yMin).put("surfaceYMax",yMax).put("surfaceSamples",if(graphAnimating)minOf(density,if(implicit)16 else 32) else density)
+            request.put("surfaceYMin",yMin).put("surfaceYMax",yMax).put("surfaceSamples",if(graphAnimating || preview)minOf(density,if(implicit)16 else 32) else density)
             request.put("surfaceZMin",zMin ?: yMin).put("surfaceZMax",zMax ?: yMax)
         }
         if(kind=="space")request.put("surfaceZMin",zMin ?: -5.0).put("surfaceZMax",zMax ?: 5.0)
@@ -162,7 +162,7 @@ internal object CalculatorGraphActions {
                 val domainMatches=if(kind in listOf("cartesian","implicit","surface"))preview || min==xMin && max==xMax else if(kind=="polar")min==thetaMin && max==thetaMax else min==parameterMin && max==parameterMax
                 // Keep useful preview geometry even if another pan happened while
                 // Python was running. The Canvas projects it into the latest view.
-                if(source==graphSource && kind==graphKind && logY==(yLog&&graphKind !in listOf("surface","space")) && derivativeSelected==graphDerivativeSelected && secondDerivativeSelected==graphSecondDerivativeSelected && domainMatches && (kind!="cartesian" || paramMin==parameterMin && paramMax==parameterMax && polarMin==thetaMin && polarMax==thetaMax) && (preview || viewYMin==yMin && viewYMax==yMax) && initials==sequenceInitials && differentialSeeds==differentialInitials && initialTime==differentialT0 && environment==request("graph").put("angle","RAD").toString() && (graphAnimating || parameters.toString()==graphState.parameterPayload().toString())) {
+                if(source==graphSource && kind==graphKind && logY==(yLog&&graphKind !in listOf("surface","space")) && derivativeSelected==graphDerivativeSelected && secondDerivativeSelected==graphSecondDerivativeSelected && domainMatches && (kind!="cartesian" || paramMin==parameterMin && paramMax==parameterMax && polarMin==thetaMin && polarMax==thetaMax) && (preview || viewYMin==yMin && viewYMax==yMax) && initials==sequenceInitials && differentialSeeds==differentialInitials && initialTime==differentialT0 && environment==request("graph").put("angle","RAD").toString() && (graphAnimating || graphState.parameterDragging || parameters.toString()==graphState.parameterPayload().toString())) {
                     if(response.optBoolean("ok")) {
                     } else error=response.optString("error")
                     graphState.applyPlotResponse(response,signature)

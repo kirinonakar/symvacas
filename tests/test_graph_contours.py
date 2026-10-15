@@ -46,18 +46,47 @@ class ScaledContourTests(unittest.TestCase):
         self.curve(1,1)
         with patch("calc_graph_planar.implicit_samples", wraps=implicit_samples) as sampler:
             clipped = self.curve(1,1,xmin=-.2,xmax=.2)
-            self.assertEqual(1,sampler.call_count)
+            self.assertEqual(0,sampler.call_count,'clipping reuses cached geometry instead of resampling the viewport')
             for px,py in filter(lambda point:point is not None,clipped):
                 self.assertTrue(-.2<=px<=.2 and -5<=py<=5)
                 self.assertLess(abs((px*px+py*py-1)**3-px*px*py**3),1e-5)
             positive = self.curve(1,1,ymin=.01,ymax=5,logarithmic=True)
-            self.assertEqual(2,sampler.call_count)
+            self.assertEqual(1,sampler.call_count)
             for px,py in filter(lambda point:point is not None,positive):
                 self.assertGreater(py,0)
                 self.assertLess(abs((px*px+py*py-1)**3-px*px*py**3),1e-5)
             self.assertEqual([],self.curve(1,1e-100,ymin=.01,ymax=5,logarithmic=True))
             self.assertEqual([],self.curve(0,1,ymin=.01,ymax=5,logarithmic=True))
-            self.assertEqual(2,sampler.call_count)
+            self.assertEqual(1,sampler.call_count)
+
+    def test_all_viewport_edges_and_reflections_keep_roots_and_separate_visible_paths(self):
+        self.curve(2,2)
+        viewports = ((-10,10,-5,5),(-1,3,-2,2),(-3,1,-2,2),(-2,2,-1,3),(-2,2,-3,1))
+        reference=[]
+        for i in range(2401):
+            u=-1.2+i/1000
+            coefficient=abs(u)**(2/3)
+            discriminant=coefficient*coefficient-4*u*u+4
+            if discriminant>=0:
+                reference.extend((u,(coefficient+sign*math.sqrt(discriminant))/2) for sign in (-1,1))
+        with patch("calc_graph_planar.implicit_samples", side_effect=AssertionError('viewport grid must not restart at an edge')):
+            for a,b in ((4.9,4.9),(-4.9,4.9),(4.9,-4.9),(-4.9,-4.9),(2,2),(-2,-2)):
+                for xmin,xmax,ymin,ymax in viewports:
+                    curve=self.curve(a,b,xmin=xmin,xmax=xmax,ymin=ymin,ymax=ymax)
+                    expected=any(xmin<=u*a<=xmax and ymin<=v*b<=ymax for u,v in reference)
+                    self.assertEqual(expected,bool(curve))
+                    for point in curve:
+                        if point is None: continue
+                        px,py=point;u,v=px/a,py/b
+                        self.assertTrue(xmin<=px<=xmax and ymin<=py<=ymax)
+                        self.assertLess(abs((u*u+v*v-1)**3-u*u*v**3),1e-7)
+                    for first,last in zip(curve,curve[1:]):
+                        if first is not None and last is not None:
+                            self.assertLess(math.dist((first[0]/a,first[1]/b),(last[0]/a,last[1]/b)),.3)
+            strip=self.curve(1,1,xmin=-.2,xmax=.2)
+            self.assertIn(None,strip,'separate top and bottom arcs must not connect across the clipped edge')
+            edges=[point for point in strip if point is not None and abs(abs(point[0])-.2)<1e-12]
+            self.assertGreaterEqual(len(edges),4)
 
     def test_changed_shape_and_repeated_factors_keep_their_own_geometry(self):
         self.curve(2,2)

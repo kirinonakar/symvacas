@@ -3,6 +3,7 @@ package com.kirinonakar.symvacas.ui
 import androidx.compose.foundation.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -42,7 +43,7 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
         TextButton(onClick={inputHelpOpen=!inputHelpOpen},modifier=Modifier.padding(horizontal=4.dp).testTag("graph-input-help-toggle")) {
             Text("${if(inputHelpOpen)"▾" else "▸"} ${tr("Graph input help")}",fontSize=12.sp)
         }
-        if(inputHelpOpen)Column(Modifier.fillMaxWidth().padding(horizontal=14.dp).testTag("graph-input-help"),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+        if(inputHelpOpen)SelectionContainer {Column(Modifier.fillMaxWidth().padding(horizontal=14.dp).testTag("graph-input-help"),verticalArrangement=Arrangement.spacedBy(6.dp)) {
             Text(if(isKorean())"Cartesian에서 y=x^2, x^2+y^2=9, r=2*cos(3*θ), (cos(t),sin(t))를 함께 표시합니다. Range에서 t와 θ 범위를 각각 설정하세요. 해당 그래프가 있을 때만 표시됩니다." else "Cartesian combines y=x^2, x^2+y^2=9, r=2*cos(3*θ), and (cos(t),sin(t)). Set separate t and θ bounds in Range; each appears when its graph is present.",fontSize=12.sp,color=c.muted)
             Text(if(isKorean())"x^2+y^2<4 또는 y>=x^2-2를 바로 입력해 영역을 채웁니다. 엄격한 부등식은 점선, <=와 >=는 실선 경계를 사용합니다." else "Enter x^2+y^2<4 or y>=x^2-2 to shade directly. Strict inequalities use dashed boundaries; <= and >= use solid boundaries.",fontSize=12.sp,color=c.muted)
             Text(if(isKorean())"수식 앞의 눈 아이콘으로 그래프를 표시하거나 숨깁니다. 3D에서는 표면 불투명도를 조정하고 단면 슬라이더에서 x = c, y = c 또는 z = c를 선택하세요." else "Use the eye before each formula to show or hide its graph. In 3D, adjust Surface opacity and choose x = c, y = c or z = c for the section slider.",fontSize=12.sp,color=c.muted)
@@ -67,7 +68,7 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
             Text(tr("3D graphs · up to 5 · one per line"),fontSize=12.sp,color=c.ink)
             Text(tr("3D curve: C(t)=4*(sin(t),cos(t),0.6*sin(2*t)) · [x(t),y(t),z(t)]"),fontSize=12.sp,color=c.ink)
             Text(tr("Parametric: [cos(t),sin(t)] · Polar: 1+cos(t) (radians) · Sequence: u(n-1)+1 (enter initial values) · 3D surface: z=sin(x)*cos(y) · Differential equation: -y (dy/dt; enter t₀ and initial y values)"),fontSize=12.sp,color=c.muted)
-        }
+        }}
         Column(Modifier.fillMaxWidth().zIndex(1f).background(c.body)) {
             CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
                 Row(Modifier.fillMaxWidth().zIndex(2f).padding(top=2.dp).horizontalScroll(rememberScrollState()).semantics { contentDescription="Graph types" },horizontalArrangement=Arrangement.spacedBy(6.dp)) {
@@ -119,7 +120,7 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
                             Row(Modifier.fillMaxWidth().height(38.dp).padding(horizontal=12.dp),verticalAlignment=Alignment.CenterVertically) {
                                 Checkbox(spec.animate,{m.setGraphParameterAnimation(name,it)},Modifier.size(32.dp).semantics {contentDescription=animateLabel})
                                 Text(name,Modifier.width(24.dp),fontSize=13.sp,color=c.accent,fontWeight=FontWeight.SemiBold)
-                                CompactSlider(spec.value.toFloat(),{focusManager.clearFocus();m.setGraphParameter(name,it.toDouble())},Modifier.weight(1f),valueRange=(if(low<high)low else low-1f)..(if(high>low)high else low+1f))
+                                CompactSlider(spec.value.toFloat(),{focusManager.clearFocus();m.graphState.parameterDragging=true;m.setGraphParameter(name,it.toDouble());m.plot(auto=true,preview=true)},Modifier.weight(1f),valueRange=(if(low<high)low else low-1f)..(if(high>low)high else low+1f),onValueChangeFinished={m.graphState.parameterDragging=false;m.plot(auto=true);m.save()})
                                 GraphParameterValueField(name,spec.value,m.displayDigits,{value->m.setGraphParameter(name,value,centerRange=true);m.error="";m.save()},{m.error=it})
                                 Box(Modifier.size(30.dp).background(c.scientific,RoundedCornerShape(8.dp)).clickable{focusManager.clearFocus();onParameterRange(name)}.semantics {contentDescription="Set $name slider range"},contentAlignment=Alignment.Center) {
                                     Text("±",fontSize=16.sp,color=c.accent)

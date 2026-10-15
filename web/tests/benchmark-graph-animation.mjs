@@ -26,9 +26,9 @@ try{
   await receive(value=>value.type==='ready');
   const heart='(-1+y^2/b^2+x^2/a^2)^3-x^2*y^3/(a^2*b^3)=0';
   const nearZero=[{a:1e-6,b:2},{a:2,b:1e-12},{a:-1e-80,b:1e-100},{a:0,b:1},{a:1,b:0},{a:-2,b:-2}];
-  for(const [sources,scenario] of [[['a*sin(x+b)'],'normal'],[['a*cos(x+b)>y'],'normal'],[['a*sin(x+b)','a*cos(x+b)>y'],'normal'],[['a*sin(x+b)<y<a*cos(x+b)'],'normal'],[[heart],'normal'],[[heart],'near-zero']]){
-    const parameters=i=>scenario==='near-zero'?nearZero[i%nearZero.length]:sources[0]===heart?{a:2+Math.sin(i/20),b:1.5+.5*Math.cos(i/20)}:{a:3*Math.sin(i/20),b:i/20};
-    const request={action:'graph',angle:'RAD',graphKind:'cartesian',trees:sources.map(source=>graphInputTree(source)),min:-10,max:10,yMin:-5,yMax:5,samples:200};
+  for(const [sources,scenario] of [[['a*sin(x+b)'],'normal'],[['a*cos(x+b)>y'],'normal'],[['a*sin(x+b)','a*cos(x+b)>y'],'normal'],[['a*sin(x+b)<y<a*cos(x+b)'],'normal'],[[heart],'normal'],[[heart],'near-zero'],[[heart],'edge'],[[heart],'pan-edge']]){
+    const parameters=i=>scenario==='near-zero'?nearZero[i%nearZero.length]:scenario==='edge'?{a:4.5+.4*Math.sin(i/20),b:4.6+.35*Math.cos(i/20)}:sources[0]===heart?{a:2+Math.sin(i/20),b:1.5+.5*Math.cos(i/20)}:{a:3*Math.sin(i/20),b:i/20};
+    const request={action:'graph',angle:'RAD',graphKind:'cartesian',trees:sources.map(source=>graphInputTree(source)),min:scenario==='pan-edge'?-1:-10,max:scenario==='pan-edge'?3:10,yMin:scenario==='pan-edge'?-2:-5,yMax:scenario==='pan-edge'?2:5,samples:200};
     for(let i=0;i<3;i++)await execute({...request,parameters:sources[0]===heart?parameters(i):{a:1+i/10,b:i/10}});
     const times=[];let result;
     for(let i=0;i<30;i++){
