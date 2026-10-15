@@ -41,6 +41,11 @@ def _compiled_graph(axes, expression):
 def _square_free_graph(expression, x, y):
     if expression.is_polynomial(x, y):
         polynomial = s.Poly(expression, x, y)
+        # GCDs over symbolic expression coefficients (e.g. sin(t), cos(t))
+        # can exhaust the graph budget. Keep the reusable sampling program;
+        # contour_curve also checks repeated factors after binding sliders.
+        if polynomial.domain.is_EX and expression.free_symbols-{x, y}:
+            return expression
         if polynomial.total_degree() <= 12:
             square_free = polynomial.sqf_part()
             if square_free.total_degree() != polynomial.total_degree():

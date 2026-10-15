@@ -22,6 +22,7 @@ from calc_graph_sampling import (
 )
 from calc_graph_shading import graph_shading, inequality_shading
 from calc_graph_contours import scaled_contour
+from calc_graph_radial import radial_contour
 
 
 def planar_tree_spec(tree):
@@ -54,6 +55,8 @@ def inequality_parts(engine, tree):
 
 
 def contour_curve(expression, x, y, sliders, xmin, xmax, ymin, ymax, count, logarithmic=False):
+    radial = radial_contour(expression, x, y, sliders, xmin, xmax, ymin, ymax, logarithmic)
+    if radial is not None: return radial
     scaled = scaled_contour(expression, x, y, sliders, xmin, xmax, ymin, ymax, count, logarithmic)
     if scaled is not None: return scaled
     numeric = substitute_parameters(expression, sliders)

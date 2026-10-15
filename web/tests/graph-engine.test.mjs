@@ -92,6 +92,38 @@ test('packaged graph modules execute every graph kind in the production WASM wor
   assert.ok(contour.length>20);
   for(const [x,y] of contour)assert.ok(Math.abs(x*x+y*y-1)<1e-5);
 
+  // Use the reported paste text through the production parser and WASM graph engine.
+  const roseTree=graphInputTree(String.raw`\[
+(x^2+y^2)^4=
+\left[
+(x^3-3xy^2)\cos t+
+(3x^2y-y^3)\sin t
+\right]^2
+\]`);
+  for(const graphKind of ['cartesian','implicit'])for(const phase of [undefined,0,.4,Math.PI/2]){
+    const rose=await execute({action:'graph',graphKind,angle:'RAD',trees:[roseTree],
+      min:-10,max:10,yMin:-5,yMax:5,samples:200,...(phase===undefined?{}:{parameters:{t:phase}})});
+    assert.deepEqual(rose.parameters,['t']);
+    const points=rose.curves[0].filter(Boolean),t=phase??1;
+    assert.ok(points.length>100);
+    const petals=[[]];
+    for(const point of rose.curves[0]){if(point===null)petals.push([]);else petals.at(-1).push(point);}
+    assert.equal(petals.length,6);
+    for(const path of petals){
+      assert.ok(path[0].every(value=>value===0));
+      assert.deepEqual(path[0],path.at(-1));
+      assert.ok(path.filter(([x,y])=>Math.hypot(x,y)>0&&Math.hypot(x,y)<.3).length>=6);
+    }
+    for(const [x,y] of points){
+      const radius2=x*x+y*y,wave=(x**3-3*x*y*y)*Math.cos(t)+(3*x*x*y-y**3)*Math.sin(t);
+      assert.ok(Math.abs(radius2**4-wave**2)<1e-6);
+    }
+    for(let petal=0;petal<6;petal++){
+      const angle=t/3+petal*Math.PI/3,peak=[Math.cos(angle),Math.sin(angle)];
+      assert.ok(points.some(([x,y])=>Math.hypot(x-peak[0],y-peak[1])<.15));
+    }
+  }
+
   for(const [kind,source] of [['parametric','[a*cos(t),a*sin(t)]'],['polar','a']]){
     const result=await graph(kind,source,{variable:'t',min:0,max:Math.PI*2,parameters:{a:2}});
     const points=result.curves[0],positions=result.curveParameters[0];

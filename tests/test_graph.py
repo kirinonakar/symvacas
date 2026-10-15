@@ -161,6 +161,41 @@ class ImplicitGraphTests(unittest.TestCase):
         self.assertTrue(result["ok"], result.get("error"))
         return [point for point in result["curves"][index] if point is not None]
 
+    def test_rotating_rose_with_trigonometric_coefficients_plots_with_the_normal_budget(self):
+        t = symbol("t")
+        cosine = {"kind":"call", "value":"cos", "args":[t]}
+        sine = {"kind":"call", "value":"sin", "args":[t]}
+        real = binary("-", binary("^",x,number(3)), binary("*",number(3),binary("*",x,y2)))
+        imaginary = binary("-", binary("*",number(3),binary("*",x2,y)), binary("^",y,number(3)))
+        rose = equation(binary("^",binary("+",x2,y2),number(4)),
+                        binary("^",binary("+",binary("*",real,cosine),binary("*",imaginary,sine)),number(2)))
+        for kind in ("cartesian", "implicit"):
+            for phase, samples in ((0,200),(.4,500),(1,200),(math.pi/2,200)):
+                with self.subTest(kind=kind, phase=phase, samples=samples):
+                    result = self.graph(rose,graphKind=kind,parameters={"t":phase},samples=samples,
+                                        min=-10,max=10,yMin=-5,yMax=5)
+                    points = self.points(result)
+                    self.assertEqual(["t"],result["parameters"])
+                    self.assertGreater(len(points),100)
+                    petals = [[]]
+                    for point in result["curves"][0]:
+                        if point is None: petals.append([])
+                        else: petals[-1].append(point)
+                    self.assertEqual(6,len(petals))
+                    for path in petals:
+                        self.assertEqual([0.0,0.0],path[0])
+                        self.assertEqual(path[0],path[-1])
+                        self.assertGreaterEqual(sum(0<math.hypot(*point)<.3 for point in path),6)
+                    for px, py in points:
+                        radius2 = px*px+py*py
+                        wave = (px**3-3*px*py*py)*math.cos(phase)+(3*px*px*py-py**3)*math.sin(phase)
+                        self.assertLess(abs(radius2**4-wave**2),1e-6)
+                    # Every petal must appear, not only the highly singular origin.
+                    for petal in range(6):
+                        angle = phase/3+petal*math.pi/3
+                        peak = (math.cos(angle),math.sin(angle))
+                        self.assertLess(min(math.dist(point,peak) for point in points),.15)
+
     def test_disconnected_branches_have_breaks_and_poles_are_not_curves(self):
         with self.subTest(scenario='disconnected_branches_have_breaks_and_poles_are_not_curves'):
             result = self.graph(equation(binary("*", x, y), number(1)))
