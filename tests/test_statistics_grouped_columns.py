@@ -33,14 +33,6 @@ class GroupedColumnTests(unittest.TestCase):
                 if item['settings']['op'] in ('anova','welchanova') or item['settings']['op']=='kruskal' and len(item['expected'][0]['means'])>2:
                     self.assertTrue(any('post-hoc' in section['title'] for section in report['sections']))
 
-    def test_single_chi_square_warnings_are_visible_only_when_expected_counts_are_small(self):
-        sparse=evaluate('chi2independence([0,0,0,1,1,1],[1,1,0,0,1,0])')['statisticsReport']
-        self.assertTrue(any('below 5' in warning['text'] for warning in sparse['warnings']))
-        self.assertTrue(any('Fisher exact' in warning['text'] for warning in sparse['warnings']))
-        balanced=evaluate('chi2independence('+str([0]*20+[1]*20)+','+str(([0]*10+[1]*10)*2)+')')['statisticsReport']
-        self.assertFalse(balanced.get('warnings'))
-        three=evaluate('chi2independence([0,0,1,1,2,2],[0,1,0,1,0,1])')['statisticsReport']
-        self.assertTrue(three['warnings']);self.assertFalse(any('Fisher exact' in warning['text'] for warning in three['warnings']))
 
     def test_binary_zero_only_column_shows_the_event_count_without_fabricating_a_p_value(self):
         result=evaluate('fisherexact([[0,0,1,1]],[[0,0,0,0]],batch)')

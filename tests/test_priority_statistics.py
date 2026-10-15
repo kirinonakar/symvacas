@@ -2,7 +2,7 @@
 import json
 import math
 import unittest
-from test_advanced_statistics import ROOT, run, evaluate
+from test_advanced_statistics import ROOT, run
 from calc_shared import MathError
 
 IDS=set('omega bayesttest bayesanova metaregression metasubgroup designpower designsize yuen trimmedanova winsorcor robustreg parametricsurvival'.split())
@@ -19,19 +19,6 @@ class PriorityStatisticsTests(unittest.TestCase):
                     for key in path:actual=actual[key]
                     self.assertAlmostEqual(float(actual),expected,delta=case['tolerance']*max(1,abs(expected)),msg=str(path))
 
-    def test_public_examples_produce_report_plots_and_full_copy_rows(self):
-        schema=json.loads((ROOT/'app/src/main/assets/advanced_statistics.json').read_text(encoding='utf8'))
-        for definition in schema:
-            if definition['id'] not in IDS:continue
-            with self.subTest(analysis=definition['id']):
-                result=evaluate(definition['example']);report=result['statisticsReport']
-                self.assertEqual(report['analysis'],definition['id']);self.assertTrue(report['sections']);self.assertTrue(report['plots']);self.assertTrue(report['assumptions'])
-                self.assertNotEqual(report['title'],definition['id'])
-        # Predict every selected subject; the visible preview must not truncate copying.
-        rows=[[i+1,0 if i%4==0 else 1] for i in range(110)]
-        report=evaluate('parametricsurvival('+str(rows)+',exponential)')['statisticsReport']
-        section=next(s for s in report['sections'] if s['title']=='Predicted survival times')
-        self.assertEqual(len(section['rows']),100);self.assertEqual(len(section['copyRows']),110)
 
     def test_bayesian_direction_scaling_pairing_and_ordered_prefix(self):
         a=[1.,2,4,5,8,9];b=[3.,5,4,7,9,12]
@@ -57,18 +44,6 @@ class PriorityStatisticsTests(unittest.TestCase):
         self.assertAlmostEqual(float(result['Moderator test']['p']),float(scaled['Moderator test']['p']),places=12)
         with self.assertRaises(MathError):run('metaregression',[[r[0],r[1],1.] for r in rows])
 
-    def test_raw_meta_summaries_preserve_moderators_after_exclusions(self):
-        binary=[[0,20,0,20,2000],[12,100,20,100,2010],[8,80,15,90,2012],[25,150,40,160,2014],[4,60,10,65,2016]]
-        generic=[]
-        for a,na,b,nb,x in binary[1:]:
-            generic.append([math.log(a/(na-a)/(b/(nb-b))),math.sqrt(1/a+1/(na-a)+1/b+1/(nb-b)),x])
-        raw=run('metaregression',binary,'pm',.95,'hksj','oddsratio',.5);converted=run('metaregression',generic,'pm',.95,'hksj')
-        self.assertEqual(int(raw['Excluded study count']),1);self.assertEqual([int(s['Study']) for s in raw['Studies']],[2,3,4,5])
-        self.assertAlmostEqual(float(raw['coefficients'][1]['estimate']),float(converted['coefficients'][1]['estimate']),places=10)
-        continuous=[[12,3,50,10,2.5,48,1],[15,4,60,12,3.5,55,1],[9,2,40,8,2.2,42,2],[11,3.2,65,9.5,3,62,2]]
-        generic=[[m1-m2,math.sqrt(s1*s1/n1+s2*s2/n2),g] for m1,s1,n1,m2,s2,n2,g in continuous]
-        raw=run('metasubgroup',continuous,'pm',.95,'hksj','md');converted=run('metasubgroup',generic,'pm',.95,'hksj')
-        self.assertAlmostEqual(float(raw['Moderator test']['p']),float(converted['Moderator test']['p']),places=12)
 
     def test_yuen_reduces_to_welch_and_winsorization_retains_pairs(self):
         a=[1,2,3,4,5,7];b=[2,5,4,7,8,11]

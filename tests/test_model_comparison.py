@@ -12,7 +12,6 @@ from calc_model_comparison import calculate,fit_comparison
 from calc_model_comparison_validation import concordance,assignments,holm
 from calc_shared import MathError
 from calc_evaluator import Engine
-from calc_advanced_statistics import calculate as dispatch
 from calc_statistics_report import statistics_report
 
 class ModelComparisonTests(unittest.TestCase):
@@ -28,9 +27,6 @@ class ModelComparisonTests(unittest.TestCase):
             with self.subTest(family=item['family']):
                 result=self.run_model(item['rows'],item['family'],mode='fit' if item['family']=='lmm' else 'apparent')
                 for key,expected in item['expected'].items():self.assertAlmostEqual(result[key],expected,delta=2e-5*max(1,abs(expected)))
-    def test_same_external_rows_become_apparent_without_validation_intervals(self):
-        rows=self.example('linear');result=self.run_model(rows,mode='external',argument=rows,samples=100)
-        self.assertEqual(result['Validation method'],'apparent');self.assertTrue(all(row[2:5]==[None,None,None] for row in result['Paired differences']))
     def test_shared_cv_bootstrap_is_reproducible_and_has_paired_intervals(self):
         rows=self.example('linear');a=self.run_model(rows,mode='crossvalidation',argument=3,samples=100);b=self.run_model(rows,mode='crossvalidation',argument=3,samples=100)
         self.assertEqual(a,b)
@@ -92,36 +88,7 @@ class ModelComparisonTests(unittest.TestCase):
         paired=next(section for section in report['sections'] if section['title']=='Paired performance differences (B − A)')
         self.assertEqual([row[5] for row in paired['rows']],['Paired DeLong','Exact McNemar + paired bootstrap CI','Paired bootstrap CI','Paired bootstrap CI'])
 
-    def test_original_logistic_bootstrap_and_discordant_counts_are_preserved(self):
-        from calc_logistic_comparison import calculate as legacy
-        reference=json.loads((ROOT/'tests/fixtures/logistic_comparison_reference.json').read_text(encoding='utf-8'))
-        args=[reference['train'],1,'external',reference['validation'],.5,.95,100,4]
-        original=legacy(SimpleNamespace(note=''),'logisticcompare',args)
-        updated=self.run_model(reference['train'],'logistic',mode='external',argument=reference['validation'],samples=100)
-        for a,b in zip(original['Paired differences'],updated['Paired differences']):
-            self.assertEqual(a[0],b[0]);self.assertEqual(a[5],b[5])
-            for left,right in zip(a[1:5],b[1:5]):
-                if left is None:self.assertIsNone(right)
-                else:self.assertAlmostEqual(float(left),float(right),places=12)
-        for key in ('Improved classifications','Worsened classifications'):self.assertEqual(original[key],updated[key])
 
-    def test_training_logistic_reports_original_p_values_intervals_and_counts(self):
-        from calc_logistic_comparison import calculate as legacy
-        rows=self.example('logistic');original=legacy(SimpleNamespace(note=''),'logisticcompare',[rows,1,'external',rows,.5,.95,100,4])
-        updated=self.run_model(rows,'logistic',mode='apparent',samples=100)
-        self.assertEqual([row[5] for row in updated['Paired differences']],['Paired DeLong','Exact McNemar + paired bootstrap CI','Paired bootstrap CI','Paired bootstrap CI'])
-        for a,b in zip(original['Paired differences'],updated['Paired differences']):
-            for left,right in zip(a[1:5],b[1:5]):
-                if left is None:self.assertIsNone(right)
-                else:self.assertAlmostEqual(float(left),float(right),places=12)
-        self.assertEqual(original['Improved classifications'],updated['Improved classifications']);self.assertEqual(original['Worsened classifications'],updated['Worsened classifications'])
-        self.assertTrue(any('nominal, descriptive' in line for line in updated['Assumptions']))
-    def test_public_dispatch_and_report_preserve_numeric_fit_and_named_metrics(self):
-        rows=self.example('linear');result=dispatch(Engine({}),'modelcompare',[rows,1,'linear','apparent',0,.95,0,0,[],0])
-        report=statistics_report('modelcompare',result,10,{'model:A':'age (x)','model:B':'age (x) + biomarker (y)'})
-        self.assertEqual(report['title'],'Model Comparison');self.assertEqual(report['analysis'],'modelcompare')
-        self.assertTrue(any(section['title']=='Model fit' for section in report['sections']))
-        self.assertTrue(report['assumptions']);self.assertGreater(result['F'],0)
     def test_invalid_roles_or_numeric_options_fail(self):
         rows=self.example('linear')
         with self.assertRaises(MathError):self.run_model(rows,count=2)

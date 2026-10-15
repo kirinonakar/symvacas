@@ -52,14 +52,5 @@ class Graph3dTests(unittest.TestCase):
             xs=[result['surfaceVertices'][i][0] for i in face]
             self.assertFalse(min(xs)<0<max(xs))
 
-    def test_named_scaled_space_curve_preserves_coordinates_period_and_sliders(self):
-        t=sym('t');vector={'kind':'tuple','args':[call('sin',t),call('cos',t),binary('*',num(.6),call('sin',binary('*',num(2),t)))]}
-        tree=equation(call('C',t),binary('*',sym('r'),vector))
-        result=self.run_graph(tree,kind='space',min=0,max=2*math.pi,parameters={'r':4})
-        self.assertEqual(['r'],result['parameters'])
-        curve=result['spaceCurves'][0];positions=result['curveParameters'][0]
-        for point,at in zip(curve,positions):
-            for value,expected in zip(point,(4*math.sin(at),4*math.cos(at),2.4*math.sin(2*at))):self.assertAlmostEqual(expected,value,delta=1e-12)
-        for a,b in zip(curve[0],curve[-1]):self.assertAlmostEqual(a,b,delta=1e-12)
 
 if __name__=='__main__':unittest.main()

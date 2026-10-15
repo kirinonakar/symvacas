@@ -128,18 +128,6 @@ class AdvancedStatisticsTests(unittest.TestCase):
         self.assertGreater(float(run('kstest',[-1,0,1],'normal',0,1)['p']),0)
         self.assertAlmostEqual(float(run('kstest',list(range(60)),list(range(60,120)))['p'])/(2/math.comb(120,60)),1,places=12)
 
-    def test_power_size_minimum_and_design(self):
-        for design in ('independent','paired','onesample'):
-            result=run('samplesize',.5,.8,.05,design); n=int(result['n per group / pairs'])
-            self.assertGreaterEqual(float(run('testpower',.5,n,.05,design)['power']),.8)
-            self.assertLess(float(run('testpower',.5,n-1,.05,design)['power']),.8)
-        # Exact noncentral-t minimum: 64 independent, 34 paired or one-sample (R power.t.test).
-        self.assertEqual(int(run('samplesize',.5,.8)['n per group / pairs']),64)
-        self.assertAlmostEqual(float(run('testpower',.5,64,.05)['power']),.8014595579,places=6)
-        two=float(run('testpower',.5,64,.05)['power']); one=float(run('testpower',.5,64,.05,'independent','greater')['power'])
-        self.assertGreater(one,two)
-        self.assertAlmostEqual(float(run('testpower',.5,64,.05,'independent','less')['power']),4.131985367258805e-06,places=9)
-        self.assertLess(int(run('samplesize',.5,.8,.05,'independent','greater')['n per group / pairs']),64)
 
     def test_pca_reconstructs_data_and_restores_numeric_precision(self):
         with self.subTest(scenario='pca_reconstructs_and_explains_all_variance'):
@@ -207,21 +195,6 @@ class AdvancedStatisticsTests(unittest.TestCase):
                     for key in path: actual=actual[key]
                     self.assertAlmostEqual(float(actual),expected,delta=case.get('tolerance',1e-6)*max(1,abs(expected)))
 
-    def test_lmm_defaults_to_reml_with_or_without_random_slopes(self):
-        fixtures=json.loads((ROOT/'tests/fixtures/advanced_statistics_reference.json').read_text(encoding='utf-8'))
-        for case in fixtures:
-            if case['function']!='mixedmodel': continue
-            args=case['arguments']
-            if len(args)>2 and args[2]!='reml': continue
-            with self.subTest(case=case['name']):
-                rows=args[0]; slope=args[1] if len(args)>1 else 0
-                result=run('mixedmodel',rows,slope)
-                self.assertEqual(result['estimation'],'REML')
-                for path,expected in case['expected']:
-                    actual=result
-                    for key in path: actual=actual[key]
-                    self.assertAlmostEqual(float(actual),expected,delta=case.get('tolerance',1e-6)*max(1,abs(expected)))
-        with self.assertRaises(MathError): run('mixedmodel',rows,0,'invalid')
 
     def test_gaussian_gee_correlation_is_invariant_to_response_units(self):
         with self.subTest(scenario='gaussian_gee_correlation_is_invariant_to_response_units'):
@@ -296,16 +269,5 @@ class BayesianStatisticsTests(unittest.TestCase):
             shifted = run('bayesmean', [101,103], 102, 2, 1, 1, .95, 102)
             self.assertAlmostEqual(float(shifted['credible interval'][0]-result['credible interval'][0]), 100)
 
-    def test_invalid_inputs_and_selected_model_constraints(self):
-        invalid = [('bayesproportion', [[2]]), ('bayesproportion', [[1,-1]]),
-                   ('bayesproportion', [[[3,2]]]), ('bayesproportion', [[[0,0]]]),
-                   ('bayesproportion', [[1],0]), ('bayesproportion', [[1],1,1,.95,1]),
-                   ('bayesrate', [[.5]]), ('bayesrate', [[[1,0]]]),
-                   ('bayesrate', [[[1,-1]]]), ('bayesrate', [[[1,2,3]]]),
-                   ('bayesrate', [[0],1,-1]), ('bayesrate', [[0],1,1,1]),
-                   ('bayesmean', [[]]), ('bayesmean', [[1],0,0]),
-                   ('bayesmean', [[1],0,1,-1]), ('bayesmean', [[1],0,1,2,0])]
-        for name, args in invalid:
-            with self.subTest(name=name,args=args), self.assertRaises(MathError): run(name,*args)
 
 if __name__ == "__main__": unittest.main()

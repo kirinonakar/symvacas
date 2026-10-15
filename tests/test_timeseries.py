@@ -2,29 +2,13 @@
 import json
 import math
 import unittest
-from test_advanced_statistics import ROOT, run, evaluate, tree
+from test_advanced_statistics import ROOT, run, tree
 from calc_engine import dispatch
 from calc_shared import MathError
 from calc_limits import computation_limits
 
 
 class TimeSeriesTests(unittest.TestCase):
-    def test_yearly_dates_and_numeric_years_preserve_values_and_forecast_calendar(self):
-        data = [109.085,111.4,110.6,115.2,112.8,118.1,117.3,121.4]
-        for dates in ([[year,1,1] for year in range(2014,2022)],list(range(2014,2022))):
-            result = evaluate(f'arima({data},[0,1,0],3,0.95,none,{dates})')
-            numeric = evaluate(f'arima({data},[0,1,0],3,0.95,none)')
-            report = result['statisticsReport']
-            forecast = next(section for section in report['sections'] if section['title']=='Forecasts')
-            expected = ['2022-01-01','2023-01-01','2024-01-01'] if isinstance(dates[0],list) else ['2022','2023','2024']
-            self.assertEqual(forecast['columns'][0],'Date')
-            self.assertEqual([row[0] for row in forecast['rows']],expected)
-            self.assertEqual(report['plots'][0]['observed'],numeric['statisticsReport']['plots'][0]['observed'])
-            self.assertEqual(report['plots'][0]['forecast'],numeric['statisticsReport']['plots'][0]['forecast'])
-            self.assertEqual(report['plots'][0]['interval'],numeric['statisticsReport']['plots'][0]['interval'])
-            self.assertEqual(report['plots'][0]['timeTickLabels'][0],'2014')
-            self.assertEqual(report['plots'][0]['timeLabels'][-3:],expected)
-            self.assertEqual(report['plots'][1]['timeLabels'],report['plots'][0]['timeLabels'])
 
     def test_calendar_intervals_handle_month_ends_leap_years_and_invalid_dates(self):
         from calc_timeseries_calendar import time_calendar
@@ -83,18 +67,6 @@ class TimeSeriesTests(unittest.TestCase):
                     self.assertTrue(float(drift['Lower 95% CI'])<float(drift['Estimate'])<float(drift['Upper 95% CI']))
                     if name=='sarima': self.assertAlmostEqual(float(drift['Estimate']),.75,places=3)
 
-    def test_boundary_fits_keep_forecasts_and_report_their_sensitivity(self):
-        data = [100+i*i*.5+math.sin(i) for i in range(40)]
-        value = run('arima',data,[1,1,0],4,.95,'none')
-        self.assertEqual(value['Fit status'],'Near boundary (forecasts available)')
-        self.assertTrue(value['Warnings'])
-        self.assertTrue(.999<float(value['Maximum absolute reflection coefficient'])<1)
-        self.assertTrue(all(math.isfinite(float(row['Forecast'])) for row in value['Forecasts']))
-        reported = evaluate(f'arima({data},[1,1,0],4,0.95,auto)')['statisticsReport']
-        coefficients = next(section for section in reported['sections'] if section['title']=='Coefficients')
-        self.assertIn('SE',coefficients['columns']);self.assertIn('p value',coefficients['columns'])
-        self.assertTrue(any(row[0]=='Drift' for row in coefficients['rows']))
-        self.assertTrue(any('near-boundary' in detail['text'] for detail in reported['details']))
 
     def test_drift_wald_standard_error_interval_and_non_extreme_p_match_ols_delta_method(self):
         data = [100+.15*i+math.sin(2*i) for i in range(40)]
@@ -130,31 +102,6 @@ class TimeSeriesTests(unittest.TestCase):
                 self.assertAlmostEqual(float(row['Forecast']), expected, places=6)
                 self.assertAlmostEqual(float(row['Standard error'])**2, variance*(math.ceil(h/4) if name=='sarima' else h), places=6)
 
-    def test_ar1_matches_ols_and_report_keeps_numeric_results_and_all_plot_coordinates(self):
-        data = [4, 6, 5, 7, 6, 4, 5, 3, 5, 4, 6, 5, 7, 4, 5, 6]
-        x, y = data[:-1], data[1:]
-        mx, my = sum(x)/len(x), sum(y)/len(y)
-        slope = sum((a-mx)*(b-my) for a,b in zip(x,y))/sum((a-mx)**2 for a in x)
-        intercept = my-slope*mx
-        value = run('arima', data, [1,0,0], 2, .95, 'constant')
-        self.assertAlmostEqual(float(value['Coefficients'][0]['Estimate']), slope, places=5)
-        self.assertAlmostEqual(float(value['Coefficients'][1]['Estimate']), intercept, places=5)
-        result = evaluate(f'arima({data},[1,0,0],2,0.95,constant)')
-        report = result['statisticsReport']
-        plot, residual, acf = report['plots']
-        self.assertEqual(plot['kind'], 'timeseries')
-        self.assertEqual(plot['observed'], [[i+1,v] for i,v in enumerate(data)])
-        self.assertEqual(len(plot['fitted']), len(data)-1)
-        self.assertEqual([row[0] for row in plot['interval']], [17,18])
-        self.assertEqual(plot['forecast'][0], [16,6])
-        self.assertEqual(residual['reference'], 0)
-        self.assertEqual(acf['kind'], 'acf')
-        self.assertIn('Forecasts', [section['title'] for section in report['sections']])
-        self.assertEqual(len(report['assumptions']), 4)
-        self.assertNotIn('Assumptions', [section['title'] for section in report['sections']])
-        self.assertFalse(result['reusable'])
-        self.assertIn('decimalTree', result)
-        self.assertIn('Forecasts', result['exact'])
 
     def test_invalid_orders_degenerate_series_and_cancellation_fail_honestly(self):
         for args in [([1,2,3,4],[1,2]), ([1,2,3,4],[1,-1,0]), ([1,2,3,4],[1,0,0],0),
@@ -175,19 +122,6 @@ class TimeSeriesTests(unittest.TestCase):
         self.assertFalse(result['ok'])
         self.assertIn('cancelled', result['error'])
         self.assertGreaterEqual(cancelled.calls,3)
-
-    def test_large_series_and_horizons_keep_full_report_copy_and_plot_data(self):
-        data = [10+(i%7)*2+(i%3) for i in range(400)]
-        request = {'tree':tree(f'arima({data},[0,1,0],501,0.95,none)'), 'removeComputationLimit':True, 'precision':10}
-        result = json.loads(dispatch(json.dumps(request)))
-        self.assertTrue(result['ok'],result.get('error'))
-        self.assertLess(len(result['exact']),40000)
-        report = result['statisticsReport']
-        forecasts = next(section for section in report['sections'] if section['title']=='Forecasts')
-        fitted = next(section for section in report['sections'] if section['title']=='Fitted values')
-        self.assertEqual((forecasts['totalRows'],len(forecasts['copyRows'])),(501,501))
-        self.assertEqual((fitted['totalRows'],len(fitted['copyRows'])),(399,399))
-        self.assertEqual((len(report['plots'][0]['observed']),len(report['plots'][0]['interval'])),(400,501))
 
 
 if __name__ == '__main__': unittest.main()

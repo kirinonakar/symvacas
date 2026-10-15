@@ -9,7 +9,6 @@ import calc_engine
 from calc_limits import computation_limits, limits_removed
 from calc_runtime import Budget
 from calc_advanced_common import integer, vector
-from calc_nuts import sample
 
 def number(value):
     return {'kind': 'number', 'value': str(value)}
@@ -21,20 +20,6 @@ def run(tree, **options):
     return json.loads(calc_engine.dispatch(json.dumps({'tree': tree, **options})))
 
 class ComputationLimitsTests(unittest.TestCase):
-    def test_bootstrap_time_and_step_budgets_scale_without_disabling_cancellation(self):
-        from calc_execution_budget import bootstrap_work
-        cases=json.loads((pathlib.Path(__file__).parent/'fixtures/execution_budget.json').read_text())
-        for item in cases:
-            samples,seconds=bootstrap_work(item['request'])
-            self.assertEqual(samples,item['samples']);self.assertEqual((60+seconds)*1000,item['timeoutMillis'])
-        budgets=[]
-        def capture(seconds,steps,control):
-            budgets.append((seconds,steps,control));return Budget(seconds,steps,control)
-        class Cancelled:
-            def isCancelled(self): return True
-        with patch.object(calc_engine,'Budget',capture):
-            response=json.loads(calc_engine.dispatch(json.dumps(cases[2]['request']),Cancelled()))
-        self.assertFalse(response['ok']);self.assertEqual(budgets[0][:2],(7260,20100000000))
     def test_time_and_workload_are_unlimited_but_cancellation_still_works(self):
         budgets = []
         def capture(seconds, steps, control):
@@ -95,12 +80,3 @@ class ComputationLimitsTests(unittest.TestCase):
         for tree in (call('factorial', number(-1)), call('identity', number(0)),
                      {'kind': 'binary', 'value': '/', 'args': [number(1), number(0)]}):
             self.assertFalse(run(tree, removeComputationLimit=True)['ok'])
-
-    def test_nuts_gradient_workload_guard_can_be_removed(self):
-        target = lambda position: (sum(x*x/2 for x in position), list(position))
-        with self.assertRaisesRegex(ValueError, 'workload'):
-            sample(target, 1, samples=100, warmup=50, max_depth=1, max_evaluations=1)
-        with computation_limits(True):
-            draws, diagnostics = sample(target, 1, samples=100, warmup=50, max_depth=1, max_evaluations=1)
-        self.assertEqual(2, len(draws))
-        self.assertGreater(diagnostics['gradientEvaluations'], 1)

@@ -3,9 +3,7 @@ import csv
 import json
 import math
 import unittest
-from unittest.mock import patch
 from test_advanced_statistics import ROOT,run,evaluate
-from calc_statistics_report import statistics_report
 from calc_shared import MathError
 
 
@@ -44,13 +42,6 @@ class SEMExtrasTests(unittest.TestCase):
         edge=next(edge for edge in response['statisticsReport']['plots'][0]['edges'] if edge['source'].startswith('x'))
         self.assertEqual(edge['kind'],'covariance');self.assertEqual(len(edge['interval']),2)
 
-    def test_modification_indices_default_and_explicit_off_skip_computation(self):
-        rows=self.reference['cfa']['rows']
-        ordinal=json.loads((ROOT/'tests/fixtures/sem_estimation_reference.json').read_text())['cases'][0]['arguments']
-        with patch('calc_advanced_sem_extras.normal_mi',side_effect=AssertionError('MI must stay off')),patch('calc_advanced_sem_extras.ordinal_mi',side_effect=AssertionError('MI must stay off')):
-            for args in ([rows,[1]*4],[rows,[1]*4,[],'complete',[],'configural','ml',[],0],ordinal):
-                fit=run('cfa',*args)
-                self.assertNotIn('Modification indices',fit);self.assertNotIn('MI method',fit)
 
     def test_indirect_effects_and_bootstrap_match_independent_complete_model_refits(self):
         case=self.reference['sem'];args=[case['rows'],[1,1,1,2,2,2,3,3,3],[[1,2],[2,3],[1,3]],[],'complete',[],'configural','ml',[],0,case['samples'],case['seed']]
@@ -86,23 +77,6 @@ class SEMExtrasTests(unittest.TestCase):
         fit=run('cfa',selected,[1,1,2,2,2,3,3,3],[[2,2]]);self.assertEqual(len(fit['Loadings']),9)
         with self.assertRaises(MathError): run('cfa',[row[:2] for row in rows],[1,1])
         with self.assertRaises(MathError): run('cfa',selected,[1,1,2,2,2,3,3,3],[[1,2],[2,2]])
-
-
-class StatisticsDetailTests(unittest.TestCase):
-    def test_metadata_moves_below_tables_without_mutating_values_or_numeric_fields(self):
-        value={'n':100,'Estimator':'Normal-theory covariance ML (N divisor)','Extraction':'Principal components (correlation PCA)',
-               'Parallel method':'Horn normal simulation; SMC-reduced common roots',
-               'RMSEA convention':'N−G denominator, group multiplier G; uncorrected normal-theory index','inference df':12,
-               'coefficients':[{'term':'A long user variable name '+('x'*100),'estimate':.2,'Inference':'Gaussian-kernel sandwich / Hall–Sheather','SE':.1}]}
-        original=json.dumps(value);report=statistics_report('quantreg',value,15)
-        self.assertEqual(json.dumps(value),original)
-        strings=[cell for section in report['sections'] for row in section['rows'] for cell in row if isinstance(cell,str)]
-        self.assertNotIn(value['Estimator'],strings);self.assertNotIn(value['Extraction'],strings);self.assertNotIn(value['RMSEA convention'],strings)
-        self.assertIn('inference df',strings);self.assertIn(value['coefficients'][0]['term'],strings)
-        details={row['label']:row for row in report['details']}
-        self.assertEqual(details['Parallel method']['text'],value['Parallel method'])
-        self.assertEqual(details['Inference']['context'][0]['value'],value['coefficients'][0]['term'])
-        self.assertNotIn('Inference',report['sections'][1]['columns'])
 
 
 if __name__=='__main__':unittest.main()

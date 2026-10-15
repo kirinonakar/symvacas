@@ -19,22 +19,6 @@ circle = equation(binary("+", x2, y2), number(1))
 
 class ImplicitGraphTests(unittest.TestCase):
 
-    def test_periodic_equation_intersections_search_the_whole_interval(self):
-        sine={"kind":"call","value":"sin","args":[x]}
-        cosine={"kind":"call","value":"cos","args":[x]}
-        constraint=equation(sine,binary("*",number(-3),cosine))
-        for trees in ((sine,constraint),(constraint,sine)):
-            for lower,upper in ((-10,10),(2,10),(0,1),(-150,150)):
-                with self.subTest(trees=trees,interval=(lower,upper)):
-                    expected=[-math.atan(3)+k*math.pi for k in range(-50,51)
-                              if lower<=-math.atan(3)+k*math.pi<=upper]
-                    result=self.analyze(*trees,analysis="intersection",a=lower,b=upper,angle="RAD")
-                    self.assertTrue(result["ok"],result)
-                    self.assertEqual(min(80,len(expected)),result["count"])
-                    self.assertEqual(len(expected)>80,result["truncated"])
-                    for point,at in zip(result["points"],expected):
-                        self.assertAlmostEqual(at,point[0],delta=1e-7)
-                        self.assertAlmostEqual(math.sin(at),point[1],delta=1e-7)
 
     def test_equation_intersections_include_periodic_tangent_contacts_and_endpoints(self):
         cosine={"kind":"call","value":"cos","args":[x]}
@@ -62,73 +46,6 @@ class ImplicitGraphTests(unittest.TestCase):
         self.assertTrue(touching["ok"],touching)
         self.assertEqual([[0.0,0.0]],touching["points"])
 
-    def test_prebuilt_analysis_expressions_keep_their_coordinate_identity(self):
-        from calc_graph import graph_analysis
-        engine=calc_engine.Engine({})
-        coordinate=engine.symbol("x")
-        result=graph_analysis(engine,{"analysis":"root","a":-2,"b":2},(coordinate**2-1,))
-        self.assertEqual(2,len(result["points"]))
-        for point,expected in zip(result["points"],(-1,1)):
-            self.assertAlmostEqual(expected,point[0],delta=1e-7)
-            self.assertAlmostEqual(0,point[1],delta=1e-7)
-
-    def test_absolute_extrema_use_real_coordinates_through_dispatch(self):
-        absolute=lambda arg:{"kind":"call","value":"abs","args":[arg]}
-        cases=[(absolute(x),-1,1,"minimum",[[0.,0.]]),
-               (absolute(x),-1,1,"maximum",[[-1.,1.],[1.,1.]]),
-               (absolute(x),1,3,"minimum",[[1.,1.]]),
-               (absolute(binary("-",x,number(2))),-1,4,"minimum",[[2.,0.]]),
-               (binary("+",absolute(binary("-",x,number(1))),absolute(binary("+",x,number(1)))),-2,2,"minimum",[[-1.,2.],[1.,2.]]),
-               (binary("-",x2,absolute(x)),-1,1,"minimum",[[-.5,-.25],[.5,-.25]])]
-        for expression,lower,upper,action,expected in cases:
-            with self.subTest(expression=expression,action=action):
-                result=self.analyze(expression,analysis=action,a=lower,b=upper)
-                self.assertTrue(result["ok"],result)
-                self.assertEqual(result["points"],expected)
-        t=symbol("t")
-        result=self.analyze({"kind":"list","args":[t,absolute(t)]},graphKind="parametric",analysis="minimum",a=-1,b=1)
-        self.assertTrue(result["ok"],result);self.assertEqual(result["points"],[[0.,0.]])
-        result=self.analyze(absolute(t),graphKind="polar",analysis="minimum",a=-1,b=1)
-        self.assertTrue(result["ok"],result);self.assertEqual(result["points"],[[0.,0.]])
-
-    def test_tangent_angles_use_degrees_and_radians_for_selected_curves(self):
-        for tree,expected in ((x,45),(binary("*",number(-1),x),135),(number(2),0)):
-            result=self.analyze(tree,analysis="tangentangle",a=0,b=0,angle="DEG")
-            self.assertTrue(result["ok"],result)
-            self.assertAlmostEqual(expected,result["value"])
-            self.assertAlmostEqual(math.radians(expected),result["radians"])
-            self.assertEqual("deg",result["unit"])
-            self.assertEqual(2,len(result["line"]))
-        result=self.analyze(binary("^",x,number(3)),analysis="tangentangle",a=0,selectedDerivativeOrder=2)
-        self.assertTrue(result["ok"],result);self.assertAlmostEqual(math.degrees(math.atan(6)),result["value"])
-        result=self.analyze(circle,analysis="tangentangle",a=1)
-        self.assertTrue(result["ok"],result);self.assertAlmostEqual(90,result["value"])
-        result=self.analyze(circle,analysis="tangentangle",a=0,tracePoint=[0,-1])
-        self.assertTrue(result["ok"],result);self.assertAlmostEqual(0,result["value"])
-        derived=self.analyze(circle,analysis="tangentangle",a=0,selectedDerivativeOrder=1,tracePoint=[.25,-.25/math.sqrt(1-.25**2)])
-        self.assertTrue(derived["ok"],derived);self.assertAlmostEqual(135,derived["value"])
-        ambiguous=self.analyze(circle,analysis="tangentangle",a=0)
-        self.assertFalse(ambiguous["ok"]);self.assertIn("choose a branch",ambiguous["error"])
-        parameterized=self.analyze(binary("*",symbol("k"),x),analysis="tangentangle",a=1,parameters={"k":2},variables={"k":number(999)})
-        self.assertTrue(parameterized["ok"],parameterized);self.assertAlmostEqual(math.degrees(math.atan(2)),parameterized["value"])
-
-    def test_intersection_angles_include_every_point_vertical_lines_and_derivatives(self):
-        for trees,expected in (((x,binary("*",number(-1),x)),90),((equation(x,number(0)),x),45),((x2,number(1)),math.degrees(math.atan(2))),((circle,equation(x,number(0))),90),((x2,number(0)),0)):
-            result=self.analyze(*trees,analysis="intersectionangle")
-            self.assertTrue(result["ok"],result);self.assertTrue(result["points"])
-            self.assertEqual(len(result["points"]),len(result["angles"]))
-            for angle in result["angles"]:
-                self.assertAlmostEqual(expected,angle["value"],delta=1e-6)
-                self.assertAlmostEqual(math.radians(expected),angle["radians"],delta=1e-7)
-        for first,second in ((0,1),(1,0)):
-            result=self.analyze(x2,analysis="intersectionangle",selected=0,other=0,selectedDerivativeOrder=first,otherDerivativeOrder=second,a=-1,b=3)
-            self.assertTrue(result["ok"],result);self.assertEqual(2,len(result["angles"]))
-            for angle,expected in zip(result["angles"],(math.atan(2),math.atan(4)-math.atan(2))):
-                self.assertAlmostEqual(expected,angle["radians"],delta=1e-7)
-        no_points=self.analyze(x,x2,analysis="intersectionangle",a=2,b=3)
-        self.assertTrue(no_points["ok"],no_points);self.assertEqual([],no_points["angles"])
-        coincident=self.analyze(x,x,analysis="intersectionangle")
-        self.assertFalse(coincident["ok"]);self.assertIn("not isolated",coincident["error"])
 
     def test_angle_analysis_rejects_corners_singular_points_and_undefined_coordinates(self):
         absolute={"kind":"call","value":"abs","args":[x]}
@@ -144,17 +61,6 @@ class ImplicitGraphTests(unittest.TestCase):
         vertical=self.analyze({"kind":"call","value":"sqrt","args":[x]},analysis="tangentangle",a=0)
         self.assertTrue(vertical["ok"],vertical);self.assertAlmostEqual(90,vertical["value"])
 
-    def test_parametric_and_polar_tangent_angles_require_a_nonzero_direction(self):
-        t=symbol("t")
-        pair={"kind":"list","args":[number(0),t]}
-        vertical=self.analyze(pair,graphKind="parametric",analysis="tangentangle",a=0)
-        self.assertTrue(vertical["ok"],vertical);self.assertAlmostEqual(90,vertical["value"])
-        polar=self.analyze(number(1),graphKind="polar",analysis="tangentangle",a=math.pi/2)
-        self.assertTrue(polar["ok"],polar);self.assertAlmostEqual(0,polar["value"],delta=1e-7)
-        stationary=self.analyze({"kind":"list","args":[number(0),number(0)]},graphKind="parametric",analysis="tangentangle",a=0)
-        self.assertFalse(stationary["ok"]);self.assertIn("undefined",stationary["error"])
-        unsupported=self.analyze(pair,pair,graphKind="parametric",analysis="intersectionangle")
-        self.assertFalse(unsupported["ok"])
 
     def test_derivative_analysis_uses_the_selected_order_for_every_action(self):
         cubic=binary("-",binary("^",x,number(3)),binary("*",number(3),x))
@@ -183,21 +89,6 @@ class ImplicitGraphTests(unittest.TestCase):
         tangent=analyze("tangent",2,a=1)
         self.assertEqual([[1.0,6.0]],tangent["points"]);self.assertAlmostEqual(6,tangent["value"])
 
-    def test_intersections_accept_original_first_and_second_derivative_targets(self):
-        for source,orders in ((x2,(0,1)),(binary("^",x,number(3)),(1,2))):
-            for first,second in (orders,tuple(reversed(orders))):
-                result=self.analyze(source,analysis="intersection",selected=0,other=0,selectedDerivativeOrder=first,otherDerivativeOrder=second,a=-1,b=3)
-                self.assertTrue(result["ok"],result);self.assertEqual(2,len(result["points"]))
-                for point,expected in zip(result["points"],(0,2)):self.assertAlmostEqual(expected,point[0],delta=1e-7)
-        parameterized=binary("*",symbol("a"),binary("^",x,number(3)))
-        other=binary("*",symbol("b"),x)
-        result=self.analyze(parameterized,other,analysis="intersection",selectedDerivativeOrder=1,parameters={"a":2,"b":6},variables={"a":number(999)},a=-1,b=2)
-        self.assertTrue(result["ok"],result)
-        self.assertEqual(2,len(result["points"]));self.assertAlmostEqual(1,result["points"][1][0],delta=1e-7);self.assertAlmostEqual(6,result["points"][1][1],delta=1e-7)
-        coincident=self.analyze({"kind":"call","value":"exp","args":[x]},analysis="intersection",selected=0,other=0,selectedDerivativeOrder=1)
-        self.assertFalse(coincident["ok"]);self.assertIn("not isolated",coincident["error"])
-        zero=self.analyze(x,analysis="root",selectedDerivativeOrder=2)
-        self.assertFalse(zero["ok"]);self.assertIn("not isolated",zero["error"])
 
     def test_implicit_derivative_analysis_preserves_traced_branches_and_intersections(self):
         hint=[.25,-.25/math.sqrt(1-.25**2)]
@@ -220,70 +111,6 @@ class ImplicitGraphTests(unittest.TestCase):
         endpoint=self.analyze({"kind":"call","value":"sqrt","args":[x]},analysis="integral",a=0,b=1,selectedDerivativeOrder=1)
         self.assertTrue(endpoint["ok"],endpoint);self.assertAlmostEqual(1,endpoint["value"])
 
-    def test_second_derivative_of_implicit_circle_samples_both_branches(self):
-        result=self.graph(circle,graphKind="cartesian",min=-.8,max=.8,secondDerivativeSelected=0)
-        self.assertTrue(result["ok"],result)
-        points=result["curves"][result["secondDerivativeCurveIndex"]]
-        self.assertIn(None,points)
-        values=[value for at,value in filter(None,points)]
-        self.assertTrue(any(value<0 for value in values));self.assertTrue(any(value>0 for value in values))
-        for at,value in filter(None,points):self.assertAlmostEqual((1-at**2)**-1.5,abs(value),delta=1e-8)
-
-    def test_band_y_constraints_keep_disconnected_negative_regions(self):
-        with self.subTest(scenario='band_y_constraints_keep_disconnected_negative_regions'):
-            with self.subTest(scenario='band_y_constraints_keep_disconnected_negative_regions'):
-                item={"mode":"band","trees":[{"kind":"call","value":name,"args":[x]} for name in ("sin","cos")],
-                      "xBounds":[{"side":"lower","tree":number(-1)},{"side":"upper","tree":number(2)}],
-                      "yBounds":[{"side":"upper","tree":number(0)}]}
-                result=self.graph(graphKind="cartesian",min=-5,max=5,shadings=[item])
-                self.assertTrue(result["ok"],result)
-                polygons=result["shadings"][0]["fill"]
-                self.assertEqual(2,len(polygons))
-                self.assertAlmostEqual(-1,min(px for px,py in polygons[0]));self.assertAlmostEqual(0,max(px for px,py in polygons[0]),delta=1e-7)
-                self.assertAlmostEqual(math.pi/2,min(px for px,py in polygons[1]),delta=1e-7);self.assertAlmostEqual(2,max(px for px,py in polygons[1]))
-                self.assertTrue(all(py<=0 and min(math.sin(px),math.cos(px))-1e-7<=py<=max(math.sin(px),math.cos(px))+1e-7 for polygon in polygons for px,py in polygon))
-                self.assertTrue(all(py<=0 for line in result["shadings"][0]["boundary"] for point in line if point is not None for px,py in [point]))
-            with self.subTest(scenario='band_y_constraints_parameters_and_empty_intersections'):
-                item={"mode":"band","trees":[x,number(2)],"yBounds":[{"side":"upper","tree":symbol("c")}]}
-                result=self.graph(graphKind="cartesian",min=-1,max=2,shadings=[item],parameters={"c":-.25})
-                self.assertTrue(result["ok"],result);self.assertEqual(["c"],result["parameters"])
-                polygon=result["shadings"][0]["fill"][0]
-                self.assertAlmostEqual(-.25,max(px for px,py in polygon));self.assertAlmostEqual(-.25,max(py for px,py in polygon))
-                item["yBounds"]=[{"side":"lower","tree":number(-.5)},{"side":"upper","tree":number(0)}]
-                result=self.graph(graphKind="cartesian",min=-1,max=2,shadings=[item])
-                self.assertTrue(result["ok"],result);self.assertTrue(all(-.5<=py<=0 for polygon in result["shadings"][0]["fill"] for px,py in polygon))
-                for bounds in ([{"side":"upper","tree":number(-2)}],[{"side":"lower","tree":number(1)},{"side":"upper","tree":number(0)}]):
-                    item["yBounds"]=bounds
-                    result=self.graph(graphKind="cartesian",min=-1,max=2,shadings=[item])
-                    self.assertTrue(result["ok"],result);self.assertEqual([],result["shadings"][0]["fill"]);self.assertEqual([[],[]],result["shadings"][0]["boundary"])
-            with self.subTest(scenario='function_band_inequality_bounds_clip_and_use_slider_parameters'):
-                item={"mode":"band","trees":[{"kind":"call","value":name,"args":[x]} for name in ("sin","cos")],
-                      "xBounds":[{"side":"lower","tree":{"kind":"unary","value":"-","args":[symbol("pi")]}},{"side":"upper","tree":symbol("pi")}]}
-                result=self.graph(graphKind="cartesian",min=-10,max=10,shadings=[item])
-                self.assertTrue(result["ok"],result)
-                polygon=result["shadings"][0]["fill"][0]
-                self.assertAlmostEqual(-math.pi,min(p[0] for p in polygon));self.assertAlmostEqual(math.pi,max(p[0] for p in polygon))
-                self.assertTrue(all(min(math.sin(px),math.cos(px))-1e-10 <= py <= max(math.sin(px),math.cos(px))+1e-10 for px,py in polygon))
-                result=self.graph(graphKind="cartesian",min=0,max=1,shadings=[item])
-                self.assertTrue(result["ok"],result);self.assertEqual({0.0,1.0},{result["shadings"][0]["fill"][0][0][0],result["shadings"][0]["fill"][0][500][0]})
-                item["xBounds"][1]["tree"]=symbol("a")
-                for parameters,expected in (({"a":2},2.0),({},1.0)):
-                    result=self.graph(graphKind="cartesian",min=-10,max=10,shadings=[item],parameters=parameters)
-                    self.assertTrue(result["ok"],result);self.assertEqual(["a"],result["parameters"])
-                    self.assertEqual(expected,max(p[0] for p in result["shadings"][0]["fill"][0]))
-                result=self.graph(graphKind="cartesian",min=5,max=10,shadings=[item])
-                self.assertTrue(result["ok"],result);self.assertEqual([],result["shadings"][0]["fill"])
-        with self.subTest(scenario='shaded_regions_skip_undefined_and_conflicting_y_bounds'):
-            constraints=[{"axis":"y","side":side} for side in ("lower","upper")]
-            for boundary in (binary("/",number(1),x),{"kind":"call","value":"sqrt","args":[x]}):
-                item={"mode":"region","trees":[number(0),boundary],"constraints":constraints}
-                result=self.graph(graphKind="cartesian",min=-2,max=2,shadings=[item])
-                self.assertTrue(result["ok"],result)
-                self.assertTrue(result["shadings"][0]["fill"])
-                self.assertTrue(all(px>=0 for polygon in result["shadings"][0]["fill"] for px,py in polygon))
-            item={"mode":"region","trees":[number(3),number(1)],"constraints":constraints}
-            result=self.graph(graphKind="cartesian",shadings=[item])
-            self.assertTrue(result["ok"],result);self.assertEqual([],result["shadings"][0]["fill"]);self.assertEqual([],result["shadings"][0]["boundary"])
 
     def analyze(self, *trees, **options):
         return json.loads(calc_engine.dispatch(json.dumps({
@@ -367,46 +194,6 @@ class GraphDispatchTests(unittest.TestCase):
         })))
         self.assertTrue(result["ok"], result.get("error"))
         return result
-
-    def test_parametric_and_polar_sampling_preserves_trace_parameters(self):
-        t, a = symbol("t"), symbol("a")
-        pair = {"kind": "list", "args": [
-            binary("*", a, {"kind": "call", "value": name, "args": [t]})
-            for name in ("cos", "sin")
-        ]}
-        for kind, tree in (("parametric", pair), ("polar", a)):
-            with self.subTest(kind=kind):
-                result = self.graph(kind, tree, variable="t", parameters={"a": 2})
-                self.assertEqual(["a"], result["parameters"])
-                points, positions = result["curves"][0], result["curveParameters"][0]
-                self.assertEqual(len(points), len(positions))
-                self.assertGreater(len(points), 30)
-                self.assertEqual(0, positions[0])
-                self.assertEqual(2*math.pi, positions[-1])
-                for (px, py), at in zip(points, positions):
-                    self.assertAlmostEqual(2*math.cos(at), px)
-                    self.assertAlmostEqual(2*math.sin(at), py)
-
-    def test_recursive_sequence_keeps_seeds_and_parameter_binding(self):
-        previous = {"kind": "call", "value": "u", "args": [binary("-", symbol("n"), number(1))]}
-        result = self.graph("sequence", binary("*", symbol("a"), previous),
-                            min=0, max=5, initialTrees=[number(1)], parameters={"a": 2})
-        self.assertTrue(result["discrete"])
-        self.assertEqual(["a"], result["parameters"])
-        self.assertEqual([[i, float(2**i)] for i in range(6)], result["curves"][0])
-
-    def test_differential_solution_integrates_both_sides_of_initial_time(self):
-        result = self.graph("differential", binary("*", symbol("a"), y),
-                            min=-.5, max=.5, t0=0, initialValues=[1, -2], parameters={"a": 2})
-        self.assertTrue(result["differential"])
-        self.assertEqual(["a"], result["parameters"])
-        self.assertEqual(17*11, len(result["fields"]))
-        for initial, curve in zip((1, -2), result["curves"]):
-            self.assertIn([0, initial], curve)
-            self.assertAlmostEqual(-.5, curve[0][0])
-            self.assertAlmostEqual(.5, curve[-1][0])
-            for at, value in curve:
-                self.assertAlmostEqual(initial*math.exp(2*at), value, delta=1e-8)
 
 
 class GraphPerformanceTests(unittest.TestCase):

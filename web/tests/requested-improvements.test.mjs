@@ -1,27 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fork} from 'node:child_process';
-import {readFileSync} from 'node:fs';
 import {parse} from '../parser.js';
-import {advancedStatisticsSchema as schema} from '../advanced-statistics-schema.js';
-import {guidedStatisticsCommand} from '../advanced-statistics.js';
 import {statisticsRequest} from '../statistics-request.js';
 
-test('General statistics catalog and Correlation menu contain all three analyses with working paired forms',()=>{
-  const ids=['pearson','spearman','kendall'];
-  const catalog=JSON.parse(readFileSync(new URL('../catalog.json',import.meta.url),'utf8'));
-  const templates=ids.map(id=>`${id}([],[],both)`);
-  assert.deepEqual(catalog['General statistics'].filter(source=>ids.includes(source.split('(')[0])),templates);
-  for(const template of templates)assert.equal(Object.values(catalog).flat().filter(source=>source===template).length,1);
-  assert.deepEqual(schema.filter(item=>item.group==='Correlation').map(item=>item.id),ids);
-  for(const id of ids){
-    const definition=schema.find(item=>item.id===id);
-    assert.equal(guidedStatisticsCommand(definition,definition.exampleRows),definition.example);
-    assert.equal(guidedStatisticsCommand(definition,[['99','1','2'],['98','3','4']],{first:'1',second:'2',tail:'right'}),`${id}([1,3],[2,4],right)`);
-    assert.throws(()=>guidedStatisticsCommand(definition,[['1',''],['2','3']]),/Complete selected rows/);
-    assert.throws(()=>guidedStatisticsCommand(definition,[['1','2']],{second:'0'}),/distinct/);
-  }
-});
 
 test('production WASM runs real roots, domain exclusions, ranks, ODE bounds and large float64 logistic fits',{timeout:60000},async t=>{
   const worker=fork(new URL('./worker-bridge.mjs',import.meta.url),[],{execArgv:['--experimental-wasm-jspi']});

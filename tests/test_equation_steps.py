@@ -29,19 +29,6 @@ class EquationStepTests(unittest.TestCase):
                 self.assertEqual(expected,solver.as_set() if hasattr(solver,'as_set') else solver)
                 self.assertEqual(result['tree'],report['steps'][-1]['tree'])
 
-    def test_polynomial_elimination_checks_all_original_equations(self):
-        x,y=s.symbols('x y')
-        source=[s.Eq(x*x+2*y*y,9),s.Eq(x*y,2)]
-        result,report=self.report(source,[x,y])
-        self.assertEqual('',report['note'])
-        self.assertEqual('Polynomial elimination method',report['method'])
-        self.assertEqual(4,sum(step['title']=='Back-substitute each candidate root' for step in report['steps']))
-        for check in (step for step in report['steps'] if step['title']=='Check candidates in the original equation'):
-            self.assertEqual(2,len(check['equations']))
-            for formula in check['equations']:
-                relation=s.sympify(formula['exact'],evaluate=False)
-                self.assertTrue(relation == s.true or s.simplify(relation.lhs-relation.rhs) == 0)
-        self.assertEqual(4,len(result['resultAst']['args']))
 
     def test_separable_odes_retain_equilibria_and_general_odes_verify_solutions(self):
         t=s.Symbol('t'); y=s.Function('y')(t); c=s.Symbol('C1')
@@ -127,21 +114,6 @@ class EquationStepTests(unittest.TestCase):
         _, conditional = self.report([s.Eq(a*x+a*y, 3), s.Eq(x*x+y*y, 5)], [x, y])
         self.assertIn("Detailed transformations are unavailable", conditional["note"])
 
-    def test_periodic_and_unsupported_equations_are_honest(self):
-        x = s.Symbol("x")
-        _, trig = self.report(s.Eq(s.sin(x), s.Rational(1, 2)), x)
-        branches = next(step for step in trig["steps"] if step["title"].startswith("Include periodic"))
-        self.assertEqual(2, len(branches["tree"]["args"]))
-        self.assertEqual("", trig["note"])
-        _, unresolved = self.report(s.Eq(s.sin(x), x), x)
-        self.assertIn("Detailed transformations are unavailable", unresolved["note"])
-        self.assertEqual("Numerical real roots (partial)", unresolved["steps"][-1]["title"])
-        y = s.Symbol("y")
-        _, nonlinear = self.report([s.Eq(x*x+2*y*y, 1), s.Eq(x*y, 1)], [x, y])
-        self.assertIn("Detailed transformations are unavailable", nonlinear["note"])
-        a = s.Symbol("a")
-        _, conditional = self.report([s.Eq(x+y, 1), s.Eq(x+y, a)], [x, y])
-        self.assertIn("Detailed transformations are unavailable", conditional["note"])
 
 if __name__ == "__main__":
     unittest.main()

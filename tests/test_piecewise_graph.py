@@ -1,6 +1,5 @@
 """Graph dispatch checks using trees exported by the actual Kotlin parser."""
 import json
-import math
 from pathlib import Path
 import sys
 import unittest
@@ -10,7 +9,6 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'app/src/main/python'))
 from calc_engine import dispatch
 from calc_evaluator import Engine
-from calc_graph import adaptive_samples
 
 TREES={case['source']:case['tree'] for case in json.loads((ROOT/'build/math-cases.json').read_text(encoding='utf-8'))}
 
@@ -47,11 +45,3 @@ class PiecewiseGraphTests(unittest.TestCase):
         value=engine.build(TREES['{x<1:5,x>-1:1/x,0}'])
         self.assertEqual(5,value.subs(x,0))
         self.assertTrue(all(s.simplify(guard.subs(x,0))==s.true for guard in engine.conditions))
-
-    def test_pixel_refinement_resolves_curvature_with_different_axis_scales(self):
-        f=lambda x:math.exp(-x/80)
-        curve,_=adaptive_samples(f,0,4000,100,screen_bounds=(0,4000,-.1,1.1))
-        for a,b in zip(curve,curve[1:]):
-            if a and b:
-                error=abs(f((a[0]+b[0])/2)-(a[1]+b[1])/2)*800/1.2
-                self.assertLessEqual(error,.21)

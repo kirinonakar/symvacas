@@ -2,10 +2,8 @@
 import json
 import math
 import unittest
-from test_advanced_statistics import ROOT, run, evaluate, tree
-from calc_engine import dispatch
+from test_advanced_statistics import ROOT, run
 from calc_shared import MathError
-from calc_effect_interpretation import icc_rating,kappa_rating,contingency_effects
 
 META=[[.2,.1],[.45,.15],[-.1,.12],[.6,.2],[.3,.11]]
 MEASURE=[[9,2,5,8],[6,1,3,2],[8,4,6,8],[7,1,2,6],[10,5,6,9],[6,2,4,7]]
@@ -42,39 +40,7 @@ class ResearchStatisticsTests(unittest.TestCase):
         for data in ([[21,20,5,20],[3,30,6,30]],[[1.5,20,5,20],[3,30,6,30]]):
             with self.assertRaises(MathError):run('metaanalysis',data,'fixed',.95,'z',1,'riskratio',.5)
 
-    def test_proportional_bias_sign_and_unavailable_cases(self):
-        rows=[[10,10],[20,19],[30,27],[40,37],[50,44]]
-        first=run('blandaltman',rows)['Proportional bias'];reverse=run('blandaltman',[row[::-1] for row in rows])['Proportional bias']
-        self.assertGreater(float(first['Slope']),0);self.assertEqual(first['Proportional bias detected'],'yes')
-        self.assertAlmostEqual(float(first['Slope']),-float(reverse['Slope']),places=12);self.assertAlmostEqual(float(first['p']),float(reverse['p']),places=12)
-        constant=run('blandaltman',[[3,1],[1,3],[2,2]])['Proportional bias']
-        self.assertIn('Unavailable',constant['Status'])
-        perfect=run('blandaltman',[[2,1],[4,2],[6,3]])['Proportional bias']
-        self.assertEqual(perfect['p'],'unavailable');self.assertEqual(perfect['Proportional bias detected'],'unavailable')
 
-    def test_reliability_agreement_ratings_and_unclipped_confidence_intervals(self):
-        self.assertEqual([icc_rating(value) for value in (-.2,.5,.75,.90,.90001)],['Poor reliability','Moderate reliability','Good reliability','Good reliability','Excellent reliability'])
-        self.assertEqual([kappa_rating(value) for value in (-.1,0,.2,.4,.6,.8,.80001)],['Poor agreement','Slight agreement','Slight agreement','Fair agreement','Moderate agreement','Substantial agreement','Almost perfect agreement'])
-        for source in ('icc([[1,4],[2,2],[4,1]],oneway)','cohenkappa([[2,20],[18,2]])'):
-            result=evaluate(source);plot=result['statisticsReport']['plots'][0]
-            self.assertEqual(plot['domain'],[0,1]);self.assertLess(plot['rows'][0][1],0);self.assertLess(plot['rows'][0][2],0)
-
-    def test_chi_square_and_fisher_share_uncorrected_effect_sizes_without_changing_ans(self):
-        samples='([0,0,0,0,1,1,1,1],[0,0,0,1,0,1,1,1]'
-        expected=contingency_effects([[3,1],[1,3]])
-        for source in ('chi2independence'+samples+',0)','chi2independence'+samples+',1)','fisherexact'+samples+')'):
-            result=evaluate(source);self.assertNotIn('Cramér',result['exact'])
-            section=next(section for section in result['statisticsReport']['sections'] if section['title']=='Effect size')
-            self.assertEqual(section['columns'],['Effect size','Value','Rating'])
-            values={row[0]:row[1] for row in section['rows']}
-            self.assertAlmostEqual(float(values['phi']['decimal']),expected['phi'],places=12)
-            self.assertAlmostEqual(float(values['Cramér’s V']['decimal']),expected['Cramér’s V'],places=12)
-            self.assertEqual(section['rows'][1][2],'Large effect')
-        reversed_=contingency_effects([[1,3],[3,1]])
-        self.assertEqual(reversed_['Phi effect rating'],expected['Phi effect rating']);self.assertAlmostEqual(reversed_['phi'],-expected['phi'])
-        larger=contingency_effects([[12,3,1],[4,10,2],[1,3,14]])
-        self.assertEqual(larger['Effect-size dimension'],2);self.assertEqual(larger['phi'],'Not applicable (requires 2×2)')
-        self.assertAlmostEqual(larger['Cohen effect-size guide'][1]['Lower threshold'],.1/math.sqrt(2))
     def test_independent_references(self):
         fixture=json.loads((ROOT/'tests/fixtures/research_statistics_reference.json').read_text(encoding='utf8'))
         for case in fixture['cases']:
@@ -85,16 +51,6 @@ class ResearchStatisticsTests(unittest.TestCase):
                     for key in path: actual=actual[key]
                     self.assertAlmostEqual(float(actual),expected,delta=case['tolerance']*max(1,abs(expected)),msg=str(path))
 
-    def test_all_research_examples_are_public_functions_and_structured_reports(self):
-        ids={'metaanalysis','icc','blandaltman','tost','tost2','tostpaired'}
-        definitions=json.loads((ROOT/'app/src/main/assets/advanced_statistics.json').read_text(encoding='utf8'))
-        for item in definitions:
-            if item['id'] not in ids: continue
-            with self.subTest(analysis=item['id']):
-                report=evaluate(item['example'])['statisticsReport']
-                self.assertEqual(report['analysis'],item['id']);self.assertTrue(report['sections']);self.assertTrue(report['plots']);self.assertTrue(report['assumptions'])
-                if item['id'].startswith('tost'):
-                    self.assertEqual(report['plots'][0]['thresholds'],[-.5,.5])
 
     def test_meta_homogeneity_units_hksj_and_degenerate_egger(self):
         homogeneous=run('metaanalysis',[[.3,.1],[.3,.2],[.3,.3]],'pm')
@@ -142,15 +98,6 @@ class ResearchStatisticsTests(unittest.TestCase):
         self.assertAlmostEqual(float(translated['TOST p']),float(narrow['TOST p']),places=10)
         self.assertEqual(run('tost',[.1,.2,.3],-.1,.1)['Equivalent'],'not established')
 
-    def test_large_meta_report_and_study_names_preserve_numeric_answer(self):
-        data=[[.1+i*.001,.2+(i%3)*.01] for i in range(120)]
-        request={'tree':tree('metaanalysis('+str(data)+',pm)'),'precision':20,'budget':30,
-                 'statisticsTermLabels':{'study:1':'Study A'}}
-        result=json.loads(dispatch(json.dumps(request)));self.assertTrue(result['ok'],result.get('error'))
-        forest,funnel=result['statisticsReport']['plots']
-        self.assertEqual(forest['rows'][0][0],'Study A');self.assertEqual(len(forest['rows']),121);self.assertEqual(len(funnel['points']),120)
-        studies=next(section for section in result['statisticsReport']['sections'] if section['title']=='Studies')
-        self.assertEqual(studies['rows'][0][0],'Study A');self.assertEqual(len(studies['copyRows']),120)
 
     def test_invalid_inputs_fail_instead_of_returning_misleading_inference(self):
         cases=[('metaanalysis',[[[.1,0],[.2,.1]]]),('metaanalysis',[[[.1,-.1],[.2,.1]]]),

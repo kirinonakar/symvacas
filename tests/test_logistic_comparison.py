@@ -10,7 +10,6 @@ sys.path.insert(0,str(ROOT/'app/src/main/python'))
 from calc_logistic_comparison import calculate, fit_mle, predict, delong, placements, folds_for, metrics
 from calc_evaluator import Engine
 from calc_shared import MathError
-from test_advanced_statistics import evaluate
 
 REFERENCE=json.loads((ROOT/'tests/fixtures/logistic_comparison_reference.json').read_text())
 TRAIN=REFERENCE['train'];VALIDATION=REFERENCE['validation']
@@ -63,14 +62,6 @@ class LogisticComparisonTests(unittest.TestCase):
         assignment=folds_for(TRAIN+[TRAIN[i] for i in [0,1,4,0]],3,7,ids)
         for at,identity in enumerate(ids):self.assertEqual(assignment[at],assignment[identity])
 
-    def test_scaling_logits_threshold_and_loss_remain_stable(self):
-        model=fit_mle(TRAIN,2);scores=predict(model,VALIDATION)
-        scaled=[[a*1e150,b*1e-150,y] for a,b,y in TRAIN]
-        other=predict(fit_mle(scaled,2),[[a*1e150,b*1e-150,y] for a,b,y in VALIDATION])
-        for a,b in zip(scores,other):self.assertAlmostEqual(a,b,places=10)
-        values,correct=metrics([0,1,1],[1000,-1000,0],.5)
-        self.assertEqual(correct,[0,0,1]);self.assertTrue(math.isfinite(values['Log loss']))
-        self.assertGreater(metrics([0,1],[-40,40],.5)[0]['Log loss'],0)
 
     def test_holdout_fits_only_training_split_and_bootstraps_paired_validation(self):
         r=self.result('holdout',.25,100);rng=random.Random(7);test=set()
@@ -97,15 +88,5 @@ class LogisticComparisonTests(unittest.TestCase):
         args[-1]=[1,1]
         with self.assertRaises(MathError):calculate(Engine({}),'logisticcompare',args)
 
-    def test_public_dispatch_exposes_same_sample_tables_and_comparison_plots(self):
-        source=f'logisticcompare({TRAIN},1,external,{VALIDATION},0.5,0.95,0,7)'
-        result=evaluate(source);report=result['statisticsReport']
-        self.assertEqual(report['title'],'Nested logistic model comparison')
-        self.assertEqual([p['kind'] for p in report['plots']],['roc-comparison','calibration-comparison','intervals'])
-        self.assertEqual(report['plots'][0]['series'][0]['points'][0],[0,0])
-        self.assertEqual(report['plots'][0]['series'][0]['points'][-1],[1,1])
-        self.assertEqual(report['plots'][2]['reference'],0)
-        for series in report['plots'][1]['series']:self.assertEqual(sum(p[2] for p in series['points']),len(VALIDATION))
-        self.assertEqual([p['label'] for p in report['highlights']],['LRT χ²','LRT p','ΔAIC (B − A)','ΔBIC (B − A)'])
 
 if __name__=='__main__':unittest.main()

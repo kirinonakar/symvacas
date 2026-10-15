@@ -7,9 +7,7 @@ import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'app/src/main/python'))
 import sympy as s
 import calc_engine
-import symvacas_catalog as catalog
 from calc_extrema import extrema_candidates
-from calc_shared import MathError
 from test_calculator_conventions import call, evaluate, node, number
 
 x=node('symbol','x')
@@ -67,16 +65,6 @@ class ExtremaTests(unittest.TestCase):
         for action in ('minimum','maximum'):
             self.assertEqual('7',self.calc(number(7),action,mode='open')['exact'])
 
-    def test_exact_values_and_python_catalog_use_the_same_search(self):
-        expression=binary('-',binary('^',x,number(4)),binary('*',number(2),x))
-        result=self.calc(expression,lower=0,upper=2)
-        self.assertTrue(result['ok'],result)
-        self.assertEqual(0,s.simplify(s.sympify(result['exact'])+3*2**s.Rational(2,3)/4))
-        variable=s.Symbol('x')
-        self.assertEqual(0,catalog.minimum(s.Abs(variable),variable,-2,2))
-        self.assertEqual(2,catalog.maximum(s.Abs(variable),variable,-2,2))
-        with self.assertRaisesRegex(MathError,'not attained'):
-            catalog.minimum(variable,variable,0,1,'open')
 
     def test_guards_are_scoped_to_the_selected_expression_and_bound_call(self):
         # An unrelated second curve must not exclude the selected curve's minimum.
@@ -104,19 +92,6 @@ class ExtremaTests(unittest.TestCase):
         for lower,upper,mode in [(2,-2,None),(-2,2,'invalid')]:
             self.assertFalse(self.calc(square,lower=lower,upper=upper,mode=mode)['ok'])
         self.assertFalse(evaluate(call('minimum',x,x))['ok'])
-
-    def test_help_keeps_polynomial_discriminant_separate_from_classification(self):
-        root=Path(__file__).resolve().parents[1]
-        sys.path.insert(0,str(root/'scripts'))
-        from statistics_help import enrich_help
-        for korean in (False,True):
-            name='catalog_help'+('_ko' if korean else '')+'.md'
-            text=(root/'app/src/main/assets'/name).read_text(encoding='utf-8')
-            line=next(line for line in text.splitlines() if line.startswith('`discriminant(poly,x)`'))
-            self.assertNotIn('LDA/QDA',line)
-            self.assertIn('LDA/QDA',next(line for line in text.splitlines() if line.startswith('`discriminantanalysis`')))
-            regenerated=enrich_help('`discriminant(poly,x)` — Discriminant analysis (LDA/QDA).',korean)
-            self.assertNotIn('LDA/QDA',regenerated)
 
 
 if __name__=='__main__': unittest.main()

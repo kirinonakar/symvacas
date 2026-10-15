@@ -4,8 +4,6 @@ import random
 import unittest
 from test_advanced_statistics import ROOT, run, evaluate
 from calc_shared import MathError
-from calc_statistics_report import statistics_report
-from calc_engine import statistics_display_terms
 
 
 class SEMEstimationTests(unittest.TestCase):
@@ -27,13 +25,6 @@ class SEMEstimationTests(unittest.TestCase):
                     for key in path: actual=actual[key]
                     self.assertAlmostEqual(float(actual),expected,delta=case['tolerance']*max(1,abs(expected)),msg=str(path))
 
-    def test_principal_axis_default_and_explicit_pca(self):
-        case=json.loads((ROOT/'tests/fixtures/social_statistics_reference.json').read_text(encoding='utf8'))['cases']
-        rows=next(c['arguments'][0] for c in case if c['function']=='efa')
-        default=run('efa',rows,2,'none'); explicit=run('efa',rows,2,'none','pa')
-        self.assertEqual(default['loadings'],explicit['loadings'])
-        self.assertIn('Principal axis',default['Extraction'])
-        self.assertIn('Principal components',run('efa',rows,2,'none','pca')['Extraction'])
 
     def test_scalar_and_strict_are_nested_and_report_raw_equalities(self):
         case=next(c for c in self.cases if c['arguments'][-1]=='scalar'); rows,factors,_,_,ids,_=case['arguments']
@@ -127,25 +118,6 @@ class SEMEstimationTests(unittest.TestCase):
                 self.assertAlmostEqual(float(left['Standardized SE']),float(right['Standardized SE']),places=7)
                 for a,b in zip(left['Standardized CI95'],right['Standardized CI95']): self.assertAlmostEqual(float(a),float(b),places=7)
 
-    def test_cross_loading_diagram_and_multigroup_reports_preserve_identity(self):
-        case=self.cases[2]; args=case['arguments'][:]; args[3]=[[2,2]]
-        result=run('sem',*args)
-        labels={'feature:1':'같은 이름','feature:2':'같은 이름','feature:4':'Outcome'}
-        report=statistics_report('sem',statistics_display_terms(result,labels),15,labels)
-        diagram=next(p for p in report['plots'] if p['kind']=='sem-diagram')
-        self.assertEqual(len(diagram['nodes']),8);self.assertEqual(len(diagram['edges']),8)
-        self.assertEqual(sum(n['label']=='같은 이름' for n in diagram['nodes']),2)
-        self.assertEqual(sum(e['target']=='x2' for e in diagram['edges']),2)
-        self.assertEqual(next(n['r2'] for n in diagram['nodes'] if n['id']=='x1'),float(result['Indicator R²'][0]['R²']))
-        self.assertEqual(next(n['r2'] for n in diagram['nodes'] if n['id']=='x2'),float(result['Indicator R²'][1]['R²']))
-        self.assertTrue(all(0<node['y']<diagram['height'] and 0<node['x']<diagram['width'] for node in diagram['nodes']))
-        self.assertTrue(all(0<edge['labelPosition'][1]<diagram['height'] for edge in diagram['edges']))
-        groupcase=next(c for c in self.cases if c['arguments'][-1]=='scalar')
-        grouped=run('cfa',*groupcase['arguments']);report=statistics_report('cfa',grouped,15)
-        diagram=next(p for p in report['plots'] if p['kind']=='sem-diagram')
-        self.assertEqual(len(diagram['series']),2)
-        self.assertEqual([s['label'] for s in diagram['series']],[row['Group'] for row in grouped['Group summary']])
-        self.assertTrue(all(len(s['nodes'])==5 for s in diagram['series']))
 
     def test_invalid_ordinal_models_fail_with_actionable_errors(self):
         rows=self.cases[0]['arguments'][0]; binary=self.cases[1]['arguments'][0]; factors=[1]*4

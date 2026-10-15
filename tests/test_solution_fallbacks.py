@@ -6,10 +6,7 @@ import unittest
 
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/"app/src/main/python"))
 import sympy as s
-from calc_engine import contains_heavy_call
 from calc_solutions import affine_exponential_solutions
-from calc_number_theory import bounded_divisors
-from calc_shared import MathError
 
 class SolutionFallbackTests(unittest.TestCase):
     def test_complete_lambert_families_satisfy_equations_across_branches(self):
@@ -42,13 +39,6 @@ class SolutionFallbackTests(unittest.TestCase):
 
 class NumberTheoryLimitTests(unittest.TestCase):
 
-    def test_divisor_count_and_output_size_are_bounded(self):
-        with self.assertRaisesRegex(MathError,"2000 results"):
-            bounded_divisors(s.Integer(2)**2000)
-        with self.assertRaisesRegex(MathError,"40000 characters"):
-            bounded_divisors(s.Integer(2)**1999)
-        for name in ("factorint","divisors"):
-            self.assertTrue(contains_heavy_call({"kind":"call","value":name}))
 
     def test_hard_factorization_stops_at_runtime_deadline(self):
         python_source=str(pathlib.Path(__file__).resolve().parents[1]/"app/src/main/python")

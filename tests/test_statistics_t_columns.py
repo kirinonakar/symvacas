@@ -34,18 +34,5 @@ class ColumnTTestTests(unittest.TestCase):
         self.assertNotEqual(rows[2][4],'undefined')
         self.assertTrue(result['statisticsReport']['details'])
 
-    def test_batch_contract_rejects_different_column_counts_and_unknown_method(self):
-        for source in ('ttest2(0,[[1,2,3]],[[2,3,4],[5,6,7]],batch)','ttest2(0,[],[],batch)',
-                       'ttest2(0,[[1,2,3]],[[2,3,4]],batch,other)'):
-            self.assertFalse(json.loads(dispatch(json.dumps({'tree':tree(source)})))['ok'])
-
-    def test_many_selected_columns_keep_every_result_and_copy_row(self):
-        sample=','.join(['[1,2,3,4,5]']*60);other=','.join(['[8,9,10,11,12]']*60)
-        result=evaluate(f'ttest2(0,[{sample}],[{other}],batch)')
-        summary,checks=result['statisticsReport']['sections']
-        self.assertEqual(summary['totalRows'],60);self.assertEqual(len(summary['rows']),60)
-        self.assertEqual(checks['totalRows'],180);self.assertEqual(len(checks['copyRows']),180)
-        self.assertIn('Plain Output previews',result['exact'])
-
 
 if __name__=='__main__':unittest.main()

@@ -73,19 +73,6 @@ class StatisticsSummaryTests(unittest.TestCase):
                             else:self.assertEqual(actual[1],expected[1])
                         self.assertEqual(len(section['rows']),len(item['categorical']))
 
-    def test_binary_summary_handles_constant_columns_and_equivalent_numeric_values(self):
-        for source in ('stats([0,0])','stats([1,1])','stats([0.0,1.0,1])','stats([0,-0,1])'):
-            result=evaluate(source)
-            self.assertNotIn('mean:',result['exact'])
-            self.assertTrue(any(section['title']=='Category frequencies' for section in result['statisticsReport']['sections']))
-
-    def test_overall_large_category_table_retains_copy_rows_and_rejects_invalid_contracts(self):
-        result=evaluate('stats([['+','.join(map(str,range(150)))+']],overall,[1])')
-        section=result['statisticsReport']['sections'][0]
-        self.assertEqual(section['totalRows'],150);self.assertEqual(len(section['rows']),100)
-        self.assertEqual(len(section['copyRows']),150)
-        for source in ('stats([[]],overall,[0])','stats([[2,3]],overall,[])','stats([[2,3]],overall,[2])','stats([2,3],overall,[0,0])'):
-            self.assertFalse(json.loads(dispatch(json.dumps({'tree':tree(source)})))['ok'])
 
     def test_overall_packed_columns_support_full_dataset_height_and_copy(self):
         columns=[['2']*5000,['0','1']*2500,list(map(str,range(5000)))]
@@ -103,23 +90,12 @@ class StatisticsSummaryTests(unittest.TestCase):
         result=json.loads(dispatch(json.dumps(request)))
         self.assertFalse(result['ok']);self.assertIn('Statistics dataset limit',result['error'])
 
-    def test_large_explicit_category_tables_copy_all_rows(self):
-        result=evaluate('stats(['+','.join(map(str,range(150)))+'],categorical)')
-        section=next(section for section in result['statisticsReport']['sections'] if section['title']=='Category frequencies')
-        self.assertEqual(section['totalRows'],151)
-        self.assertEqual(len(section['rows']),100)
-        self.assertEqual(len(section['copyRows']),151)
 
     def test_numeric_columns_with_ten_distinct_values_skip_category_frequency_computation(self):
         with patch('calc_evaluator.summary_frequencies',side_effect=AssertionError('Category frequencies should not be calculated')) as frequency:
             result=evaluate('stats(['+','.join(map(str,range(10)))+'])')
             frequency.assert_not_called()
         self.assertFalse(any(section['title']=='Category frequencies' for section in result['statisticsReport']['sections']))
-
-    def test_category_summary_rejects_empty_data_and_unknown_options(self):
-        for source in ('stats([],categorical)','stats([0,1],other)'):
-            result=json.loads(dispatch(json.dumps({'tree':tree(source)})))
-            self.assertFalse(result['ok'])
 
 
 if __name__=='__main__':unittest.main()

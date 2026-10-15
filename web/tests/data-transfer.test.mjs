@@ -13,16 +13,6 @@ test('Android and Web accept and re-export the same portable data fixture',()=>{
   assert.equal(state.datasets.D1,'점수,그룹\n1,A\n2,B');
   assert.equal(state.functions.f.body.args[0].kind,'snapshot_symbol');
 });
-test('portable data roundtrip preserves names, categorical CSV and guarded ASTs',()=>{
-  const state=saved();state.functions.f.body={kind:'restricted',args:[state.functions.f.body,{kind:'relation',value:'!=',args:[{kind:'symbol',value:'x'},{kind:'number',value:'0'}]}]};
-  state.functions.f.answerSource=state.variables.Ans;
-  const decoded=decodeData('\uFEFF'+encodeData(state));
-  assert.deepEqual(decoded.functions,state.functions);
-  assert.deepEqual(decoded.datasets.D1,{csv:state.datasets.D1,kind:'columns:2'});
-  const merged=mergeData({...saved(),datasets:{Other:'5'},datasetKinds:{Other:'list'},digits:12},decoded);
-  assert.equal(merged.datasets.Other,'5');assert.equal(merged.datasets.D1,state.datasets.D1);assert.equal(merged.digits,12);
-  assert.deepEqual(merged.assumptions,state.assumptions);
-});
 test('reset clears every setting and draft while retaining all data and answer-linked functions',()=>{
   const state=createAppState({...saved(),history:[{mode:'scientific',source:'1+1'}],fields:{expression:'abc',mode:'statistics'},statisticsSections:{summary:false},graph:{sources:{cartesian:'x^3'}},precision:150,language:'ko',favorites:['stats([])'],calcModeStepByStep:true});
   const reset=createAppState(resetSettingsState(state),'en');

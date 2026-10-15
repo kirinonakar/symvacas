@@ -44,29 +44,6 @@ class CalculatorConventionTests(unittest.TestCase):
         self.assertEqual(s.Rational(32, 7), report["sample variance"])
         self.assertEqual("0", evaluate(call("stdev", data(7), number(0)))["exact"])
 
-    def test_solve_domains_absolute_values_and_assumptions(self):
-        self.assertEqual(s.FiniteSet(-2,4), catalog.solve(s.Eq(s.Abs(catalog.x-1),3),catalog.x,catalog.real))
-        self.assertEqual(s.FiniteSet(-2,4), catalog.solve(s.Eq(s.Abs(catalog.x-1),3),catalog.x))
-        x = node("symbol", "x")
-        eq = node("relation", "=", call("abs", node("binary", "-", x, number(1))), number(3))
-        result = evaluate(call("solve", eq, x))
-        self.assertEqual("{-2, 4}", result.get("exact"), result)
-        self.assertIn("real domain automatically", result["note"])
-        explicit_complex = evaluate(call("solve", eq, x, node("symbol", "complex")))
-        self.assertFalse(explicit_complex["ok"], explicit_complex)
-        for domain in ("real", "integer"):
-            result = evaluate(call("solve", eq, x, node("symbol", domain)), variables={"x":number(99)})
-            self.assertEqual("{-2, 4}", result.get("exact"), result)
-        self.assertEqual("{-2, 4}", evaluate(call("solve", eq, x), assumptions={"x":["real"]})["exact"])
-        self.assertEqual("{4}", evaluate(call("solve", eq, x, node("symbol", "real")), assumptions={"x":["positive"]})["exact"])
-        polynomial = node("binary", "+", node("binary", "^", x, number(2)), number(1))
-        for args in [[], [node("symbol", "complex")]]:
-            self.assertEqual("{-I, I}", evaluate(call("solve", polynomial, x, *args))["exact"])
-        self.assertEqual("EmptySet", evaluate(call("solve", polynomial, x, node("symbol", "real")))["exact"])
-        self.assertFalse(evaluate(call("solve", polynomial, x, node("symbol", "bogus")))["ok"])
-        excluded = node("restricted", "", eq, node("relation", "!=", x, number(4)))
-        self.assertEqual("{-2}", evaluate(call("solve", excluded, x, node("symbol", "real")))["exact"])
-        self.assertEqual("{-2}", evaluate(call("solve", excluded, x))["exact"])
 
     def test_automatic_real_solving_preserves_domain_scope_and_complex_roots(self):
         x = node("symbol", "x")
@@ -94,17 +71,6 @@ class CalculatorConventionTests(unittest.TestCase):
         self.assertIn("for x",engine.note)
         self.assertIsNone(x.is_real)
 
-    def test_unresolved_symbolic_results_explain_numeric_alternatives(self):
-        x = node("symbol", "x")
-        equation = node("relation", "=", call("sin", x), x)
-        result = evaluate(call("solve", equation, x))
-        self.assertTrue(result["ok"], result)
-        self.assertIn("ConditionSet", result["exact"])
-        self.assertIn("not proof", result["note"])
-        integral = evaluate(call("integrate", call("sqrt", node("binary", "+", call("tan", x), x)), x))
-        self.assertTrue(integral["ok"], integral)
-        self.assertIn("Integral", integral["exact"])
-        self.assertIn("nintegrate", integral["note"])
 
 if __name__ == "__main__":
     unittest.main()

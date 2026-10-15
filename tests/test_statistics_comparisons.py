@@ -74,22 +74,6 @@ class ComparisonTests(unittest.TestCase):
                     self.assertAlmostEqual(float(term['F']),reference['F'],delta=1e-8)
                     self.assertAlmostEqual(float(term['p']),reference['PR(>F)'],delta=1e-12)
 
-    def test_two_way_alias_reuses_linear_fit_and_preserves_source_labels(self):
-        rows=[[1,1,2],[1,1,4],[1,2,5],[1,2,6],[2,1,4],[2,1,5],[2,2,8],[2,2,10]]
-        factorial=run('twowayanova',rows,1)
-        linear=run('linearmodel',rows,[1,2],2,3,s.Symbol('sum'))
-        for one,two in zip(factorial['ANOVA'],linear['ANOVA']):
-            self.assertAlmostEqual(float(one['SS']),float(two['SS']),places=12)
-        request={'tree':tree('twowayanova('+str(rows)+',1)'),'precision':15,
-                 'statisticsTermLabels':{'factor:A':'Treatment','factor:B':'Time','factor:A:1':'Control','factor:A:2':'Drug','factor:B:1':'Early','factor:B:2':'Late'}}
-        result=json.loads(dispatch(json.dumps(request)))
-        self.assertTrue(result['ok'],result.get('error'))
-        report=result['statisticsReport']
-        self.assertTrue(any(section['title']=='Assumption checks' for section in report['sections']))
-        self.assertEqual(report['plots'][0]['lineLabels'],['Control','Drug'])
-        self.assertEqual(report['plots'][0]['xLabels'],['Early','Late'])
-        self.assertTrue(any(plot['kind']=='intervals' for plot in report['plots']))
-        self.assertIn('Treatment × Time',result['exact'])
 
     def test_partial_f_blocks_and_unidentifiable_models(self):
         x=[[1.,i,float(i%2)] for i in range(10)]

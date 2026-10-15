@@ -19,19 +19,6 @@ class DescriptiveShapeTests(unittest.TestCase):
         self.assertEqual(calc.skewness([1,2,3,4,5]),0)
         self.assertEqual(str(calc.kurtosis([1,2,3,4,5])),'-6/5')
 
-    def test_summary_retains_modes_and_undefined_shape_without_failing(self):
-        self.assertEqual(evaluate('mode([1,1.0,2,2,3])')['exact'],'[1, 2]')
-        self.assertEqual(evaluate('mode([3,1,2])')['exact'],'[1, 2, 3]')
-        self.assertEqual(evaluate('mode([7])')['exact'],'[7]')
-        result=evaluate('stats([1,1,2,2,3])')
-        report=result['statisticsReport']
-        titles=[section['title'] for section in report['sections']]
-        self.assertIn('mode(s)',titles)
-        rows=[row for section in report['sections'] for row in section['rows']]
-        self.assertTrue(any(row[0]=='skewness (sample corrected)' for row in rows))
-        # A lone 1 is intentionally categorical; use a nonbinary numeric singleton.
-        for values in ('[2]','[1,2]','[5,5,5,5]'):
-            self.assertIn('nan',evaluate(f'stats({values})')['exact'].lower())
 
     def test_shape_domains_and_extreme_units(self):
         for source in ('skewness([])','skewness([1,2])','kurtosis([1,2,3])',

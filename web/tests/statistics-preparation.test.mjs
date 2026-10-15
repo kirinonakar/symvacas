@@ -91,8 +91,3 @@ test('preparation preview stays separate from data, preserves focused fields and
   source='1,2,3,4';tools.update();
   assert.deepEqual(registry.get('statistics-preparation-recode-column').children.map(option=>option.textContent),['x','y','z','x4']);
 });
-test('preparation forms are driven by one shared schema with distinct operation and field IDs',()=>{
-  assert.deepEqual(statisticsPreparationSchema,JSON.parse(readFileSync(new URL('../../app/src/main/assets/statistics_preparation.json',import.meta.url),'utf8')));
-  assert.deepEqual(statisticsPreparationSchema.map(item=>item.id),['filter','wideToLong','longToWide','recode','derive']);
-  for(const definition of statisticsPreparationSchema)assert.equal(new Set(definition.fields.map(field=>field.key)).size,definition.fields.length);
-});

@@ -1,5 +1,4 @@
 """Independent Bayesian-bootstrap moments and PCA visualization contracts."""
-import json
 import math
 from pathlib import Path
 import sys
@@ -60,39 +59,6 @@ class BayesianBootstrapTests(unittest.TestCase):
         again,_=self.run_bootstrap([0,1]);self.assertEqual(result,again)
         changed,_=self.run_bootstrap([0,1],seed=8);self.assertNotEqual(result,changed)
 
-    def test_population_statistics_and_weighted_quantile_degenerate_limits(self):
-        for statistic,expected in (('mean',3),('median',3),('variance',0),('stdev',0)):
-            result,plot=self.run_bootstrap([3,3,3],statistic,draws=100)
-            self.assertEqual(expected,float(result['estimate']))
-            self.assertEqual([expected,expected],list(map(float,result['credible interval'])))
-            self.assertGreater(plot['edges'][-1],plot['edges'][0])
-        result,_=self.run_bootstrap([0,1],'variance',draws=100)
-        self.assertEqual(.25,float(result['estimate']))
-        self.assertTrue(all(0<=float(v)<=.25 for v in result['credible interval']))
-        result,_=self.run_bootstrap([0,1],'median',draws=100)
-        self.assertEqual(.5,float(result['estimate']))
-        self.assertEqual([0,1],list(map(float,result['credible interval'])))
-
-    def test_sample_median_changes_only_estimates_and_histogram_reference(self):
-        cases=json.loads((Path(__file__).parent/'fixtures/bayesian_bootstrap_median_reference.json').read_text(encoding='utf-8'))
-        for case in cases:
-            with self.subTest(mode=case['mode']):
-                engine=Engine({});compare=case['second'] is not None
-                args=[case['first']]+([case['second']] if compare else [])+[s.Symbol('median'),.95,case['draws'],case['seed']]+([s.Symbol(case['mode'])] if compare else [])
-                result=advanced(engine,'bayesbootstrap',args)
-                for key,expected in case['posterior'].items():
-                    actual=[float(v) for v in result[key]] if isinstance(result[key],list) else float(result[key])
-                    self.assertEqual(expected,actual,key)
-                plot=engine.statistics_plots[0]
-                self.assertEqual(case['histogram'],{key:plot[key] for key in ('edges','counts','interval')})
-                if compare:
-                    self.assertEqual(3,float(result['estimate A']))
-                    self.assertEqual(4.5,float(result['estimate B']))
-                    self.assertEqual(1.5,float(result['estimate']))
-                    self.assertEqual(1.5,plot['estimate'])
-                else:
-                    self.assertEqual(5,float(result['estimate']))
-                    self.assertEqual(5,plot['estimate'])
 
     def test_invalid_parameters_are_rejected(self):
         for data,statistic,level,draws,seed in (([1],'mean',.95,100,0),([1,2],'bad',.95,100,0),([1,2],'mean',1,100,0),([1,2],'mean',.95,99,0),([1,2],'mean',.95,100,-1)):

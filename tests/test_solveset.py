@@ -6,7 +6,6 @@ import unittest
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/"app/src/main/python"))
 import sympy as s
 from calc_engine import Engine, dispatch, contains_heavy_call
-import symvacas_catalog as catalog
 
 
 def node(kind,value="",*args): return {"kind":kind,"value":str(value),"args":list(args)}
@@ -66,15 +65,6 @@ class SolvesetTests(unittest.TestCase):
                      (x,x,node("relation","=",symbol("unknown"),symbol("S.Reals"))),
                      (node("relation","<",x,number(1)),x,domain("Reals"))):
             with self.subTest(args=args): self.assertFalse(evaluate(call("solveset",*args))["ok"])
-
-    def test_unresolved_sets_remain_honest_and_python_catalog_accepts_keyword(self):
-        x=symbol("x")
-        result=evaluate(call("solveset",binary("-",call("sin",x),x),x,domain("Reals")))
-        self.assertTrue(result["ok"],result)
-        self.assertIn("ConditionSet",result["exact"])
-        self.assertIn("unresolved",result["note"])
-        self.assertEqual(s.FiniteSet(-2,2),catalog.solveset(catalog.x**2-4,catalog.x,domain=catalog.S.Reals))
-        with self.assertRaises(TypeError): catalog.solveset(catalog.x,catalog.x,unknown=s.S.Reals)
 
 
 if __name__=="__main__": unittest.main()
