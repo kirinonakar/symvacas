@@ -5,6 +5,31 @@ import org.junit.Test
 
 class LatexInputTest {
 
+    @Test fun escapedMathFencesAndConsecutiveBlocksPasteAsSeparateExpressions() {
+        val implicit="""\\[ (x^2+y^2)^4= \left[ (x^3-3xy^2)\cos t+ (3x^2y-y^3)\sin t \right]^2 \\]"""
+        val polar="""\\[ \boxed{r=|\cos(3\theta-t)|} \\]"""
+        val first="(x^2+y^2)^4=((x^3-3x*y^2)cos(t)+(3x^2y-y^3)sin(t))^2"
+        val second="r=abs(cos(3theta-t))"
+        assertEquals(first,LatexInput.convert(implicit))
+        assertEquals(second,LatexInput.convert(polar))
+        for(separator in listOf("  ","\n\n","\r\n")) {
+            val pasted=implicit+separator+polar
+            assertEquals("$first\n$second",LatexInput.convertPaste(pasted,multiline=true))
+            assertNull(LatexInput.convert(pasted))
+            val previous=Editor("x^2\nold\ny=0",7,4)
+            val edit=LatexInput.convertEdit(previous,"x^2\n$pasted\ny=0",multiline=true)!!
+            assertEquals("x^2\n$first\n$second\ny=0",edit.source)
+            assertEquals(edit.source.length-4,edit.cursor)
+        }
+        assertEquals("x*y",LatexInput.convert("\\\\[xy\\\\]"))
+        assertEquals("x*y",LatexInput.convert("\\\\(xy\\\\)"))
+        assertEquals("x=1\ny=2",LatexInput.convertPaste("\\[\nx=1\n\\] \\[\ny=2\n\\]",multiline=true))
+        val matrix="""\\[ \begin{bmatrix}1&2\\3&4\end{bmatrix} \\]"""
+        assertEquals("[[1,2],[3,4]]",LatexInput.convertPaste(matrix,multiline=true))
+        assertNull(LatexInput.convertPaste("Answer: $polar",multiline=true))
+        assertNull(LatexInput.convertPaste("$polar \\[\\unknown{1}\\]",multiline=true))
+    }
+
     @Test fun multilinePastePreservesLinesAndSelectionScope() {
         val source="\\frac{x+1}{2}\n\n$\\sqrt{x}$\nx=\\frac{1}{3}"
         assertEquals("(x+1)/2\n\nsqrt(x)\nx=1/3",LatexInput.convertPaste(source,multiline=true))

@@ -1,9 +1,11 @@
-import {latexInput} from './parser.js';
+import {latexInput,latexMathBlocks} from './parser.js';
 
 /** Normalize a pasted block without joining independent graph/equation lines. */
 export function latexPaste(text,{prefix='',suffix='',multiline=false}={}) {
   prefix=prefix.slice(prefix.lastIndexOf('\n')+1);
   suffix=suffix.split('\n')[0];
+  const blocks=multiline?latexMathBlocks(text):null;
+  if(blocks)return blocks.map((body,index)=>latexInput(`\\[${body}\\]`,{prefix:index===0?prefix:'',suffix:index===blocks.length-1?suffix:''})).join('\n');
   if(!multiline||!text.includes('\n'))return latexInput(text,{prefix,suffix});
   try {
     const lines=text.split(/(\r?\n)/);

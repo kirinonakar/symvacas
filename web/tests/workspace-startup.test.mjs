@@ -62,6 +62,16 @@ test('calculator, graph and equation production inputs convert pasted LaTeX imme
   assert.equal(graph.value,'(x^2+y^2)^4=((x^3-3x*y^2)cos(t)+(3x^2y-y^3)sin(t))^2');
   assert.equal(document.getElementById('graph-line-numbers').children.length,1);
   equation.select();paste(equation,'\\boxed{xy=1}\n\\boxed{y=2}');assert.equal(equation.value,'x*y=1\ny=2');
+  const escapedPolar=String.raw`\\[ \boxed{r=|\cos(3\theta-t)|} \\]`;
+  const escapedImplicit=String.raw`\\[ (x^2+y^2)^4= \left[ (x^3-3xy^2)\cos t+ (3x^2y-y^3)\sin t \right]^2 \\]`;
+  expression.select();paste(expression,escapedPolar);assert.equal(expression.value,'r=abs(cos(3theta-t))');
+  const blockExpected='(x^2+y^2)^4=((x^3-3x*y^2)cos(t)+(3x^2y-y^3)sin(t))^2\nr=abs(cos(3theta-t))';
+  for(const field of [graph,equation]){
+    field.value='x=1\nold\ny=0';field.setSelectionRange(4,7);
+    paste(field,escapedImplicit+'  '+escapedPolar);
+    assert.equal(field.value,`x=1\n${blockExpected}\ny=0`);assert.equal(field.selectionStart,4+blockExpected.length);
+  }
+  assert.equal(document.getElementById('graph-line-numbers').children.length,4);
   window.matchMedia=()=>({matches:false,addEventListener:noop,removeEventListener:noop});
   createAppDialogs({state,ui,persist:noop,calculator,changeMode:noop,pressKey:noop,refreshDisplays:noop,renderMatrix:noop,error:noop,reloadState:noop});
   document.getElementById('settings-dialog').showModal=()=>{};

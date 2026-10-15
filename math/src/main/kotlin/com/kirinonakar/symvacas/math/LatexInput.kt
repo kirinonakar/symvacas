@@ -8,20 +8,34 @@ object LatexInput {
     private val commands = setOf("boxed","operatorname","mathrm","int","sum","prod","binom","begin","lim","frac","dfrac","tfrac","sqrt","log","infty","times","cdot","left","right","quad","qquad","le","leq","ge","geq","ne","neq") + functions + greek
     private val commandPattern = Regex("""\\([A-Za-z]+)""")
     private val bracedPower = Regex("""\^\s*\{""")
+    private val mathFences = listOf("\\\\[" to "\\\\]", "\\\\(" to "\\\\)", "\\[" to "\\]", "\\(" to "\\)", "$$" to "$$", "$" to "$")
+
+    /** Read complete math blocks only; never discard surrounding prose or matrix row separators. */
+    private fun mathBlocks(input:String):List<String>? {
+        val blocks=mutableListOf<String>()
+        var index=0
+        while(index<input.length) {
+            while(input.getOrNull(index)?.isWhitespace()==true)index++
+            if(index==input.length)break
+            val (open,close)=mathFences.firstOrNull {input.startsWith(it.first,index)} ?: return null
+            val start=index+open.length
+            var end=input.indexOf(close,start)
+            while(end>=0 && input.getOrNull(end-1)=='\\')end=input.indexOf(close,end+close.length)
+            if(end<0)return null
+            blocks.add(input.substring(start,end))
+            index=end+close.length
+        }
+        return blocks.takeIf {it.isNotEmpty()}
+    }
 
     /** Returns null for ordinary text or unsupported LaTeX. Prefix/suffix preserve insertion scope. */
     fun convert(input: String, prefix:String="", suffix:String=""): String? {
         val trimmed=input.trim()
-        val wrapped=trimmed.startsWith("\\[") || trimmed.startsWith("\\(") || trimmed.startsWith('$')
+        val blocks=mathBlocks(input)
+        if(blocks!=null && blocks.size!=1)return null
+        val wrapped=blocks!=null || trimmed.startsWith("\\[") || trimmed.startsWith("\\(") || trimmed.startsWith('$')
         if(!wrapped && !bracedPower.containsMatchIn(input) && !commandPattern.findAll(input).any {it.groupValues[1] in commands || it.groupValues[1]=="int"})return null
-        var source=trimmed
-        source=when {
-            source.startsWith("\\[") && source.endsWith("\\]") -> source.substring(2,source.length-2)
-            source.startsWith("\\(") && source.endsWith("\\)") -> source.substring(2,source.length-2)
-            source.startsWith("$$") && source.endsWith("$$") && source.length>=4 -> source.substring(2,source.length-2)
-            source.startsWith('$') && source.endsWith('$') && source.length>=2 -> source.substring(1,source.length-1)
-            else -> source
-        }.trim()
+        val source=(blocks?.single() ?: trimmed).trim()
         return runCatching {
             val converted=convertBody(source)
             Parser(converted).parse()
@@ -36,6 +50,11 @@ object LatexInput {
 
     /** Preserve independent graph/equation lines, including the surrounding line's precedence. */
     fun convertPaste(input:String,prefix:String="",suffix:String="",multiline:Boolean=false):String? {
+        if(multiline)mathBlocks(input)?.let {blocks->
+            return blocks.mapIndexed {index,body->
+                convert("\\[$body\\]",if(index==0)prefix.substringAfterLast('\n') else "",if(index==blocks.lastIndex)suffix.substringBefore('\n') else "") ?: return null
+            }.joinToString("\n")
+        }
         if(!multiline || '\n' !in input)return convert(input,prefix.substringAfterLast('\n'),suffix.substringBefore('\n'))
         val lines=input.split('\n')
         var changed=false

@@ -146,18 +146,34 @@ export function parse(source,{allowHoles=false}={}) {
 export const latexSymbolLabels = Object.fromEntries([
   ['alpha','α'],['beta','β'],['gamma','γ'],['delta','δ'],['epsilon','ϵ'],['varepsilon','ε'],['zeta','ζ'],['eta','η'],['theta','θ'],['vartheta','ϑ'],['iota','ι'],['kappa','κ'],['varkappa','ϰ'],['lambda','λ'],['mu','μ'],['nu','ν'],['xi','ξ'],['pi','π'],['varpi','ϖ'],['rho','ρ'],['varrho','ϱ'],['sigma','σ'],['varsigma','ς'],['tau','τ'],['upsilon','υ'],['phi','ϕ'],['varphi','φ'],['chi','χ'],['psi','ψ'],['omega','ω'],['Gamma','Γ'],['Delta','Δ'],['Theta','Θ'],['Lambda','Λ'],['Xi','Ξ'],['Pi','Π'],['Sigma','Σ'],['Upsilon','Υ'],['Phi','Φ'],['Psi','Ψ'],['Omega','Ω']
 ]);
+const latexMathFences=[['\\\\[','\\\\]'],['\\\\(','\\\\)'],['\\[','\\]'],['\\(','\\)'],['$$','$$'],['$','$']];
+
+/** Read complete math blocks only; preserve surrounding prose and matrix row separators. */
+export function latexMathBlocks(input){
+  const blocks=[];let index=0;
+  while(index<input.length){
+    while(/\s/.test(input[index]||'\0'))index++;
+    if(index===input.length)break;
+    const pair=latexMathFences.find(([open])=>input.startsWith(open,index));
+    if(!pair)return null;
+    const [open,close]=pair,start=index+open.length;
+    let end=input.indexOf(close,start);
+    while(end>=0&&input[end-1]==='\\')end=input.indexOf(close,end+close.length);
+    if(end<0)return null;
+    blocks.push(input.slice(start,end));index=end+close.length;
+  }
+  return blocks.length?blocks:null;
+}
+
 // Equivalent supported LaTeX subset to math/LatexInput.kt.
 export function latexInput(input,{prefix='',suffix=''}={}) {
   const functions = new Set(['sin','cos','tan','sec','csc','cot','sinh','cosh','tanh','arcsin','arccos','arctan','ln','exp']);
   const greek = new Set(Object.keys(latexSymbolLabels));
   const commands = new Set(['boxed','operatorname','mathrm','int','sum','prod','binom','begin','lim','frac','dfrac','tfrac','sqrt','log','infty','times','cdot','left','right','quad','qquad','le','leq','ge','geq','ne','neq',...functions,...greek]);
-  let source = input.trim();
-  if (!/^\\[[(]|^\$|\^\s*\{/.test(source) && ![...source.matchAll(/\\([A-Za-z]+)/g)].some(match=>commands.has(match[1]))) return input;
-  for (const [open,close] of [['\\[','\\]'],['\\(','\\)'],['$$','$$'],['$','$']]) {
-    if (source.length >= open.length+close.length && source.startsWith(open) && source.endsWith(close)) {
-      source=source.slice(open.length,-close.length);break;
-    }
-  }
+  const blocks=latexMathBlocks(input);
+  if(blocks&&blocks.length!==1)throw new SyntaxError('Paste separate math blocks into a multiline math input');
+  const source=blocks?blocks[0].trim():input.trim();
+  if (!blocks && !/^\\[[(]|^\$|\^\s*\{/.test(source) && ![...source.matchAll(/\\([A-Za-z]+)/g)].some(match=>commands.has(match[1]))) return input;
   function compactExpression(source,from=0,to=source.length) {
     const tree=parse(source),groups=[];
     // -(a/b) and -a/b have the same value, even though the sign's AST scope differs.
