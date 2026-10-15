@@ -2,6 +2,7 @@
 from statistics_social_schema import forms as social_forms
 from statistics_research_schema import forms as research_forms
 from statistics_comparison_schema import forms as comparison_forms
+from statistics_extensions_schema import forms as extension_forms
 from .common import field, col, multi
 from .definitions import CORRELATION_SPECS
 
@@ -114,6 +115,7 @@ def build_forms():
     forms['arima'] = time_fields + forecast_fields
     forms['sarima'] = [dict(f,default='0') if f['key']=='d' else f for f in time_fields] + [field('P','Seasonal AR order P','계절 AR 차수 P','number','0'),field('D','Seasonal differencing D','계절 차분 차수 D','number','1'),field('Q','Seasonal MA order Q','계절 MA 차수 Q','number','1'),field('period','Seasonal period s','계절 주기 s','number','4')] + [dict(f,default='8') if f['key']=='horizon' else f for f in forecast_fields]
     forms.update(research_forms(field,col,multi,two_fields,matching_fields))
+    forms.update(extension_forms(field,col,multi,group_fields,two_fields,matching_fields))
     for spec in CORRELATION_SPECS:
         forms[spec[0]]=[col('first','First column','첫째 열',0),col('second','Second column','둘째 열',1),field('tail','Alternative','대립가설','choice','both',[('both','Two-sided','양측'),('left','Negative association','음의 상관'),('right','Positive association','양의 상관')])]
     (next(field for field in forms['cohenkappa'] if field['key']=='layout'))['default']='pairs'

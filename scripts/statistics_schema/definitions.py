@@ -2,6 +2,7 @@
 from statistics_social_schema import SPECS as SOCIAL_SPECS
 from statistics_research_schema import SPECS as RESEARCH_SPECS
 from statistics_comparison_schema import SPEC as COMPARISON_SPEC
+from statistics_extensions_schema import SPECS as EXTENSION_SPECS
 from .examples import GROUPS, COUNTS, CATEGORIES, CLUSTERS, GLMM, SURVIVAL, SERIES, LOGISTIC_COMPARE_ROWS
 from .help import TIME_HELP, DATE_HELP
 
@@ -73,12 +74,13 @@ CORRELATION_SPECS=[
 specs.extend(CORRELATION_SPECS)
 specs.extend(SOCIAL_SPECS)
 specs.extend(RESEARCH_SPECS)
+specs.extend(EXTENSION_SPECS)
 # Menu placement and order are shared by Android and Web; function IDs stay stable.
 menus = [
     ('general', 'Correlation', '상관분석', ['pearson','spearman','kendall']),
     ('preparation', 'Data preparation', '데이터 준비', ['impute']),
     ('general', 'Categorical data', '범주형 자료', ['propztest','propztest2','mcnemar']),
-    ('general', 'Reliability & agreement', '신뢰도·일치도', ['cronbach','icc','cohenkappa','blandaltman']),
+    ('general', 'Reliability & agreement', '신뢰도·일치도', ['cronbach','omega','icc','cohenkappa','blandaltman']),
     ('tests', 'Distribution & variance', '분포·분산 검정', ['shapiro','kstest','levene','bartlett']),
     ('tests', 'Post-hoc comparisons', '사후비교', ['tukey','gameshowell','dunn']),
     ('tests', 'Group comparisons', '그룹 비교', ['twowayanova','ancova','manova','repeatedanova','friedman']),
@@ -86,18 +88,19 @@ menus = [
     ('tests', 'Multiple testing', '다중검정 보정', ['padjust']),
     ('tests', 'Confidence intervals', '신뢰구간', ['tinterval','zinterval']),
     ('tests', 'Equivalence tests (TOST)', '동등성 검정 (TOST)', ['tost','tost2','tostpaired']),
-    ('models', 'Generalized regression', '일반화 회귀', ['linearmodel','glm','poissonreg','nbreg','zeroinflated','tobit','quantreg','multinomial','ordinal']),
+    ('tests', 'Robust statistics', '강건 통계', ['yuen','trimmedanova','winsorcor']),
+    ('models', 'Generalized regression', '일반화 회귀', ['linearmodel','glm','poissonreg','nbreg','zeroinflated','tobit','quantreg','robustreg','multinomial','ordinal']),
     ('models', 'Mediation & moderation', '매개·조절 분석', ['mediation','moderation']),
     ('models', 'Repeated & clustered data', '반복·군집 자료', ['mixedmodel','glmm','gee']),
     ('models', 'Model validation', '모형 검증', ['crossvalidate','modelcompare','logisticcompare']),
-    ('advanced', 'Bayesian inference', '베이지안 추론', ['bayesmean','bayescompare','bayesproportion','bayesrate']),
+    ('advanced', 'Bayesian inference', '베이지안 추론', ['bayesmean','bayescompare','bayesttest','bayesanova','bayesproportion','bayesrate']),
     ('advanced', 'Resampling', '재표집', ['bootstrapci','bayesbootstrap']),
-    ('advanced', 'Research synthesis', '연구 종합', ['metaanalysis']),
+    ('advanced', 'Research synthesis', '연구 종합', ['metaanalysis','metaregression','metasubgroup']),
     ('advanced', 'Measurement & structural models', '측정·구조 모형', ['efa','cfa','sem']),
     ('advanced', 'Multivariate analysis', '다변량 분석', ['pca','discriminantanalysis','kmeans','hcluster']),
     ('advanced', 'Time series & forecasting', '시계열·예측', ['arima','sarima']),
-    ('advanced', 'Survival analysis', '생존분석', ['survivalanalysis','kaplanmeier','logrank','cox']),
-    ('advanced', 'Power & sample size', '검정력·표본수', ['testpower','samplesize']),
+    ('advanced', 'Survival analysis', '생존분석', ['survivalanalysis','kaplanmeier','logrank','cox','parametricsurvival']),
+    ('advanced', 'Power & sample size', '검정력·표본수', ['testpower','samplesize','designpower','designsize']),
 ]
 
 

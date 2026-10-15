@@ -60,7 +60,7 @@ internal fun advancedStatisticsRows(data:String,columnLimit:Int?=null,removeComp
 }
 
 internal fun advancedStatisticsExampleRows(definition:JSONObject,settings:JSONObject=JSONObject()):List<List<String>> {
-    if(definition.getString("id")=="metaanalysis"&&settings.optString("layout") in listOf("binary","continuous")) {
+    if(definition.getString("id") in listOf("metaanalysis","metaregression","metasubgroup")&&settings.optString("layout") in listOf("binary","continuous")) {
         val rows=definition.getJSONArray(if(settings.optString("layout")=="binary")"binaryExampleRows" else "continuousExampleRows")
         return List(rows.length()){i->rows.getJSONArray(i).let {row->List(row.length()){row.getString(it)}}}
     }

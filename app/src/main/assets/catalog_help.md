@@ -848,6 +848,9 @@ Example: mcnemar([[20,8],[2,15]],exact)
 `cronbach` — Cronbach α reliability. Rows are subjects, columns are items; raw or standardized alpha. Reverse-code items first. Returns corrected item-total correlations and alpha if deleted. Alpha measures internal consistency.
 Example: cronbach([[1.987,2.255,1.895,1.448,2.702,2.043],[3.103,3.653,2.588,3.608,3.265,3.866],[5.16,4.181,6.042,4.848,4.128,5.317],[1.995,2.767,1.417,-0.304,-1.529,-0.2],[1.802,1.7,2.56,2.591,4.452,3.681],[5.242,3.886,4.375,5.082,5.152,4.701],[3.057,2.704,2.315,2.034,0.528,0.659],[4.576,5.304,4.688,5.573,4.66,5.626],[5.08,3.257,4.251,3.415,3.076,4.508],[2.502,2.733,2.919,3.058,3.403,2.427],[4.23,3.357,4.235,4.595,5.16,5.999],[2.86,3.515,2.619,0.955,1.766,0.26],[3.16,2.893,2.37,2.341,1.676,2.201],[1.101,3.477,2.018,2.67,2.235,3.664],[3.503,4.223,4.268,2.178,3.518,1.656],[3.623,3.309,4.28,2.605,3.676,3.647],[4.285,5.139,6.064,4.069,4.097,4.629],[3.301,2.767,3.271,2.832,3.249,3.621],[2.857,2.677,2.348,3.272,2.696,3.272],[0.449,1.323,0.652,3.013,3.114,1.652],[3.447,3.14,2.42,2.311,3.202,2.063],[2.401,2.196,3.998,1.025,2.349,1.691],[3.54,5.121,3.878,2.99,2.849,3.135],[3.67,4.081,4.264,3.472,3.458,4.419]],raw)
 
+`omega` — McDonald’s ω (single factor). Select at least three complete varying item columns. Single-factor congeneric normal ML, uncorrelated errors; raw sum or standardized sum. Reports omega, alpha, loadings, errors and model fit. Reverse-code deliberately before analysis. No automatic reversal, hierarchical omega or confidence interval; three items are just identified.
+Example: omega([[3.43582,4.49591,2.54665,3.76818],[0.61851,0.78834,0.42096,1.14719],[4.22409,3.35794,5.3267,3.95336],[2.67555,2.82063,3.16122,2.63647],[3.51589,3.74102,2.70456,4.9756],[2.07478,1.79972,2.47725,2.86268],[2.09434,2.88069,3.03493,2.52493],[4.04367,3.86703,3.51913,4.17903],[2.13129,2.31026,1.36417,2.71804],[3.52832,4.2775,2.82035,3.37795],[4.62115,3.40845,3.55532,3.42753],[2.12611,1.59532,0.23784,2.06462],[2.14818,1.86724,2.42271,3.69048],[0.794,1.3783,1.83058,2.46812],[4.18647,3.12699,4.07329,3.60101],[1.94823,2.34854,1.01613,2.73867],[1.27848,0.28949,1.0973,0.94459],[2.0746,1.74297,2.89237,2.50345],[3.69408,2.68011,3.00642,4.30645],[1.82953,2.13442,1.70152,2.59832],[4.21257,3.38311,3.45071,3.53796],[1.64389,3.29193,2.445,2.34095],[3.49262,2.45121,4.40837,3.21754],[2.33436,3.75566,3.59283,3.81898],[1.72403,1.6016,2.25337,2.35726],[3.10404,3.53899,3.72024,3.1812],[5.07729,4.17883,4.86563,4.5112],[2.59101,2.69799,3.12035,3.37647],[2.53705,2.94556,1.85212,2.05705],[1.32768,1.17533,2.26744,2.11484],[3.78672,2.84197,2.62053,3.39477],[1.40463,3.31083,2.38463,2.29464],[3.41373,4.03173,2.7824,2.71733],[0.99401,2.58225,2.59379,2.58271],[2.01909,2.50153,2.36557,2.87494],[2.75136,3.49678,4.24712,4.34985],[3.22501,2.65474,1.93046,4.17127],[2.32053,3.50725,3.75916,2.81773],[3.41988,3.73964,2.05347,3.55495],[2.19,2.55877,1.83753,2.52337],[1.7709,3.55151,2.82001,2.93103],[2.60927,3.6987,4.13095,2.83299],[2.37246,1.39507,2.90697,3.8639],[3.36583,3.2387,4.42416,4.63447],[3.30813,3.44148,2.53864,3.14448],[1.56278,1.82084,2.48868,1.21165],[2.89557,1.97945,3.64156,1.49968],[2.96559,3.14118,2.71473,4.26585]],raw)
+
 `icc` — Intraclass correlation (ICC). Complete subject × rater numeric matrix. oneway=ICC(1), random=two-way absolute agreement ICC(2), mixed=two-way consistency ICC(3). single / average (mean of all k raters); confidence level. F-based CIs; absolute agreement uses approximate Satterthwaite df. Negative estimates are retained. Independent subjects, normal ANOVA errors. Mixed consistency ignores systematic rater shifts; choose the model before analysis. Degenerate intervals are unavailable. Koo & Li (2016): <.50 poor, [.50,.75) moderate, [.75,.90] good, >.90 excellent. Point and CI-range ratings are shown; interpretation should use the CI and study context. Graph domain is 0–1, with arrows for out-of-range estimates; tables retain negative estimates and raw CI limits.
 Example: icc([[9,10,9],[6,7,6],[8,8,9],[5,6,5],[10,9,10],[7,7,8]],random,single,0.95)
 
@@ -937,6 +940,17 @@ Example: tost2([9.8,10.1,10.2,9.9,10,10.1,9.9,10.2],[10,10.2,10.1,9.8,10.1,10,9.
 `tostpaired` — Paired equivalence (TOST). tostpaired(A,B,lower,upper,alpha=.05). Complete pairs; subject-ID matching is available. Prespecify lower/upper equivalence bounds in original units for A−B (one-sample: mean−reference). Both one-sided p values must be below alpha. Reports max p, equivalence decision and 1−2 alpha CI (90% at .05). A nonsignificant difference does not establish equivalence. Positive sampling variance and independent approximately normal observations/differences are required.
 Example: tostpaired([9.8,10.1,10.2,9.9,10,10.1,9.9,10.2],[10,10.2,10.1,9.8,10.1,10,9.9,10.1],-0.5,0.5,0.05)
 
+### Robust statistics
+
+`yuen` — Yuen trimmed-mean test. Independent A/B samples, proportion trimmed per tail (default .20), confidence level. Yuen approximate t with Winsorized variance and Satterthwaite df; estimates trimmed mean A−B, not the ordinary mean. At least two retained observations and positive Winsorized variance in each group. No paired test.
+Example: yuen([1,2,2,3,4,5,6,7,8,25],[2,3,4,4,5,6,7,8,9,12],0.2,0.95)
+
+`trimmedanova` — Trimmed-mean ANOVA. Independent groups; Welch-type ANOVA of trimmed means with Winsorized sampling variances. Per-tail trimming in [0,.5), default .20; approximate F and df. Group intervals are individual, not simultaneous. No new Welch ordinary-mean analysis is needed; this targets trimmed means.
+Example: trimmedanova([[1,2,2,3,4,5,6,7,8,25],[2,3,4,4,5,6,7,8,9,12],[4,5,6,6,7,8,9,10,11,15]],0.2,0.95)
+
+`winsorcor` — Winsorized correlation. Complete paired columns; independently Winsorize both margins while retaining pairs. Correlation and approximate t p value with n−2 floor(n trim)−2 df (WRS2 convention). No confidence interval; normal Pearson intervals are not substituted.
+Example: winsorcor([1,2,3,4,5,6,7,8,9,30],[2,1,4,3,6,5,8,7,9,12],0.2)
+
 ### Generalized regression
 
 `linearmodel` — Fit numeric and categorical predictors with automatic interactions and Type II/III joint term F tests; supports one, two, three or more factors. General OLS with numeric and categorical predictors. Categorical positions are one-based; interaction order, Type II/III, sum/treatment coding. Uses joint partial F tests for each term. Three-way and higher interactions require enough replicated observations and identifiable columns.
@@ -959,6 +973,9 @@ Example: tobit([[0,0],[1,0],[2,1],[3,3],[4,3],[5,6],[6,5],[7,8],[8,9],[9,8],[10,
 
 `quantreg` — Quantile regression. Rows: predictors, response; quantile in (0,1). IRLS with subgradient optimality check; asymptotic Gaussian-kernel sandwich / Hall–Sheather bandwidth if residual density supports inference.
 Example: quantreg([[0,2],[1,4],[2,3],[3,8],[4,7],[5,9],[6,10],[7,12],[8,11],[9,15],[10,17],[11,16]],0.5)
+
+`robustreg` — Huber robust regression (M). Numeric predictors and response, intercept included. Huber M IRLS, iterated residual MAD scale, default tuning 1.345. Score-sandwich HC1 Wald intervals treat scale as fixed. Resistant to response outliers, not high leverage; this is not high-breakdown MM. Zero residual MAD or unidentified fits are rejected.
+Example: robustreg([[0,1],[1,2.5],[2,5],[3,6.5],[4,9],[5,10.5],[6,13],[7,14.5],[8,17],[9,35],[10,21],[11,22.5]],1.345)
 
 `multinomial` — Predict unordered numeric categories from predictors. Rows: predictors, numeric category response. Smallest category is reference.
 Example: multinomial([[-2,0],[-2,1],[-1,0],[-1,2],[0,0],[0,1],[0,2],[1,1],[1,2],[2,1],[2,2],[2,0]])
@@ -1004,6 +1021,12 @@ Example: bayesmean([1,2,3,4,5],0,1,2,1,0.95,0)
 `bayescompare` — Compare two independent normal means with posterior differences and Bayes factors. Two independent normal samples (at least 2 each); variance equal / unequal; mu0,kappa0,alpha0,beta0; credible level; IID posterior draws (2000-100000), seed. H1: independent Normal(mu0,variance/kappa0) means with shared (equal) or independent (unequal) InvGamma(alpha0,beta0) variances. H0: B-A=0 with nuisance prior conditioned from H1. BF10/BF01 use the Savage-Dickey density ratio. Reports B-A mean, equal-tailed credible interval, P(muB>muA), and posterior effect (B-A)/sqrt((varianceA+varianceB)/2). Equal-mode difference summaries and BF are analytic; unequal BF uses numerical t convolution, unequal intervals/probability and effect intervals use simulation. MCSE, draws and seed are reported. Defaults are proper but unit-dependent; choose priors before inspecting outcomes.
 Example: bayescompare([10,11,9,10,12],[13,14,12,15,13],equal,0,0.01,2,1,0.95,20000,0)
 
+`bayesttest` — Bayesian t test (JZS). Two-sided one-sample, paired or equal-variance independent t test. Cauchy(0,r) prior on standardized effect; BF10/BF01, H1 posterior effect/credible interval, MCSE and ordered-prefix evidence graph. A−B direction; one-sample uses A−null. One-sample expressions still supply [] as the second argument. Enter priors before examining outcomes; no unequal-variance or directional BF.
+Example: bayesttest([10,11,9,10,12],[13,14,12,15,13],independent,0,0.7071067811865476,0.95,10000,0,1)
+
+`bayesanova` — Bayesian one-way ANOVA. Independent groups with common normal residual variance. Compare all means against one mean using g~InvGamma(1/2,r²/2), beta|sigma,g~N(0,n*g*sigma²*(XcᵀXc)^−1). BF10/BF01, conditional posterior design-weighted eta² and ordered-prefix BF graph. This design-dependent mixture-g prior is explicitly not JASP default factorial ANOVA; no repeated measures or interactions.
+Example: bayesanova([[1,2,2,3,4,5,6,7,8,25],[2,3,4,4,5,6,7,8,9,12],[4,5,6,6,7,8,9,10,11,15]],0.5,0.95,10000,0,1)
+
 `bayesproportion` — Estimate a binary success proportion using a Beta prior. Binary 0/1 list or [[successes,trials],...]; Beta prior alpha, beta (default 1,1); credible level; threshold p0 in (0,1). Returns equal-tailed interval, P(p>p0), next-success probability and BF10 (Beta alternative / point null p=p0).
 Example: bayesproportion([1,1,0,1,0,1,1,1,0,1],1,1,0.95,0.5)
 
@@ -1022,6 +1045,12 @@ Example: bayesbootstrap([1,2,3,4,5,8],mean,0.95,10000,0)
 
 `metaanalysis` — Meta-analysis. Independent study rows: effect estimate, positive standard error (SE, not SD or variance). fixed / dl (DerSimonian–Laird) / pm (Paule–Mandel, default); confidence level 0–1; inference z / hksj (modified Hartung–Knapp for random effects); Egger 0/1. Returns pooled effect, weights, Q/p, I², τ², prediction interval, Forest/Funnel plots. Ratio effects require log effects and log-scale SE. Study and funnel limits use z. Egger OLS standardized effect on precision uses t(k−2); needs 3 studies with differing SE, has low power below 10, and asymmetry is not proof of publication bias. Random-effects prediction uses t(k−2) and omits tau estimation uncertainty. Binary mode selects events A,total A,events B,total B and OR/RR. Expressions add a sixth argument oddsratio/riskratio and seventh zero-cell correction (default .5). Converts to log OR/log RR and SE, reports both ratios per study and pooled ratio CI, and plots log effects. Double-zero events are excluded; OR also excludes double-zero non-events. A zero cell adds the correction to all four cells; zero correction rejects such studies. Independent arms; this is inverse variance, not Mantel–Haenszel/Peto. Continuous mode: mean A, sample SD A, n A, mean B, sample SD B, n B. Sixth expression argument md or smd. MD uses unpooled SE²=SD A²/n A+SD B²/n B and needs common units across studies. SMD uses pooled within-study SD, Hedges g with J≈1−3/(4df−1), and variance N/(n A n B)+g²/(2(N−3.94)), matching statsmodels. Independent arms, each n≥2; comparable constructs, common within-study variance for SMD and aligned direction. Paired arms require covariance. Independent-arm change outcomes may use change means and change SDs, not separate baseline/followup summaries.
 Example: metaanalysis([[0.2,0.1],[0.45,0.15],[-0.1,0.12],[0.6,0.2],[0.3,0.11]],pm,0.95,z,1)
+
+`metaregression` — Meta-regression. Rows: effect, positive SE, one or more numeric study moderators. Fixed, generalized DL or PM residual heterogeneity; z or modified HKSJ t/F inference, joint moderator test and residual Q. Ratio effects and SE must be on the log scale. Prespecify moderators; study-level association is not an individual causal effect. Independent studies only; no automatic publication-bias correction. Forms also accept independent-arm binary events/totals (log OR/RR, selected zero-cell correction) or continuous mean/sample SD/n (MD/Hedges g), followed by moderators/group. Expressions add measure as argument 5 and binary correction as argument 6. Double-zero exclusions retain moderator alignment and original study IDs. Switching layout requires selecting the matching summary and moderator columns; missing selected cells are rejected.
+Example: metaregression([[0.1,0.12,2012],[0.25,0.15,2014],[0.18,0.11,2016],[0.5,0.18,2018],[0.4,0.13,2020],[0.7,0.2,2022],[0.55,0.16,2024],[0.31,0.14,2019]],pm,0.95,hksj)
+
+`metasubgroup` — Meta-analysis subgroups. Rows: effect, SE, group ID; UI accepts named groups. At least two studies per group. Common residual tau² across groups, pooled effects, forest plot and joint between-group test. Different within-group significance does not establish a group difference. Fixed/DL/PM and z/modified HKSJ; independent effects only. Forms also accept independent-arm binary events/totals (log OR/RR, selected zero-cell correction) or continuous mean/sample SD/n (MD/Hedges g), followed by moderators/group. Expressions add measure as argument 5 and binary correction as argument 6. Double-zero exclusions retain moderator alignment and original study IDs. Switching layout requires selecting the matching summary and moderator columns; missing selected cells are rejected.
+Example: metasubgroup([[0.1,0.12,1],[0.25,0.15,1],[0.18,0.11,1],[0.5,0.18,2],[0.4,0.13,2],[0.7,0.2,2],[0.55,0.16,2],[0.31,0.14,1]],pm,0.95,hksj)
 
 ### Measurement & structural models
 
@@ -1070,6 +1099,9 @@ Example: logrank([[1,1],[3,1],[4,0],[6,1]],[[2,0],[4,1],[5,1],[7,0]])
 `cox` — Relate predictors to event hazard; review proportional hazards. Rows: time, event 0/1, predictors. Ties efron (default) or breslow; entry column for left truncation (-1 none); PH check 0/1.
 Example: cox([[1,1,0],[2,1,1],[3,0,0],[4,1,1],[5,1,0],[6,0,1],[7,1,1],[8,1,0]],efron,-1,1)
 
+`parametricsurvival` — Parametric survival (AFT). Rows: positive time, event 0/1, optional numeric predictors. Weibull, exponential or lognormal AFT by censored maximum likelihood. Optional delayed entry column (zero-based index, −1 none) with 0≤entry<time. Time ratios, AIC/BIC, unconditional predicted median/mean/10%/90% event times and survival at a chosen time. Joint-information median CIs include shape/scale uncertainty; 10%/90% event quantiles are not CIs. No interval censoring or competing risks.
+Example: parametricsurvival([[1,1,0],[2,1,1],[3,0,0],[4,1,1],[5,1,0],[6,0,1],[7,1,0],[8,1,1],[10,0,0],[12,1,1],[14,1,0],[17,0,1]],weibull,0.95,-1,6)
+
 ### Power & sample size
 
 `testpower` — Evaluate power for a planned t-test design and effect size. Cohen d, n per group/pairs, alpha, independent / paired / onesample, alternative two (default) / greater / less. Exact noncentral-t power.
@@ -1077,3 +1109,9 @@ Example: testpower(0.5,64,0.05,independent)
 
 `samplesize` — Plan the sample size needed for a target t-test power. Cohen d, target power, alpha, design, alternative. Exact noncentral-t power.
 Example: samplesize(0.5,0.8,0.05,independent)
+
+`designpower` — Power: z / proportion / variance. designpower(design,effect,n,alpha,tail,baseline). z uses known-SD standardized mean shift; proportion uses alternative p1 and null baseline p0; proportion2 uses pA,pB and equal n per arm; variance uses alternative variance ratio and equal n per normal arm. Proportions use normal approximations without continuity correction; variance uses exact F. Fixed-design only.
+Example: designpower(z,0.5,64,0.05,two,0.5)
+
+`designsize` — Sample size: z / proportion / variance. Same design definitions as designpower; third argument is target power above alpha. Returns the smallest integer n (or n per arm), total n, attained power and power at n−1. Alternative must be in the chosen one-sided direction. Limit one million per arm. No group-sequential alpha spending.
+Example: designsize(z,0.5,0.8,0.05,two,0.5)

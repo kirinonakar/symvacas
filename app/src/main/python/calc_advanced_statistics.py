@@ -33,6 +33,12 @@ from calc_posthoc import dunn_comparisons
 from calc_logistic_comparison import calculate as logistic_comparison
 from calc_model_comparison import calculate as model_comparison
 from calc_advanced_research import calculate as research
+from calc_reliability_omega import calculate as reliability_omega
+from calc_bayesian_tests import calculate as bayesian_tests
+from calc_meta_moderators import calculate as meta_moderators
+from calc_robust_statistics import calculate as robust_statistics
+from calc_parametric_survival import calculate as parametric_survival
+from calc_design_power import calculate as design_power
 
 
 def dunn(engine, name, a):
@@ -41,6 +47,18 @@ def dunn(engine, name, a):
 
 # Function names, argument limits and handlers share one registry.
 _ANALYSES = {
+    'omega': (1, 2, reliability_omega),
+    'bayesttest': (2, 9, bayesian_tests),
+    'bayesanova': (1, 6, bayesian_tests),
+    'metaregression': (1, 6, meta_moderators),
+    'metasubgroup': (1, 6, meta_moderators),
+    'designpower': (3, 6, design_power),
+    'designsize': (3, 6, design_power),
+    'yuen': (2, 4, robust_statistics),
+    'trimmedanova': (1, 3, robust_statistics),
+    'winsorcor': (2, 3, robust_statistics),
+    'robustreg': (1, 2, robust_statistics),
+    'parametricsurvival': (1, 5, parametric_survival),
     'pearson': (2, 3, rank_correlation),
     'spearman': (2, 3, rank_correlation),
     'kendall': (2, 3, rank_correlation),

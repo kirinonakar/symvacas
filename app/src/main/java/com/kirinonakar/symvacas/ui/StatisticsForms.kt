@@ -10,6 +10,7 @@ internal fun advancedStatisticsTermLabels(definition:JSONObject,rows:List<List<S
     fun column(key:String)=opts[key]?.toIntOrNull()?.let {if(it==-1)n-1 else it} ?: -1
     if(id=="metaanalysis"&&opts["studyLabels"]=="column")return rows.mapIndexed {index,row->"study:${index+1}" to row.getOrElse(column("study")){""}.trim()}.toMap()
     if(id in socialAnalysisIds)return socialStatisticsPlan(id,rows,opts,columnLabels).labels
+    if(id in extensionAnalysisIds)return extensionStatisticsPlan(id,rows,opts,columnLabels).labels
     if(id=="modelcompare")return modelComparisonPlan(rows,opts+mapOf("validation" to "apparent"),columnLabels).labels
     if(id=="logisticcompare")return logisticComparisonLabels(rows,opts,columnLabels)
     if(id in listOf("twowayanova","linearmodel"))return statisticsFactorialData(rows,opts,columnLabels).labels
@@ -90,6 +91,7 @@ internal fun guidedStatisticsCommand(definition:JSONObject,rows:List<List<String
         }
     }
     if(id in socialAnalysisIds)return socialStatisticsPlan(id,rows,opts,columnLabels).expression
+    if(id in extensionAnalysisIds)return extensionStatisticsPlan(id,rows,opts,columnLabels).expression
     if(id in listOf("logisticcompare","modelcompare")) {
         fun list(key:String)=settings.optJSONArray(key)?.let {array->List(array.length()){i->val row=array.getJSONArray(i);List(row.length()){row.getString(it)}}}.orEmpty()
         val names=settings.optJSONArray("_validationNames")?.let {array->List(array.length()){array.getString(it)}}.orEmpty()

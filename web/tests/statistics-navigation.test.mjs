@@ -25,13 +25,13 @@ test('all shared analyses have one menu, grouped order, guided forms and local r
   }
   const ids=section=>schema.filter(item=>item.section===section).map(item=>item.id);
   assert.deepEqual(ids('preparation'),['impute']);
-  assert.deepEqual(ids('general'),['pearson','spearman','kendall','propztest','propztest2','mcnemar','cronbach','icc','cohenkappa','blandaltman']);
-  assert.deepEqual(ids('tests'),['shapiro','kstest','levene','bartlett','tukey','gameshowell','dunn','twowayanova','ancova','manova','repeatedanova','friedman','cohend','eta2','cramerv','phi','padjust','tinterval','zinterval','tost','tost2','tostpaired']);
+  assert.deepEqual(ids('general'),['pearson','spearman','kendall','propztest','propztest2','mcnemar','cronbach','omega','icc','cohenkappa','blandaltman']);
+  assert.deepEqual(ids('tests'),['shapiro','kstest','levene','bartlett','tukey','gameshowell','dunn','twowayanova','ancova','manova','repeatedanova','friedman','cohend','eta2','cramerv','phi','padjust','tinterval','zinterval','tost','tost2','tostpaired','yuen','trimmedanova','winsorcor']);
   assert.equal(schema.find(item=>item.id==='phi').hidden,true);
   assert.equal(schema.find(item=>item.id==='cramerv').group,'Effect Size');
   assert.equal(schema.find(item=>item.id==='cohenkappa').group,'Reliability & agreement');
-  assert.deepEqual(ids('models'),['linearmodel','glm','poissonreg','nbreg','zeroinflated','tobit','quantreg','multinomial','ordinal','mediation','moderation','mixedmodel','glmm','gee','crossvalidate','modelcompare','logisticcompare']);
-  assert.deepEqual(ids('advanced'),['bayesmean','bayescompare','bayesproportion','bayesrate','bootstrapci','bayesbootstrap','metaanalysis','efa','cfa','sem','pca','discriminantanalysis','kmeans','hcluster','arima','sarima','survivalanalysis','kaplanmeier','logrank','cox','testpower','samplesize']);
+  assert.deepEqual(ids('models'),['linearmodel','glm','poissonreg','nbreg','zeroinflated','tobit','quantreg','robustreg','multinomial','ordinal','mediation','moderation','mixedmodel','glmm','gee','crossvalidate','modelcompare','logisticcompare']);
+  assert.deepEqual(ids('advanced'),['bayesmean','bayescompare','bayesttest','bayesanova','bayesproportion','bayesrate','bootstrapci','bayesbootstrap','metaanalysis','metaregression','metasubgroup','efa','cfa','sem','pca','discriminantanalysis','kmeans','hcluster','arima','sarima','survivalanalysis','kaplanmeier','logrank','cox','parametricsurvival','testpower','samplesize','designpower','designsize']);
   const catalog=readFileSync(new URL('../../app/src/main/java/com/kirinonakar/symvacas/ui/Catalog.kt',import.meta.url),'utf8');
   const advanced=catalog.match(/"Advanced statistics" to listOf\(([^\n]+)\)/)[1];
   assert.ok(!advanced.includes('impute(')&&!advanced.includes('levene(')&&!advanced.includes('glm('));

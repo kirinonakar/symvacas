@@ -4,6 +4,7 @@ import {modelComparisonPlan,modelComparisonRoles} from './model-comparison.js';
 import {statisticsComparisonData} from './statistics-comparison-data.js';
 import {statisticsFactorialData} from './statistics-factorial-data.js';
 import {socialAnalysisIds,socialStatisticsPlan} from './statistics-social-forms.js';
+import {extensionAnalysisIds,extensionStatisticsPlan} from './statistics-extension-forms.js';
 import {computationLimitsRemoved} from './computation-limits.js';
 import {advancedStatisticsSchema} from './advanced-statistics-schema.js';
 import {csvRows,statisticsCsvHasHeader,statisticsColumnLabels,statisticsColumnNames,statisticsCategoryLabels,statisticsNumericCell} from './workspace-commands.js';
@@ -108,6 +109,7 @@ export function guidedStatisticsCommand(definition,rows,settings={},columnLabels
   const opts=Object.fromEntries(definition.controls.map(field=>[field.key,settings[field.key]??field.default]));
   for(const field of definition.controls)if(field.type==='choice'&&(!field.when||Object.entries(field.when).every(([key,values])=>values.includes(opts[key])))&&!field.choices.some(choice=>choice.id===opts[field.key]&&(!choice.when||Object.entries(choice.when).every(([key,values])=>values.includes(opts[key])))))throw new Error('Invalid analysis option');
   if(socialAnalysisIds.has(id))return socialStatisticsPlan(id,rows,opts,columnLabels).expression;
+  if(extensionAnalysisIds.has(id))return extensionStatisticsPlan(id,rows,opts,columnLabels).expression;
   if(id==='modelcompare')return modelComparisonPlan(rows,opts,columnLabels,settings._validationRows,settings._validationNames).expression;
   if(id==='logisticcompare')return logisticComparisonPlan(rows,opts,columnLabels,settings._validationRows,settings._validationNames).expression;
   const column=key=>{let i=Number(opts[key]);if(i===-1)i=n-1;if(!Number.isInteger(i)||i<0||i>=n)throw new Error('Choose valid data columns');return i;};
@@ -353,6 +355,7 @@ export function advancedStatisticsTermLabels(definition,rows,settings={},columnL
   const opts=Object.fromEntries((definition.controls||[]).map(field=>[field.key,settings[field.key]??field.default]));
   if(id==='metaanalysis'&&opts.studyLabels==='column')return Object.fromEntries(rows.map((row,i)=>[`study:${i+1}`,String(row[Number(opts.study)]??'').trim()]));
   if(socialAnalysisIds.has(id))return socialStatisticsPlan(id,rows,opts,columnLabels).labels;
+  if(extensionAnalysisIds.has(id))return extensionStatisticsPlan(id,rows,opts,columnLabels).labels;
   if(id==='modelcompare')return modelComparisonPlan(rows,{...opts,validation:"apparent"},columnLabels).labels;
   if(id==='logisticcompare')return logisticComparisonLabels(rows,opts,columnLabels);
   const column=key=>Number(opts[key])===-1?n-1:Number(opts[key]);
@@ -442,8 +445,8 @@ export function advancedStatisticsRows(source,columnLimit){
 }
 
 export function advancedStatisticsExampleRows(definition,settings={}){
-  if(definition.id==='metaanalysis'&&settings.layout==='binary')return definition.binaryExampleRows.map(row=>row.map(String));
-  if(definition.id==='metaanalysis'&&settings.layout==='continuous')return definition.continuousExampleRows.map(row=>row.map(String));
+  if(['metaanalysis','metaregression','metasubgroup'].includes(definition.id)&&settings.layout==='binary')return definition.binaryExampleRows.map(row=>row.map(String));
+  if(['metaanalysis','metaregression','metasubgroup'].includes(definition.id)&&settings.layout==='continuous')return definition.continuousExampleRows.map(row=>row.map(String));
   let rows=definition.id==='modelcompare'?(definition.exampleRowsByFamily?.[settings.family||'linear']||definition.exampleRows):definition.exampleRows;
   if(definition.id==='modelcompare'&&['cfa','sem'].includes(settings.family)&&settings.estimator==='wlsmv')rows=rows.map(row=>row.map(value=>String(1+[-.5,.5].filter(cut=>Number(value)>cut).length)));
   if(['cfa','sem'].includes(definition.id)){

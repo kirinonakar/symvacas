@@ -31,6 +31,11 @@ TITLES.update({'metaanalysis':'Meta-analysis','icc':'Intraclass correlation (ICC
                'tost':'One-sample equivalence (TOST)','tost2':'Independent equivalence (TOST)','tostpaired':'Paired equivalence (TOST)'})
 TITLES['cramerv']='Phi / Cramér’s V'
 TITLES.update({'pearson':'Pearson correlation','spearman':'Spearman rank correlation','kendall':'Kendall tau-b correlation'})
+TITLES.update({'omega':'McDonald’s ω (single factor)','bayesttest':'Bayesian t test (JZS)',
+               'bayesanova':'Bayesian one-way ANOVA','metaregression':'Meta-regression','metasubgroup':'Meta-analysis subgroups',
+               'designpower':'Power: z / proportion / variance','designsize':'Sample size: z / proportion / variance',
+               'yuen':'Yuen trimmed-mean test','trimmedanova':'Trimmed-mean ANOVA','winsorcor':'Winsorized correlation',
+               'robustreg':'Huber robust regression (M)','parametricsurvival':'Parametric survival (AFT)'})
 
 
 def statistics_report(name, value, precision, labels=None):
@@ -393,6 +398,11 @@ def statistics_report(name, value, precision, labels=None):
     if name in ('cfa','sem'): priority=['CFI','RMSEA','SRMR','p']
     if name in ('arima','sarima'): priority=['Forecast horizon','Prediction level','RMSE','Conditional AICc']
     if name=='metaanalysis': priority=['estimate','I² (%)','τ²','Q p']
+    if name=='omega':priority=['McDonald ω','Cronbach α','Model p']
+    if name in ('bayesttest','bayesanova'):priority=['BF10','BF01','Prior scale r']
+    if name in ('metaregression','metasubgroup'):priority=['Studies (k)','τ²','Residual Q p']
+    if name in ('designpower','designsize'):priority=['power','n','n per arm','Total n']
+    if name=='parametricsurvival':priority=['Events','AFT scale σ','AIC','BIC']
     if name=='icc': priority=['ICC','p']
     if name=='spearman': priority=['rho','p','n']
     if name=='pearson': priority=['r','p','n']

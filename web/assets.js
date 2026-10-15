@@ -1,4 +1,4 @@
-self.SYMVACAS_CACHE = 'symvacas-static-60090930ceb55364';
+self.SYMVACAS_CACHE = 'symvacas-static-c11e7609e0239221';
 self.SYMVACAS_ASSETS = [
   "./",
   "./advanced-statistics-schema.js",
@@ -88,6 +88,7 @@ self.SYMVACAS_ASSETS = [
   "./statistics-cluster-worker.js",
   "./statistics-cluster.js",
   "./statistics-comparison-data.js",
+  "./statistics-extension-forms.js",
   "./statistics-factorial-data.js",
   "./statistics-group-column.js",
   "./statistics-headers.js",

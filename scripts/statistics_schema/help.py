@@ -3,6 +3,7 @@ from statistics_help import USES, enrich_help
 from statistics_social_schema import SPECS as SOCIAL_SPECS
 from statistics_research_schema import SPECS as RESEARCH_SPECS
 from statistics_comparison_schema import HELP as COMPARISON_HELP
+from statistics_extensions_schema import SPECS as EXTENSION_SPECS
 
 TIME_HELP = ('Choose one numeric column in time order (oldest first), with equal spacing and no missing values. Set [p,d,q], forecast horizon and prediction level (0–1). Auto compares valid models with/without an intercept (no differencing) or drift (one ordinary or seasonal difference), using conditional AICc and keeping the selected orders. Two or more total differences omit drift; none/constant explicitly force the choice. Conditional Gaussian estimation enforces stationary AR and invertible MA. Near-boundary fits show diagnostics and forecasts instead of stopping. Results include selected intercept/drift, candidate AICc, coefficients, conditional AIC/AICc/BIC, forecasts, prediction intervals, observed/fitted/forecast graph and residual ACF/Ljung–Box diagnostics. Intervals exclude parameter uncertainty.',
              '오래된 값부터 시간순으로 정렬한 숫자 열 하나를 선택합니다. 간격은 일정하고 결측값이 없어야 합니다. [p,d,q]·예측 길이·예측구간 수준(0~1)을 설정합니다. 자동은 차수가 같은 유효한 모형에서 절편(차분 없음) 또는 드리프트(일반·계절 차분 합계 1회)의 포함·미포함을 조건부 AICc로 비교합니다. 전체 차분 2회 이상은 드리프트를 제외하며 없음·상수는 선택을 고정합니다. 조건부 정규 추정으로 AR 정상성·MA 가역성을 유지합니다. 경계 근처에서도 중단하지 않고 진단과 예측을 표시합니다. 선택한 절편·드리프트·후보 AICc·계수·조건부 AIC/AICc/BIC·예측표·예측구간·관측/적합/예측 그래프·잔차 ACF/Ljung–Box 진단을 출력합니다. 구간에 모수 추정 불확실성은 포함되지 않습니다.')
@@ -80,7 +81,7 @@ def build_form_help(definitions, rank_specs):
     form_help['propztest2']=('Counts: exactly two rows, Group A then Group B. Binary data: independent columns or group/value columns with a common success value. H0: pA=pB; left/right alternatives refer to A−B. Uses the pooled null proportion; paired outcomes require McNemar.', '빈도 입력은 정확히 두 행이며 A 그룹·B 그룹 순서입니다. 이항 자료는 독립된 두 열 또는 그룹·값 열과 공통 성공 값을 선택합니다. H0: pA=pB, 좌측·우측은 A−B 기준입니다. 귀무가설의 합동 비율을 사용하며 대응 결과는 McNemar를 사용합니다.')
     form_help['arima'] = tuple(TIME_HELP[i]+DATE_HELP[i] for i in range(2))
     form_help['sarima'] = (definitions['sarima']['help'],definitions['sarima']['helpKo'])
-    for spec in [*SOCIAL_SPECS, *RESEARCH_SPECS, *rank_specs]:
+    for spec in [*SOCIAL_SPECS, *RESEARCH_SPECS, *EXTENSION_SPECS, *rank_specs]:
         form_help[spec[0]] = (spec[6], spec[7])
     return form_help
 
@@ -110,6 +111,6 @@ def catalog_uses(rank_specs):
     uses = dict(USES)
     for id_ in ("arima", "sarima"):
         uses[id_] = ("Forecast equally spaced time-series observations.", "일정한 간격의 시계열 관측값을 예측합니다.")
-    for spec in [*SOCIAL_SPECS, *RESEARCH_SPECS, *rank_specs]:
+    for spec in [*SOCIAL_SPECS, *RESEARCH_SPECS, *EXTENSION_SPECS, *rank_specs]:
         uses[spec[0]] = (spec[1]+".", spec[2]+".")
     return uses
