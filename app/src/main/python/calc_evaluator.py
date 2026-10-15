@@ -25,6 +25,8 @@ from calc_statistics_report import BASIC as BASIC_STATISTICS
 
 MAX_EXACT_DIGITS = 100000
 MAX_NUMERIC_EXPONENT = 100000
+SET_CONSTANTS = {"S."+name:getattr(s.S,name) for name in
+                 ("Reals","Complexes","Integers","Rationals","Naturals","Naturals0")}
 
 def _ast_symbols(node):
     if node.get("kind") == "symbol": yield node
@@ -186,6 +188,7 @@ class Engine:
         build = lambda a: self.build(a, depth + 1)
         if kind == "number": return self.number(value)
         if kind == "symbol":
+            if value in SET_CONSTANTS: return SET_CONSTANTS[value]
             if value in self.request.get('statisticsDatasets',{}):
                 self.prepare_statistics_dataset(node)
                 return self.statistics_datasets[id(node)][1]
@@ -304,7 +307,7 @@ class Engine:
             raise MathError("Unknown operator")
         require(kind == "call", "Unknown AST node")
         # Preserve bound variable identity even if the user stored x previously.
-        scoped = value in ("diff", "integrate", "limit", "series", "taylor", "sum", "product", "solve", "nsolve", "nintegrate", "nderivative", "minimum", "maximum", "collect", "subs", "domain", "range", "coeff", "quo", "rem", "resultant", "discriminant", "charpoly", "roots", "real_roots", "rsolve", "gradient", "divergence", "curl", "hessian", "jacobian", "laplacian", "dsolve", "desolve", "laplace", "ilaplace", "fourier", "ifourier", "ztrans", "invztrans", "mellin", "invmellin", "pdsolve") and len(args) > 1
+        scoped = value in ("diff", "integrate", "limit", "series", "taylor", "sum", "product", "solve", "solveset", "nsolve", "nintegrate", "nderivative", "minimum", "maximum", "collect", "subs", "domain", "range", "coeff", "quo", "rem", "resultant", "discriminant", "charpoly", "roots", "real_roots", "rsolve", "gradient", "divergence", "curl", "hessian", "jacobian", "laplacian", "dsolve", "desolve", "laplace", "ilaplace", "fourier", "ifourier", "ztrans", "invztrans", "mellin", "invmellin", "pdsolve") and len(args) > 1
         old = self.bindings.copy()
         if value=="solve" and len(args)==1: self.bindings["x"]=self.symbol("x")
         if scoped:
@@ -359,6 +362,14 @@ class Engine:
                 values=[a['value'] if index in (2,3) and a.get('kind')=='symbol' else literal_options(self,a) if index==8 else build(a) for index,a in enumerate(args)]
             elif value in ("minimum","maximum") and value not in self.functions:
                 values=[s.Symbol(a['value']) if index==4 and a.get('kind')=='symbol' else build(a) for index,a in enumerate(args)]
+            elif value=="solveset" and value not in self.functions:
+                require(len(args) in (2,3), "Use solveset(expr,x[,domain=S.Complexes])")
+                domain_node=args[2] if len(args)==3 else None
+                if domain_node is not None and domain_node.get("kind")=="relation":
+                    require(domain_node.get("value")=="=" and domain_node["args"][0].get("kind")=="symbol"
+                            and domain_node["args"][0].get("value")=="domain", "solveset only accepts the domain keyword")
+                    domain_node=domain_node["args"][1]
+                values=[build(a) for a in args[:2]]+([build(domain_node)] if domain_node is not None else [])
             else:values = [build(a) for a in args]
             if value=="subs" and len(values)==3:
                 updated=[condition.subs(values[1],values[2]) for condition in self.conditions[condition_start:]]
@@ -696,6 +707,21 @@ class Engine:
             spec = tuple(a[1]) if len(a)==2 else tuple(a[1:])
             return (s.summation if name=="sum" else s.product)(a[0],spec)
         if name == "piecewise": return s.Piecewise(*(tuple(x) for x in a))
+        if name == "solveset":
+            require(len(a) in (2,3), "Use solveset(expr,x[,domain=S.Complexes])")
+            require(isinstance(a[1],s.Symbol), "solveset requires one variable")
+            require(isinstance(a[0],(s.Expr,s.Equality)) or a[0] in (s.true,s.false), "solveset requires one expression or equation")
+            domain=a[2] if len(a)==3 else s.S.Complexes
+            require(isinstance(domain,s.Set), "solveset domain must be a set, such as S.Reals, S.Complexes or S.Integers")
+            result=s.solveset(a[0],a[1],domain=domain)
+            # Preserve exclusions collected before expression simplification.
+            for condition in (self.conditions if conditions is None else conditions):
+                if not condition.has(a[1]): continue
+                if isinstance(condition,s.Unequality):
+                    result=result-s.solveset(condition.lhs-condition.rhs,a[1],domain=domain)
+                else: result=result.intersect(s.ConditionSet(a[1],condition,domain))
+            if result.has(s.ConditionSet): self.note="Symbolic solution not found; ConditionSet describes unresolved solutions, not proof that a root exists."
+            return result
         if name == "solve":
             require(1<=len(a)<=3, "Use solve(eq,x[,real|complex|integer])")
             requested_domain = None

@@ -2,7 +2,7 @@
 const multiArgumentFunctions=new Set([
   'bayesproportion','bayesmean','bayesrate','bayescompare',
   'round','roundh','nCr','nPr','gcd','lcm','quotient','remainder','mod','divmod',
-  'collect','subs','diff','integrate','limit','series','sum','product','solve',
+  'collect','subs','diff','integrate','limit','series','sum','product','solve','solveset',
   'nsolve','nintegrate','nderivative','minimum','maximum','piecewise',
   'polar','pol','rec','rnd','randInt','eng','dms',
   'linsolve','dot','cross','angle','projection','regression','qty','convert',

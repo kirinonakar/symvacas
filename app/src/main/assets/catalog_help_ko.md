@@ -247,6 +247,8 @@ Example: solve(abs(x-1)=3,x) → {-2, 4}
 
 `solve(x*exp(x)=1,x)` — 전체 복소수 분기 LambertW(1,k), k ∈ ℤ를 반환하고 Lambert W를 이용한 단계별 풀이를 표시합니다. `solve(x*exp(x)=1,x,real)`은 유일한 실수 해 LambertW(1) ≈ 0.5671432904를 반환합니다. `(a*x+d)*exp(b*x+c)+f=0`에서 계수가 유한한 실수이고 a와 b가 0이 아니면 지원합니다.
 Example: solve(exp(x)=x,x)
+`solveset(expr,x,domain=S.Reals)` — 식 expr=0 또는 방정식 하나의 해집합을 지정한 영역에서 구하며, 주기적으로 반복되는 해도 포함합니다. 영역은 세 번째 위치 인수로도 지정할 수 있고 생략하면 S.Complexes입니다. S.Reals(실수), S.Complexes(복소수), S.Integers(정수), S.Rationals(유리수), S.Naturals(양의 정수), S.Naturals0(0 이상의 정수)를 지원합니다. ConditionSet은 기호 풀이 미해결을 뜻합니다. 삼각함수는 현재 각도 모드를 따르므로 이 예제는 RAD에서 사용하세요.
+Example: solveset(sin(x) + 3*cos(x), x, domain=S.Reals)
 `nsolve(expr,x,a,b)` — [a,b] 구간에서 수치적으로 근을 찾습니다.
 Example: nsolve(cos(x)-x,x,0,1)
 `nintegrate(expr,x,a,b)` — a부터 b까지 수치 적분합니다.

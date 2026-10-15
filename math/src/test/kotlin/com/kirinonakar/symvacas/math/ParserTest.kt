@@ -5,6 +5,25 @@ import org.junit.Test
 
 class ParserTest {
     private fun p(s: String) = Parser(s).parse()
+    @Test fun solvesetDomainConstantsPreserveArgumentAndSourceBoundaries() {
+        for(name in listOf("Reals","Complexes","Integers","Rationals","Naturals","Naturals0")) {
+            val source="solveset(sin(x) + 3*cos(x), x, domain=S.$name)"
+            val tree=p(source)
+            assertEquals("solveset",tree.value)
+            val keyword=tree.args[2]
+            assertEquals("=",keyword.value)
+            assertEquals("domain",keyword.args[0].value)
+            val domain=keyword.args[1]
+            assertEquals("S.$name",domain.value)
+            assertEquals(domain.value,source.substring(domain.start,domain.end))
+            assertTrue(requiresExplicitEvaluation(tree))
+        }
+        for(source in listOf("S.Unknown","S.Realsx","S.Reals.__class__","x.y"))
+            assertThrows(SyntaxException::class.java){p(source)}
+        val source="solveset(x,x,domain=S.Reals)"
+        val cursor=source.indexOf(",x")
+        assertEquals("solveset(x=0,x,domain=S.Reals)",Editor(source,cursor).insert("=0").source)
+    }
     @Test fun precedence() { assertEquals("*",p("2+3*4").args[1].value); assertEquals("unary",p("-2^2").kind); assertEquals("^",p("2^3^2").args[1].value) }
     @Test fun desmosPiecewiseAndRestrictionsPreserveWholeExpressionScope() {
         val piece=p("f(x)={x<0:x^2,x>=0:2*x}").args[1]

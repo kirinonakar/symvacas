@@ -860,7 +860,7 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
         if(busy)return
         val source=editor.source
         val tree=try {calculationTree(source)} catch(e:Exception) {error=e.message ?: "Syntax ERROR";return}
-        val constants=setOf("pi","e","i","I","oo","true","false","Ans","c0","hP","hbar","G","qe","NA","kB0","me","mp0")
+        val constants=setOf("pi","e","i","I","oo","true","false","Ans","c0","hP","hbar","G","qe","NA","kB0","me","mp0","S.Reals","S.Complexes","S.Integers","S.Rationals","S.Naturals","S.Naturals0")
         val names=linkedSetOf<String>()
         fun collect(node:JSONObject,bound:Set<String>,expanding:Set<String>):Boolean {
             val kind=node.optString("kind")
@@ -873,12 +873,14 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
                 return true
             }
             val args=node.optJSONArray("args") ?: return false
-            val binder=if(kind=="call" && value in setOf("integrate","diff","nderivative","limit","sum","product","solve","nsolve","nintegrate","series"))
+            val binder=if(kind=="call" && value in setOf("integrate","diff","nderivative","limit","sum","product","solve","solveset","nsolve","nintegrate","series"))
                 args.optJSONObject(1)?.takeIf {it.optString("kind")=="symbol"}?.optString("value") else null
             var found=false
             for(index in 0 until args.length()) {
                 if(index==1 && binder!=null)continue
-                val child=args.optJSONObject(index) ?: continue
+                var child=args.optJSONObject(index) ?: continue
+                if(kind=="call" && value=="solveset" && index==2 && child.optString("kind")=="relation" && child.optString("value")=="=" && child.optJSONArray("args")?.optJSONObject(0)?.optString("value")=="domain")
+                    child=child.getJSONArray("args").getJSONObject(1)
                 if(collect(child,if(index==0 && binder!=null)bound+binder else bound,expanding))found=true
             }
             return found

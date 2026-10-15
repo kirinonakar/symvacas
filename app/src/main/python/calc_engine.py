@@ -25,7 +25,7 @@ from calc_statistics_diagnostics import companion_report
 
 # Symbolic calls whose cold first evaluation is heavy enough that the generic step allowance used
 # to cut off legitimate work. Nested calls count too, so 1+fourier(exp(-t^2),t,w) is heavy as well.
-HEAVY_CALLS=("solve","integrate","dsolve","desolve","laplace","ilaplace","fourier","ifourier","mellin","invmellin","ztrans","invztrans","pdsolve","domain","range","real_roots","rsolve","invt","tinterval","tukey","tvmrate","irr","regression","wilcoxon","mannwhitney")
+HEAVY_CALLS=("solve","solveset","integrate","dsolve","desolve","laplace","ilaplace","fourier","ifourier","mellin","invmellin","ztrans","invztrans","pdsolve","domain","range","real_roots","rsolve","invt","tinterval","tukey","tvmrate","irr","regression","wilcoxon","mannwhitney")
 MAX_SHOWN_INTEGER_DIGITS=10000
 HEAVY_CALLS += tuple(ADVANCED_STATISTICS)
 HEAVY_CALLS += ('anova','welchanova','tukey','gameshowell')

@@ -162,4 +162,18 @@ test('packaged graph modules execute every graph kind in the production WASM wor
       assert.ok(Math.abs(Math.sin(x)+3*Math.cos(x))<1e-7);
     }
   }
+  const solutions=await execute({tree:parse('solveset(sin(x) + 3*cos(x), x, domain=S.Reals)'),
+    angle:'RAD',variables:{x:{kind:'number',value:'99'}}});
+  assert.equal(solutions.tree.kind,'rows');
+  assert.equal(solutions.tree.args.filter(row=>row.value==='solutions').length,2);
+  assert.equal(solutions.tree.args.filter(row=>row.value==='branch').length,2);
+  assert.ok(solutions.exact.includes('atan(3)'));
+  assert.ok(solutions.exact.includes('∈ ℤ'));
+  assert.ok(!solutions.exact.includes('ImageSet'));
+  for(const [source,expected] of [
+    ['solveset(x^2+1,x)','{-I, I}'],
+    ['solveset(x^2+1=0,x,domain=S.Reals)','EmptySet'],
+    ['solveset(x^2-4,x,S.Reals)','{-2, 2}'],
+    ['solveset(x^2-2,x,domain=S.Integers)','EmptySet']
+  ])assert.equal((await execute({tree:parse(source)})).exact,expected);
 });

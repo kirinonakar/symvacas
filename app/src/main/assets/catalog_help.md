@@ -247,6 +247,8 @@ Example: solve(abs(x-1)=3,x) → {-2, 4}
 
 `solve(x*exp(x)=1,x)` — Returns all complex branches LambertW(1,k), k ∈ ℤ, with a step-by-step Lambert W explanation. `solve(x*exp(x)=1,x,real)` returns the unique real root LambertW(1) ≈ 0.5671432904. Finite real numeric coefficients are supported in `(a*x+d)*exp(b*x+c)+f=0` when a and b are nonzero.
 Example: solve(exp(x)=x,x)
+`solveset(expr,x,domain=S.Reals)` — Return the solution set of expr=0 or one equation over the requested domain, including periodic families. The domain can also be the third positional argument. Omit it to use S.Complexes. Supported set constants: S.Reals, S.Complexes, S.Integers, S.Rationals, S.Naturals (positive integers), S.Naturals0 (nonnegative integers). A ConditionSet means symbolic solving remains unresolved. Trigonometric functions follow the current angle mode; use RAD for this example.
+Example: solveset(sin(x) + 3*cos(x), x, domain=S.Reals)
 `nsolve(expr,x,a,b)` — Numeric root search in the interval [a,b].
 Example: nsolve(cos(x)-x,x,0,1)
 `nintegrate(expr,x,a,b)` — Numeric definite integral from a to b.

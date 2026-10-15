@@ -25,6 +25,8 @@ fun main(args: Array<String>) {
         "covariance([1,2,3],[2,4,6],1)" to "2", "solve(abs(x-1)=3,x,real)" to "{-2, 4}",
         "solve(abs(x-1)=3,x)" to "{-2, 4}", "solve(abs(x)=-1,x)" to "EmptySet", "solve(sign(x)=1,x)" to "Interval.open(0, oo)",
         "solve(abs(x-1)=3,x,integer)" to "{-2, 4}", "solve(x^2+1=0,x,real)" to "EmptySet", "isprime(2^61-1)" to "True",
+        "solveset(x^2-4,x,domain=S.Reals)" to "{-2, 2}", "solveset(x^2+1,x)" to "{-I, I}",
+        "solveset(x^2-2,x,S.Integers)" to "EmptySet",
         "regression([[1,2],[2,4],[3,6]],linear)" to "2*x", "convert(1,m,cm)" to "100", "convert(32,degF,degC)" to "0",
         "convert(1,KiB,byte)" to "1024", "gcd(48,18)" to "6", "lcm(6,8)" to "24", "nCr(10,3)" to "120",
         "nPr(5,2)" to "20", "5!" to "120", "abs(3+4i)" to "5", "(1+i)^2" to "2*I", "conj(3+4i)" to "3 - 4*I",

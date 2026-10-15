@@ -1,7 +1,7 @@
 package com.kirinonakar.symvacas.math
 
 private val inputConstants=setOf("Ans","pi","e","i","I","oo","c0","hP","hbar","G","qe","NA","kB0","me","mp0","epsilon0","mu0","Z0","sigmaSB")
-private val equationCalls=setOf("solve","nsolve","linsolve","dsolve","desolve","pdsolve","rsolve","piecewise")
+private val equationCalls=setOf("solve","solveset","nsolve","linsolve","dsolve","desolve","pdsolve","rsolve","piecewise")
 
 /** Source is the serialization; cursor and selection can address whole AST subtrees. */
 data class Editor(val source: String = "", val cursor: Int = source.length, val anchor: Int = cursor,

@@ -21,6 +21,11 @@ function scan(source) {
       }
     } else if (letter(c) && !'π∞√'.includes(c)) {
       while (letter(source[i]) || digit(source[i]) || source[i] === '_') i++;
+      if(source.slice(start,i)==='S'&&source[i]==='.'){
+        let end=i+1;
+        while(letter(source[end])||digit(source[end])||source[end]==='_')end++;
+        if(['Reals','Complexes','Integers','Rationals','Naturals','Naturals0'].includes(source.slice(i+1,end)))i=end;
+      }
     } else if (['<=','>=','!=','==',':=','**','->'].includes(source.slice(start,i+1))) i++;
     const text = source.slice(start,i);
     tokens.push({text: aliases[text] || text, start, end:i});

@@ -1,5 +1,5 @@
 import {parse,scanInputTokens,latexSymbolLabels,closeInputBrackets} from './parser.js';
-const equationCalls=new Set(['solve','nsolve','linsolve','dsolve','desolve','pdsolve','rsolve','piecewise']);
+const equationCalls=new Set(['solve','solveset','nsolve','linsolve','dsolve','desolve','pdsolve','rsolve','piecewise']);
 // The trailing input area belongs outside every fraction, power and function.
 export function inputEnd(source){
   source=closeInputBrackets(source);

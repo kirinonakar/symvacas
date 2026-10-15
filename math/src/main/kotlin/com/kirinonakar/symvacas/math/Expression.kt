@@ -32,6 +32,11 @@ object Lexer {
                 }
             } else if(c.isLetter() && c !in "π∞√") {
                 while(i < source.length && (source[i].isLetterOrDigit() || source[i] == '_')) i++
+                if(source.substring(start,i)=="S" && source.getOrNull(i)=='.') {
+                    var end=i+1
+                    while(end < source.length && (source[end].isLetterOrDigit() || source[end]=='_')) end++
+                    if(source.substring(i+1,end) in setOf("Reals","Complexes","Integers","Rationals","Naturals","Naturals0")) i=end
+                }
             } else if(i < source.length && source.substring(start, i+1) in listOf("<=", ">=", "!=", "==", ":=", "**", "->")) i++
             val raw = source.substring(start, i)
             result += Token(when(raw) { "×", "·" -> "*"; "÷" -> "/"; "−" -> "-"; "π" -> "pi"; "θ" -> "theta"; "∞" -> "oo"; "**" -> "^"; "≤" -> "<="; "≥" -> ">="; "→" -> "->"; else -> raw }, start, i)

@@ -1,8 +1,8 @@
 import {computationLimitsRemoved} from './computation-limits.js';
 // Android startCalc's source-AST traversal. Numeric stored values remain editable
 // inputs; source formulas stored by STO expose their underlying input variables.
-const constants=new Set('pi e i I oo true false Ans c0 hP hbar G qe NA kB0 me mp0 epsilon0 mu0 Z0 sigmaSB'.split(' '));
-const binders=new Set('integrate diff nderivative limit sum product solve nsolve nintegrate series'.split(' '));
+const constants=new Set('pi e i I oo true false Ans c0 hP hbar G qe NA kB0 me mp0 epsilon0 mu0 Z0 sigmaSB S.Reals S.Complexes S.Integers S.Rationals S.Naturals S.Naturals0'.split(' '));
+const binders=new Set('integrate diff nderivative limit sum product solve solveset nsolve nintegrate series'.split(' '));
 export function calcVariables(tree,variables={}) {
   const names=new Set();let visited=0;
   function collect(node,bound=new Set(),expanding=new Set(),depth=0){
@@ -22,6 +22,7 @@ export function calcVariables(tree,variables={}) {
     const boundNames=targets.map(n=>n.value);let found=false;
     args.forEach((child,index)=>{
       if(index===1&&boundNames.length){if(binder.kind==='tuple')binder.args.slice(1).forEach(n=>{if(collect(n,bound,expanding,depth+1))found=true;});return;}
+      if(node.kind==='call'&&node.value==='solveset'&&index===2&&child.kind==='relation'&&child.value==='='&&child.args[0].value==='domain')child=child.args[1];
       if(collect(child,index===0?new Set([...bound,...boundNames]):bound,expanding,depth+1))found=true;
     });
     return found;

@@ -4,6 +4,7 @@ from calc_engine import Engine, Quantity
 
 x, y, z, t, u, v, w, s = sp.symbols("x y z t u v w s")
 pi = sp.pi
+S = sp.S
 true, false = sp.true, sp.false
 left, right, both, linear = "left", "right", "both", "linear"
 student, welch = "student", "welch"
@@ -18,7 +19,7 @@ fibonacci lucas bernoulli harmonic subfactorial totient divisor_sigma primepi ne
 lambertw polylog beta digamma polygamma besselj bessely besseli besselk
 rnd eng pol rec randInt sexagesimal dms mixed quotient remainder mod divmod sumdata
 percent degree rad gradian
-simplify expand factor collect subs diff integrate limit series taylor sum product solve nsolve nintegrate
+simplify expand factor collect subs diff integrate limit series taylor sum product solve solveset nsolve nintegrate
 nderivative minimum maximum piecewise apart partfrac together cancel trigsimp trigexpand powsimp powdenest hyperexpand
 nsimplify comDenom numden coeff quo rem resultant discriminant domain range
 roots real_roots rsolve
@@ -81,7 +82,11 @@ def __getattr__(name):
     if name not in _names and name not in _functions:
         raise AttributeError("Unknown catalog function: " + name)
 
-    def calculate(*args):
+    def calculate(*args, **kwargs):
+        if kwargs:
+            if name!="solveset" or set(kwargs)!={"domain"} or len(args)!=2:
+                raise TypeError("Only solveset(expr,x,domain=set) accepts keyword arguments")
+            args=(*args,kwargs["domain"])
         engine = Engine({"angle":"RAD", "functions":_functions, "variables":_variables, "assumptions":_assumptions})
         values = [_sympify(value) for value in args]
         if name in ("minimum","maximum") and len(args)==5 and isinstance(args[4],str):

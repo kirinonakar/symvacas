@@ -33,6 +33,9 @@ def display_tree(x):
     if isinstance(x,s.ImageSet) and len(x.lamda.variables)==1 and x.base_set==s.S.Integers:
         return t("rows",args=[t("row","solutions",[display_tree(x.lamda.expr)]),
                               t("row","branch",[t("text",str(x.lamda.variables[0])+" ∈ ℤ")])])
+    if isinstance(x,s.Union) and all(isinstance(part,s.ImageSet) and len(part.lamda.variables)==1
+                                   and part.base_set==s.S.Integers for part in x.args):
+        return t("rows",args=[row for part in x.args for row in display_tree(part)["args"]])
     if isinstance(x,(list,tuple,s.Tuple)): return t("list",args=[display_tree(v) for v in x])
     if isinstance(x,s.MatrixBase): return t("matrix",args=[t("list",args=[display_tree(x[i,j]) for j in range(x.cols)]) for i in range(x.rows)])
     if isinstance(x,s.Integral):
@@ -91,6 +94,7 @@ def readable(x):
     if isinstance(x,dict): return "\n".join(str(k)+": "+readable(v) for k,v in x.items())
     if isinstance(x,s.ImageSet) and len(x.lamda.variables)==1 and x.base_set==s.S.Integers:
         return "{"+readable(x.lamda.expr)+" | "+str(x.lamda.variables[0])+" ∈ ℤ}"
+    if isinstance(x,s.Union): return " ∪ ".join(readable(part) for part in x.args)
     if isinstance(x,(list,tuple)): return "["+", ".join(readable(v) for v in x)+"]"
     if isinstance(x,s.Add):
         constants=[term for term in x.args if term.is_Symbol and str(term)=="C"]
