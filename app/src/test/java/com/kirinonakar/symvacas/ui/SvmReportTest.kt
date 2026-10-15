@@ -15,6 +15,8 @@ class SvmReportTest {
             assertNotNull(copied);assertTrue(copied!!.startsWith("f(x) = "))
             assertFalse(copied.contains("SVC"));assertTrue(copied.contains("x"))
             report.put("task","regression");assertNull(regressionEquationCopyText(result,6))
+            report.put("predictionEquation",equation)
+            assertTrue(regressionEquationCopyText(result,6)!!.startsWith("ŷ = "))
         }
     }
 

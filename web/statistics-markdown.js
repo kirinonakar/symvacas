@@ -6,14 +6,14 @@ import {roundNumber} from './display-format.js';
 import {statisticsDetailText} from './statistics-report-details.js';
 
 export function regressionEquationCopyText(result,{digits=10,regressionVariables={},regressionPrefix}={}){
-  const report=result.regression;if(!report||report.model==='randomforest'||report.model==='svm'&&report.task!=='classification')return null;
-  const svm=report.model==='svm';if(svm&&!report.decisionEquation?.expression)return report.decisionEquation?.formula||null;
-  const source=svm?report.decisionEquation.expression:result.decimal||result.exact;if(!source)return null;
+  const report=result.regression;if(!report||report.model==='randomforest')return null;
+  const svm=report.model==='svm',classification=report.task==='classification',equation=classification?report.decisionEquation:report.predictionEquation;if(svm&&!equation?.expression)return equation?.formula||null;
+  const source=svm?equation.expression:result.decimal||result.exact;if(!source)return null;
   try{
     const rename=node=>({...node,value:node.kind==='symbol'?(regressionVariables[node.value]||node.value):node.value,args:(node.args||[]).map(rename)});
     const tree=rename(parse(latexInput(source)));
     const logistic=report.fitScale==='binomial'||String(report.model||'').includes('logistic');
-    return (svm?'f(x) = ':regressionPrefix??(logistic?'P(y = 1) = ':'y = '))+equationFormulaText(tree,digits,true);
+    return (svm&&classification?'f(x) = ':regressionPrefix??(svm?'ŷ = ':null)??(logistic?'P(y = 1) = ':'y = '))+equationFormulaText(tree,digits,true);
   }catch{return null;}
 }
 
@@ -46,13 +46,13 @@ export function statisticsResultMarkdown(result,options={}){
   const equation=regressionEquationCopyText(result,options);
   if(equation){
     const fence='`'.repeat(Math.max(3,...[...equation.matchAll(/`+/g)].map(match=>match[0].length+1)));
-    blocks.push('### '+t(result.regression?.model==='svm'?'Decision function':'Regression equation')+'\n\n'+fence+'text\n'+equation+'\n'+fence);
+    blocks.push('### '+t(result.regression?.model==='svm'?(result.regression.task==='classification'?'Decision function':'Prediction function'):'Regression equation')+'\n\n'+fence+'text\n'+equation+'\n'+fence);
   }
   const dedicated=report===result.statisticsCopyReport,settings=dedicated?{...options,notation:'off',grouping:false}:options;
   for(const section of report.sections){
     const table=[line(section.columns.map(label=>markdownCell(section.literalColumns?label:t(label)))),line(section.columns.map(()=> '---'))];
     for(const [rowIndex,row] of (section.copyRows||section.rows).entries()){
-      if(equation&&section.columns[0]==='Metric'&&['Fitted expression','Decision function'].includes(row[0]))continue;
+      if(equation&&section.columns[0]==='Metric'&&['Fitted expression','Decision function','Prediction function'].includes(row[0]))continue;
       table.push(line(section.columns.map((column,index)=>{
       const value=row[index];
       const text=value&&typeof value==='object'?statisticsFormattedCopyCell(value,settings):index===0&&rowIndex===section.totalRow||['Metric','Check','Interpretation','Sample','Role','R²','Kind','Support vector','Effect','Intercept / drift','Status'].includes(column)||column==='Parameter'&&['arima','sarima'].includes(report.analysis)||column==='Value'&&['Intercept / drift','Fit status','Evaluation','Cross-validation'].includes(row[0])?t(String(value??'')):

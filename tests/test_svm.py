@@ -42,6 +42,18 @@ class SvmTests(unittest.TestCase):
                         int(expected >= 0) if case["mode"] == "svc" else expected,
                         delta=fixture["tolerance"])
                 self.assertLessEqual(report["kktViolation"], 1e-6)
+                if case['mode'] == 'svr':
+                    errors = [row[-1]-expected for row, expected in zip(case['rows'], case['training'])]
+                    self.assertAlmostEqual(float(report['mae']), sum(map(abs,errors))/len(errors), delta=fixture['tolerance'])
+                    self.assertAlmostEqual(float(report['rmse']), math.sqrt(sum(e*e for e in errors)/len(errors)), delta=fixture['tolerance'])
+                    cv = report['crossValidation']
+                    reference = case['crossValidation']
+                    self.assertEqual(cv['folds'],5)
+                    self.assertEqual([row['fold'] for row in cv['predictions']],reference['folds'])
+                    for row, expected in zip(cv['predictions'],reference['predictions']):
+                        self.assertAlmostEqual(row['predicted'],expected,delta=fixture['tolerance'])
+                    for key in ('rSquared','rmse','mae'):
+                        self.assertAlmostEqual(float(cv[key]),reference[key],delta=fixture['tolerance'])
                 if case['mode'] == 'svc':
                     cv = report['crossValidation']
                     self.assertEqual([row['predicted'] for row in cv['predictions']], case['crossValidation']['predictions'])
@@ -158,6 +170,99 @@ class SvmTests(unittest.TestCase):
         cv = fit([[0,0],[1,1]], 'svc').regression_report['crossValidation']
         self.assertFalse(cv['available'])
         self.assertIn('two observations', cv['reason'])
+
+    def test_public_svm_svc_svr_modes_all_support_linear_and_rbf_cross_validation(self):
+        from calc_statistics_report import statistics_copy_report
+        for kernel in ('linear','rbf'):
+            options = [kernel,2,.4,.1]
+            for binary in (False,True):
+                rows = [[i, int(i>=6) if binary else math.sin(i)+.2*i] for i in range(12)]
+                explicit = calc.regression_report(rows,'svc' if binary else 'svr',options)
+                automatic = calc.regression_report(rows,'svm',options)
+                self.assertEqual(explicit,automatic)
+                cv = explicit['crossValidation']
+                self.assertTrue(cv['available'])
+                self.assertEqual(cv['folds'],5)
+                self.assertEqual(sorted(row['row'] for row in cv['predictions']),list(range(1,13)))
+                sizes = [sum(row['fold']==fold for row in cv['predictions']) for fold in range(1,6)]
+                self.assertLessEqual(max(sizes)-min(sizes),1)
+                if binary:
+                    self.assertIn('accuracy',cv)
+                    self.assertNotIn('rmse',cv)
+                else:
+                    errors = [row['observed']-row['predicted'] for row in cv['predictions']]
+                    mean = sum(row['observed'] for row in cv['predictions'])/12
+                    sst = sum((row['observed']-mean)**2 for row in cv['predictions'])
+                    self.assertAlmostEqual(float(cv['rSquared']),1-sum(e*e for e in errors)/sst,places=12)
+                    self.assertAlmostEqual(float(cv['rmse']),math.sqrt(sum(e*e for e in errors)/12),places=12)
+                    self.assertAlmostEqual(float(cv['mae']),sum(map(abs,errors))/12,places=12)
+                    copied = statistics_copy_report('regression','SVR',explicit,15)
+                    section = next(s for s in copied['sections'] if s['title']=='Cross-validation')
+                    self.assertTrue({'Cross-validated R²','Cross-validated RMSE','Cross-validated MAE'}.issubset({r[0] for r in section['rows']}))
+            # Explicit SVR retains regression semantics even for a binary response.
+            self.assertIn('rmse',calc.regression_report(rows,'svr',options)['crossValidation'])
+        short = fit([[0,2],[1,3],[2,4],[3,5]],'svr').regression_report
+        self.assertFalse(short['crossValidation']['available'])
+        self.assertIn('at least 5',short['crossValidation']['reason'])
+        constant = fit([[i,7] for i in range(5)],'svr').regression_report['crossValidation']
+        self.assertIsNone(constant['rSquared'])
+        self.assertEqual(float(constant['rmse']),0)
+        self.assertEqual(float(constant['mae']),0)
+
+    def test_svr_equations_metrics_errors_and_plots_use_original_response_units(self):
+        from calc_statistics_report import statistics_copy_report
+        for kernel in ('linear', 'rbf'):
+            rows = [[x, 100+math.sin(x)+.3*x] for x in range(-4,5)]
+            model = fit(rows, 'svr', [kernel,3,.4,.2])
+            report = model.regression_report
+            eq = report['predictionEquation']
+            for row, prediction in zip(rows, report['residuals']):
+                if kernel == 'linear':
+                    b = [float(v['estimate']) for v in report['coefficients']]
+                    calculated = b[0]+b[1]*row[0]
+                else:
+                    calculated = eq['intercept']+sum(term['coefficient']*math.exp(-report['gamma']*sum(
+                        ((x-v)/scale)**2 for x,v,scale in zip(row[:-1],term['coordinates'],eq['scales'])))
+                        for term in eq['supportTerms'])
+                self.assertAlmostEqual(calculated,float(prediction['fitted']),places=11)
+                self.assertAlmostEqual(float(prediction['predictionError']),row[-1]-float(prediction['fitted']),places=11)
+                self.assertAlmostEqual(float(prediction['absoluteError']),abs(float(prediction['predictionError'])),places=12)
+            self.assertAlmostEqual(float(report['mae']),sum(float(r['absoluteError']) for r in report['residuals'])/len(rows),places=12)
+            self.assertEqual(len(eq['supportTerms']),report['supportVectors'])
+            for key in ('accuracy','auc','confusionMatrix','sensitivity','specificity','decisionEquation'):
+                self.assertNotIn(key,report)
+            plots = report['predictionPlots']
+            self.assertEqual([p['kind'] for p in plots],['observedPredicted','predictionError','regressionFit'])
+            self.assertEqual(plots[0]['xlim'],plots[0]['ylim'])
+            for plot in plots:
+                self.assertEqual(len(plot['points']),len(rows))
+                self.assertEqual(sum(p['support'] for p in plot['points']),report['supportVectors'])
+            for contour in plots[2]['contours']:
+                for segment, curve in zip(contour['segments'],plots[2]['curve']):
+                    self.assertAlmostEqual(segment[0][1]-curve[1],contour['level']*.2,places=12)
+            copy = statistics_copy_report('regression','SVR',report,15)
+            self.assertEqual(copy['title'],'SVM regression')
+            summary = next(s for s in copy['sections'] if s['title']=='Summary')
+            self.assertTrue({'R²','RMSE','MAE','Prediction function'}.issubset({r[0] for r in summary['rows']}))
+            terms = next(s for s in copy['sections'] if s['title']=='Support vector terms')
+            self.assertIn('Signed coefficient (αᵢ−αᵢ*)',terms['columns'])
+
+    def test_svr_multi_predictor_and_constant_response_reports_preserve_all_observations(self):
+        from calc_statistics_report import statistics_copy_report
+        rows = [[i, i%3, .1*i+math.sin(i)] for i in range(121)]
+        report = fit(rows,'svr',['linear',1,'auto',.1]).regression_report
+        self.assertEqual(len(report['predictionPlots']),2)
+        self.assertTrue(all(len(plot['points'])==121 for plot in report['predictionPlots']))
+        copy = statistics_copy_report('regression','SVR',report,15)
+        predictions = next(s for s in copy['sections'] if s['title']=='Regression predictions')
+        self.assertEqual(len(predictions['copyRows']),121)
+        constant = fit([[0,7],[1,7]],'svr',['rbf',1,'auto',0]).regression_report
+        self.assertIsNone(constant['rSquared'])
+        self.assertEqual(float(constant['mae']),0)
+        self.assertEqual(float(constant['rmse']),0)
+        for plot in constant['predictionPlots']:
+            self.assertLess(plot['xlim'][0],plot['xlim'][1])
+            self.assertLess(plot['ylim'][0],plot['ylim'][1])
 
     def test_cross_validation_balances_total_and_per_class_fold_sizes(self):
         for zeros, ones in ((12,12), (7,23), (2,9), (5,5), (11,13), (23,7)):

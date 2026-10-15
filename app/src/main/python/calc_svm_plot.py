@@ -2,6 +2,42 @@
 import math
 
 
+def _domain(values):
+    lo, hi = min(values), max(values)
+    pad = (hi-lo)*.12 if hi > lo else max(1.0, abs(lo)*.05)
+    return [lo-pad, hi+pad]
+
+
+def regression_plots(xs, observed, fitted, support, predict, epsilon):
+    """All-row SVR diagnostics; identity axes share limits and response units."""
+    def points(xvalues, yvalues):
+        return [{'row': i+1, 'x': x, 'y': y, 'support': i in support}
+                for i, (x, y) in enumerate(zip(xvalues, yvalues))]
+    limits = _domain(observed+fitted)
+    comparison = {'kind': 'observedPredicted', 'xlim': limits, 'ylim': limits,
+                  'points': points(observed, fitted), 'contours': [
+                      {'level': 0, 'dashed': True, 'segments': [[[limits[0], limits[0]], [limits[1], limits[1]]]]}]}
+    errors = [math.fsum([y, -f]) for y, f in zip(observed, fitted)]
+    xlim = _domain(fitted)
+    error = {'kind': 'predictionError', 'xlim': xlim, 'ylim': _domain(errors+[0]),
+             'points': points(fitted, errors), 'contours': [
+                 {'level': 0, 'segments': [[[xlim[0], 0], [xlim[1], 0]]]}]}
+    plots = [comparison, error]
+    if len(xs[0]) == 1:
+        values = [row[0] for row in xs]
+        xlim = _domain(values)
+        curve = [[xlim[0]+(xlim[1]-xlim[0])*i/128, 0] for i in range(129)]
+        for point in curve:
+            point[1] = predict([point[0]])
+        bounds = [[point[1]+direction*epsilon for point in curve] for direction in (-1, 1)]
+        plots.append({'kind': 'regressionFit', 'xlim': xlim, 'ylim': _domain(observed+bounds[0]+bounds[1]),
+                      'points': points(values, observed), 'curve': curve, 'epsilon': epsilon,
+                      'contours': [{'level': direction, 'segments': [[
+                          [curve[i][0], bound[i]], [curve[i+1][0], bound[i+1]]]
+                          for i in range(len(curve)-1)]} for direction, bound in zip((-1, 1), bounds)]})
+    return plots
+
+
 def decision_plot(xs, labels, scores, support, decision):
     """One-dimensional score curve or a two-dimensional conditional slice.
 

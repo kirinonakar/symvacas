@@ -25,7 +25,7 @@ export function renderRegressionReport(container,report,digits=10,parameterLabel
   const credibleLabel=`${number(Number(report.credibleLevel)*100)}% ${t("Credible interval")}`;
   const forest=report.model==='randomforest';
   const summary=element('p');
-  const metrics=[['R²','rSquared'],['Adjusted R²','adjustedRSquared'],['RMSE','rmse'],['Log loss','logLoss'],['Accuracy','accuracy'],['Sensitivity','sensitivity'],['Specificity','specificity'],['OOB C-statistic (AUC)','oobAuc'],['OOB sensitivity','oobSensitivity'],['OOB specificity','oobSpecificity'],['OOB accuracy','oobAccuracy'],['OOB R²','oobRSquared'],['OOB RMSE','oobRMSE'],['Residual SE','residualSE'],['C-statistic (AUC)','auc'],['McFadden R²','pseudoRSquared'],['Deviance','deviance'],['AIC','aic'],['LR p','likelihoodP'],['Durbin–Watson','durbinWatson'],['Residual Shapiro p','shapiroP']];
+  const metrics=[['R²','rSquared'],['Adjusted R²','adjustedRSquared'],['RMSE','rmse'],['MAE','mae'],['Log loss','logLoss'],['Accuracy','accuracy'],['Sensitivity','sensitivity'],['Specificity','specificity'],['OOB C-statistic (AUC)','oobAuc'],['OOB sensitivity','oobSensitivity'],['OOB specificity','oobSpecificity'],['OOB accuracy','oobAccuracy'],['OOB R²','oobRSquared'],['OOB RMSE','oobRMSE'],['Residual SE','residualSE'],['C-statistic (AUC)','auc'],['McFadden R²','pseudoRSquared'],['Deviance','deviance'],['AIC','aic'],['LR p','likelihoodP'],['Durbin–Watson','durbinWatson'],['Residual Shapiro p','shapiroP']];
   summary.textContent=`n=${report.n} · ${report.df==null?'':`df=${report.df} · `}`+metrics.filter(([,key])=>report[key]!=null||['rSquared','adjustedRSquared'].includes(key)&&key in report).map(([name,key])=>`${t(svmClassification&&key==='accuracy'?'Training accuracy':name)}=${number(report[key])}`).join(' · ');
   container.append(summary);
   const note=bayesian?(report.method==='nuts'?'NUTS posterior samples; check R-hat, ESS and divergences.':report.method==='laplace'?'Gaussian Laplace posterior at the MAP; approximate credible intervals.':'Normal-inverse-gamma posterior; exact Student-t credible intervals.'):report.method==='firth'?'Firth logistic regression; profile penalized-likelihood intervals.':svm&&report.kernel==='rbf'?'RBF kernel model; predictors standardized.':machineLearning?'Training fit; ordinary coefficient inference is unavailable.':report.fitScale==='binomial'?'Binomial MLE; Wald intervals.':report.fitScale==='log(y)'?'Inference in log(y); R² and RMSE in original y units.':report.approximate?'Local Jacobian approximation; independent errors with constant variance.':'OLS inference; independent errors with constant variance.';
@@ -34,11 +34,17 @@ export function renderRegressionReport(container,report,digits=10,parameterLabel
   if(bayesian){container.append(element("p",`${t("Prior SD")}=${number(report.priorSD)} · ${t("Credible level (0–1)")}=${number(report.credibleLevel)}`));if(report.varianceShape)container.append(element("p",`${t("Variance prior shape")}=${number(report.varianceShape)} · ${t("Variance prior scale")}=${number(report.varianceScale)} · ${t("Posterior variance mean")}=${number(report.posteriorVarianceMean)}`));modelDetails.append(element("p",t(report.method==="laplace"?"Training probabilities evaluated at the MAP.":"Training predictions evaluated at posterior mean coefficients.")));}
   if(machineLearning)container.append(element('p',svm?`${t('Model')}: ${svmClassification?'SVC':'SVR'} · ${t('Kernel')}: ${report.kernel} · C=${number(report.C)}${report.kernel==='rbf'&&report.gamma!=null?' · γ='+number(report.gamma):''}${!svmClassification&&report.epsilon!=null?' · ε='+number(report.epsilon):''} · ${t('Support vectors')}: ${report.supportVectors} · ${t('Iterations')}: ${report.iterations}`:forest?`${t('Random Forest')} · ${t(report.task==='classification'?'Binary classification':'Regression')} · ${t('Trees')}: ${report.trees} · ${t('Max depth')}: ${report.maxDepth} · ${t('Random seed')}: ${report.seed} · OOB n=${report.oobN}/${report.n}`:`${t(report.model.replace('logistic',''))} · α=${number(report.alpha)} · ${t('Selected predictors')}: ${report.selectedPredictors} · L1=${number(report.l1Ratio)}`));
   if(svm)container.append(element('p',t('Training data evaluation'),'statistics-training-evaluation'));
-  if(svmClassification){
-    const equation=svmDecisionEquation(report,digits,parameterLabels);if(equation)container.append(equation);
+  if(svm){const equation=svmDecisionEquation(report,digits,parameterLabels);if(equation)container.append(equation);}
+  if(svm){
     const cv=report.crossValidation;
-    if(cv)container.append(element('p',cv.available?`${t('Cross-validated accuracy')}=${number(cv.accuracy)} · ${t('Stratified cross-validation')} · ${t('Folds')}=${cv.folds} · n=${cv.n}`:t(cv.reason),'statistics-cross-validation'));
-    if(cv?.available)modelDetails.append(element('p',t('Cross-validation refits standardization in each training fold; C and gamma remain fixed.')));
+    if(cv){
+      const metrics=svmClassification?`${t('Cross-validated accuracy')}=${number(cv.accuracy)}`:`${t('Cross-validated R²')}=${number(cv.rSquared)} · ${t('Cross-validated RMSE')}=${number(cv.rmse)} · ${t('Cross-validated MAE')}=${number(cv.mae)}`;
+      container.append(element('p',cv.available?`${metrics} · ${t(cv.method)} · ${t('Folds')}=${cv.folds} · n=${cv.n}`:t(cv.reason),'statistics-cross-validation'));
+    }
+    if(cv?.available){
+      modelDetails.append(element('p',t('Cross-validation refits standardization in each training fold; C and gamma remain fixed.')));
+      if(!svmClassification)modelDetails.append(element('p',t('Metrics pool all held-out predictions; they are not averages of fold metrics.')));
+    }
   }
   if(report.nuts){
     const h=report.nuts;
@@ -69,13 +75,15 @@ export function renderRegressionReport(container,report,digits=10,parameterLabel
     }
     const oob=report.oobClassification&&regressionROC(report.oobClassification,digits,{oob:true});if(oob)container.append(oob);
   }
-  if(svmClassification){
+  if(svm){
+    if(!svmClassification)for(const item of report.predictionPlots||[]){const plot=svmDecisionPlot(item,digits,parameterLabels);if(plot)container.append(plot);}
     const details=element('details'),table=element('table'),head=element('tr'),rows=report.residuals||[];
-    details.append(element('summary',t('Classification predictions')));
+    details.append(element('summary',t(svmClassification?'Classification predictions':'Regression predictions')));
+    if(!svmClassification)container.append(element('p',t('Prediction error = observed − predicted; MAE is mean absolute prediction error.')));
     const support=rows.some(row=>typeof row.supportVector==='boolean');
-    for(const label of ['Observation','Observed class','Predicted class','Decision score',...(support?['Support vector']:[])])head.append(element('th',t(label)));
+    for(const label of [...(svmClassification?['Observation','Observed class','Predicted class','Decision score']:['Observation','Observed value','Predicted value','Prediction error','Absolute error']),...(support?['Support vector']:[])])head.append(element('th',t(label)));
     table.append(head);
-    for(const row of rows.slice(0,100)){const tr=element('tr');for(const value of [number(row.row),number(row.observed),number(row.fitted),number(row.decisionScore),...(support?[t(row.supportVector?'Yes':'No')]:[])])tr.append(element('td',value));table.append(tr);}
+    for(const row of rows.slice(0,100)){const tr=element('tr');for(const value of [number(row.row),number(row.observed),number(row.fitted),...(svmClassification?[number(row.decisionScore)]:[number(row.predictionError??row.residual),number(row.absoluteError??Math.abs(Number(row.residual)))]),...(support?[t(row.supportVector?'Yes':'No')]:[])])tr.append(element('td',value));table.append(tr);}
     const scroll=element('div');scroll.style.overflowX='auto';scroll.append(table);details.append(scroll);
     if(rows.length>100)details.append(element('p',t('Showing first 100 rows; export includes all rows.')));
     container.append(details);return;
@@ -107,6 +115,7 @@ export function renderRegressionReport(container,report,digits=10,parameterLabel
 
 export function regressionResidualCSV(report){
   if(report?.model==='svm'&&report.task==='classification')return ['row,observedClass,predictedClass,decisionScore,supportVector',...(report.residuals||[]).map(row=>[row.row,row.observed,row.fitted,row.decisionScore,row.supportVector??''].join(','))].join('\n');
+  if(report?.model==='svm'&&report.task==='regression')return ['row,observed,predicted,predictionError,absoluteError,supportVector',...(report.residuals||[]).map(row=>[row.row,row.observed,row.fitted,row.predictionError??row.residual,row.absoluteError??Math.abs(Number(row.residual)),row.supportVector??''].join(','))].join('\n');
   const keys=['row','observed','fitted','residual','standardized','leverage','cook','deviance',...(report?.scoreType==='decision'?['decisionScore']:[]),...(report?.bayesian&&report.fitScale!=='binomial'?['predictiveLow','predictiveHigh']:[])];
   return [keys.join(','),...(report?.residuals||[]).map(row=>keys.map(key=>row[key]??'').join(','))].join('\n');
 }

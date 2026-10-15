@@ -49,7 +49,7 @@ import kotlin.math.abs
     val machineLearning=report.optString("model").isNotBlank()&&!bayesian
     val credibleLabel="${report.optDouble("credibleLevel")*100}% ${tr("Credible interval")}"
     val forest=report.optString("model")=="randomforest"
-    val metrics=listOf("R²" to "rSquared","Adjusted R²" to "adjustedRSquared","RMSE" to "rmse","Log loss" to "logLoss","Accuracy" to "accuracy","Sensitivity" to "sensitivity","Specificity" to "specificity","OOB C-statistic (AUC)" to "oobAuc","OOB sensitivity" to "oobSensitivity","OOB specificity" to "oobSpecificity","OOB accuracy" to "oobAccuracy","OOB R²" to "oobRSquared","OOB RMSE" to "oobRMSE","Residual SE" to "residualSE",
+    val metrics=listOf("R²" to "rSquared","Adjusted R²" to "adjustedRSquared","RMSE" to "rmse","MAE" to "mae","Log loss" to "logLoss","Accuracy" to "accuracy","Sensitivity" to "sensitivity","Specificity" to "specificity","OOB C-statistic (AUC)" to "oobAuc","OOB sensitivity" to "oobSensitivity","OOB specificity" to "oobSpecificity","OOB accuracy" to "oobAccuracy","OOB R²" to "oobRSquared","OOB RMSE" to "oobRMSE","Residual SE" to "residualSE",
         "C-statistic (AUC)" to "auc","McFadden R²" to "pseudoRSquared","Deviance" to "deviance","AIC" to "aic","LR p" to "likelihoodP",
         "Durbin–Watson" to "durbinWatson","Residual Shapiro p" to "shapiroP")
     Text("n=${report.optInt("n")} · "+(if(report.isNull("df"))"" else "df=${report.optInt("df")} · ")+metrics.filter {report.has(it.second)&&(!report.isNull(it.second)||it.second in listOf("rSquared","adjustedRSquared"))}.map {"${tr(if(svmClassification&&it.second=="accuracy")"Training accuracy" else it.first)}=${value(report,it.second)}"}.joinToString(" · "),fontSize=11.sp)
@@ -66,10 +66,15 @@ import kotlin.math.abs
     if(bayesian)Text("${tr("Prior SD")}=${value(report,"priorSD")} · ${tr("Credible level (0–1)")}=${value(report,"credibleLevel")}",fontSize=11.sp,color=colors.muted)
     if(machineLearning)Text(if(svm)"${tr("Model")}: ${if(svmClassification)"SVC" else "SVR"} · ${tr("Kernel")}: ${report.optString("kernel")} · C=${value(report,"C")}${if(report.optString("kernel")=="rbf"&&!report.isNull("gamma"))" · γ=${value(report,"gamma")}" else ""}${if(!svmClassification&&!report.isNull("epsilon"))" · ε=${value(report,"epsilon")}" else ""} · ${tr("Support vectors")}: ${report.optInt("supportVectors")} · ${tr("Iterations")}: ${report.optInt("iterations")}" else if(forest)"${tr("Random Forest")} · ${tr(if(report.optString("task")=="classification")"Binary classification" else "Regression")} · ${tr("Trees")}: ${report.optInt("trees")} · ${tr("Max depth")}: ${report.optInt("maxDepth")} · ${tr("Random seed")}: ${report.optInt("seed")} · OOB n=${report.optInt("oobN")}/${report.optInt("n")}" else "${tr(report.optString("model").removePrefix("logistic"))} · α=${value(report,"alpha")} · ${tr("Selected predictors")}: ${report.optInt("selectedPredictors")} · L1=${value(report,"l1Ratio")}",fontSize=11.sp,color=colors.muted)
     if(svm)Text(tr("Training data evaluation"),fontSize=12.sp,fontWeight=FontWeight.SemiBold)
-    if(svmClassification) {
-        SvmDecisionEquation(report,digits,parameterLabels)
-        report.optJSONObject("crossValidation")?.takeIf {it.optBoolean("available")}?.let {StatisticsExplanation("Model details",tr("Cross-validation refits standardization in each training fold; C and gamma remain fixed."),"statistics-svm-cv-help",report)}
-        report.optJSONObject("crossValidation")?.let {cv->Text(if(cv.optBoolean("available"))"${tr("Cross-validated accuracy")}=${value(cv,"accuracy")} · ${tr("Stratified cross-validation")} · ${tr("Folds")}=${cv.optInt("folds")} · n=${cv.optInt("n")}" else tr(cv.optString("reason")),fontSize=12.sp)}
+    if(svm)SvmDecisionEquation(report,digits,parameterLabels)
+    if(svm) {
+        report.optJSONObject("crossValidation")?.takeIf {it.optBoolean("available")}?.let {
+            StatisticsExplanation("Model details",tr("Cross-validation refits standardization in each training fold; C and gamma remain fixed.")+(if(!svmClassification)"\n\n"+tr("Metrics pool all held-out predictions; they are not averages of fold metrics.") else ""),"statistics-svm-cv-help",report)
+        }
+        report.optJSONObject("crossValidation")?.let {cv->
+            val metrics=if(svmClassification)"${tr("Cross-validated accuracy")}=${value(cv,"accuracy")}" else "${tr("Cross-validated R²")}=${value(cv,"rSquared")} · ${tr("Cross-validated RMSE")}=${value(cv,"rmse")} · ${tr("Cross-validated MAE")}=${value(cv,"mae")}"
+            Text(if(cv.optBoolean("available"))"$metrics · ${tr(cv.optString("method"))} · ${tr("Folds")}=${cv.optInt("folds")} · n=${cv.optInt("n")}" else tr(cv.optString("reason")),fontSize=12.sp)
+        }
     }
     if(bayesian) {
         if(report.has("varianceShape"))Text("${tr("Variance prior shape")}=${value(report,"varianceShape")} · ${tr("Variance prior scale")}=${value(report,"varianceScale")} · ${tr("Posterior variance mean")}=${value(report,"posteriorVarianceMean")}",fontSize=11.sp,color=colors.muted)
@@ -124,7 +129,10 @@ import kotlin.math.abs
             RegressionRoc(oob,digits,oob=true)
         }
     }
-    if(svmClassification) {SvmClassificationPredictions(report,digits);return}
+    if(svm) {
+        if(!svmClassification)report.optJSONArray("predictionPlots")?.let {plots->repeat(plots.length()){SvmDecisionPlot(plots.getJSONObject(it),digits,parameterLabels)}}
+        SvmPredictions(report,digits);return
+    }
     TextButton(onClick={expanded=!expanded}) {Text(tr("Residual diagnostics"))}
     if(expanded) {
         val binomial=report.optString("fitScale")=="binomial"||report.optString("model").startsWith("logistic")

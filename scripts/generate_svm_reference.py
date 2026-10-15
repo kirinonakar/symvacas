@@ -7,6 +7,7 @@ import random
 import sklearn
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC, SVR
+from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 
 
 def build():
@@ -49,6 +50,24 @@ def build():
                     predictions = fold_model.predict(fold_scaler.transform([xs[i] for i in test_indices]))
                     for i, prediction in zip(test_indices, predictions): held_out[i] = int(prediction)
                 cases[-1]['crossValidation'] = {'predictions': held_out, 'folds': [i+1 for i in assignment]}
+            else:
+                order = list(range(len(xs)))
+                random.Random(0).shuffle(order)
+                assignment = [0]*len(xs)
+                for position, index in enumerate(order): assignment[index] = position % 5
+                held_out = [0.0]*len(xs)
+                for fold in range(5):
+                    train = [i for i in range(len(xs)) if assignment[i] != fold]
+                    test_indices = [i for i in range(len(xs)) if assignment[i] == fold]
+                    fold_scaler = StandardScaler().fit([xs[i] for i in train])
+                    fold_model = SVR(kernel=kernel, C=2, gamma=.7, epsilon=.15, tol=1e-5, max_iter=100000).fit(
+                        fold_scaler.transform([xs[i] for i in train]), [ys[i] for i in train])
+                    assert fold_model.fit_status_ == 0, 'Reference regression CV fit did not converge'
+                    predictions = fold_model.predict(fold_scaler.transform([xs[i] for i in test_indices]))
+                    for i, prediction in zip(test_indices, predictions): held_out[i] = float(prediction)
+                cases[-1]['crossValidation'] = {'predictions': held_out, 'folds': [i+1 for i in assignment],
+                    'rSquared': r2_score(ys,held_out), 'rmse': math.sqrt(mean_squared_error(ys,held_out)),
+                    'mae': mean_absolute_error(ys,held_out)}
     return {"source": "sklearn.svm.SVC/SVR with StandardScaler (population SD)",
             "version": sklearn.__version__, "tolerance": 3e-5, "cases": cases}
 

@@ -9,6 +9,7 @@ import random
 from types import SimpleNamespace
 
 import sympy as s
+import mpmath as mp
 
 from calc_limits import within_limit
 from calc_machine_learning import _data, _report, classification_metrics
@@ -93,6 +94,39 @@ def _cross_validation(rows, labels, options):
                              "predicted": predicted[i]} for i in range(len(rows))]}
 
 
+def _mae(observed, predicted):
+    with mp.workdps(30):
+        return mp.nstr(mp.fsum(abs(mp.mpf(y)-mp.mpf(f)) for y, f in zip(observed, predicted))/len(observed), 16)
+
+
+def _regression_cross_validation(rows, observed, options):
+    """Five balanced shuffled folds; metrics pool one held-out prediction per row."""
+    n = len(rows)
+    if n < 5:
+        return {'available': False, 'reason': '5-fold regression cross-validation requires at least 5 observations.'}
+    order = list(range(n))
+    random.Random(0).shuffle(order)
+    assignment = [0]*n
+    for position, index in enumerate(order):
+        assignment[index] = position % 5
+    predicted = [0.0]*n
+    for fold in range(5):
+        model = SimpleNamespace()
+        fit_svm(model, [row for i, row in enumerate(rows) if assignment[i] != fold],
+                'svr', options, validation=False, diagnostics=False)
+        for i, row in enumerate(rows):
+            if assignment[i] == fold:
+                predicted[i] = model.regression_predict(row[:-1])
+    metrics = _report(SimpleNamespace(), observed, predicted, 'svm')
+    return {'available': True, 'method': '5-fold cross-validation', 'folds': 5, 'seed': 0,
+            'n': n, 'evaluation': 'out-of-fold', 'rSquared': metrics['rSquared'],
+            'rmse': metrics['rmse'], 'mae': _mae(observed, predicted),
+            'predictions': [{'row': i+1, 'fold': assignment[i]+1, 'observed': observed[i],
+                             'predicted': predicted[i], 'predictionError': row['residual'],
+                             'absoluteError': str(abs(float(row['residual'])))}
+                            for i, row in enumerate(metrics['residuals'])]}
+
+
 def fit_svm(engine, rows, mode, options=None, *, validation=True, diagnostics=True):
     xs, ys = _data(rows)
     n, p = len(xs), len(xs[0])
@@ -174,27 +208,41 @@ def fit_svm(engine, rows, mode, options=None, *, validation=True, diagnostics=Tr
         if diagnostics:
             from calc_svm_plot import decision_plot
             report["decisionPlot"] = decision_plot(xs, ys, scores, set(support), decision)
-            names = ["x" if p == 1 else "x"+str(j+1) for j in range(p)]
-            number = lambda v: format(v, '.17g')
-            equation = {"variables": names, "intercept": coefficients[0] if kernel_name == 'linear' else intercept,
-                        "scales": scales, "supportTerms": []}
-            if kernel_name == 'linear':
-                equation['expression'] = number(coefficients[0])+''.join(
-                    '+('+number(w)+')*'+name for w, name in zip(coefficients[1:], names))
-            else:
-                equation['supportTerms'] = [{'row': i+1, 'coefficient': beta[i], 'coordinates': xs[i]} for i in support]
-                equation['formula'] = 'f(x) = b + Σᵢ aᵢ exp(−γ Σⱼ ((xⱼ − vᵢⱼ)/sⱼ)²)'
-                if len(support)*p <= 24:
-                    equation['expression'] = number(intercept)+''.join(
-                        '+('+number(beta[i])+')*exp(-('+number(gamma)+')*('+
-                        '+'.join('(('+name+'-('+number(xs[i][j])+'))/('+number(scales[j])+'))^2'
-                                 for j, name in enumerate(names))+'))' for i in support)
-            report['decisionEquation'] = equation
         if validation:
             report['crossValidation'] = _cross_validation(rows, ys, options)
         report["warnings"].append("SVM decision scores are not probabilities; score >= 0 predicts class 1.")
+    else:
+        report['mae'] = _mae(ys, fitted)
+        for row in report['residuals']:
+            row['predictionError'] = row['residual']
+            row['absoluteError'] = str(abs(float(row['residual'])))
+            row['supportVector'] = row['row']-1 in support
+        if diagnostics:
+            from calc_svm_plot import regression_plots
+            report['predictionPlots'] = regression_plots(xs, ys, fitted, set(support), decision, epsilon)
+        if validation:
+            report['crossValidation'] = _regression_cross_validation(rows, ys, options)
+    if diagnostics:
+        names = ["x" if p == 1 else "x"+str(j+1) for j in range(p)]
+        number = lambda v: format(v, '.17g')
+        equation = {"variables": names, "intercept": coefficients[0] if kernel_name == 'linear' else origin+intercept,
+                    "scales": scales, "supportTerms": []}
+        if not classification:
+            equation['supportTerms'] = [{'row': i+1, 'coefficient': beta[i], 'coordinates': xs[i]} for i in support]
+        if kernel_name == 'linear':
+            equation['expression'] = number(coefficients[0])+''.join(
+                '+('+number(w)+')*'+name for w, name in zip(coefficients[1:], names))
+        else:
+            equation['supportTerms'] = [{'row': i+1, 'coefficient': beta[i], 'coordinates': xs[i]} for i in support]
+            equation['formula'] = 'f(x) = b + Σᵢ aᵢ exp(−γ Σⱼ ((xⱼ − vᵢⱼ)/sⱼ)²)'
+            if len(support)*p <= 24:
+                equation['expression'] = number(origin+intercept)+''.join(
+                    '+('+number(beta[i])+')*exp(-('+number(gamma)+')*('+
+                    '+'.join('(('+name+'-('+number(xs[i][j])+'))/('+number(scales[j])+'))^2'
+                             for j, name in enumerate(names))+'))' for i in support)
+        report['decisionEquation' if classification else 'predictionEquation'] = equation
     if kernel_name == 'linear':
-        report["warnings"].append("SVM predictors are standardized; linear coefficients use original predictor units. Classification coefficients describe the decision score.")
+        report["warnings"].append("SVM predictors are standardized; linear coefficients use original predictor units. Classification coefficients describe the decision score." if classification else "Predictors standardized; coefficients in original units.")
     else:
         report["warnings"].append("SVM predictors are standardized.")
     report["warnings"].append("Training metrics do not estimate performance on unseen data.")

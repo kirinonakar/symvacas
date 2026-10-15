@@ -192,7 +192,7 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
   $('regression-response').onchange=()=>{state.fields['regression-response-auto']=false;state.fields['regression-response-choice']=value('regression-response');state.fields['regression-response-position']=Number(value('regression-response'))===0?'first':'last';invalidateRegression();refreshWorkspaceMath();persist();};
   $('regression-custom').hidden=regressionMode()!=='custom';
   function clearRegression(){cancelRegression();statisticsGraph=null;$('regression-caption').replaceChildren();$('regression-inference').replaceChildren();$('regression-export').hidden=true;$('regression-transfer').hidden=true;if(!$('statistics-plot').hidden)$('statistics-plot-run').click();}
-  $('regression-export').onclick=()=>downloadFile(statisticsGraph?.report?.model==='svm'&&statisticsGraph.report.task==='classification'?'svm-predictions.csv':'regression-residuals.csv',regressionResidualCSV(statisticsGraph?.report),'text/csv');
+  $('regression-export').onclick=()=>downloadFile(statisticsGraph?.report?.model==='svm'?'svm-predictions.csv':'regression-residuals.csv',regressionResidualCSV(statisticsGraph?.report),'text/csv');
   function statisticsControls(){
     const columns=dataColumns(),kind=dataKind(),columnsMode=value('statistics-kind')==='columns',pairOps=['correlation','ttestpaired','wilcoxon','chi2independence','fisherexact'],multiOps=['ttest2','ztest2','mannwhitney','anova','welchanova','tukey','gameshowell','kruskal'];
     filterMenu('statistics-op',op=>columns!==1||op==='wilcoxon'||![...pairOps,...multiOps].includes(op),'ttest');
@@ -620,7 +620,7 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
     statisticsGraph.regressionPrefix=logistic?`P(${names[response]} = 1) = `:`${names[response]} = `;
     $('statistics-plot').hidden=false;render();
     $('regression-transfer').hidden=dataColumns()!==2||regressionMode().startsWith('randomforest')||['svm','svc','svr'].includes(regressionMode());
-    setText($('regression-export'),result.regression?.model==='svm'&&result.regression.task==='classification'?'Export prediction CSV':'Export residual CSV');
+    setText($('regression-export'),result.regression?.model==='svm'?'Export prediction CSV':'Export residual CSV');
     $('regression-export').hidden=!result.regression;
   }
   async function runRegression(options,showResult){

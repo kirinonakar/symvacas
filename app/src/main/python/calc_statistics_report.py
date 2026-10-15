@@ -449,36 +449,46 @@ def statistics_copy_report(name, value, details, precision):
                 'Kernel': details['kernel'], 'Penalty C': details['C'],
                 'Support vectors': details['supportVectors'], 'Iterations': details['iterations']}
         for label, key in (('Gamma', 'gamma'), ('Epsilon (SVR)', 'epsilon'),
-                           ('R²', 'rSquared'), ('RMSE', 'rmse'), ('AUC', 'auc'),
+                           ('R²', 'rSquared'), ('RMSE', 'rmse'), ('MAE', 'mae'), ('AUC', 'auc'),
                            ('Accuracy', 'accuracy'), ('Sensitivity', 'sensitivity'), ('Specificity', 'specificity')):
             if details.get(key) is not None:
                 data['Training accuracy' if classification and key == 'accuracy' else label] = s.sympify(details[key])
         if details.get('coefficients'):
             data['Fitted parameters'] = [{'Parameter': row['name'], 'Estimate': s.sympify(row['estimate'])}
                                          for row in details['coefficients']]
-        if classification:
-            equation = details.get('decisionEquation', {})
-            data['Decision function'] = 'f(x) = '+equation['expression'] if equation.get('expression') else equation.get('formula', '')
-            data['Decision rule'] = 'f(x) >= 0: class 1; f(x) < 0: class 0.'
-            if details['kernel'] == 'rbf' and equation:
-                data['Coefficient convention'] = 'aᵢ = αᵢyᵢ, αᵢ ≥ 0; yᵢ = −1 for class 0, +1 for class 1.'
-                data['Kernel intercept b'] = equation['intercept']
-                data['Predictor scales'] = [{'Variable': name, 'Scale': scale}
-                                           for name, scale in zip(equation['variables'], equation['scales'])]
-                data['Support vector terms'] = [
-                    {'Observation': term['row'], 'Signed coefficient (αᵢyᵢ)': term['coefficient'],
-                     **dict(zip(('vᵢ'+str(i+1) for i in range(len(term['coordinates']))), term['coordinates']))}
-                    for term in equation['supportTerms']]
-            cv = details.get('crossValidation')
-            if cv:
-                data['Cross-validation'] = ({'Method': cv['method'], 'Folds': cv['folds'],
-                                            'Random seed': cv['seed'], 'n': cv['n'],
-                                            'Cross-validated accuracy': cv['accuracy']}
-                                           if cv['available'] else cv['reason'])
-                if cv['available']:
+        equation = details.get('decisionEquation' if classification else 'predictionEquation', {})
+        data['Decision function' if classification else 'Prediction function'] = 'f(x) = '+equation['expression'] if equation.get('expression') else equation.get('formula', '')
+        data['Decision rule' if classification else 'Prediction function description'] = ('f(x) >= 0: class 1; f(x) < 0: class 0.' if classification else 'Predicted response = f(x).')
+        if equation and (details['kernel'] == 'rbf' or not classification):
+            data['Coefficient convention'] = ('aᵢ = αᵢyᵢ, αᵢ ≥ 0; yᵢ = −1 for class 0, +1 for class 1.' if classification else 'aᵢ = αᵢ − αᵢ*, with αᵢ ≥ 0 and αᵢ* ≥ 0.')
+            if details['kernel'] == 'rbf': data['Kernel intercept b'] = equation['intercept']
+            data['Predictor scales'] = [{'Variable': name, 'Scale': scale}
+                                       for name, scale in zip(equation['variables'], equation['scales'])]
+            data['Support vector terms'] = [
+                {'Observation': term['row'], ('Signed coefficient (αᵢyᵢ)' if classification else 'Signed coefficient (αᵢ−αᵢ*)'): term['coefficient'],
+                 **dict(zip(('vᵢ'+str(i+1) for i in range(len(term['coordinates']))), term['coordinates']))}
+                for term in equation['supportTerms']]
+        cv = details.get('crossValidation')
+        if cv:
+            cv_metrics = ({'Cross-validated accuracy': cv['accuracy']} if classification else {
+                'Cross-validated R²': s.sympify(cv['rSquared']) if cv.get('rSquared') is not None else 'undefined',
+                'Cross-validated RMSE': s.sympify(cv['rmse']), 'Cross-validated MAE': s.sympify(cv['mae'])}) if cv['available'] else {}
+            data['Cross-validation'] = ({'Method': cv['method'], 'Folds': cv['folds'],
+                                        'Random seed': cv['seed'], 'n': cv['n'], **cv_metrics}
+                                       if cv['available'] else cv['reason'])
+            if cv['available']:
+                if classification:
                     data['Cross-validation predictions'] = [
                         {'Observation': row['row'], 'Fold': row['fold'], 'Observed class': row['observed'],
                          'Predicted class': row['predicted']} for row in cv['predictions']]
+                else:
+                    data['Cross-validation']['Evaluation'] = 'Out-of-fold predictions'
+                    data['Cross-validation']['Metric convention'] = 'Metrics pool all held-out predictions; they are not averages of fold metrics.'
+                    data['Cross-validation predictions'] = [
+                        {'Observation': row['row'], 'Fold': row['fold'], 'Observed value': row['observed'],
+                         'Predicted value': row['predicted'], 'Prediction error': s.sympify(row['predictionError']),
+                         'Absolute error': s.sympify(row['absoluteError'])} for row in cv['predictions']]
+        if classification:
             data['Decision threshold'] = details['threshold']
             data['Classification predictions'] = [
                 {'Observation': row['row'], 'Observed class': int(float(row['observed'])),
@@ -487,9 +497,12 @@ def statistics_copy_report(name, value, details, precision):
             data['Confusion matrix'] = [dict(zip(('Observed class', 'Predicted 0', 'Predicted 1'), [i]+row))
                                         for i, row in enumerate(details['confusionMatrix'])]
         else:
-            data['Residual diagnostics'] = [
-                {'Observation': row['row'], 'Observed': s.sympify(row['observed']),
-                 'Fitted value': s.sympify(row['fitted']), 'Residual': s.sympify(row['residual'])}
+            if details.get('rSquared') is None: data['R²'] = 'undefined'
+            data['Prediction error convention'] = 'Prediction error = observed − predicted; MAE is mean absolute prediction error.'
+            data['Regression predictions'] = [
+                {'Observation': row['row'], 'Observed value': s.sympify(row['observed']),
+                 'Predicted value': s.sympify(row['fitted']), 'Prediction error': s.sympify(row.get('predictionError', row['residual'])),
+                 'Absolute error': abs(s.sympify(row['residual'])), 'Support vector': 'Yes' if row.get('supportVector') else 'No'}
                 for row in details['residuals']]
         data['Warnings'] = details.get('warnings', [])
         report = statistics_report(name, data, precision)

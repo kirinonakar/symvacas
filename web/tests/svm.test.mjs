@@ -76,4 +76,49 @@ test('packaged WASM SVM returns scores, predictions, ROC and a copyable report',
   assert.ok(Number(svr.regression.rSquared)>.99999);
   assert.ok(svr.curve.length>100);
   assert.equal(svr.regression.task,'regression');
+  assert.ok(Number(svr.regression.mae)<1e-6);
+  renderRegressionReport(main,svr.regression);
+  assert.match(main.textContent,/Model: SVR/);
+  assert.match(main.textContent,/MAE=/);
+  assert.match(main.textContent,/Prediction function/);
+  assert.match(main.textContent,/Regression predictions/);
+  assert.match(main.textContent,/Absolute error/);
+  assert.doesNotMatch(main.textContent,/Accuracy|Sensitivity|Specificity|Confusion matrix|class 1|αᵢyᵢ/);
+  assert.match(regressionEquationCopyText(svr),/^ŷ = /);
+  assert.match(statisticsResultMarkdown(svr),/### Prediction function/);
+  assert.match(regressionResidualCSV(svr.regression),/predictionError,absoluteError,supportVector/);
+  for(const kind of ['observedPredicted','predictionError','regressionFit']){
+    const plot=main.querySelector(`[data-svm-plot-kind="${kind}"]`);assert.ok(plot,kind);
+    assert.equal(plot.querySelectorAll('[data-svm-observation]').length,5);
+    assert.equal(plot.querySelectorAll('[data-svm-support]').length,svr.regression.supportVectors);
+  }
+  const comparison=main.querySelector('[data-svm-plot-kind="observedPredicted"]');
+  assert.equal(comparison.querySelector('rect').getAttribute('width'),comparison.querySelector('rect').getAttribute('height'));
+  assert.equal(comparison.querySelector('[data-svm-level="0"]').getAttribute('stroke-dasharray'),'6 4');
+  const rbfPending=receive(data=>data.type==='result'&&data.id===3);
+  worker.send({id:3,request:statisticsRequest('regression([[-2,104],[-1,101],[0,100],[1,101],[2,104]],svr,[rbf,10,auto,0.1])')});
+  const rbf=(await rbfPending).result;
+  assert.equal(rbf.ok,true,rbf.error);
+  renderRegressionReport(main,rbf.regression);
+  assert.match(main.textContent,/Signed coefficient \(αᵢ−αᵢ\*\)/);
+  assert.doesNotMatch(main.textContent,/class 1|linear coefficients/);
+  assert.match(statisticsResultMarkdown(rbf),/Prediction function/);
+  let id=3;
+  for(const kernel of ['linear','rbf'])for(const [mode,binary] of [['svc',true],['svm',true],['svr',false],['svm',false]]){
+    const rows=Array.from({length:12},(_,i)=>[i,binary?Number(i>=6):Math.sin(i)+.2*i]);
+    const current=++id,done=receive(data=>data.type==='result'&&data.id===current);
+    worker.send({id:current,request:statisticsRequest(`regression(${JSON.stringify(rows)},${mode},[${kernel},2,0.4,0.1])`)});
+    const result=(await done).result;assert.equal(result.ok,true,`${mode}/${kernel}: ${result.error}`);
+    const cv=result.regression.crossValidation;assert.equal(cv.available,true);assert.equal(cv.folds,5);
+    assert.equal(cv.predictions.length,12);
+    renderRegressionReport(main,result.regression);
+    const summary=main.querySelector('.statistics-cross-validation').textContent;
+    assert.match(summary,/Folds=5/);
+    const copy=statisticsResultMarkdown(result);
+    if(binary){assert.match(summary,/Cross-validated accuracy=/);assert.doesNotMatch(summary,/Cross-validated RMSE/);}
+    else for(const metric of ['R²','RMSE','MAE']){
+      assert.ok(summary.includes(`Cross-validated ${metric}=`),summary);
+      assert.ok(copy.includes(`Cross-validated ${metric}`),copy);
+    }
+  }
 });
