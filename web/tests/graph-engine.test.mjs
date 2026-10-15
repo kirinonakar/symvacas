@@ -148,4 +148,18 @@ test('packaged graph modules execute every graph kind in the production WASM wor
   const integral=await execute({action:'graphAnalysis',trees:[parse('x')],analysis:'integral',a:0,b:1});
   assert.equal(integral.value,.5);
   assert.ok(integral.integralFill.length>0);
+
+  const periodicTrees=[String.raw`\sin\left(x\right)`,
+    String.raw`\sin\left(x\right) = \left(-3\right) \cdot \cos\left(x\right)`].map(source=>graphInputTree(source));
+  for(const trees of [periodicTrees,[...periodicTrees].reverse()]){
+    const intersections=await execute({action:'graphAnalysis',graphKind:'cartesian',angle:'RAD',
+      trees,analysis:'intersection',selected:0,other:1,a:-10,b:10});
+    assert.equal(intersections.count,6);
+    assert.equal(intersections.truncated,false);
+    for(const [index,[x,y]] of intersections.points.entries()){
+      assert.ok(Math.abs(x-(-Math.atan(3)+(index-2)*Math.PI))<1e-7);
+      assert.ok(Math.abs(y-Math.sin(x))<1e-7);
+      assert.ok(Math.abs(Math.sin(x)+3*Math.cos(x))<1e-7);
+    }
+  }
 });

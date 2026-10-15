@@ -19,6 +19,34 @@ circle = equation(binary("+", x2, y2), number(1))
 
 class ImplicitGraphTests(unittest.TestCase):
 
+    def test_periodic_equation_intersections_search_the_whole_interval(self):
+        sine={"kind":"call","value":"sin","args":[x]}
+        cosine={"kind":"call","value":"cos","args":[x]}
+        constraint=equation(sine,binary("*",number(-3),cosine))
+        for trees in ((sine,constraint),(constraint,sine)):
+            for lower,upper in ((-10,10),(2,10),(0,1),(-150,150)):
+                with self.subTest(trees=trees,interval=(lower,upper)):
+                    expected=[-math.atan(3)+k*math.pi for k in range(-50,51)
+                              if lower<=-math.atan(3)+k*math.pi<=upper]
+                    result=self.analyze(*trees,analysis="intersection",a=lower,b=upper,angle="RAD")
+                    self.assertTrue(result["ok"],result)
+                    self.assertEqual(min(80,len(expected)),result["count"])
+                    self.assertEqual(len(expected)>80,result["truncated"])
+                    for point,at in zip(result["points"],expected):
+                        self.assertAlmostEqual(at,point[0],delta=1e-7)
+                        self.assertAlmostEqual(math.sin(at),point[1],delta=1e-7)
+
+    def test_equation_intersections_include_periodic_tangent_contacts_and_endpoints(self):
+        cosine={"kind":"call","value":"cos","args":[x]}
+        constraint=equation(cosine,number(1))
+        for trees in ((x,constraint),(constraint,x)):
+            result=self.analyze(*trees,analysis="intersection",a=-2*math.pi,b=2*math.pi)
+            self.assertTrue(result["ok"],result)
+            self.assertEqual(3,result["count"])
+            for point,at in zip(result["points"],(-2*math.pi,0,2*math.pi)):
+                self.assertAlmostEqual(at,point[0],delta=1e-7)
+                self.assertAlmostEqual(at,point[1],delta=1e-7)
+
     def test_absolute_intersections_use_real_coordinates_for_both_curve_orders(self):
         absolute={"kind":"call","value":"abs","args":[x]}
         line=binary("+",binary("*",binary("/",number(1),number(2)),x),number(2))

@@ -81,7 +81,7 @@ def _cartesian_tangent_direction(curve, x, y, px, py, precision):
     return _graph_direction(finite(s.diff(residual,y).subs(substitutions)), finite(-s.diff(residual,x).subs(substitutions)))
 
 
-def implicit_analysis(engine, request, curves, x, y, numeric, zeroes, tangent_point):
+def implicit_analysis(engine, request, curves, x, y, numeric, zeroes, root_positions, tangent_point):
     """Analyze all branches for searches; use the traced point for a local branch."""
     selected, other = int(request.get("selected", 0)), int(request.get("other", 1))
     action = request.get("analysis", "root")
@@ -127,10 +127,14 @@ def implicit_analysis(engine, request, curves, x, y, numeric, zeroes, tangent_po
         explicit = function if function is not None else curves[other][0]
         if explicit is not None:
             reduced = (target if function is not None else residual).subs(y,explicit)
+            require(reduced != 0, "The curves coincide; intersections are not isolated")
             positions = polynomial_real_roots(reduced,x)
-            if positions is not None:
-                value=numeric(explicit,x)
-                return collect([[px,py] for px in positions for py in [value(px)] if py is not None and a-1e-9 <= px <= b+1e-9 and valid(px,py,(residual,target))])
+            # A symbolic transcendental solve may return only principal roots.
+            # Search the reduced equation over the full requested interval,
+            # including tangent contacts, just as for two explicit functions.
+            if positions is None: positions = root_positions(reduced,x)
+            value=numeric(explicit,x)
+            return collect([[px,py] for px in positions for py in [value(px)] if py is not None and a-1e-9 <= px <= b+1e-9 and valid(px,py,(residual,target))])
         require(residual-target != 0, "Select two different curves")
         try: pairs = s.solve((residual, target), (x, y), dict=True)
         except (NotImplementedError, ValueError, TypeError): pairs = []
@@ -321,6 +325,16 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
                 if residual is not None and abs(residual) < 1e-6: add(root)
         if ys[-1] is not None and abs(ys[-1]) < 1e-9: add(b)
         return sorted(roots)
+    def root_positions(expression, variable):
+        tested = numeric(expression, variable)
+        positions = zeroes(tested)
+        # A tangent intersection has no sign change. Its derivative identifies a zero minimum.
+        try:
+            for at in zeroes(numeric(s.diff(expression, variable), variable)):
+                residual=tested(at)
+                if residual is not None and abs(residual) < 1e-7 and all(abs(at-old)>max(1e-8,abs(b-a)*1e-6) for old in positions): positions.append(at)
+        except (TypeError,ValueError): pass
+        return sorted(positions)
     def tangent_point(px, py, slope, direction=None):
         xmin=float(request.get("xMin",-10)); xmax=float(request.get("xMax",10))
         ymin=float(request.get("yMin",-10)); ymax=float(request.get("yMax",10))
@@ -382,7 +396,7 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
                     angles.append({"value":math.degrees(radians),"radians":radians})
             return {**response,"analysis":action,"angles":angles,"unit":"deg"}
         if curves[selected][0] is None or action=="intersection" and curves[other][0] is None:
-            return implicit_analysis(engine,request,curves,x,y,numeric,zeroes,tangent_point)
+            return implicit_analysis(engine,request,curves,x,y,numeric,zeroes,root_positions,tangent_point)
         expressions = [function for function,_ in curves]
         expression = expressions[selected]
         target = expression-expressions[other] if action == "intersection" else expression
@@ -435,16 +449,8 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
             if result is None: result = numeric_integral(expression, x, a, b, engine.precision)
             require(result.is_real and result.is_finite, "Numerical convergence failed")
             return {"analysis":action,"points":[],"value":float(result),"integralFill":integral_fill(expression,x,a,b)}
-        tested = numeric(target, x)
         if action in ("root", "intersection"):
-            positions = zeroes(tested)
-            # A tangent intersection has no sign change. Its derivative identifies a zero minimum.
-            try:
-                for at in zeroes(numeric(s.diff(target, x), x)):
-                    residual=tested(at)
-                    if residual is not None and abs(residual) < 1e-7 and all(abs(at-old)>max(1e-8,abs(b-a)*1e-6) for old in positions): positions.append(at)
-            except (TypeError,ValueError): pass
-            positions.sort()
+            positions = root_positions(target,x)
         else:
             guards=[substitute_parameters(c,sliders) for c in extrema_conditions]
             positions = interval_extrema(expression,x,a,b,action,conditions=guards)
