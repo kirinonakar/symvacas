@@ -5,7 +5,7 @@ object LatexInput {
     private val functions = setOf("sin","cos","tan","sec","csc","cot","sinh","cosh","tanh","arcsin","arccos","arctan","ln","exp")
     val symbolLabels = mapOf("alpha" to "α","beta" to "β","gamma" to "γ","delta" to "δ","epsilon" to "ϵ","varepsilon" to "ε","zeta" to "ζ","eta" to "η","theta" to "θ","vartheta" to "ϑ","iota" to "ι","kappa" to "κ","varkappa" to "ϰ","lambda" to "λ","mu" to "μ","nu" to "ν","xi" to "ξ","pi" to "π","varpi" to "ϖ","rho" to "ρ","varrho" to "ϱ","sigma" to "σ","varsigma" to "ς","tau" to "τ","upsilon" to "υ","phi" to "ϕ","varphi" to "φ","chi" to "χ","psi" to "ψ","omega" to "ω","Gamma" to "Γ","Delta" to "Δ","Theta" to "Θ","Lambda" to "Λ","Xi" to "Ξ","Pi" to "Π","Sigma" to "Σ","Upsilon" to "Υ","Phi" to "Φ","Psi" to "Ψ","Omega" to "Ω")
     private val greek = symbolLabels.keys
-    private val commands = setOf("operatorname","mathrm","int","sum","prod","binom","begin","lim","frac","dfrac","tfrac","sqrt","log","infty","times","cdot","left","right","quad","qquad","le","leq","ge","geq","ne","neq") + functions + greek
+    private val commands = setOf("boxed","operatorname","mathrm","int","sum","prod","binom","begin","lim","frac","dfrac","tfrac","sqrt","log","infty","times","cdot","left","right","quad","qquad","le","leq","ge","geq","ne","neq") + functions + greek
     private val commandPattern = Regex("""\\([A-Za-z]+)""")
     private val bracedPower = Regex("""\^\s*\{""")
 
@@ -66,11 +66,30 @@ object LatexInput {
 
     private fun convertBody(source:String):String = buildString {
         var index=0
+        var absolute=false
         while(index<source.length) {
             val c=source[index]
+            if(c=='|') {
+                append(if(absolute)")" else "abs(");absolute=!absolute;index++;continue
+            }
+            if(c in 'a'..'z' || c in 'A'..'Z') {
+                val start=index++
+                while(source.getOrNull(index)?.let {it in 'a'..'z' || it in 'A'..'Z'}==true)index++
+                val name=source.substring(start,index)
+                // Bare LaTeX letters are factors; commands and explicit names stay intact.
+                val named=name in greek || name in functions || name in setOf("log","pi","oo","Ans","true","false","mod") || source.substring(index).trimStart().startsWith('(')
+                if(toString().trimEnd().lastOrNull()?.let {it.isLetter() || it=='_'}==true && name!="mod")append('*')
+                append(if(named)name else name.toList().joinToString("*"))
+                if(source.getOrNull(index)=='_' && source.getOrNull(index+1)!='{') {
+                    val subscript=index++
+                    while(source.getOrNull(index)?.let {it.isLetterOrDigit() || it=='_'}==true)index++
+                    append(source.substring(subscript,index))
+                }
+                continue
+            }
             if(c=='_' && source.getOrNull(index+1)=='{') {
                 val (raw,next)=group(source,index+1)
-                val name=convertBody(raw)
+                val name=if(raw.matches(Regex("[A-Za-z0-9_]+")))raw else convertBody(raw)
                 require(name.matches(Regex("[A-Za-z0-9_]+"))) {"Unsupported LaTeX subscript"}
                 append('_').append(name);index=next;continue
             }
@@ -104,6 +123,10 @@ object LatexInput {
             val command=source.substring(start,index)
             if(command !in commands)error("Unsupported LaTeX command: $command")
             when(command) {
+                "boxed" -> {
+                    val (raw,next)=group(source,index)
+                    append('(').append(convertBody(raw)).append(')');index=next
+                }
                 "operatorname","mathrm" -> {
                     val (raw,next)=group(source,index)
                     require(raw.matches(Regex("[A-Za-z0-9_]+"))) {"Unsupported LaTeX name"}
@@ -205,7 +228,8 @@ object LatexInput {
                 "times", "cdot" -> append('*')
                 "left", "right" -> {
                     index=skipSpacing(source,index)
-                    if(command=="left" && source.getOrNull(index)=='[') {append('(');index++}
+                    if(source.getOrNull(index)=='|') {append(if(command=="left")"abs(" else ")");index++}
+                    else if(command=="left" && source.getOrNull(index)=='[') {append('(');index++}
                     else if(command=="right" && source.getOrNull(index)==']') {append(')');index++}
                 }
                 "quad", "qquad" -> Unit
@@ -233,11 +257,12 @@ object LatexInput {
                     append(command)
                     val following=source.substring(index).trimStart()
                     val nextCommand=commandPattern.find(following)?.takeIf {it.range.first==0}?.groupValues?.get(1)
-                    if(following.firstOrNull()?.isLetterOrDigit()==true || nextCommand in greek || nextCommand in functions || nextCommand in setOf("frac","dfrac","tfrac","sqrt","binom","log","sum","prod","int","lim"))append('*')
+                    if(following.firstOrNull()?.isLetterOrDigit()==true || nextCommand in greek || nextCommand in functions || nextCommand in setOf("boxed","frac","dfrac","tfrac","sqrt","binom","log","sum","prod","int","lim"))append('*')
                 }
                 else -> append(command)
             }
         }
+        require(!absolute) {"Unclosed LaTeX absolute value"}
     }.replace(Regex("""\s+"""), "")
 
     private fun bounds(source:String,from:Int):Pair<Map<Char,String>,Int> {
@@ -368,6 +393,7 @@ object LatexInput {
                 val command=match.groupValues[1]
                 index=match.range.last+1
                 when(command) {
+                    "boxed" -> index=group(source,index).second
                     "frac","dfrac","tfrac","binom" -> {
                         index=group(source,index).second
                         index=group(source,index).second

@@ -30,6 +30,8 @@ test('fraction compaction respects the surrounding insertion scope and existing 
   assert.equal(latexInput(String.raw`\frac{1}{2x}`),'1/(2x)');
   assert.equal(latexInput(String.raw`\frac{1}{(x)(x+1)}`),'1/((x)(x+1))');
   assert.equal(latexInput(String.raw`\frac{1}{(x^2)^3}`),'1/(x^2)^3');
+  assert.equal(latexInput(String.raw`\boxed{x+1}`,{prefix:'2',suffix:'+3'}),'(x+1)');
+  assert.equal(latexInput('xy'),'xy');
 });
 
 test('LaTeX limits preserve the approach, function power, and expression scope',()=>{
@@ -78,7 +80,7 @@ test('power precedence, limits, invalid input, and DMS',()=>{
 test('invalid LaTeX rejects unsupported syntax, operators and incomplete matrices',()=>{
   { // malformed or unsupported
 
-  for(const source of [String.raw`\sqrt[3{5}`,String.raw`\sqrt[]{5}`,String.raw`\sqrt[3]{}`,String.raw`\sqrt[3]{5`,String.raw`\sqrt[3]`,String.raw`\frac{1}`,String.raw`$$\unknown{1}$$`,String.raw`$$\sqrt{5}$`]) {
+  for(const source of [String.raw`\boxed`,String.raw`\boxed{}`,String.raw`\boxed{x`,String.raw`\boxed{|x}`,String.raw`\sqrt[3{5}`,String.raw`\sqrt[]{5}`,String.raw`\sqrt[3]{}`,String.raw`\sqrt[3]{5`,String.raw`\sqrt[3]`,String.raw`\frac{1}`,String.raw`$$\unknown{1}$$`,String.raw`$$\sqrt{5}$`]) {
     assert.throws(()=>latexInput(source),SyntaxError,source);
   }
 

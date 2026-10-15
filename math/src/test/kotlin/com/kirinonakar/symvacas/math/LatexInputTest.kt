@@ -16,6 +16,14 @@ class LatexInputTest {
         assertNull(LatexInput.convertPaste("x+1\n\ny=2",multiline=true))
         assertEquals("(x+1)/2",LatexInput.convertPaste("$$\n\\frac{x+1}{2}\n$$",multiline=true))
         assertEquals("[[1,2],[3,4]]",LatexInput.convertPaste("\\begin{bmatrix}1&2\\\\\n3&4\\end{bmatrix}",multiline=true))
+        val boxed="\\[\n\\boxed{r=|\\cos(3\\theta-t)|}\n\\]"
+        assertEquals("r=abs(cos(3theta-t))",LatexInput.convertPaste(boxed,multiline=true))
+        val implicit="\\[\n(x^2+y^2)^4=\n\\left[\n(x^3-3xy^2)\\cos t+\n(3x^2y-y^3)\\sin t\n\\right]^2\n\\]"
+        assertEquals("(x^2+y^2)^4=((x^3-3x*y^2)cos(t)+(3x^2y-y^3)sin(t))^2",LatexInput.convertPaste(implicit,multiline=true))
+        val boxedEdit=LatexInput.convertEdit(Editor("2x+3",2,1),"2\\boxed{x+1}+3")!!
+        assertEquals("2(x+1)+3",boxedEdit.source)
+        assertEquals(6,boxedEdit.cursor)
+        assertNull(LatexInput.convert("xy"))
     }
 
     @Test fun latexConversionMatchesSharedFixturesAndRejectsInvalidInput() {
@@ -36,7 +44,7 @@ class LatexInputTest {
             assertEquals(edit.source.length-2,edit.cursor)
         }
         run { // incompleteOrUnsupportedLatexDoesNotConvert
-            for(source in listOf("\\sqrt[3{5}","\\sqrt[]{5}","\\sqrt[3]{}","\\sqrt[3]{5", "\\sqrt[3]", "\\frac{1}","$$\\unknown{1}$$","$$\\sqrt{5}$")) {
+            for(source in listOf("\\boxed", "\\boxed{}", "\\boxed{x", "\\boxed{|x}", "\\sqrt[3{5}","\\sqrt[]{5}","\\sqrt[3]{}","\\sqrt[3]{5", "\\sqrt[3]", "\\frac{1}","$$\\unknown{1}$$","$$\\sqrt{5}$")) {
                 assertNull(source,LatexInput.convert(source))
             }
             assertNull(LatexInput.convert("1/3+1/6"))

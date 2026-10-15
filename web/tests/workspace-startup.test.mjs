@@ -55,6 +55,13 @@ test('calculator, graph and equation production inputs convert pasted LaTeX imme
   const equation=document.getElementById('equation-source');equation.select();
   paste(equation,'x=\\frac{1}{2}\ny=\\sqrt{2}');assert.equal(equation.value,'x=1/2\ny=sqrt(2)');assert.equal(equation.selectionStart,equation.value.length);
   const coefficient=document.getElementById('equation-a');coefficient.select();paste(coefficient,'\\sqrt{2}');assert.equal(coefficient.value,'sqrt(2)');
+  expression.value='2x+3';expression.setSelectionRange(1,2);
+  paste(expression,'\\boxed{x+1}');assert.equal(expression.value,'2(x+1)+3');assert.equal(expression.selectionStart,6);
+  graph.select();paste(graph,'\\[\n\\boxed{r=|\\cos(3\\theta-t)|}\n\\]');assert.equal(graph.value,'r=abs(cos(3theta-t))');
+  graph.select();paste(graph,'\\[\n(x^2+y^2)^4=\n\\left[\n(x^3-3xy^2)\\cos t+\n(3x^2y-y^3)\\sin t\n\\right]^2\n\\]');
+  assert.equal(graph.value,'(x^2+y^2)^4=((x^3-3x*y^2)cos(t)+(3x^2y-y^3)sin(t))^2');
+  assert.equal(document.getElementById('graph-line-numbers').children.length,1);
+  equation.select();paste(equation,'\\boxed{xy=1}\n\\boxed{y=2}');assert.equal(equation.value,'x*y=1\ny=2');
   window.matchMedia=()=>({matches:false,addEventListener:noop,removeEventListener:noop});
   createAppDialogs({state,ui,persist:noop,calculator,changeMode:noop,pressKey:noop,refreshDisplays:noop,renderMatrix:noop,error:noop,reloadState:noop});
   document.getElementById('settings-dialog').showModal=()=>{};

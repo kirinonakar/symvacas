@@ -150,7 +150,7 @@ export const latexSymbolLabels = Object.fromEntries([
 export function latexInput(input,{prefix='',suffix=''}={}) {
   const functions = new Set(['sin','cos','tan','sec','csc','cot','sinh','cosh','tanh','arcsin','arccos','arctan','ln','exp']);
   const greek = new Set(Object.keys(latexSymbolLabels));
-  const commands = new Set(['operatorname','mathrm','int','sum','prod','binom','begin','lim','frac','dfrac','tfrac','sqrt','log','infty','times','cdot','left','right','quad','qquad','le','leq','ge','geq','ne','neq',...functions,...greek]);
+  const commands = new Set(['boxed','operatorname','mathrm','int','sum','prod','binom','begin','lim','frac','dfrac','tfrac','sqrt','log','infty','times','cdot','left','right','quad','qquad','le','leq','ge','geq','ne','neq',...functions,...greek]);
   let source = input.trim();
   if (!/^\\[[(]|^\$|\^\s*\{/.test(source) && ![...source.matchAll(/\\([A-Za-z]+)/g)].some(match=>commands.has(match[1]))) return input;
   for (const [open,close] of [['\\[','\\]'],['\\(','\\)'],['$$','$$'],['$','$']]) {
@@ -183,7 +183,7 @@ export function latexInput(input,{prefix='',suffix=''}={}) {
     return result;
   }
   function body(text) {
-    let i = 0, result = '';
+    let i = 0, result = '', absolute = false;
     function group(open='{',close='}') {
       while (/\s/.test(text[i] || '\0')) i++;
       if (text[i++] !== open) throw new SyntaxError('Expected LaTeX group');
@@ -213,7 +213,8 @@ export function latexInput(input,{prefix='',suffix=''}={}) {
         const command=/^[A-Za-z]+/.exec(text.slice(i+1))?.[0];
         if (!command) throw new SyntaxError('Expected LaTeX argument');
         i+=command.length+1;
-        if (['frac','dfrac','tfrac','binom'].includes(command)) {group();group();}
+        if (command==='boxed') group();
+        else if (['frac','dfrac','tfrac','binom'].includes(command)) {group();group();}
         else if (command==='sqrt') {skipSpacing();if(text[i]==='[')group('[',']');group();}
         else if (command==='left') {skipSpacing();if(!['(','['].includes(text[i]))throw new SyntaxError('Expected LaTeX fence');group(text[i],text[i]==='('?')':']');}
         else if (command==='log') {skipSpacing();if(text[i]==='_'){i++;argument(true);}argument();}
@@ -312,7 +313,17 @@ export function latexInput(input,{prefix='',suffix=''}={}) {
     }
     while (i < text.length) {
       const c = text[i++];
-      if(c==='_'&&text[i]==='{'){const name=body(group());if(!/^[A-Za-z0-9_]+$/.test(name))throw new SyntaxError('Unsupported LaTeX subscript');result+='_'+name;continue;}
+      if(c==='|'){result+=absolute?')':'abs(';absolute=!absolute;continue;}
+      if(/[A-Za-z]/.test(c)) {
+        const name=c+/^[A-Za-z]*/.exec(text.slice(i))[0];i+=name.length-1;
+        // Bare LaTeX letters are factors; commands and explicit names stay intact.
+        const named=greek.has(name)||functions.has(name)||['log','pi','oo','Ans','true','false','mod'].includes(name)||text.slice(i).trimStart().startsWith('(');
+        if(/[\p{L}_]$/u.test(result.trimEnd())&&name!=='mod')result+='*';
+        result+=named?name:[...name].join('*');
+        if(text[i]==='_'&&text[i+1]!=='{'){const subscript=/^_[A-Za-z0-9_]*/.exec(text.slice(i))[0];result+=subscript;i+=subscript.length;}
+        continue;
+      }
+      if(c==='_'&&text[i]==='{'){const raw=group(),name=/^[A-Za-z0-9_]+$/.test(raw)?raw:body(raw);if(!/^[A-Za-z0-9_]+$/.test(name))throw new SyntaxError('Unsupported LaTeX subscript');result+='_'+name;continue;}
       if(c==='(' || c==='{') {
         i--;
         const raw=group(c,c==='('?')':'}');
@@ -330,7 +341,8 @@ export function latexInput(input,{prefix='',suffix=''}={}) {
       const command = /^[A-Za-z]+/.exec(text.slice(i))?.[0];
       if (!command) throw new SyntaxError('Incomplete LaTeX command');
       i += command.length;
-      if(['operatorname','mathrm'].includes(command)){const name=group();if(!/^[A-Za-z0-9_]+$/.test(name))throw new SyntaxError('Unsupported LaTeX name');result+=name;}
+      if(command==='boxed') result+=`(${body(group())})`;
+      else if(['operatorname','mathrm'].includes(command)){const name=group();if(!/^[A-Za-z0-9_]+$/.test(name))throw new SyntaxError('Unsupported LaTeX name');result+=name;}
       else if(command==='begin') result+=matrix();
       else if(command==='int') {
         const limits=bounds(),[expression,variable]=integralExpression();
@@ -383,7 +395,8 @@ export function latexInput(input,{prefix='',suffix=''}={}) {
       }
       else if (command==='left' || command==='right') {
         skipSpacing();
-        if(command==='left' && text[i]==='['){result+='(';i++;}
+        if(text[i]==='|'){result+=command==='left'?'abs(':')';i++;}
+        else if(command==='left' && text[i]==='['){result+='(';i++;}
         else if(command==='right' && text[i]===']'){result+=')';i++;}
       }
       else if (['quad','qquad'].includes(command)) continue;
@@ -391,12 +404,13 @@ export function latexInput(input,{prefix='',suffix=''}={}) {
         if(/[A-Za-z_]$/.test(result.trimEnd()))result+='*';
         result+=command;
         const following=text.slice(i).trimStart(),nextCommand=/^\\([A-Za-z]+)/.exec(following)?.[1];
-        if(letter(following[0]) || digit(following[0]) || greek.has(nextCommand) || functions.has(nextCommand) || ['frac','dfrac','tfrac','sqrt','binom','log','sum','prod','int','lim'].includes(nextCommand))result+='*';
+        if(letter(following[0]) || digit(following[0]) || greek.has(nextCommand) || functions.has(nextCommand) || ['boxed','frac','dfrac','tfrac','sqrt','binom','log','sum','prod','int','lim'].includes(nextCommand))result+='*';
       }
       else if (['infty','times','cdot'].includes(command)) result += {infty:'oo',times:'*',cdot:'*'}[command];
       else if (['le','leq','ge','geq','ne','neq'].includes(command)) result += {le:'<=',leq:'<=',ge:'>=',geq:'>=',ne:'!=',neq:'!='}[command];
       else throw new SyntaxError(`Unsupported LaTeX command: ${command}`);
     }
+    if(absolute)throw new SyntaxError('Unclosed LaTeX absolute value');
     return result.replace(/\s+/g,'');
   }
   const converted=body(source);
