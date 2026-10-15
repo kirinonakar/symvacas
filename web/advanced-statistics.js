@@ -13,6 +13,26 @@ import {getLanguage,t} from './i18n.js';
 import {renderSurvivalReport} from './survival-report.js';
 import {statisticsResultMarkdown} from './statistics-markdown.js';
 
+export function advancedStatisticsReservedColumns(definition,settings,key,count){
+  const opts=Object.fromEntries(definition.controls.map(field=>[field.key,settings[field.key]??field.default]));
+  const id=definition.id;
+  let roles;
+  if(id==='modelcompare')roles=modelComparisonRoles(opts);
+  else if(['cox','parametricsurvival'].includes(id))roles=['time','event',...(opts.truncation==='entry'?['entry']:[])];
+  else if(id==='survivalanalysis')roles=['time','event',...(opts.grouping==='groups'?['group']:[])];
+  else if(id==='metaregression')roles=opts.layout==='binary'?['eventsA','totalA','eventsB','totalB']:opts.layout==='continuous'?['meanA','sdA','nA','meanB','sdB','nB']:['effect','se'];
+  else if(['logisticcompare','poissonreg','nbreg','glm','ordinal','multinomial','crossvalidate','linearmodel','discriminantanalysis','quantreg','zeroinflated','tobit','robustreg'].includes(id))roles=['response'];
+  else if(id==='manova')roles=['group'];
+  else if(['mediation','moderation'].includes(id))roles=['x','middle','response'];
+  else if(id==='ancova')roles=['group','response'];
+  else roles=['subject','response'];
+  if(['poissonreg','nbreg','glmm','glm'].includes(id)&&opts.adjustment!==undefined&&opts.adjustment!=='none'&&(id!=='glmm'||opts.family!=='binomial'))roles.push('offset');
+  const excluded=['cfa','sem'].includes(id)&&key==='columns'&&opts.groupMode==='multi'?['group']:['predictors','categorical','covariates','responses','basePredictors','addedPredictors'].includes(key)?roles:[];
+  const reserved=excluded.filter(role=>opts[role]!==undefined).map(role=>Number(opts[role])===-1?count-1:Number(opts[role]));
+  if(['logisticcompare','modelcompare'].includes(id)&&key==='addedPredictors')reserved.push(...String(opts.basePredictors??'').split(',').filter(Boolean).map(Number));
+  return [...new Set(reserved.filter(at=>Number.isInteger(at)&&at>=0&&at<count))];
+}
+
 export function interactionPairs(value,predictors=[],columnLabels=[]){
   const text=String(value??'').trim();
   if(!text)return [];
@@ -588,10 +608,7 @@ export function createAdvancedStatistics({state,persist,data,columnLimit,copy,cl
           };
           if(field.type==='columns'){
             const group=element('fieldset'),legend=element('legend',caption);group.append(legend);group.className='form-row statistics-form-columns';
-            const roles=definition.id==='modelcompare'?modelComparisonRoles(opts):definition.id==='logisticcompare'?['response']:definition.id==='manova'?['group']:['mediation','moderation'].includes(definition.id)?['x','middle','response']:definition.id==='ancova'?['group','response']:definition.id==='survivalanalysis'?['time','event',...(opts.grouping==='groups'?['group']:[])]:definition.id==='cox'?['time','event']:['poissonreg','nbreg','glm','ordinal','multinomial','crossvalidate','linearmodel','discriminantanalysis','quantreg','zeroinflated','tobit'].includes(definition.id)?['response']:['subject','response'];
-            if(['poissonreg','nbreg','glmm','glm'].includes(definition.id)&&opts.adjustment!=='none'&&(definition.id!=='glmm'||opts.family!=='binomial'))roles.push('offset');
-            const reserved=['cfa','sem'].includes(definition.id)&&field.key==='columns'&&opts.groupMode==='multi'?[Number(opts.group)]:['predictors','categorical','covariates','responses','basePredictors','addedPredictors'].includes(field.key)?roles.map(key=>Number(opts[key])===-1?count-1:Number(opts[key])):[];
-            if(['logisticcompare','modelcompare'].includes(definition.id)&&field.key==='addedPredictors')reserved.push(...String(opts.basePredictors).split(',').filter(Boolean).map(Number));
+            const reserved=advancedStatisticsReservedColumns(definition,opts,field.key,count);
             const columns=value==='auto'?Array.from({length:count},(_,i)=>i).filter(i=>!reserved.includes(i)):String(value).split(',').filter(Boolean).map(Number);
             const store=element('input');store.type='hidden';store.id=id;store.value=String(value);group.append(store);
             for(let i=0;i<count;i++)if(!reserved.includes(i)){

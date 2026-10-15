@@ -341,22 +341,7 @@ internal fun advancedStatisticsFormSettings(analysis:String,input:String,formsTe
                 Choices(columns,columns.getOrNull(selected ?: -1).orEmpty(),{name->onChange(key,columns.indexOf(name).toString())},translate=false)
             }
             "columns"->{
-                val id=definition.getString("id")
-                val roles=when(id) {
-                    "modelcompare"->modelComparisonRoles((0 until fields.length()).associate {i->val item=fields.getJSONObject(i);item.getString("key") to option(item.getString("key"))})
-                    "cox"->listOf("time","event")
-                    "survivalanalysis"->listOf("time","event")+if(option("grouping")=="groups")listOf("group") else emptyList()
-                    "logisticcompare","poissonreg","nbreg","glm","multinomial","ordinal","crossvalidate","linearmodel","discriminantanalysis","quantreg","zeroinflated","tobit"->listOf("response")
-                    "manova"->listOf("group")
-                    "mediation","moderation"->listOf("x","middle","response")
-                    "ancova"->listOf("group","response")
-                    else->listOf("subject","response")
-                }
-                val offsetRoles=if(id in listOf("poissonreg","nbreg","glmm","glm")&&option("adjustment")!="none"&&(id!="glmm"||option("family")!="binomial"))listOf("offset") else emptyList()
-                val excluded=if(id in listOf("cfa","sem")&&key=="columns"&&option("groupMode")=="multi")listOf("group") else if(key in listOf("predictors","categorical","covariates","responses","basePredictors","addedPredictors"))roles+offsetRoles else emptyList()
-                val reserved=excluded.mapNotNull {option(it).toIntOrNull()?.let {value->if(value==-1)columns.lastIndex else value}}
-                val additional=if(id in listOf("logisticcompare","modelcompare")&&key=="addedPredictors")option("basePredictors").split(',').mapNotNull(String::toIntOrNull) else emptyList()
-                val blocked=reserved+additional
+                val blocked=advancedStatisticsReservedColumns(definition,settings,key,columns.size)
                 val selected=if(value=="auto")columns.indices.filter {it !in blocked} else value.split(',').mapNotNull(String::toIntOrNull)
                 StatisticsSelectionTitle(label,translate=false)
                 Row(Modifier.horizontalScroll(rememberScrollState())) {

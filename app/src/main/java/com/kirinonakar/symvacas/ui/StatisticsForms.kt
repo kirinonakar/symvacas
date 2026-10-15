@@ -2,6 +2,29 @@ package com.kirinonakar.symvacas.ui
 
 import org.json.JSONObject
 
+/** Reserved roles for checkbox fields; never look up a role absent from this form. */
+internal fun advancedStatisticsReservedColumns(definition:JSONObject,settings:JSONObject,key:String,columnCount:Int):Set<Int> {
+    val fields=definition.getJSONArray("controls");val id=definition.getString("id")
+    val opts=(0 until fields.length()).associate {i->val field=fields.getJSONObject(i);val name=field.getString("key");name to settings.optString(name,field.get("default").toString())}
+    val roles=when(id) {
+        "modelcompare"->modelComparisonRoles(opts)
+        "cox","parametricsurvival"->listOf("time","event")+if(opts["truncation"]=="entry")listOf("entry") else emptyList()
+        "survivalanalysis"->listOf("time","event")+if(opts["grouping"]=="groups")listOf("group") else emptyList()
+        "metaregression"->when(opts["layout"]){"binary"->listOf("eventsA","totalA","eventsB","totalB");"continuous"->listOf("meanA","sdA","nA","meanB","sdB","nB");else->listOf("effect","se")}
+        "logisticcompare","poissonreg","nbreg","glm","multinomial","ordinal","crossvalidate","linearmodel","discriminantanalysis","quantreg","zeroinflated","tobit","robustreg"->listOf("response")
+        "manova"->listOf("group")
+        "mediation","moderation"->listOf("x","middle","response")
+        "ancova"->listOf("group","response")
+        else->listOf("subject","response")
+    }
+    val offsets=if(id in listOf("poissonreg","nbreg","glmm","glm")&&opts["adjustment"]!in listOf(null,"none")&&(id!="glmm"||opts["family"]!="binomial"))listOf("offset") else emptyList()
+    val excluded=if(id in listOf("cfa","sem")&&key=="columns"&&opts["groupMode"]=="multi")listOf("group")
+        else if(key in listOf("predictors","categorical","covariates","responses","basePredictors","addedPredictors"))roles+offsets else emptyList()
+    val reserved=excluded.mapNotNull {opts[it]?.toIntOrNull()?.let {at->if(at==-1)columnCount-1 else at}}
+    val additional=if(id in listOf("logisticcompare","modelcompare")&&key=="addedPredictors")opts["basePredictors"].orEmpty().split(',').mapNotNull(String::toIntOrNull) else emptyList()
+    return (reserved+additional).filter {it in 0 until columnCount}.toSet()
+}
+
 /** Map engine predictor positions to the labels of the selected data columns. */
 internal fun advancedStatisticsTermLabels(definition:JSONObject,rows:List<List<String>>,settings:JSONObject,columnLabels:List<String>):Map<String,String> {
     val n=rows.maxOfOrNull {it.size} ?: 0;val id=definition.getString("id")
