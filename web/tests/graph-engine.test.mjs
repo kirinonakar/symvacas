@@ -29,6 +29,43 @@ test('packaged graph modules execute every graph kind in the production WASM wor
   const graph=(graphKind,source,options={})=>execute({action:'graph',graphKind,trees:[parse(source)],
     min:-1,max:1,yMin:-2,yMax:2,angle:'RAD',...options});
 
+  // Reported bare-comma input must fill the intersection, not two independent regions.
+  for(const [source,expectedArea,inside,styles] of [
+    ['-1<x<1, -1<y<x',2,(x,y)=>x>=-1-1e-8&&x<=1+1e-8&&y>=-1-1e-8&&y<=x+1e-8,['dashed','dashed','dashed','dashed']],
+    ['(x^2+y^2)<4, y>=0',2*Math.PI,(x,y)=>x*x+y*y<=4.001&&y>=-1e-8,['dashed','solid']],
+  ]){
+    const result=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:[graphInputTree(source)],
+      min:-3,max:3,yMin:-3,yMax:3,samples:500});
+    assert.deepEqual(result.curveKinds,['inequality']);
+    assert.equal(result.curves.length,1);
+    assert.equal(result.shadings.length,1);
+    const shade=result.shadings[0];
+    assert.equal(shade.sourceIndex,0);
+    assert.deepEqual(shade.boundaryStyles,styles);
+    let area=0;
+    for(const polygon of shade.fill){
+      for(const [x,y] of polygon)assert.ok(inside(x,y),`${source}: ${x},${y}`);
+      area+=Math.abs(polygon.reduce((sum,p,i)=>{const next=polygon[(i+1)%polygon.length];return sum+p[0]*next[1]-p[1]*next[0];},0))/2;
+    }
+    assert.ok(Math.abs(area-expectedArea)<.04,`${source}: area ${area}`);
+  }
+
+  const animatedComma=graphInputTree('-1<x<1, -1<y<ax');
+  for(const a of [0,1e-12,-1e-12,1,-1,2.3,-2.3,4,-4]){
+    const result=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:[animatedComma],
+      min:-10,max:10,yMin:-5,yMax:5,samples:200,parameters:{a}});
+    assert.deepEqual(result.parameters,['a']);
+    const shade=result.shadings[0];
+    assert.equal(shade.fill.length,1);
+    assert.deepEqual(shade.boundaryStyles,['dashed','dashed','dashed','dashed']);
+    const polygon=shade.fill[0];
+    assert.ok(polygon.length<=8);
+    for(const [x,y] of polygon)assert.ok(x>=-1-1e-10&&x<=1+1e-10&&y>=-1-1e-10&&y<=a*x+1e-10);
+    const area=Math.abs(polygon.reduce((sum,p,i)=>{const q=polygon[(i+1)%polygon.length];return sum+p[0]*q[1]-q[0]*p[1];},0))/2;
+    const amplitude=Math.abs(a),expected=amplitude<=1?2:1+(amplitude+1/amplitude)/2;
+    assert.ok(Math.abs(area-expected)<1e-9,`a=${a}: area ${area}`);
+  }
+
   const cartesian=await graph('cartesian','a*x',{parameters:{a:2},derivativeSelected:0});
   assert.equal(cartesian.derivativeCurveIndex,1);
   for(const [x,y] of cartesian.curves[0])assert.ok(Math.abs(y-2*x)<1e-12);

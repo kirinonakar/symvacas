@@ -2,6 +2,7 @@ import {$,value,element,control} from './app-ui.js';
 import {t,getLanguage} from './i18n.js';
 import {parse,latexInput} from './parser.js';
 import {bindMathPaste} from './math-input.js';
+import {bindEquationInput} from './equation-input.js';
 import {statisticsRequest} from './statistics-request.js';
 import {renderFormulas} from './formula-preview.js';
 import {displayNumber} from './display-format.js';
@@ -17,6 +18,7 @@ import {createEquationSteps} from './equation-steps.js';
 
 export function createWorkspaces({state,engine,ui,persist,restoreSelect,requestOptions,isBusy,error,changeMode,replaceInput,insert,evaluate,showResult,showStatisticsResult,clearResult,graphs}) {
   const {toast}=ui;
+  const refreshEquationInput=bindEquationInput($('equation-source'),$('equation-line-numbers'),persist);
   for(const id of ['equation-source','equation-a','equation-b','equation-c','equation-d','equation-variable','equation-extra','equation-initial'])bindMathPaste($(id),{multiline:id==='equation-source',onError:toast});
   const matrix=createMatrixWorkspace({state,persist,restoreSelect,refreshWorkspaceMath,storeExpression:storeWorkspaceExpression,error,changeMode,replaceInput});
   const statistics=createStatisticsWorkspace({state,engine,ui,persist,refreshWorkspaceMath,storeExpression:storeWorkspaceExpression,error,changeMode,replaceInput,graphs,clearResult,onSummary:()=>run("statistics-summary")});
@@ -30,6 +32,7 @@ export function createWorkspaces({state,engine,ui,persist,restoreSelect,requestO
   $('tip-method').onchange=tipMethodControls;tipMethodControls();
 
   function refreshWorkspaceMath(){
+    refreshEquationInput();
     const targets=[['equation-source',()=>equationSource().split(/\r?\n/)],['function-body',()=>[`${value('function-name')}(${value('function-parameters')})=${value('function-body')}`]],['matrix-grid',()=>[matrix.expression()]],['vector-other',()=>[matrix.operandExpression()]]];
     for(const [id,sources] of targets){const input=$(id);let preview=$(id+'-math');if(!preview){preview=element('div','','formula-preview');preview.id=id+'-math';input.closest('label')?.insertAdjacentElement('afterend',preview)||input.insertAdjacentElement('afterend',preview);}try{renderFormulas(preview,sources(),{digits:state.digits});}catch{preview.replaceChildren();preview.hidden=true;}}
   }

@@ -12,12 +12,25 @@ import kotlin.coroutines.resume
 import kotlin.math.pow
 
 internal fun graphInputTree(source:String,kind:String="cartesian",removeComputationLimit:Boolean=false):Expr {
-    val tree=Parser(LatexInput.convert(source) ?: source,removeComputationLimit=removeComputationLimit).parse()
+    val normalized=LatexInput.convert(source) ?: source
+    val tree=try {Parser(normalized,removeComputationLimit=removeComputationLimit).parse()} catch(error:SyntaxException) {
+        // Only graph rows may use bare commas to intersect inequalities.
+        if(kind!="cartesian" || !normalized.contains(','))throw error
+        val constraints=try {Parser("[$normalized]",removeComputationLimit=removeComputationLimit).parse()} catch(_:SyntaxException) {throw error}
+        if(constraints.args.size<2 || !isGraphInequality(constraints))throw error
+        constraints
+    }
     return if(kind=="cartesian")FunctionTransfer.graphExpression(tree)else tree
 }
 
+internal fun isGraphInequality(tree:Expr):Boolean=when(tree.kind) {
+    "group"->isGraphInequality(tree.args[0])
+    "tuple","list"->tree.args.isNotEmpty() && tree.args.all(::isGraphInequality)
+    else->tree.kind=="relation" && tree.value in listOf("<","<=",">",">=")
+}
+
 internal fun graphPlanarKind(tree:Expr):String {
-    if(tree.kind=="relation" && tree.value in listOf("<","<=",">",">="))return "inequality"
+    if(isGraphInequality(tree))return "inequality"
     var body=tree
     if(tree.kind=="relation" && tree.value in listOf("=","==")) {
         val head=tree.args[0]

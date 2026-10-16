@@ -18,6 +18,23 @@ const english={
   'SymvaCAS WebAssembly 과학·CAS·그래프·Python 계산기':'SymvaCAS WebAssembly scientific, CAS, graphing, and Python calculator'
 };
 const korean={
+  "Enter one [x(t),y(t)] pair per line.": "한 줄에 [x(t),y(t)] 쌍을 하나씩 입력하세요.",
+  "Set the t interval in Range. Angles are in radians.": "범위에서 t 구간을 설정하세요. 각도 단위는 라디안입니다.",
+  "Enter one radius expression per line; r= is optional.": "한 줄에 반지름 수식을 하나씩 입력하세요. r=는 생략할 수 있습니다.",
+  "Use t for the angle in radians. Set the θ interval in Range.": "각도 변수는 t, 단위는 라디안입니다. 범위에서 θ 구간을 설정하세요.",
+  "Enter one rule per line using n. For a recurrence, use u(n-1).": "변수 n을 사용해 한 줄에 규칙을 하나씩 입력하세요. 점화식에서는 u(n-1)을 사용합니다.",
+  "For recurrences, enter initial values from n=0, separated by commas.": "점화식의 초기값은 n=0부터 순서대로 쉼표로 구분해 입력하세요.",
+  "Enter z=f(x,y) or F(x,y,z)=0, one surface per line (up to 5).": "z=f(x,y) 또는 F(x,y,z)=0을 한 줄에 하나씩 입력하세요. 최대 5개까지 표시합니다.",
+  "Set x, y and z bounds in Range. Automatic z range uses the y bounds for implicit surfaces.": "범위에서 x, y, z 구간을 설정하세요. 음함수 곡면의 자동 z 범위는 y 범위를 따릅니다.",
+  "Enter one [x(t),y(t),z(t)] triple per line (up to 5).": "한 줄에 [x(t),y(t),z(t)]를 하나씩 입력하세요. 최대 5개까지 표시합니다.",
+  "Enter one derivative rule f(t,y) for dy/dt=f(t,y).": "dy/dt=f(t,y)의 우변 f(t,y)를 하나 입력하세요.",
+  "Enter t₀ and initial y values, separated by commas. Set a t interval containing t₀ in Range.": "t₀를 입력하고 y 초기값들은 쉼표로 구분하세요. 범위에서 t₀를 포함하는 t 구간을 설정하세요.",
+  "Enter one expression per line. Functions, implicit equations, polar curves and parametric pairs can be combined.": "한 줄에 수식을 하나씩 입력하세요. 함수·음함수·극좌표·매개변수 곡선을 함께 표시할 수 있습니다.",
+  "For parametric or polar curves, set the t or θ interval in Range. Angles are in radians.": "매개변수·극좌표 곡선의 t·θ 구간은 범위에서 설정하세요. 각도 단위는 라디안입니다.",
+  "Inequalities shade regions. Separate multiple conditions with commas. < and > use dashed boundaries; <= and >= use solid boundaries.": "부등식은 영역을 채웁니다. 여러 조건은 쉼표(,)로 구분하세요. <와 >는 점선, <=와 >=는 실선 경계입니다.",
+  "Piecewise: {condition:value,...,default}. The first match wins; omit default to leave other values undefined.": "구간별 함수: {조건:값,...,기본값}. 처음 만족하는 조건을 적용하며, 기본값을 생략하면 나머지 구간은 정의되지 않습니다.",
+  "Here, 3 is the default: x<0 gives x²; x>=0 gives 3.": "여기서 3이 기본값입니다. x<0이면 x², 나머지 구간인 x>=0이면 3을 사용합니다.",
+  "Append {condition} to restrict the domain.": "수식 뒤에 {조건}을 붙이면 정의역을 제한합니다.",
   'Could not export the graph':'그래프를 내보낼 수 없습니다.',
   'Use [shade] or [s] for shading. Example: [s] -1<x<1 ,-1<y<x. Between functions: [s] sin(x), cos(x), 0..pi.':'[shade] 또는 [s]로 영역을 표시합니다. 예: [s] -1<x<1 ,-1<y<x. 두 함수 사이: [s] sin(x), cos(x), 0..pi.',
   'Delete graph':'그래프 삭제','Delete derivative curve':'도함수 그래프 삭제','Delete shading':'음영 삭제',

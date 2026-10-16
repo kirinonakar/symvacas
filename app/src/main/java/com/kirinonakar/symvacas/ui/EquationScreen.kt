@@ -69,25 +69,25 @@ import org.json.JSONArray
     Panel("Equation solver","") {
         Choices(listOf("Linear","Quadratic","Cubic","System","General","dsolve","pdsolve"),kind,{m.equationKind=it;m.error=""},translate=false)
         if(kind=="dsolve") {
-            MathField(m.equationOde,"Differential equation",Modifier.fillMaxWidth()){m.equationOde=it}
+            EquationSourceInput(m.equationOde,"Differential equation"){m.equationOde=it}
             EquationInputPreview(m.equationOde,m.inputFont)
             MathField(m.equationOdeFunction,"Dependent function",Modifier.fillMaxWidth()){m.equationOdeFunction=it}
             MathField(m.equationOdeVariable,"Independent variable",Modifier.fillMaxWidth()){m.equationOdeVariable=it}
             MathField(m.equationOdeInitial,"Initial conditions (optional)",Modifier.fillMaxWidth()){m.equationOdeInitial=it}
             Text(tr("Example: y(0)=1 or [y(0)=1,y(1)=2]"),style=MaterialTheme.typography.bodySmall)
         }else if(kind=="pdsolve") {
-            MathField(m.equationPde,"Partial differential equation",Modifier.fillMaxWidth()){m.equationPde=it}
+            EquationSourceInput(m.equationPde,"Partial differential equation"){m.equationPde=it}
             EquationInputPreview(m.equationPde,m.inputFont)
             MathField(m.equationPdeFunction,"Dependent function",Modifier.fillMaxWidth()){m.equationPdeFunction=it}
             Field(m.equationPdeHint,"Hint (optional)",Modifier.fillMaxWidth()){m.equationPdeHint=it}
         }else if(kind=="System") {
-            MathField(equations,"One equation per line",Modifier.fillMaxWidth(),translate=false,multiline=true){m.equationSystem=it}
+            EquationSourceInput(equations,"One equation per line",multiline=true){m.equationSystem=it}
             EquationInputPreview(equations,m.inputFont,multiline=true)
             MathField(variables,"Variables · comma separated",Modifier.fillMaxWidth(),translate=false){m.equationVariables=it}
         }else {
             MathField(variable,"Solve for",Modifier.fillMaxWidth(),translate=false){m.equationVariable=it}
             if(kind=="General") {
-                MathField(equation,"Equation",Modifier.fillMaxWidth(),translate=false){m.equationGeneral=it}
+                EquationSourceInput(equation,"Equation"){m.equationGeneral=it}
                 EquationInputPreview(equation,m.inputFont)
             }
             else {
@@ -119,6 +119,14 @@ import org.json.JSONArray
             displayMode=m.resultDisplayMode,thousandsSeparator=m.thousandsSeparator,displayDigits=m.displayDigits)};SmallAction(if(m.decimal)"Show exact" else "Show decimal",translate=false){m.decimal=!m.decimal}}
         ResultGuidance(m)
         SolutionSteps(m,m.result?.optJSONObject("solutionSteps") ?: m.result?.optJSONObject("equationSteps"))
+    }
+}
+
+@Composable private fun EquationSourceInput(value:String,label:String,multiline:Boolean=false,onValue:(String)->Unit) {
+    Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+        Text(tr(label),style=MaterialTheme.typography.bodySmall)
+        LineNumberedMathInput(value,onValue,tr(label),Modifier.fillMaxWidth(),
+            multiline=multiline,visibleLines=if(multiline)3 else 1)
     }
 }
 

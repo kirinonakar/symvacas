@@ -28,31 +28,54 @@
       <label class="sr-only" for="graph-source">Graph expression</label><div class="graph-source-editor"><div class="graph-line-gutter"><div id="graph-line-numbers"></div></div><textarea id="graph-source" class="code" rows="3" wrap="off" spellcheck="false">sin(x)
 cos(x)</textarea></div>
       <details id="graph-help"><summary>Graph input help</summary>
-        <p class="hint">Expressions · one per line</p>
-        <p class="hint">Log y shows positive values only; coordinates and analyses retain actual y values.</p>
-<p class="hint">Cartesian combines y=x^2, x^2+y^2=9, r=2*cos(3*θ), and (cos(t),sin(t)). Set separate t and θ bounds in Range; each appears when its graph is present.</p>
-<p class="hint">Enter x^2+y^2&lt;4 or y&gt;=x^2-2 to shade directly. Strict inequalities use dashed boundaries; &lt;= and &gt;= use solid boundaries.</p>
-<p class="hint">Use the eye before each formula to show or hide its graph. In 3D, adjust Surface opacity and choose x = c, y = c or z = c for the section slider.</p>
-        <p class="hint">Angle analysis: choose a point for Tangent angle, or two Cartesian curves and an a–b interval for Intersection angle. Results show degrees and radians.</p>
-        <p class="hint">One [x(t),y(t)] pair per line</p>
-        <p class="hint">r(t) · radians · one curve per line</p>
-        <p class="hint">u(n) · use u(n−1) for recurrences</p>
-        <p id="graph-cartesian-help" class="hint">Function / y=f(x) · Implicit / F(x,y)=0 · e.g. x+1, y=x+1, y^2+x^2=1</p>
-        <p><strong>Piecewise functions / domain restrictions</strong></p>
-        <p class="hint">Use {condition:value,condition:value,default}. The first matching condition wins; without a default, unmatched values are undefined.</p>
-        <code>f(x)={x&lt;0:x^2,x&gt;=0:2*x}</code>
-        <p class="hint">Append {condition} to restrict the whole preceding expression. Spaces and outer parentheses are optional; chained inequalities are supported.</p>
-        <pre>y=x^2 {0&lt;=x&lt;=2}
-y=2*x {x&gt;2}</pre>
-        <p class="hint">One curve per line · [shade] / [s] -1&lt;x&lt;1 ,-1&lt;y&lt;x · between functions: [s] f, g</p>
-        <p><strong>Other graph types</strong></p>
-        <p class="hint">Parametric: [cos(t),sin(t)] · Polar: 1+cos(t) (radians) · Sequence: u(n-1)+1 (enter initial values) · 3D surface: z=sin(x)*cos(y) · Differential equation: -y (dy/dt; enter t₀ and initial y values)</p>
-        <p class="hint">3D: z=f(x,y) or F(x,y,z)=0 · x^2+y^2+z^2+sin(4*x)+sin(4*y)+sin(4*z)=a</p>
-        <p class="hint">3D graphs · up to 5 · one per line</p>
-        <p class="hint">3D curve: C(t)=4*(sin(t),cos(t),0.6*sin(2*t)) · [x(t),y(t),z(t)]</p>
-        <p class="hint">3D implicit surfaces use the x, y and z ranges. Auto z uses the y range; other letters become sliders.</p>
-        <p class="hint">Tap to trace · drag to pan · pinch or scroll to zoom</p>
-        <p class="hint">Drag to rotate freely · Pinch to zoom</p>
+        <div data-graph-help-kind="parametric" hidden>
+          <p class="hint">Enter one [x(t),y(t)] pair per line.</p>
+          <pre>[cos(t),sin(t)]</pre>
+          <p class="hint">Set the t interval in Range. Angles are in radians.</p>
+        </div>
+        <div data-graph-help-kind="polar" hidden>
+          <p class="hint">Enter one radius expression per line; r= is optional.</p>
+          <pre>1+cos(t)</pre>
+          <p class="hint">Use t for the angle in radians. Set the θ interval in Range.</p>
+        </div>
+        <div data-graph-help-kind="sequence" hidden>
+          <p class="hint">Enter one rule per line using n. For a recurrence, use u(n-1).</p>
+          <pre>u(n-1)+1</pre>
+          <p class="hint">For recurrences, enter initial values from n=0, separated by commas.</p>
+        </div>
+        <div data-graph-help-kind="surface" hidden>
+          <p class="hint">Enter z=f(x,y) or F(x,y,z)=0, one surface per line (up to 5).</p>
+          <pre>z=sin(x)*cos(y)
+x^2+y^2+z^2=9</pre>
+          <p class="hint">Set x, y and z bounds in Range. Automatic z range uses the y bounds for implicit surfaces.</p>
+        </div>
+        <div data-graph-help-kind="space" hidden>
+          <p class="hint">Enter one [x(t),y(t),z(t)] triple per line (up to 5).</p>
+          <pre>[cos(t),sin(t),t/4]</pre>
+          <p class="hint">Set the t interval in Range. Angles are in radians.</p>
+        </div>
+        <div data-graph-help-kind="differential" hidden>
+          <p class="hint">Enter one derivative rule f(t,y) for dy/dt=f(t,y).</p>
+          <pre>-y</pre>
+          <p class="hint">Enter t₀ and initial y values, separated by commas. Set a t interval containing t₀ in Range.</p>
+        </div>
+        <div data-graph-help-kind="cartesian">
+          <p class="hint">Enter one expression per line. Functions, implicit equations, polar curves and parametric pairs can be combined.</p>
+          <pre>y=x^2
+x^2+y^2=9
+r=2*cos(3*θ)
+[cos(t),sin(t)]</pre>
+          <p class="hint">For parametric or polar curves, set the t or θ interval in Range. Angles are in radians.</p>
+          <p class="hint">Inequalities shade regions. Separate multiple conditions with commas. &lt; and &gt; use dashed boundaries; &lt;= and &gt;= use solid boundaries.</p>
+          <pre>x^2+y^2&lt;4
+-1&lt;x&lt;1, -1&lt;y&lt;x</pre>
+          <p class="hint">Piecewise: {condition:value,...,default}. The first match wins; omit default to leave other values undefined.</p>
+          <pre>f(x)={x&lt;0:x^2,x&gt;=0:2*x}</pre>
+          <pre>f(x)={x&lt;0:x^2,3}</pre>
+          <p class="hint">Here, 3 is the default: x&lt;0 gives x²; x&gt;=0 gives 3.</p>
+          <p class="hint">Append {condition} to restrict the domain.</p>
+          <pre>y=x^2 {0&lt;=x&lt;=2}</pre>
+        </div>
       </details>
       <div class="form-row"><label>Sequence seeds / differential y₀<input id="graph-initial" value="1" placeholder="1, 1"></label><label>t₀<input id="graph-t0" type="number" value="0" step="any"></label></div>
       <div class="graph-toolbar"><button id="graph-zoom-in" aria-label="Zoom in">+</button><button id="graph-zoom-out" aria-label="Zoom out">−</button><button id="graph-fit">Fit Y</button><button id="graph-undo" disabled>Undo</button><button id="graph-reset">Reset</button><button id="graph-axis">x: decimal</button><button id="graph-y-scale" aria-pressed="false">y: linear</button><label class="graph-curve-picker" hidden><span>Selected curve</span><select id="graph-selected"></select></label><div id="graph-derivative-controls" class="graph-derivative-controls"><label class="check"><input id="graph-derivative" type="checkbox"><span id="graph-derivative-label">f1′</span></label><label class="check"><input id="graph-second-derivative" type="checkbox"><span id="graph-second-derivative-label">f1″</span></label></div><button id="graph-save-svg" disabled>Save SVG</button><button id="graph-save-png" disabled>Save PNG</button></div>
@@ -111,7 +134,7 @@ print(calc.integrate(x**2, x, 0, 1))</textarea></label>
     <section class="workspace" data-mode="equation" hidden="">
       <div class="form-row"><label>Method<select id="equation-kind"><option value="solve">Exact solutions / systems</option><option value="nsolve">Numerical solution</option><option value="dsolve">Ordinary differential equation</option><option value="pdsolve">Partial differential equation</option></select></label><button data-run="equation">Solve</button></div>
       <div class="form-row"><label>Equation type<select id="equation-form"><option value="general">General / system</option><option value="1">Linear</option><option value="2">Quadratic</option><option value="3">Cubic</option></select></label><div id="equation-coefficients" class="form-row" hidden=""><label>a<input id="equation-a" value="1"></label><label>b<input id="equation-b" value="-5"></label><label>c<input id="equation-c" value="6"></label><label>d<input id="equation-d" value="0"></label></div></div>
-      <label>Equations · one per line for systems<textarea id="equation-source" rows="3">x^2-5x+6=0</textarea></label><div class="form-row"><label>Variables / unknown function<input id="equation-variable" value="x" placeholder="x,y or y(t)" data-i18nplaceholder="x,y 또는 y(t)"></label><label>Initial bracket / differentiation variable<input id="equation-extra" value="0,1" placeholder="0,1 or t" data-i18nplaceholder="0,1 또는 t"></label><label>Initial conditions (optional)<input id="equation-initial" placeholder="y(0)=1"></label><label>Hint (optional)<input id="equation-hint"></label></div>
+      <label>Equations · one per line for systems<div class="graph-source-editor"><div class="graph-line-gutter"><div id="equation-line-numbers"></div></div><textarea id="equation-source" rows="3" wrap="off" spellcheck="false">x^2-5x+6=0</textarea></div></label><div class="form-row"><label>Variables / unknown function<input id="equation-variable" value="x" placeholder="x,y or y(t)" data-i18nplaceholder="x,y 또는 y(t)"></label><label>Initial bracket / differentiation variable<input id="equation-extra" value="0,1" placeholder="0,1 or t" data-i18nplaceholder="0,1 또는 t"></label><label>Initial conditions (optional)<input id="equation-initial" placeholder="y(0)=1"></label><label>Hint (optional)<input id="equation-hint"></label></div>
       <details id="equation-steps" class="equation-steps" hidden><summary>Step-by-step solution</summary><div id="equation-steps-body"></div></details>
     </section>
     <section class="workspace" data-mode="matrix vector" hidden="">

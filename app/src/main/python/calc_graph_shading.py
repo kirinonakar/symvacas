@@ -260,6 +260,81 @@ def _join_boundary_segments(segments, xmin, xmax, ymin, ymax, logarithmic=False)
 
 
 @lru_cache(maxsize=64)
+def _affine_inequalities(expressions, x, y):
+    """Cache symbolic half-plane coefficients independently of slider values."""
+    coefficients = []
+    try:
+        for expression in expressions:
+            polynomial = s.Poly(expression, x, y)
+            if polynomial.total_degree() > 1: return None
+            coefficients.extend(polynomial.coeff_monomial(term) for term in (x, y, 1))
+    except s.PolynomialError:
+        return None
+    return tuple(coefficients)
+
+
+def _affine_inequality_shading(parts, x, y, sliders, xmin, xmax, ymin, ymax):
+    """Clip one convex polygon; carry edge owners for strict boundary styling."""
+    coefficients = _affine_inequalities(tuple(expr for expr, _ in parts), x, y)
+    if coefficients is None: return None
+    try:
+        values = [_finite_real(value) for value in graph_function(coefficients, (), sliders)()]
+    except (TypeError, ValueError, ZeroDivisionError, OverflowError):
+        return None
+    if any(value is None for value in values): return None
+    # The third field owns the incoming edge. Viewport edges have no owner.
+    polygon = [(xmin, ymin, None), (xmax, ymin, None), (xmax, ymax, None), (xmin, ymax, None)]
+    owners = {}
+    for index, (_, strict) in enumerate(parts):
+        a, b, c = values[index*3:index*3+3]
+        if a == b == 0:
+            if c > 0 or c == 0 and strict: polygon = []; break
+            continue
+        scale = max(abs(a), abs(b), abs(c))
+        a, b, c = a/scale, b/scale, c/scale
+        key = (a, b, c)
+        if key in owners:
+            previous = owners[key]
+            if strict and not parts[previous][1]:
+                polygon = [(px, py, index if owner == previous else owner) for px, py, owner in polygon]
+                owners[key] = index
+            continue
+        owners[key] = index
+        clipped = []
+        before = polygon[-1]
+        before_value = a*before[0]+b*before[1]+c
+        for after in polygon:
+            after_value = a*after[0]+b*after[1]+c
+            if (before_value <= 0) != (after_value <= 0):
+                fraction = before_value/(before_value-after_value)
+                point = (before[0]+fraction*(after[0]-before[0]), before[1]+fraction*(after[1]-before[1]))
+                clipped.append((*point, after[2] if before_value <= 0 else index))
+            if after_value <= 0:
+                owner = after[2]
+                if before_value == after_value == 0 and (owner is None or strict and not parts[owner][1]): owner = index
+                clipped.append((after[0], after[1], owner))
+            before, before_value = after, after_value
+        polygon = clipped
+        if not polygon: break
+    if polygon:
+        polygon = [point for i, point in enumerate(polygon) if point[:2] != polygon[i-1][:2]]
+        if len(polygon) < 3: return None  # Keep existing handling of lines/isolated points.
+        ox, oy = polygon[0][:2]
+        area = sum((p[0]-ox)*(q[1]-oy)-(q[0]-ox)*(p[1]-oy) for p, q in zip(polygon, polygon[1:]+polygon[:1]))
+        if area <= 0: return None
+    boundaries = [[] for _ in parts]
+    for before, after in zip(polygon, polygon[1:]+polygon[:1]):
+        owner = after[2]
+        if owner is not None: boundaries[owner].extend([list(before[:2]), list(after[:2])])
+    curve = []
+    for boundary in boundaries:
+        if curve and boundary: curve.append(None)
+        curve.extend(boundary)
+    return {"mode":"inequality", "fill":[[list(point[:2]) for point in polygon]] if polygon else [],
+            "boundary":boundaries, "boundaryStyles":["dashed" if strict else "solid" for _,strict in parts], "curve":curve}
+
+
+@lru_cache(maxsize=64)
 def _explicit_inequality(expression, x, y):
     """Recognize continuous y half-planes without changing residual signs."""
     try:
@@ -423,6 +498,9 @@ def inequality_shading(parts, x, y, sliders, xmin, xmax, ymin, ymax, samples, lo
     Full cells become horizontal strips to bound transport size. Boundary cells
     retain subcell polygons; no square-free transform may change an inequality's sign.
     """
+    if parts and not logarithmic:
+        affine = _affine_inequality_shading(parts, x, y, sliders, xmin, xmax, ymin, ymax)
+        if affine is not None: return affine
     if 1 <= len(parts) <= 4:
         explicit = _explicit_inequality_shading(parts, x, y, sliders, xmin, xmax, ymin, ymax, samples, logarithmic)
         if explicit is not None: return explicit

@@ -12,6 +12,8 @@ import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.*
 import com.kirinonakar.symvacas.calculator.isImplicitSurface
 import com.kirinonakar.symvacas.calculator.graphShadingBody
+import com.kirinonakar.symvacas.calculator.graphInputTree
+import com.kirinonakar.symvacas.calculator.graphPlanarKind
 import com.kirinonakar.symvacas.math.Parser
 import com.kirinonakar.symvacas.ui.theme.LocalInstrument
 import org.json.JSONObject
@@ -29,6 +31,10 @@ internal fun graphEquationTree(kind:String,source:String,index:Int,displayDigits
         else->"f${index+1}(x)"
     }
     val parsed=runCatching {Parser(source).parse()}.getOrNull()
+    if(kind=="cartesian" && runCatching {graphPlanarKind(parsed ?: graphInputTree(source))}.getOrNull()=="inequality") {
+        val equation=if(parsed==null)"[$source]" else source
+        return if(displayDigits==null)decimalFractionFormulaTree(equation) else regressionFormulaDisplayTree(equation,displayDigits)
+    }
     val equation=if(parsed?.kind=="relation")source else if(kind=="implicit" || kind=="surface" && isImplicitSurface(source) || kind=="cartesian" && parsed?.nodes()?.any {it.kind=="symbol" && it.value=="y"}==true)"$source=0" else if(kind=="cartesian" && parsed?.kind in listOf("tuple","list"))"[x(t),y(t)]=$source" else "$left=$source"
     return if(displayDigits==null)decimalFractionFormulaTree(equation) else regressionFormulaDisplayTree(equation,displayDigits)
 }

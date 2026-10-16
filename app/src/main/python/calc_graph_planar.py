@@ -26,8 +26,17 @@ from calc_graph_contours import scaled_contour
 from calc_graph_radial import radial_contour
 
 
+def is_inequality_tree(tree):
+    kind, args = tree.get("kind"), tree.get("args", [])
+    if kind == "group": return len(args) == 1 and is_inequality_tree(args[0])
+    if kind in ("tuple", "list"): return bool(args) and all(is_inequality_tree(arg) for arg in args)
+    return kind == "relation" and tree.get("value") in ("<", "<=", ">", ">=")
+
+
 def planar_tree_spec(tree):
     """Classify each Cartesian row before building an equation or vector."""
+    if is_inequality_tree(tree):
+        return "inequality", tree
     body = tree
     if tree.get("kind") == "relation" and tree.get("value") in ("=", "=="):
         head, rhs = tree["args"]
@@ -39,12 +48,15 @@ def planar_tree_spec(tree):
             body = rhs
     if body.get("kind") in ("tuple", "list") and len(body.get("args", [])) == 2:
         return "parametric", body
-    if tree.get("kind") == "relation" and tree.get("value") in ("<", "<=", ">", ">="):
-        return "inequality", tree
     return "cartesian", tree
 
 
 def inequality_parts(engine, tree):
+    if tree.get("kind") == "group":
+        return inequality_parts(engine, tree["args"][0])
+    if tree.get("kind") in ("tuple", "list"):
+        parts = [part for arg in tree["args"] for part in inequality_parts(engine, arg)[1]]
+        return None, parts
     # Chained relations are nested AST nodes, not boolean-valued operands.
     if tree.get("kind") != "relation":
         return graph_expressions(engine, [tree], ("x", "y"))[0], []

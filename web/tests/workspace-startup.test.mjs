@@ -121,6 +121,20 @@ function graphFixture(context,{source='a*x',execute,saved={},displayDigits=3}={}
   return {window,get,graphs,requests,errors};
 }
 
+test('bare comma inequalities reach the graph worker as one selectable region',async context=>{
+  const source='-1<x<1, -1<y<x';
+  const {get,graphs,requests,errors}=graphFixture(context,{source:`${source}\ny=x`});
+  await graphs.run();
+  assert.equal(requests.length,1);
+  assert.equal(requests[0].trees.length,2);
+  assert.equal(requests[0].trees[0].args.length,2);
+  assert.deepEqual(requests[0].shadings,[]);
+  assert.equal(get('graph-formulas').children.length,2);
+  assert.ok(get('graph-formulas').firstElementChild.querySelector('.graph-formula-eye'));
+  assert.equal(get('graph-derivative').disabled,true);
+  assert.deepEqual(errors,[]);
+});
+
 
 test('graph discards an analysis response after its source changes',async context=>{
   let complete;

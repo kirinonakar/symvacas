@@ -3,8 +3,24 @@ import {parse,latexInput} from './parser.js';
 import {graphExpression} from './function-transfer.js';
 
 export function graphInputTree(source,kind='cartesian'){
-  const tree=parse(latexInput(source));
+  const normalized=latexInput(source);
+  let tree;
+  try{tree=parse(normalized);}catch(error){
+    // A comma separates constraints only in a Cartesian graph source row.
+    // Parsing a list keeps nested call/piecewise commas and empty items honest.
+    if(kind!=='cartesian'||!normalized.includes(','))throw error;
+    let constraints;
+    try{constraints=parse(`[${normalized}]`);}catch{throw error;}
+    if(constraints.args.length<2||!isGraphInequality(constraints))throw error;
+    tree=constraints;
+  }
   return kind==='cartesian'?graphExpression(tree):tree;
+}
+
+export function isGraphInequality(tree){
+  if(tree.kind==='group')return isGraphInequality(tree.args[0]);
+  if(['tuple','list'].includes(tree.kind))return tree.args.length>0&&tree.args.every(isGraphInequality);
+  return tree.kind==='relation'&&['<','<=','>','>='].includes(tree.value);
 }
 
 export function implicitFormula(source){
@@ -14,9 +30,12 @@ export function implicitFormula(source){
 export function cartesianFormula(source,index=0){
   try{
     const tree=parse(latexInput(source)),hasY=node=>node.kind==='symbol'&&node.value==='y'||(node.args||[]).some(hasY);
-    if(tree.kind==='relation'||['list','tuple'].includes(tree.kind))return source;
+    if(isGraphInequality(tree)||tree.kind==='relation'||['list','tuple'].includes(tree.kind))return source;
     if(hasY(tree))return `${source}=0`;
-  }catch{}
+  }catch{
+    // Bare comma-separated inequalities need delimiters for formula rendering.
+    try{if(isGraphInequality(graphInputTree(source)))return `[${source}]`;}catch{}
+  }
   return `f${index+1}(x)=${source}`;
 }
 
@@ -128,7 +147,7 @@ export function graphVisibilityKeys(sources,kind,role='curve'){
   return sources.map(source=>{const text=source.trim(),n=occurrences.get(text)||0;occurrences.set(text,n+1);return JSON.stringify([kind,role,text,n]);});
 }
 export function planarTreeKind(tree){
-  if(tree.kind==='relation'&&['<','<=','>','>='].includes(tree.value))return 'inequality';
+  if(isGraphInequality(tree))return 'inequality';
   if(tree.kind==='relation'&&['=','=='].includes(tree.value)){
     const [head,body]=tree.args;
     if(['symbol','call'].includes(head.kind)&&head.value==='r')return 'polar';
