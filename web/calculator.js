@@ -17,9 +17,11 @@ import {defineFunction,inputAssignment,resultTarget,resultFunction,removeExpired
 import {$,value,element,control} from './app-ui.js';
 import {renderStatisticsReport,statisticsReportTarget} from './statistics-report.js';
 import {statisticsResultMarkdown} from './statistics-markdown.js';
+import {savedStatisticsDatasets} from './statistics-bindings.js';
 
 export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist,requestOptions,error,changeMode,updateButtons,pressKey,modeDialog,variablesDialog,matrixInsertDialog,graphs,onFunctionsChanged=()=>{},onResultCleared=()=>{},onStatisticsModelWorkflow}) {
   const {toast,openDialog,clipboard}=ui;
+  const execute=(request,settings)=>engine.execute({...request,statisticsDatasets:{...savedStatisticsDatasets(request.tree,{...state,variables:request.variables||state.variables}),...request.statisticsDatasets}},settings);
   let lastResult=null,decimal=false,typing=false,overwrite=false,committed=false,screenExpanded=false,grouping=false,mixed=false,lastResultSource='';
   let calcSession=null,activeHistoryEntry=null,inputAnswer=null,tapeRows=null,tapeFormat='';
   let engineeringConversion=false,engineeringShift=0;
@@ -128,7 +130,7 @@ export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist
       const target=resultTarget(inputTree);
       if(target){
         const tree=evaluationTree(converted.slice(target.expression.start,target.expression.end));
-        const result=await engine.execute({...requestOptions(),tree,functionParameters:target.parameters});
+        const result=await execute({...requestOptions(),tree,functionParameters:target.parameters});
         if(target.name&&result.ok){
           if(!result.resultAst)throw new Error('No reusable result to store.');
           state.functions[target.name]=resultFunction(target.name,target.parameters,result.resultAst);
@@ -152,7 +154,7 @@ export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist
       if(assignment&&!/^[A-Za-z][A-Za-z0-9_]*$/.test(assignment.name))throw new Error('Use a letter followed by letters, digits or underscores');
       if(assignment&&['pi','e','i','I','oo','Ans','c0','hP','hbar','G','qe','NA','kB0','me','mp0'].includes(assignment.name))throw new Error('Reserved constant or answer name');
       const tree=evaluationTree(assignedSource);
-      const result=await engine.execute({...requestOptions(),tree});
+      const result=await execute({...requestOptions(),tree});
       if(assignment&&result.ok){
         if(!result.resultAst)throw new Error('No reusable result to store.');
         const inputs=calcVariables(tree),selfReference=inputs.includes(assignment.name)||calcVariables(tree,state.variables).includes(assignment.name);
@@ -174,7 +176,7 @@ export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist
     schedulePersist();
   }
   function calculationPreviewState() {
-    return JSON.stringify([value('expression'),value('mode'),committed,!!calcSession,inputAnswer,requestOptions()]);
+    return JSON.stringify([value('expression'),value('mode'),committed,!!calcSession,inputAnswer,requestOptions(),state.datasets,state.datasetKinds]);
   }
   function cancelCalculationPreview() {
     clearTimeout(calculationPreviewTimer);calculationPreviewTimer=null;
@@ -203,7 +205,7 @@ export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist
       try {
         if(engine.pending)await engine.pending.promise;
         if(revision!==calculationPreviewRevision||key!==calculationPreviewState()||isBusy()||!engine.ready)return;
-        const result=await engine.execute({...requestOptions(),tree,budget:2},{background:true});
+        const result=await execute({...requestOptions(),tree,budget:2},{background:true});
         if(revision!==calculationPreviewRevision||key!==calculationPreviewState())return;
         if(result.ok){lastResult=result;lastResultSource=source;renderResult();}else clearPreviewResult();
       } catch { /* Incomplete or failed previews leave the input editable. */ }
@@ -251,9 +253,11 @@ export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist
     const field=$('expression'),undo=undoStack();undo.push(field.value);if(undo.length>100)undo.shift();
     const outsideStructure=['after','end'].includes(inputBoundary?.edge)&&inputBoundary.source===field.value&&inputBoundary.position===field.selectionStart&&field.selectionStart===field.selectionEnd;
     if(committed){inputAnswer=null;field.value=!lastResult?.assignment&&(fraction||/^[+\-*/÷^%!∠]/.test(text))?'Ans':'';field.setSelectionRange(field.value.length,field.value.length);committed=false;$('commit-indicator').textContent='';}
-    // RCL fills the list in a catalog template without adding another list level.
-    if(dataset&&field.selectionStart===field.selectionEnd&&
-      /\[\s*$/.test(field.value.slice(0,field.selectionStart))&&/^\s*\]/.test(field.value.slice(field.selectionEnd)))text=text.slice(1,-1);
+    // A dataset reference replaces the empty list supplied by a catalog template.
+    if(dataset&&field.selectionStart===field.selectionEnd){
+      const before=/\[\s*$/.exec(field.value.slice(0,field.selectionStart)),after=/^\s*\]/.exec(field.value.slice(field.selectionEnd));
+      if(before&&after)field.setSelectionRange(before.index,field.selectionEnd+after[0].length);
+    }
     if(text.startsWith('=')){
       const position=functionRelationExit(field.value,field.selectionStart,field.selectionEnd);
       if(position!==null){field.setSelectionRange(position,position);inputBoundary=null;}
@@ -335,7 +339,7 @@ export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist
     if(isBusy())return;
     if(calcSession){await submitCalcValue();return;}
     try{
-      const source=latexInput(state.autoCloseBrackets?closeInputBrackets(value('expression')):value('expression')),tree=evaluationTree(source),names=calcVariables(tree,state.variables);
+      const source=latexInput(state.autoCloseBrackets?closeInputBrackets(value('expression')):value('expression')),tree=evaluationTree(source),names=calcVariables(tree,state.variables).filter(name=>!Object.hasOwn(state.datasets,name));
       if(!names.length){await evaluate(source);return;}
       calcSession={source,tree,names,index:0,undo:[],values:{},previousResult:lastResult,previousCommitted:committed};
       document.documentElement.dataset.calcActive='true';lastResult=null;committed=false;$('answer').replaceChildren();$('expression').value='';calcPrompt();persist();
@@ -354,12 +358,12 @@ export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist
     try{
       const name=session.names[session.index],source=value('expression').trim();
       const tree=source?parse(latexInput(state.autoCloseBrackets?closeInputBrackets(source):source)):Object.hasOwn(state.variables,name)?{kind:'symbol',value:name}:parse('0');
-      const numeric=await engine.execute({...requestOptions(),tree});if(calcSession!==session)return;
+      const numeric=await execute({...requestOptions(),tree});if(calcSession!==session)return;
       if(!numeric.ok){fail(numeric.error);return;}
       if(numeric.symbolic||!numeric.resultAst){fail('Enter a numeric value');return;}
       state.variables[name]=numeric.resultAst;session.values[name]=numeric.exact;persist();
       if(session.index<session.names.length-1){session.index++;session.undo=[];$('expression').value='';calcPrompt();return;}
-      const result=await engine.execute({...requestOptions(),variables:calcBindings(state.variables),tree:session.tree});if(calcSession!==session)return;
+      const result=await execute({...requestOptions(),variables:calcBindings(state.variables),tree:session.tree});if(calcSession!==session)return;
       if(!result.ok){fail(result.error);return;}
       calcSession=null;delete document.documentElement.dataset.calcActive;$('expression').value=session.source;preview();
       showResult({...result,calcValues:session.values},session.source);
@@ -442,10 +446,10 @@ export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist
     }
   }
   async function updateMemory(input) {
-      if(isBusy())return;const source=state.autoCloseBrackets?closeInputBrackets(value('expression')||'0'):value('expression')||'0';try{const operand=committed&&lastResult?.resultAst?lastResult:await engine.execute({...requestOptions(),tree:evaluationTree(source)});if(!operand.ok||!operand.resultAst){error(operand.error||'This result cannot be stored in memory');return;}if(!committed)showResult(operand,source);const result=await engine.execute({...requestOptions(),tree:{kind:'binary',value:input==='M+'?'+':'-',args:[state.variables.M||parse('0'),operand.resultAst]}});if(result.ok&&result.resultAst){state.variables.M=result.resultAst;persist();toast('M에 저장했습니다.');}else error(result.error);}catch(exc){error(exc.message);}
+      if(isBusy())return;const source=state.autoCloseBrackets?closeInputBrackets(value('expression')||'0'):value('expression')||'0';try{const operand=committed&&lastResult?.resultAst?lastResult:await execute({...requestOptions(),tree:evaluationTree(source)});if(!operand.ok||!operand.resultAst){error(operand.error||'This result cannot be stored in memory');return;}if(!committed)showResult(operand,source);const result=await execute({...requestOptions(),tree:{kind:'binary',value:input==='M+'?'+':'-',args:[state.variables.M||parse('0'),operand.resultAst]}});if(result.ok&&result.resultAst){state.variables.M=result.resultAst;persist();toast('M에 저장했습니다.');}else error(result.error);}catch(exc){error(exc.message);}
   }
   async function transformAnswer(source) {
-    if(lastResult?.resultAst){const result=await engine.execute({...requestOptions(),tree:parse(source)});showResult(result);}
+    if(lastResult?.resultAst){const result=await execute({...requestOptions(),tree:parse(source)});showResult(result);}
   }
   function clearPreviewResult(){engineeringConversion=false;engineeringShift=0;syncEngineering();lastResult=null;lastResultSource='';renderStatisticsMenus();$('answer').replaceChildren();$('note').textContent='';solutionSteps.clear();$('result-guidance').replaceChildren();displaySizing.refresh();}
   function clearResult(snapshot=displayedResult()){

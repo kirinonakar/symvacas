@@ -10,7 +10,8 @@ internal object CalculatorVariableActions {
     fun CalculatorModel.performStoreResult(target:FunctionTransfer.ResultTarget,source:String) {
         if(busy)return
         val revision=inputVersion
-        val payload=request().put("tree",JSONObject(target.expression.json())).put("functionParameters",JSONArray(target.parameters))
+        val payload=try {request(tree=JSONObject(target.expression.json())).put("functionParameters",JSONArray(target.parameters))}
+            catch(e:Exception) {error=e.message ?: "Invalid dataset";return}
         job=viewModelScope.launch {
             busy=true
             try {
@@ -51,7 +52,7 @@ internal object CalculatorVariableActions {
                 busy=true
                 try {
                     if(snapshot) {
-                        val response=engine.execute(request().put("tree",sourceTree))
+                        val response=engine.execute(request(tree=sourceTree))
                         if(!response.optBoolean("ok")||!response.has("resultAst")){error=response.optString("error","This result cannot be stored");return@launch}
                         variables=JSONObject(variables.toString()).put(name,response.getJSONObject("resultAst"))
                         if(showResult){result=response.put("note","Stored in $name");dmsDisplay=false;dmsConversion=false}
@@ -78,7 +79,7 @@ internal object CalculatorVariableActions {
                     }
                     if(finishInput){result?.put("assignment",true);committed=true}
                     inputVersion++;resultVersion=-1;error="";save()
-                } finally {busy=false}
+                } catch(e:Exception) {error=e.message ?: "Invalid variable"} finally {busy=false}
             }
         } catch(e: Exception) { error=e.message ?: "Invalid variable" }
     }
@@ -87,7 +88,7 @@ internal object CalculatorVariableActions {
         val expression=source.ifBlank{"0"}
         val tree=try{calculationTree(expression)}catch(e:Exception){error=e.message ?: "Complete the expression";return}
         val revision=inputVersion
-        val operandRequest=request().put("tree",JSONObject(tree.json()))
+        val operandRequest=try {request(tree=JSONObject(tree.json()))}catch(e:Exception){error=e.message ?: "Invalid dataset";return}
         val cached=result?.takeIf{resultSource==expression&&resultVersion==revision&&it.optBoolean("ok")}
         job=viewModelScope.launch {
             busy=true
@@ -97,10 +98,10 @@ internal object CalculatorVariableActions {
                 if(revision==inputVersion&&source==editor.source){if(!committed)commit(source,operand);busy=true}
                 val previous=variables.optJSONObject("M") ?: JSONObject().put("kind","number").put("value","0")
                 val addition=JSONObject().put("kind","binary").put("value",if(direction>0)"+" else "-").put("args",JSONArray().put(previous).put(operand.getJSONObject("resultAst")))
-                val updated=engine.execute(request().put("tree",addition))
+                val updated=engine.execute(request(tree=addition))
                 if(updated.optBoolean("ok")&&updated.has("resultAst")){variables=JSONObject(variables.toString()).put("M",updated.getJSONObject("resultAst"));save()}
                 else error=updated.optString("error","Memory update failed")
-            }finally{busy=false}
+            }catch(e:Exception){error=e.message ?: "Memory update failed"}finally{busy=false}
         }
     }
     fun CalculatorModel.performDefine(name: String, parameters: String, source: String, showResult:Boolean=true,finishInput:Boolean=false) {

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {fork} from 'node:child_process';
 import {parse} from '../parser.js';
 import {statisticsRequest} from '../statistics-request.js';
+import {savedStatisticsDatasets} from '../statistics-bindings.js';
 
 
 test('production WASM runs real roots, domain exclusions, ranks, ODE bounds and large float64 logistic fits',{timeout:60000},async t=>{
@@ -18,6 +19,16 @@ test('production WASM runs real roots, domain exclusions, ranks, ODE bounds and 
   }
   await receive(value=>value.type==='ready');let id=0;
   async function execute(request){const current=++id,pending=receive(value=>value.type==='result'&&value.id===current);worker.send({id:current,request});return (await pending).result;}
+  const saved={datasets:{D1:'value\n0.1\n\n0.2\n1/2',D2:'x,y\n1,2\n2,4\n3,6'},datasetKinds:{D1:'list',D2:'xy'}};
+  for(const [source,expected] of [['sumdata(D1)','4/5'],['mean(D1)','4/15']]){
+    const tree=parse(source),result=await execute({tree,statisticsDatasets:savedStatisticsDatasets(tree,saved)});
+    assert.equal(result.ok,true,result.error);assert.equal(result.exact,expected);
+  }
+  const namedRegression=parse('regression(D2,linear)'),fit=await execute({tree:namedRegression,statisticsDatasets:savedStatisticsDatasets(namedRegression,saved)});
+  assert.equal(fit.ok,true,fit.error);assert.equal(fit.regression.n,3);
+  saved.datasets.D1=Array.from({length:5000},(_,i)=>String(i+1)).join('\n');
+  const namedMean=parse('mean(D1)'),largeMean=await execute({tree:namedMean,statisticsDatasets:savedStatisticsDatasets(namedMean,saved)});
+  assert.equal(largeMean.ok,true,largeMean.error);assert.equal(largeMean.exact,'5001/2');
   for(const source of ['cbrt(-8)','nthroot(-8,3)']){
     const result=await execute({tree:parse(source)});assert.equal(result.ok,true,result.error);assert.equal(result.exact,'-2');
   }

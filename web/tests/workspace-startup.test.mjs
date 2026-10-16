@@ -108,11 +108,12 @@ test('calculator, graph and equation production inputs convert pasted LaTeX imme
   assert.deepEqual(errors,[]);
 });
 
-test('RCL saved statistics fills catalog lists and preserves table dimensions',async context=>{
+test('RCL saved statistics inserts dataset names and replaces empty catalog lists',async context=>{
   let calculator;context.after(()=>calculator?.dispose());
   const {window,state,errors}=fixture(context),document=window.document,noop=()=>{};
   const ui={toast:message=>errors.push(message),openDialog:(_title,content)=>document.getElementById('dialog').replaceChildren(content),clipboard:noop,pickFile:noop};
-  calculator=createCalculator({state,engine:{ready:false},isBusy:()=>false,ui,persist:noop,schedulePersist:noop,requestOptions:()=>({}),error:message=>errors.push(message),changeMode:noop,updateButtons:noop,pressKey:noop,modeDialog:noop,variablesDialog:noop,matrixInsertDialog:noop,graphs:{}});
+  const requests=[],engine={ready:false,execute:async request=>{requests.push(request);return {ok:true,exact:'6',decimal:'6',tree:{kind:'number',value:'6'}};}};
+  calculator=createCalculator({state,engine,isBusy:()=>false,ui,persist:noop,schedulePersist:noop,requestOptions:()=>({}),error:message=>errors.push(message),changeMode:noop,updateButtons:noop,pressKey:noop,modeDialog:noop,variablesDialog:noop,matrixInsertDialog:noop,graphs:{}});
   window.matchMedia=()=>({matches:false,addEventListener:noop,removeEventListener:noop});
   document.getElementById('dialog').close=noop;
   const dialogs=createAppDialogs({state,ui,persist:noop,calculator,changeMode:noop,pressKey:noop,refreshDisplays:noop,renderMatrix:noop,error:message=>errors.push(message),reloadState:noop});
@@ -133,21 +134,30 @@ test('RCL saved statistics fills catalog lists and preserves table dimensions',a
     return field.value;
   }
   for(const name of ['sumdata','mean','median','variance','stdev','mode','skewness','kurtosis','quartiles','stats']){
-    assert.equal(recall(`${name}([|])`),`${name}([1,2,3])`);
-    assert.deepEqual(parse(field.value).args[0].args.map(node=>node.kind),['number','number','number']);
+    assert.equal(recall(`${name}([|])`),`${name}(Sample)`);
+    assert.equal(parse(field.value).args[0].value,'Sample');
   }
-  assert.equal(recall('variance([|],0)'),'variance([1,2,3],0)');
-  assert.equal(recall('correlation([4,5,6],[|])'),'correlation([4,5,6],[1,2,3])');
-  assert.equal(recall('mean([ | ])'),'mean([ 1,2,3 ])');
-  assert.equal(recall('regression([|],linear)','Pairs'),'regression([[1,2],[3,4]],linear)');
-  assert.deepEqual(parse(field.value).args[0].args.map(row=>row.args.length),[2,2]);
-  assert.equal(recall('regression([|],multiple)','Triples'),'regression([[1,2,3],[4,5,6]],multiple)');
-  assert.equal(recall('mean(|)'),'mean([1,2,3])');
-  assert.equal(recall('|'),'[1,2,3]');
-  assert.equal(recall('mean([4,|])'),'mean([4,[1,2,3]])');
-  assert.equal(recall('mean([])|','Sample',[5,7]),'mean([1,2,3])');
-  calculator.showResult({ok:true,exact:'2',decimal:'2',tree:{kind:'number',value:'2'}},'mean([1,2,3])');
-  assert.equal(recall('mean([|])'),'[1,2,3]');
+  assert.equal(recall('variance([|],0)'),'variance(Sample,0)');
+  assert.equal(recall('correlation([4,5,6],[|])'),'correlation([4,5,6],Sample)');
+  assert.equal(recall('mean([ | ])'),'mean(Sample)');
+  assert.equal(recall('regression([|],linear)','Pairs'),'regression(Pairs,linear)');
+  assert.equal(parse(field.value).args[0].value,'Pairs');
+  assert.equal(recall('regression([|],multiple)','Triples'),'regression(Triples,multiple)');
+  assert.equal(recall('mean(|)'),'mean(Sample)');
+  assert.equal(recall('|'),'Sample');
+  assert.equal(recall('mean([4,|])'),'mean([4,Sample])');
+  assert.equal(recall('mean([])|','Sample',[5,7]),'mean(Sample)');
+  calculator.showResult({ok:true,exact:'2',decimal:'2',tree:{kind:'number',value:'2'}},'mean(Sample)');
+  assert.equal(recall('mean([|])'),'Sample');
+  engine.ready=true;calculator.replaceInput('sumdata(Sample)',{uncommit:true});
+  await calculator.evaluate();
+  assert.equal(requests.at(-1).tree.args[0].value,'Sample');
+  assert.deepEqual(requests.at(-1).statisticsDatasets,{Sample:['1','2','3']});
+  state.datasets.Sample='4\n5';calculator.replaceInput('mean(Sample)',{uncommit:true});
+  calculator.handleKey('CALC');
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(calculator.calcActive,false);
+  assert.deepEqual(requests.at(-1).statisticsDatasets,{Sample:['4','5']});
   await new Promise(resolve=>setTimeout(resolve,0));
   assert.deepEqual(errors,[]);
 });

@@ -1,4 +1,4 @@
-self.SYMVACAS_CACHE = 'symvacas-static-1c69486f7a696649';
+self.SYMVACAS_CACHE = 'symvacas-static-2bf86cc278aa2970';
 self.SYMVACAS_ASSETS = [
   "./",
   "./advanced-statistics-schema.js",
@@ -86,6 +86,7 @@ self.SYMVACAS_ASSETS = [
   "./regression-report.js",
   "./regression-roc.js",
   "./result-display.js",
+  "./statistics-bindings.js",
   "./statistics-cluster-worker.js",
   "./statistics-cluster.js",
   "./statistics-comparison-data.js",

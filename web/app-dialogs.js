@@ -4,7 +4,6 @@ import {t,setText,setLanguage,getLanguage,translateDOM,applyTheme} from './i18n.
 import {parse,latexInput} from './parser.js';
 import {renderFormulas} from './formula-preview.js';
 import {astSource} from './ast-source.js';
-import {csvRows,statisticsDatasetSource,statisticsColumnCount,statisticsKindForColumns} from './workspace-commands.js';
 import {downloadFile} from './storage.js';
 import {scientificRows,secondRows,numericRows,topKeys,topFunctions} from './keypad.js';
 import {appVersion} from './app-version.js';
@@ -143,7 +142,7 @@ export function createAppDialogs({state,ui,persist,calculator,changeMode,pressKe
       }
       const datasets=Object.entries(state.datasets);
       if(datasets.length)list.append(element('p',t('Stats data'),'list-heading'));
-      for(const [key,data] of datasets){list.append(control(key,()=>{try{const kind=statisticsColumnCount(state.datasetKinds[key])?state.datasetKinds[key]:statisticsKindForColumns(csvRows(data)[0].length),source=statisticsDatasetSource(data,kind);changeMode('scientific');calculator.insert(source,null,{factor:true,dataset:true});$('dialog').close();}catch(exc){error(exc.message);}}));}
+      for(const [key] of datasets){list.append(control(key,()=>{changeMode('scientific');calculator.insert(key,null,{factor:true,dataset:true});$('dialog').close();}));}
     }
     const assumption=element('select');for(const key of ['none','real','positive','negative','integer','nonzero']){const option=element('option',key);option.value=key;assumption.append(option);}assumption.setAttribute('aria-label',t('Symbol assumption'));
     content.append(name,expression,control('수식 저장',()=>{try{store(parse(latexInput(expression.value)));}catch(exc){toast(exc.message);}}),control('현재 결과 STO',()=>{try{if(!calculator.resultAst())throw new Error('저장 가능한 결과가 없습니다.');store(calculator.resultAst());}catch(exc){toast(exc.message);}}),assumption,control('Set assumption',()=>{if(!/^[A-Za-z][A-Za-z0-9_]*$/.test(name.value)){toast('Enter a valid variable name');return;}state.assumptions[name.value]=assumption.value==='none'?[]:[assumption.value];persist();}),deleteAll,list);render();openDialog('RCL / STO',content);

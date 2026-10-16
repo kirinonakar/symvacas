@@ -55,7 +55,7 @@ private fun storedDataSetNames(dataSets:JSONObject):List<String> = dataSets.keys
         names.forEach {name->
             m.dataSets.optJSONObject(name)?.let {dataSet->
                 StoredDataSetRow(name) {
-                    m.insert(statisticsRecallSource(m.editor,dataSet.optString("csv"),dataSet.optString("kind","list"),m.committed))
+                    m.recallDataSet(name)
                     close()
                 }
             }

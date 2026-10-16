@@ -709,6 +709,10 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
         result?.let {tape=(tape+TapeEntry(editor.source,inputTree()?.toString() ?: "{}",it.toString(),inputAnswer?.toString() ?: "")).takeLast(maxTapeEntries)}
         committed=false;editor=Editor();result=null;dmsDisplay=false;dmsConversion=false;resultSource="";inputAnswer=null
     }
+    fun recallDataSet(name:String) {
+        editor=com.kirinonakar.symvacas.ui.statisticsRecallTarget(editor,committed)
+        insert(name)
+    }
     fun insert(text: String, inside: Int = text.length, operand:Boolean = true) {
         if(!poweredOn)return
         var recordInEdit=true
@@ -837,7 +841,7 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
                     val tree=runCatching {calculationTree(source)}.getOrNull()
                     if(tree!=null && (commitRequested||!requiresExplicitEvaluation(tree,multiArgumentUserFunctions())) && !(mode!="Equations"&&FunctionTransfer.inputAssignment(tree)!=null) && runCatching {FunctionTransfer.resultTarget(tree)}.getOrNull()==null) {
                         previewBusy=true
-                        val response=engine.execute(request().put("tree",JSONObject(tree.json())).put("budget",if(commitRequested)8 else 2))
+                        val response=engine.execute(request(tree=JSONObject(tree.json())).put("budget",if(commitRequested)8 else 2))
                         if(revision==inputVersion && source==editor.source && !committed && calcSession==null) {
                             if(response.optBoolean("ok")) {
                                 result=response;dmsDisplay=response.optBoolean("dms");dmsConversion=false;resultSource=source;resultVersion=revision;error=""
@@ -849,7 +853,7 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
                     if(revision==inputVersion)break
                     delay(50)
                 }
-            } finally {previewBusy=false}
+            } catch(e:Exception) {if(e is CancellationException)throw e;error=e.message ?: "Math ERROR";commitRequested=false;busy=false} finally {previewBusy=false}
         }
     }
     internal fun commit(source:String,response:JSONObject) {
@@ -865,7 +869,9 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
         appendHistory(HistoryEntry(System.currentTimeMillis(),source,response.optString("exact"),response.optString("decimal"),mode,inputTree=inputTree()?.toString() ?: "",response=response.toString(),answer=inputAnswer?.toString() ?: ""))
         save()
     }
-    fun request(action: String = "evaluate") = JSONObject().put("action",action).put("removeComputationLimit",removeComputationLimit).put("precision",precision).put("displayDigits",displayDigits).put("angle",angle).put("variables",JSONObject(variables.toString()).apply{inputAnswer?.let{put("Ans",it)}}).put("functions",functions).put("assumptions",assumptions).put("equationSteps",action=="evaluate" && mode=="Equations").put("solutionSteps",action=="evaluate" && (mode=="Equations" || (mode=="Scientific/CAS" && calcModeStepByStep)))
+    fun request(action: String = "evaluate",tree:JSONObject?=null) = JSONObject().put("action",action).put("removeComputationLimit",removeComputationLimit).put("precision",precision).put("displayDigits",displayDigits).put("angle",angle).put("variables",JSONObject(variables.toString()).apply{inputAnswer?.let{put("Ans",it)}}).put("functions",functions).put("assumptions",assumptions).put("equationSteps",action=="evaluate" && mode=="Equations").put("solutionSteps",action=="evaluate" && (mode=="Equations" || (mode=="Scientific/CAS" && calcModeStepByStep))).apply {
+        if(tree!=null)put("tree",tree).put("statisticsDatasets",savedStatisticsDatasets(tree,dataSets,getJSONObject("variables"),functions,removeComputationLimit))
+    }
     internal fun calculationTree(source:String):Expr {
         val tree=Parser(source,true,removeComputationLimit).parse()
         if(tree.nodes().any {it.kind=="hole"})throw SyntaxException("Complete the empty expression slots",source.length)
@@ -881,7 +887,7 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
             val kind=node.optString("kind")
             val value=node.optString("value")
             if(kind=="symbol") {
-                if(value in constants || value in bound)return false
+                if(value in constants || value in bound || dataSets.has(value))return false
                 val definition=variables.optJSONObject(value)
                 if(definition?.has("start")==true && value !in expanding && collect(definition,bound,expanding+value))return true
                 names+=value
@@ -928,7 +934,7 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
             try {
                 val value=if(tree==null&&existing==null)JSONObject().put("kind","number").put("value","0") else {
                     val valueTree=tree?.let {JSONObject(it.json())} ?: JSONObject().put("kind","symbol").put("value",session.name)
-                    val response=engine.execute(request().put("tree",valueTree))
+                    val response=engine.execute(request(tree=valueTree))
                     if(!response.optBoolean("ok")){error=response.optString("error","Math ERROR");return@launch}
                     if(response.optBoolean("symbolic") || !response.has("resultAst")){error="Enter a numeric value";return@launch}
                     response.getJSONObject("resultAst")
@@ -941,14 +947,14 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
                     calcSession=session.copy(index=session.index+1,input=Editor(),accepted=accepted)
                 } else {
                     val expression=calculationTree(session.source)
-                    val response=engine.execute(request().put("tree",JSONObject(expression.json())))
+                    val response=engine.execute(request(tree=JSONObject(expression.json())))
                     if(response.optBoolean("ok")) {
                         lastCalcValues=accepted;lastCalcSource=session.source
                         calcSession=null;calcUndoHistory=emptyList()
                         commit(session.source,response)
                     } else error=response.optString("error","Math ERROR")
                 }
-            } finally {busy=false}
+            } catch(e:Exception) {if(e is CancellationException)throw e;error=e.message ?: "Math ERROR"} finally {busy=false}
         }
     }
     fun calculate(source: String = editor.source,statisticsTermLabels:Map<String,String> = emptyMap()) {
@@ -985,7 +991,7 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
         job = viewModelScope.launch {
             busy=true; error=""
             try {
-                val response = engine.execute(request().put("tree",JSONObject(tree.json())))
+                val response = engine.execute(request(tree=JSONObject(tree.json())))
                 if(response.optBoolean("ok")) {
                     result=response;dmsDisplay=response.optBoolean("dms");dmsConversion=false
                     resultSource=source;resultVersion=calculationRevision
@@ -997,7 +1003,7 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
                         inputTree=tree.json(),response=response.toString()))
                     save()
                 } else error=response.optString("error","Math ERROR")
-            } finally { busy=false }
+            } catch(e:Exception) {if(e is CancellationException)throw e;error=e.message ?: "Math ERROR"} finally { busy=false }
         }
     }
     fun calculateStatistics(source:String,statisticsTermLabels:Map<String,String> = emptyMap()) =

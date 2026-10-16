@@ -417,14 +417,12 @@ internal fun statisticsDataSource(csv:String,kind:String):String {
     else rows.mapNotNull {it.getOrNull(0)?.takeIf(String::isNotBlank)}.joinToString(",","[","]")
 }
 
-internal fun statisticsRecallSource(editor:Editor,csv:String,kind:String,committed:Boolean=false):String {
-    val literal=statisticsDataSource(csv,kind)
-    if(committed||editor.cursor!=editor.anchor)return literal
+internal fun statisticsRecallTarget(editor:Editor,committed:Boolean=false):Editor {
+    if(committed||editor.cursor!=editor.anchor)return editor
     val caret=editor.cursor
-    // Catalog templates already supply the list brackets; insert only its contents.
-    val emptyList=Regex("\\[\\s*$").containsMatchIn(editor.source.substring(0,caret))&&
-        Regex("^\\s*]").containsMatchIn(editor.source.substring(caret))
-    return if(emptyList)literal.substring(1,literal.length-1) else literal
+    val before=Regex("\\[\\s*$").find(editor.source.substring(0,caret))?:return editor
+    val after=Regex("^\\s*]").find(editor.source.substring(caret))?:return editor
+    return editor.copy(cursor=before.range.first,anchor=caret+after.value.length)
 }
 
 internal fun String.splitCsvRecord():List<String> {
