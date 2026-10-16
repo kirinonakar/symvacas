@@ -29,6 +29,8 @@
 
 Both versions support Korean/English, light/dark/system themes, calculation history, stored variables and editable LaTeX paste. Internal precision is configurable from **3–200 significant digits** (default 30); display precision is separate, and `Ans` and stored variables retain their full value. Trigonometry supports **DEG / RAD / GRAD**.
 
+Adjacent lowercase `x`, `y`, `z` form products: `xy` means `x*y`, `xyz` means `x*y*z`, `xy^2` means `x*y^2`, and `ax` means `a*x`.
+
 In Statistics, a nonzero value that would round to zero at the selected display precision automatically expands to two significant digits, including a trailing zero. At 3 display digits, `0.0000123 → 0.000012`, `0.0000103 → 0.000010`, and `0.0000126 → 0.000013`. This applies to results, p-values, regression equations and their copied text; calculation values remain unchanged.
 
 Enable **Copy as LaTeX** in Setup to copy calculator, graph and equation formulas as LaTeX, including selected input and results. This saved option defaults off; full solution copies retain explanatory text and convert their formulas.

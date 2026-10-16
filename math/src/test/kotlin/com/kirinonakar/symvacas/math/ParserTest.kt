@@ -5,6 +5,30 @@ import org.junit.Test
 
 class ParserTest {
     private fun p(s: String) = Parser(s).parse()
+    @Test fun adjacentCoordinatesAreProductsAndOtherIdentifiersStayWhole() {
+        fun shape(tree:Expr):String = "${tree.kind}:${tree.value}[${tree.args.joinToString(",") {shape(it)}}]"
+        for(source in listOf("xy","xz","yz","xyz","yx","zx","zy","zyx","xx","yy","zz","xxyzz")) {
+            assertEquals(shape(p(source.toList().joinToString("*"))),shape(p(source)))
+            for((offset,factor) in p(source).nodes().filter {it.kind=="symbol"}.withIndex()) {
+                assertEquals(source[offset].toString(),factor.value)
+                assertEquals(offset,factor.start)
+                assertEquals(offset+1,factor.end)
+            }
+        }
+        for((source,explicit) in listOf("2xyz^2" to "2*x*y*z^2","xy(x+1)" to "x*y*(x+1)",
+            "1/xy" to "1/x*y","(xyz)^2" to "(x*y*z)^2","diff(xyz,x)" to "diff(x*y*z,x)",
+            "solve(xy=6,x)" to "solve(x*y=6,x)","z=xy" to "z=x*y",
+            "ax" to "a*x","bx" to "b*x","cx" to "c*x","ay" to "a*y","az" to "a*z",
+            "axy" to "a*x*y","xTE+TRy" to "x*TE+TR*y","xyfoo" to "x*y*foo","abxyzcd" to "ab*x*y*z*cd",
+            "xπ" to "x*pi","yθ" to "y*theta"))
+            assertEquals(source,shape(p(explicit)),shape(p(source)))
+        for(name in listOf("TE","TR","ab","abc","xy1","x_value","xy_z","XYZ","theta","xi","zeta","exp",
+            "byte","day","henry","Hz","kHz","MHz","oz","yd","complex","polynomial","exponential","binary","tukey"))
+            assertEquals(name,Expr("symbol",name,start=0,end=name.length),p(name))
+        assertEquals("exp",p("exp(xy)").value)
+        assertEquals("TR",p("TR(xy)").value)
+        assertEquals("myfunc",p("myfunc(xy)").value)
+    }
     @Test fun solvesetDomainConstantsPreserveArgumentAndSourceBoundaries() {
         for(name in listOf("Reals","Complexes","Integers","Rationals","Naturals","Naturals0")) {
             val source="solveset(sin(x) + 3*cos(x), x, domain=S.$name)"

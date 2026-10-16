@@ -5,6 +5,12 @@ const letter = c => !!c && /\p{L}/u.test(c);
 const digit = c => !!c && /[0-9]/.test(c);
 const numeric = value => /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(value);
 const aliases = {"×":"*", "·":"*", "÷":"/", "−":"-", "π":"pi", "θ":"theta", "∞":"oo", "**":"^", "≤":"<=", "≥":">=", "→":"->"};
+// Existing units and literal calculation options, mirrored in Kotlin's Lexer.
+const namedIdentifiers=new Set(('byte day henry Hz kHz MHz oz yd exp '+
+  'approximate asymptotic bayes bayesian binary cauchy complex density exact exchangeable '+
+  'exponential external family fixed frequency hypergeometric infinity lex nonzero normality '+
+  'oneway polynomial promax sensitivity specificity standardized symbolic tukey varimax yuen yes zeroinflated '+
+  'Daily Weekly Monthly Quarterly Yearly').split(' '));
 function scan(source) {
   if (!computationLimitsRemoved() && source.length > 8192) throw new SyntaxError('Expression exceeds 8192 characters');
   const tokens = [];
@@ -28,6 +34,14 @@ function scan(source) {
       }
     } else if (['<=','>=','!=','==',':=','**','->'].includes(source.slice(start,i+1))) i++;
     const text = source.slice(start,i);
+    // Coordinate letters are factors; preserve other runs, indexed names,
+    // named symbols and function heads.
+    if (text.length>1 && /^\p{L}+$/u.test(text) && /[xyz]/.test(text) &&
+      !Object.hasOwn(latexSymbolLabels,text) && !namedIdentifiers.has(text) &&
+      (/^[xyz]+$/.test(text) || !source.slice(i).trimStart().startsWith('('))) {
+      for (const factor of text.matchAll(/[xyz]|[^xyz]+/g)) tokens.push({text:aliases[factor[0]]||factor[0],start:start+factor.index,end:start+factor.index+factor[0].length,coordinateFactor:true});
+      continue;
+    }
     tokens.push({text: aliases[text] || text, start, end:i});
   }
   tokens.push({text:'', start:i, end:i});
@@ -105,7 +119,7 @@ export function parse(source,{allowHoles=false}={}) {
       if (!numeric(first.text)) fail('Invalid number');
       left = node('number',first.text,[],first.start,first.end);
     } else if (letter(first.text[0])) {
-      if (current().text === '(') {
+      if (current().text === '(' && !first.coordinateFactor) {
         take(); const args = [];
         if (current().text === ')' && first.text !== 'rnd'&&!allowHoles) fail('Enter a function argument');
         if (current().text !== ')' || allowHoles&&first.text!=='rnd') {

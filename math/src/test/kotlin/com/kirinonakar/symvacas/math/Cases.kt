@@ -3,6 +3,12 @@ import java.io.File
 
 fun main(args: Array<String>) {
     val cases=listOf(
+        "xy" to "x*y", "xz" to "x*z", "yz" to "y*z", "xyz" to "x*y*z", "zyx" to "x*y*z",
+        "xx" to "x**2", "2xyz^2" to "2*x*y*z**2", "xy(x+1)" to "x*y*(x + 1)",
+        "diff(xyz,x)" to "y*z", "solve(xy=6,x)" to "{6/y}", "TE+TR" to "TE + TR",
+        "ax" to "a*x", "bx" to "b*x", "cx" to "c*x", "ay" to "a*y", "az" to "a*z",
+        "xTE+TRy" to "TE*x + TR*y", "abxyzcd" to "ab*cd*x*y*z",
+        "convert(1,byte,bit)" to "8", "convert(1,day,h)" to "24", "solve(x^2+1=0,x,complex)" to "{-I, I}",
         "2+3*4" to "14", "1/3+1/6" to "1/2", "sqrt(8)" to "2*sqrt(2)", "sqrt(12)" to "2*sqrt(3)",
         "200+10%" to "220", "200-10%" to "180", "200*10%" to "20", "200/10%" to "2000", "10%" to "1/10",
         "200+(10%)" to "220", "200+(-10%)" to "180", "200+10%+10%" to "242", "(200+10)%" to "21/10",

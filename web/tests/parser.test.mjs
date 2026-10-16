@@ -6,6 +6,30 @@ import {requiresExplicitEvaluation} from '../evaluation-policy.js';
 import {calcVariables} from '../calc-session.js';
 import {functionRelationExit} from '../input-navigation.js';
 
+test('adjacent x/y/z are products while other identifiers stay intact',()=>{
+  const shape=({kind,value,args})=>({kind,value,args:args.map(shape)});
+  for(const source of ['xy','xz','yz','xyz','yx','zx','zy','zyx','xx','yy','zz','xxyzz']){
+    const tree=parse(source);
+    assert.deepEqual(shape(tree),shape(parse([...source].join('*'))),source);
+    const factors=[];
+    const visit=node=>{if(node.kind==='symbol')factors.push(node);node.args.forEach(visit);};
+    visit(tree);
+    assert.deepEqual(factors.map(({value,start,end})=>[value,start,end]),[...source].map((value,i)=>[value,i,i+1]));
+    assert.deepEqual(calcVariables(tree),[...new Set(source)]);
+  }
+  for(const [source,explicit] of [['2xyz^2','2*x*y*z^2'],['xy(x+1)','x*y*(x+1)'],['1/xy','1/x*y'],
+    ['(xyz)^2','(x*y*z)^2'],['diff(xyz,x)','diff(x*y*z,x)'],['solve(xy=6,x)','solve(x*y=6,x)'],['z=xy','z=x*y'],
+    ['ax','a*x'],['bx','b*x'],['cx','c*x'],['ay','a*y'],['az','a*z'],['axy','a*x*y'],
+    ['xTE+TRy','x*TE+TR*y'],['xyfoo','x*y*foo'],['abxyzcd','ab*x*y*z*cd'],['xπ','x*pi'],['yθ','y*theta']])
+    assert.deepEqual(shape(parse(source)),shape(parse(explicit)),source);
+  for(const name of ['TE','TR','ab','abc','xy1','x_value','xy_z','XYZ','theta','xi','zeta','exp',
+    'byte','day','henry','Hz','kHz','MHz','oz','yd','complex','polynomial','exponential','binary','tukey'])
+    assert.deepEqual(parse(name),{kind:'symbol',value:name,args:[],start:0,end:name.length});
+  assert.equal(parse('exp(xy)').value,'exp');
+  assert.equal(parse('TR(xy)').value,'TR');
+  assert.equal(parse('myfunc(xy)').value,'myfunc');
+});
+
 test('solveset domains preserve named arguments, token boundaries and bound variables',()=>{
   for(const name of ['Reals','Complexes','Integers','Rationals','Naturals','Naturals0']){
     const source=`solveset(sin(x) + 3*cos(x), x, domain=S.${name})`,tree=parse(source);

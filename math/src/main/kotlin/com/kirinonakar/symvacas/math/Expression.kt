@@ -13,9 +13,16 @@ fun quote(value: String): String = "\"" + buildString {
 
 class SyntaxException(message: String, val position: Int) : IllegalArgumentException("Syntax ERROR at ${position + 1}: $message")
 
-data class Token(val text: String, val start: Int, val end: Int)
+data class Token(val text: String, val start: Int, val end: Int, val coordinateFactor: Boolean = false)
 
 object Lexer {
+    // Existing units and literal calculation options containing coordinate letters.
+    private val namedIdentifiers = ("byte day henry Hz kHz MHz oz yd exp " +
+        "approximate asymptotic bayes bayesian binary cauchy complex density exact exchangeable " +
+        "exponential external family fixed frequency hypergeometric infinity lex nonzero normality " +
+        "oneway polynomial promax sensitivity specificity standardized symbolic tukey varimax yuen yes zeroinflated " +
+        "Daily Weekly Monthly Quarterly Yearly").split(' ').toSet()
+    private val coordinateFactors = Regex("[xyz]|[^xyz]+")
     fun scan(source: String, removeComputationLimit: Boolean = false): List<Token> {
         if (!removeComputationLimit && source.length > 8192) throw SyntaxException("Expression exceeds 8192 characters", 0)
         val result = mutableListOf<Token>()
@@ -39,6 +46,17 @@ object Lexer {
                 }
             } else if(i < source.length && source.substring(start, i+1) in listOf("<=", ">=", "!=", "==", ":=", "**", "->")) i++
             val raw = source.substring(start, i)
+            // Coordinate letters are factors; keep other letter runs (TE/TR),
+            // indexed names, named symbols and function heads intact.
+            if(raw.length > 1 && raw.all {it.isLetter()} && raw.any {it in "xyz"} &&
+                raw !in LatexInput.symbolLabels && raw !in namedIdentifiers &&
+                (raw.all {it in "xyz"} || !source.substring(i).trimStart().startsWith('('))) {
+                coordinateFactors.findAll(raw).forEach { factor ->
+                    val text=when(factor.value) {"π"->"pi";"θ"->"theta";else->factor.value}
+                    result += Token(text,start+factor.range.first,start+factor.range.last+1,true)
+                }
+                continue
+            }
             result += Token(when(raw) { "×", "·" -> "*"; "÷" -> "/"; "−" -> "-"; "π" -> "pi"; "θ" -> "theta"; "∞" -> "oo"; "**" -> "^"; "≤" -> "<="; "≥" -> ">="; "→" -> "->"; else -> raw }, start, i)
         }
         result += Token("", source.length, source.length)
@@ -158,7 +176,7 @@ class Parser(private val source: String, private val allowHoles: Boolean = false
                 Expr("number", first.text, start = first.start, end = first.end)
             }
             first.text.firstOrNull()?.isLetter() == true -> {
-                if(token.text == "(") {
+                if(token.text == "(" && !first.coordinateFactor) {
                     take(); val args = mutableListOf<Expr>()
                     val emptyCall=token.text==")" && first.text=="rnd"
                     if(token.text==")" && !allowHoles && !emptyCall) fail("Enter a function argument")
