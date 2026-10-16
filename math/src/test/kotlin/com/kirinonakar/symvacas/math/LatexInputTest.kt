@@ -5,6 +5,26 @@ import org.junit.Test
 
 class LatexInputTest {
 
+    @Test fun multilineCasesPreserveBranchesParametersAndPasteSelection() {
+        val (source,expected)=javaClass.getResourceAsStream("/latex-input.tsv")!!.bufferedReader().readLines()
+            .first {it.startsWith("""\operatorname{f}\left(x\right) = \begin{cases}""")}.split('\t')
+        val multiline=source.replace("\\\\ ","\\\\\n")
+        for(text in listOf(source,multiline,"\\[\n$multiline\n\\]")) {
+            assertEquals(expected,LatexInput.convertPaste(text,multiline=true))
+            val definition=Parser(LatexInput.convert(text)!!).parse()
+            assertEquals("f",definition.args[0].value)
+            val tree=definition.args[1]
+            assertEquals("piecewise",tree.kind)
+            assertEquals(2,tree.args.size)
+            assertEquals(setOf("T1","T2","TR","TE","e","x"),tree.nodes().filter {it.kind=="symbol"}.map {it.value}.toSet())
+            assertTrue(tree.args.all {it.args[1].kind=="relation" && it.args[1].args[0].kind=="relation"})
+            val edit=LatexInput.convertEdit(Editor("x^2\nold\ny=0",7,4),"x^2\n$text\ny=0",multiline=true)!!
+            assertEquals("x^2\n$expected\ny=0",edit.source)
+            assertEquals(4+expected.length,edit.cursor)
+        }
+        for(text in listOf("""\begin{cases}x&\end{cases}""","""\begin{cases}x&x<0&1\end{cases}""","""\begin{cases}x&\text{unknown}\end{cases}""","""\begin{cases}x&x<0\end{matrix}"""))assertNull(text,LatexInput.convert(text))
+    }
+
     @Test fun escapedMathFencesAndConsecutiveBlocksPasteAsSeparateExpressions() {
         val implicit="""\\[ (x^2+y^2)^4= \left[ (x^3-3xy^2)\cos t+ (3x^2y-y^3)\sin t \right]^2 \\]"""
         val polar="""\\[ \boxed{r=|\cos(3\theta-t)|} \\]"""

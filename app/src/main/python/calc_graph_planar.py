@@ -12,6 +12,7 @@ from calc_graph_common import (
     graph_expressions,
     graph_function,
     parameter_names,
+    piecewise_boundaries,
     resolved_parameters,
     substitute_parameters,
 )
@@ -118,20 +119,7 @@ def graph_cartesian(engine, request, trees, xmin, xmax):
         function=graph_function(expression, (x,), sliders)
         # Split at explicit branch boundaries, including same-sign jumps and
         # narrow restricted intervals that a uniform grid can entirely miss.
-        boundaries=set()
-        resolved=substitute_parameters(expression,sliders)
-        for piece in resolved.atoms(s.Piecewise):
-            for _,condition in piece.args:
-                for relation in condition.atoms(s.core.relational.Relational):
-                    difference=relation.lhs-relation.rhs
-                    if difference.free_symbols-set((x,)): continue
-                    try:
-                        polynomial=s.Poly(difference,x)
-                        if not 1<=polynomial.degree()<=4: continue
-                        for root in s.solve(difference,x):
-                            value=_finite_real(root)
-                            if value is not None and xmin<value<xmax: boundaries.add(value)
-                    except (s.PolynomialError,NotImplementedError,ValueError): pass
+        boundaries=piecewise_boundaries(expression,x,sliders,xmin,xmax)
         if not boundaries:
             points, parameters = adaptive_samples(function, xmin, xmax, count, "cartesian",screen_bounds=(xmin,xmax,ymin,ymax),logarithmic=bool(request.get("yLog")))
         else:
@@ -176,7 +164,10 @@ def graph_cartesian(engine, request, trees, xmin, xmax):
             natural_shadings.append(region)
             points = region.pop("curve")
             implicit.append(True)
-        elif function is not None and not substitute_parameters(function, sliders).has(s.zoo, s.nan, s.oo, -s.oo):
+        # Piecewise evaluation already catches undefined active branches in the
+        # numeric sampler. Rebinding the whole expression here is expensive and
+        # can discard valid branches when an inactive branch is singular.
+        elif function is not None and (function.has(s.Piecewise) or not substitute_parameters(function, sliders).has(s.zoo, s.nan, s.oo, -s.oo)):
             points = sample(function); implicit.append(False)
         else:
             points = contour_curve(residual, x, y, sliders, xmin, xmax, ymin, ymax, contour_count,bool(request.get("yLog"))); implicit.append(True)

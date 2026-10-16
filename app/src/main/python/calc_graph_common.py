@@ -118,6 +118,48 @@ def substitute_parameters(expression, sliders):
     return expression.subs(sliders) if getattr(expression, "subs", None) else expression
 
 
+@lru_cache(maxsize=64)
+def _piecewise_boundary_polynomials(expression, x):
+    """Compile branch topology once, independently of animated slider values."""
+    polynomials = set()
+    for piece in expression.atoms(s.Piecewise):
+        for _, condition in piece.args:
+            for relation in condition.atoms(s.core.relational.Relational):
+                difference = relation.lhs-relation.rhs
+                try:
+                    polynomial = s.Poly(difference, x)
+                    if 1 <= polynomial.degree() <= 4:
+                        polynomials.add(tuple(polynomial.all_coeffs()))
+                except s.PolynomialError:
+                    pass
+    return tuple(polynomials)
+
+
+def piecewise_boundaries(expression, x, sliders, xmin, xmax):
+    boundaries = set()
+    for coefficients in _piecewise_boundary_polynomials(expression, x):
+        try:
+            values = list(graph_function(coefficients, (), sliders)())
+            if any(_finite_real(value) is None for value in values): continue
+            # Parameter changes may lower the polynomial's degree, including
+            # turning an entire condition into a constant.
+            while values and values[0] == 0: values.pop(0)
+            if len(values) <= 1: continue
+            if len(values) == 2:
+                roots = [-values[1]/values[0]]
+            else:
+                # Retain symbolic root handling for nonlinear branch cuts;
+                # only their coefficients need binding, never the branch body.
+                polynomial = s.Poly.from_list(values, x)
+                roots = s.solve(polynomial.as_expr(), x)
+            for root in roots:
+                value = _finite_real(root)
+                if value is not None and xmin < value < xmax: boundaries.add(value)
+        except (KeyError, s.PolynomialError, NotImplementedError, ValueError, TypeError, ZeroDivisionError, OverflowError):
+            pass
+    return boundaries
+
+
 @lru_cache(maxsize=128)
 def cartesian_curve(expression, x, y):
     """A bare f(x) means y=f(x); equations and expressions using y define contours."""

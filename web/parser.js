@@ -305,27 +305,50 @@ export function latexInput(input,{prefix='',suffix=''}={}) {
       }
       throw new SyntaxError('Expected LaTeX integral differential');
     }
-    function matrix() {
+    function environment() {
       const environment=group();
-      if(!['matrix','pmatrix','bmatrix','Bmatrix','vmatrix','Vmatrix','smallmatrix'].includes(environment))throw new SyntaxError('Unsupported LaTeX environment');
-      const endCommand=`\\end{${environment}}`,end=text.indexOf(endCommand,i);
-      if(end<0)throw new SyntaxError('Unclosed LaTeX matrix');
-      const content=text.slice(i,end);i=end+endCommand.length;
-      const rows=[[]];let start=0,depth=0;
+      const cases=['cases','dcases'].includes(environment);
+      if(!cases&&!['matrix','pmatrix','bmatrix','Bmatrix','vmatrix','Vmatrix','smallmatrix'].includes(environment))throw new SyntaxError('Unsupported LaTeX environment');
+      const stack=[environment],commands=/\\(begin|end)\s*\{([^{}]+)\}/g;
+      commands.lastIndex=i;
+      let end=-1,match;
+      while((match=commands.exec(text))){
+        if(match[1]==='begin')stack.push(match[2]);
+        else if(stack.pop()!==match[2])throw new SyntaxError('Mismatched LaTeX environment');
+        if(!stack.length){end=match.index;break;}
+      }
+      if(end<0)throw new SyntaxError('Unclosed LaTeX environment');
+      const content=text.slice(i,end);i=commands.lastIndex;
+      const rows=[[]];let start=0,depth=0,nested=0;
       for(let j=0;j<content.length;j++) {
+        // Nested cases/matrices own their column and row separators.
+        const command=content[j]==='\\'?/^\\(begin|end)\s*\{[^{}]+\}/.exec(content.slice(j)):null;
+        if(command){nested+=command[1]==='begin'?1:-1;j+=command[0].length-1;continue;}
         if('({['.includes(content[j]))depth++;
         else if(')}]'.includes(content[j]))depth--;
-        if(!depth && (content[j]==='&' || content.startsWith('\\\\',j))) {
-          rows.at(-1).push(body(content.slice(start,j)));
-          if(content[j]!=='&'){rows.push([]);j++;}
+        if(!depth&&!nested && (content[j]==='&' || content.startsWith('\\\\',j))) {
+          rows.at(-1).push(content.slice(start,j).trim());
+          if(content[j]!=='&'){
+            rows.push([]);j++;
+            const spacing=/^\s*\[[^\[\]]*\]/.exec(content.slice(j+1));
+            if(spacing)j+=spacing[0].length;
+          }
           start=j+1;
         }
       }
-      if(content.slice(start).trim())rows.at(-1).push(body(content.slice(start)));
+      if(content.slice(start).trim())rows.at(-1).push(content.slice(start).trim());
       else if(!rows.at(-1).length && rows.length>1)rows.pop();
       else rows.at(-1).push('');
       if(!rows[0].length || rows.some(row=>row.length!==rows[0].length || row.some(cell=>!cell)))throw new SyntaxError('Expected rectangular LaTeX matrix');
-      return `[${rows.map(row=>`[${row.join(',')}]`).join(',')}]`;
+      if(cases){
+        if(rows.some(row=>row.length!==2))throw new SyntaxError('Expected a value and condition in each LaTeX case');
+        return `{${rows.map(([value,condition])=>{
+          condition=condition.replace(/^\\text\s*\{\s*(?:if|for)\s*\}\s*/,'');
+          const otherwise=/^(?:\\text\s*\{\s*(?:otherwise|else)\s*\}|otherwise|else)\s*$/.test(condition);
+          return `${otherwise?'true':body(condition)}:${body(value)}`;
+        }).join(',')}}`;
+      }
+      return `[${rows.map(row=>`[${row.map(body).join(',')}]`).join(',')}]`;
     }
     while (i < text.length) {
       const c = text[i++];
@@ -359,7 +382,7 @@ export function latexInput(input,{prefix='',suffix=''}={}) {
       i += command.length;
       if(command==='boxed') result+=`(${body(group())})`;
       else if(['operatorname','mathrm'].includes(command)){const name=group();if(!/^[A-Za-z0-9_]+$/.test(name))throw new SyntaxError('Unsupported LaTeX name');result+=name;}
-      else if(command==='begin') result+=matrix();
+      else if(command==='begin') result+=environment();
       else if(command==='int') {
         const limits=bounds(),[expression,variable]=integralExpression();
         result+=`integrate(${expression},${variable}${'_' in limits?`,${limits._},${limits['^']}`:''})`;

@@ -153,12 +153,10 @@ object LatexInput {
                 }
                 "begin" -> {
                     val (environment,start)=group(source,index)
-                    require(environment in setOf("matrix","pmatrix","bmatrix","Bmatrix","vmatrix","Vmatrix","smallmatrix")) {"Unsupported LaTeX environment"}
-                    val endCommand="\\end{$environment}"
-                    val end=source.indexOf(endCommand,start)
-                    require(end>=0) {"Unclosed LaTeX matrix"}
-                    append(convertMatrix(source.substring(start,end)))
-                    index=end+endCommand.length
+                    require(environment in setOf("matrix","pmatrix","bmatrix","Bmatrix","vmatrix","Vmatrix","smallmatrix","cases","dcases")) {"Unsupported LaTeX environment"}
+                    val (content,next)=environmentBody(source,start,environment)
+                    append(convertTable(content,environment in setOf("cases","dcases")))
+                    index=next
                 }
                 "int", "sum", "prod" -> {
                     val (limits,next)=bounds(source,index)
@@ -324,24 +322,53 @@ object LatexInput {
         error("Expected LaTeX integral differential")
     }
 
-    private fun convertMatrix(content:String):String {
+    private val environmentCommand=Regex("""\\(begin|end)\s*\{([^{}]+)\}""")
+    private fun environmentBody(source:String,from:Int,environment:String):Pair<String,Int> {
+        val stack=mutableListOf(environment)
+        for(match in environmentCommand.findAll(source,from)) {
+            if(match.groupValues[1]=="begin")stack.add(match.groupValues[2])
+            else require(stack.removeAt(stack.lastIndex)==match.groupValues[2]) {"Mismatched LaTeX environment"}
+            if(stack.isEmpty())return source.substring(from,match.range.first) to match.range.last+1
+        }
+        error("Unclosed LaTeX environment")
+    }
+
+    private fun convertTable(content:String,cases:Boolean):String {
         val rows=mutableListOf(mutableListOf<String>())
-        var index=0;var start=0;var depth=0
+        var index=0;var start=0;var depth=0;var nested=0
         while(index<content.length) {
+            // Nested cases/matrices own their column and row separators.
+            val command=if(content[index]=='\\')environmentCommand.matchAt(content,index) else null
+            if(command!=null) {
+                nested+=if(command.groupValues[1]=="begin")1 else -1
+                index=command.range.last+1;continue
+            }
             val c=content[index]
             if(c in "([{")depth++ else if(c in ")]}")depth--
-            if(depth==0 && (c=='&' || content.startsWith("\\\\",index))) {
-                rows.last().add(convertBody(content.substring(start,index)))
-                if(c!='&') {rows.add(mutableListOf());index++}
+            if(depth==0 && nested==0 && (c=='&' || content.startsWith("\\\\",index))) {
+                rows.last().add(content.substring(start,index).trim())
+                if(c!='&') {
+                    rows.add(mutableListOf());index++
+                    val spacing=Regex("""^\s*\[[^\[\]]*\]""").find(content.substring(index+1))
+                    if(spacing!=null)index+=spacing.value.length
+                }
                 start=index+1
             }
             index++
         }
-        if(content.substring(start).isNotBlank())rows.last().add(convertBody(content.substring(start)))
+        if(content.substring(start).isNotBlank())rows.last().add(content.substring(start).trim())
         else if(rows.last().isEmpty() && rows.size>1)rows.removeAt(rows.lastIndex)
         else rows.last().add("")
         require(rows.first().isNotEmpty() && rows.all {row->row.size==rows.first().size && row.all {it.isNotEmpty()}}) {"Expected rectangular LaTeX matrix"}
-        return rows.joinToString(",","[","]") {it.joinToString(",","[","]")}
+        if(cases) {
+            require(rows.all {it.size==2}) {"Expected a value and condition in each LaTeX case"}
+            return rows.joinToString(",","{","}") {row->
+                val condition=row[1].replace(Regex("""^\\text\s*\{\s*(?:if|for)\s*\}\s*"""),"")
+                val otherwise=condition.matches(Regex("""(?:\\text\s*\{\s*(?:otherwise|else)\s*\}|otherwise|else)\s*"""))
+                (if(otherwise)"true" else convertBody(condition))+":"+convertBody(row[0])
+            }
+        }
+        return rows.joinToString(",","[","]") {row->row.joinToString(",","[","]",transform=::convertBody)}
     }
 
     private fun compactExpression(source:String, from:Int=0, to:Int=source.length):String {

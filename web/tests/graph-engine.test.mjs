@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fork} from 'node:child_process';
+import {readFileSync} from 'node:fs';
 import {parse} from '../parser.js';
 import {graphInputTree} from '../graph-input.js';
 import {graphShadings} from '../graph-shading.js';
@@ -31,6 +32,36 @@ test('packaged graph modules execute every graph kind in the production WASM wor
   const cartesian=await graph('cartesian','a*x',{parameters:{a:2},derivativeSelected:0});
   assert.equal(cartesian.derivativeCurveIndex,1);
   for(const [x,y] of cartesian.curves[0])assert.ok(Math.abs(y-2*x)<1e-12);
+  const [relaxationLatex]=readFileSync(new URL('../../math/src/test/resources/latex-input.tsv',import.meta.url),'utf8')
+    .split(/\r?\n/).find(line=>line.startsWith(String.raw`\operatorname{f}\left(x\right) = \begin{cases}`)).split('\t');
+  const relaxation=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:[graphInputTree(relaxationLatex)],
+    min:-100,max:3400,yMin:-1,yMax:2,samples:300,parameters:{T1:900,T2:80,TR:3000,TE:200}});
+  assert.deepEqual(relaxation.parameters,['T1','T2','TE','TR']);
+  const relaxationPoints=relaxation.curves[0].filter(Boolean);
+  assert.ok(relaxationPoints.some(([x])=>x===0));
+  assert.ok(relaxationPoints.some(([x])=>x===3000));
+  assert.ok(relaxationPoints.some(([x])=>x>3000));
+  for(const [x,y] of relaxationPoints){
+    assert.ok(x>=0&&x<3200);
+    const expected=x<=3000?1-Math.exp(-x/900):(1-Math.exp(-3000/900))*Math.exp(-(x-3000)/80);
+    assert.ok(Math.abs(y-expected)<1e-10);
+  }
+  const animatedPiecewise=graphInputTree('f(x)={0<=x<=TR:1-e^(-x/T1),TR<x<TR+TE:(1-e^(-TR/T1))*e^(-(x-TR)/T2)}');
+  for(const [TR,TE,T1,T2] of [[3,4,1,2],[2.25,.00001,.5,1],[-1,3,2,1],[2,-1,1,2],[0,2,1,2],[3,4,1,0],[3,4,0,2]]){
+    const animated=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:[animatedPiecewise],
+      min:-2,max:10,yMin:-1,yMax:2,samples:200,parameters:{TR,TE,T1,T2}});
+    assert.deepEqual(animated.parameters,['T1','T2','TE','TR']);
+    assert.deepEqual(animated.implicitCurves,[false]);
+    const points=animated.curves[0].filter(Boolean);
+    if(T1===0){assert.deepEqual(points,[]);continue;}
+    assert.ok(points.length>=2);
+    for(const [x,y] of points){
+      const first=0<=x&&x<=TR;
+      assert.ok(first||TR<x&&x<TR+TE&&T2!==0);
+      const expected=first?1-Math.exp(-x/T1):(1-Math.exp(-TR/T1))*Math.exp(-(x-TR)/T2);
+      assert.ok(Math.abs(y-expected)<=1e-9*Math.max(1,Math.abs(expected)));
+    }
+  }
   const heartTree=graphInputTree('(-1+y^2/b^2+x^2/a^2)^3-x^2*y^3/(a^2*b^3)=0');
   for(const [a,b] of [[2,2],[1e-6,2],[2,1e-12],[-1e-80,1e-100],[0,1],[1,0],[-2,-2]]){
     const heart=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:[heartTree],

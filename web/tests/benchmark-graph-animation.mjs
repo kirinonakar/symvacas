@@ -26,11 +26,13 @@ try{
   await receive(value=>value.type==='ready');
   const heart='(-1+y^2/b^2+x^2/a^2)^3-x^2*y^3/(a^2*b^3)=0';
   const rose='(x^2+y^2)^4=((x^3-3x*y^2)cos(t)+(3x^2y-y^3)sin(t))^2';
+  const piecewise='f(x)={0<=x<=TR:1-e^(-x/T1),TR<x<TR+TE:(1-e^(-TR/T1))*e^(-(x-TR)/T2)}';
   const nearZero=[{a:1e-6,b:2},{a:2,b:1e-12},{a:-1e-80,b:1e-100},{a:0,b:1},{a:1,b:0},{a:-2,b:-2}];
-  for(const [sources,scenario] of [[['a*sin(x+b)'],'normal'],[['a*cos(x+b)>y'],'normal'],[['a*sin(x+b)','a*cos(x+b)>y'],'normal'],[['a*sin(x+b)<y<a*cos(x+b)'],'normal'],[[heart],'normal'],[[heart],'near-zero'],[[heart],'edge'],[[heart],'pan-edge'],[[rose],'rotation']]){
-    const parameters=i=>sources[0]===rose?{t:i/20}:scenario==='near-zero'?nearZero[i%nearZero.length]:scenario==='edge'?{a:4.5+.4*Math.sin(i/20),b:4.6+.35*Math.cos(i/20)}:sources[0]===heart?{a:2+Math.sin(i/20),b:1.5+.5*Math.cos(i/20)}:{a:3*Math.sin(i/20),b:i/20};
+  for(const [sources,scenario] of [[[piecewise],'piecewise'],[['a*sin(x+b)'],'normal'],[['a*cos(x+b)>y'],'normal'],[['a*sin(x+b)','a*cos(x+b)>y'],'normal'],[['a*sin(x+b)<y<a*cos(x+b)'],'normal'],[[heart],'normal'],[[heart],'near-zero'],[[heart],'edge'],[[heart],'pan-edge'],[[rose],'rotation']]){
+    if(process.argv.includes('--piecewise')&&scenario!=='piecewise')continue;
+    const parameters=i=>scenario==='piecewise'?{TR:3+.5*Math.sin(i/20),TE:4+.5*Math.cos(i/20),T1:1+.2*Math.sin(i/25),T2:2+.3*Math.cos(i/25)}:sources[0]===rose?{t:i/20}:scenario==='near-zero'?nearZero[i%nearZero.length]:scenario==='edge'?{a:4.5+.4*Math.sin(i/20),b:4.6+.35*Math.cos(i/20)}:sources[0]===heart?{a:2+Math.sin(i/20),b:1.5+.5*Math.cos(i/20)}:{a:3*Math.sin(i/20),b:i/20};
     const request={action:'graph',angle:'RAD',graphKind:'cartesian',trees:sources.map(source=>graphInputTree(source)),min:scenario==='pan-edge'?-1:-10,max:scenario==='pan-edge'?3:10,yMin:scenario==='pan-edge'?-2:-5,yMax:scenario==='pan-edge'?2:5,samples:200};
-    for(let i=0;i<3;i++)await execute({...request,parameters:sources[0]===heart||sources[0]===rose?parameters(i):{a:1+i/10,b:i/10}});
+    for(let i=0;i<3;i++)await execute({...request,parameters:scenario==='piecewise'||sources[0]===heart||sources[0]===rose?parameters(i):{a:1+i/10,b:i/10}});
     const times=[];let result;
     for(let i=0;i<30;i++){
       const start=performance.now();
