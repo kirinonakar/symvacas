@@ -28,7 +28,7 @@ export function createGraphRangeControls({
 
   function displayField(input,number){input.dataset.fullValue=String(number);input.value=displayNumber(number,options().displayDigits);input.dataset.displayValue=input.value;}
 
-  function editField(input){input.onfocus=()=>{if(input.dataset.displayValue===input.value){input.value=input.dataset.fullValue;input.dataset.displayValue=input.value;}};input.onblur=()=>{const number=fieldNumber(input);if(Number.isFinite(number)&&!input.hasAttribute('aria-invalid'))displayField(input,number);};}
+  function editField(input){input.onblur=()=>{const number=fieldNumber(input);if(Number.isFinite(number)&&!input.hasAttribute('aria-invalid'))displayField(input,number);};}
 
   function analysisRange(){
     let type=value('graph-kind');

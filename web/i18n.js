@@ -102,6 +102,7 @@ Object.assign(korean,nativeKorean,{
   "Use visible x range": "보이는 x 범위 사용",
   "Use visible t range": "보이는 t 범위 사용",
   "Slider minimum": "슬라이더 최솟값",
+  "Slider range": "슬라이더 범위",
   "Parameter value": "매개변수 값",
   "Enter a finite value between -1e9 and 1e9": "-1e9부터 1e9 사이의 유한한 값을 입력하세요.",
   "Slider maximum": "슬라이더 최댓값",

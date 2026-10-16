@@ -14,6 +14,8 @@ export function createGraphParameterControls({
   persist,
   state
 }){
+  const expandedRanges=new Set();
+
   function parameterVisibility(){
     const hasParameters=$('graph-parameters').children.length>0;
     $('graph-parameter-actions').hidden=!hasParameters;
@@ -38,6 +40,7 @@ export function createGraphParameterControls({
 
   function parameterControls(names=[],force=false){
     if(!force&&$('graph-parameters').dataset.names===JSON.stringify(names)){syncParameterControls();return;}
+    for(const name of expandedRanges)if(!names.includes(name))expandedRanges.delete(name);
     $('graph-parameters').dataset.names=JSON.stringify(names);
     $('graph-parameters').replaceChildren();
     for(const name of names){if(!(name in state.parameters))state.parameters[name]=1;const limits=state.parameterRanges[name]||[-5,5],label=document.createElement('div'),caption=document.createElement('span'),input=document.createElement('input'),valueInput=document.createElement('input'),ranges=document.createElement('div'),low=document.createElement('input'),high=document.createElement('input');
@@ -58,7 +61,7 @@ export function createGraphParameterControls({
         valueInput.removeAttribute('aria-invalid');$('graph-status').textContent='';syncParameterControls(true);persist();parameterChanged();
       };
       valueInput.oninput=()=>valueInput.removeAttribute('aria-invalid');valueInput.onchange=applyValue;
-      valueInput.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();applyValue();}else if(event.key==='Escape'){event.preventDefault();displayField(valueInput,state.parameters[name]);if(document.activeElement===valueInput){valueInput.value=valueInput.dataset.fullValue;valueInput.dataset.displayValue=valueInput.value;}valueInput.removeAttribute('aria-invalid');}};
+      valueInput.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();applyValue();}else if(event.key==='Escape'){event.preventDefault();displayField(valueInput,state.parameters[name]);valueInput.removeAttribute('aria-invalid');}};
       for(const [index,[field,number,labelText]] of [[low,limits[0],'Slider minimum'],[high,limits[1],'Slider maximum']].entries()){field.type='number';field.step='any';displayField(field,number);editField(field);field.dataset.parameterBound=String(index);field.setAttribute('aria-label',`${t(labelText)}: ${name}`);field.onchange=()=>{const a=fieldNumber(low),b=fieldNumber(high);if(!Number.isFinite(a)||!Number.isFinite(b)||a>=b){onError(t('Enter finite values with minimum < maximum'));return;}state.parameterRanges[name]=[a,b];state.parameters[name]=a+(b-a)/2;if(state.animation)state.animation.phases[name]=parameterPhase(name)-state.animation.phase;parameterControls(names,true);persist();parameterChanged();};}
       const rangeTrack=document.createElement('div');rangeTrack.className='graph-range-slider';rangeTrack.dataset.parameterRange=name;
       for(const index of [0,1]){
@@ -74,7 +77,13 @@ export function createGraphParameterControls({
         boundSlider.onchange=finishDrag;boundSlider.addEventListener('pointercancel',finishDrag);rangeTrack.append(boundSlider);
       }
       bindRangeTrackClick(rangeTrack);
-      label.className='graph-parameter-value';label.append(toggleLabel,input,valueInput);ranges.className='form-row';ranges.append(low,high);const group=document.createElement('div');group.className='graph-parameter';group.append(label,ranges,rangeTrack);$('graph-parameters').append(group);
+      const rangeToggle=document.createElement('button'),rangeControls=document.createElement('div');
+      rangeControls.id=`graph-parameter-range-${encodeURIComponent(name)}`;rangeControls.hidden=!expandedRanges.has(name);
+      rangeToggle.type='button';rangeToggle.className='graph-parameter-range-toggle';rangeToggle.textContent='▾';
+      rangeToggle.setAttribute('aria-label',`${t('Slider range')}: ${name}`);rangeToggle.title=rangeToggle.getAttribute('aria-label');
+      rangeToggle.setAttribute('aria-controls',rangeControls.id);rangeToggle.setAttribute('aria-expanded',String(!rangeControls.hidden));
+      rangeToggle.onclick=()=>{rangeControls.hidden=!rangeControls.hidden;if(rangeControls.hidden)expandedRanges.delete(name);else expandedRanges.add(name);rangeToggle.setAttribute('aria-expanded',String(!rangeControls.hidden));};
+      label.className='graph-parameter-value';label.append(toggleLabel,input,valueInput,rangeToggle);ranges.className='form-row';ranges.append(low,high);rangeControls.append(ranges,rangeTrack);const group=document.createElement('div');group.className='graph-parameter';group.append(label,rangeControls);$('graph-parameters').append(group);
     }
     syncParameterControls();parameterVisibility();
   }

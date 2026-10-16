@@ -49,14 +49,16 @@ import kotlin.math.*
     val korean=isKorean()
     val focusManager=LocalFocusManager.current
     var draft by rememberSaveable(name) {mutableStateOf(value.toString())}
+    var editText by rememberSaveable(name) {mutableStateOf(graphDisplayNumber(draft,displayDigits))}
     var focused by remember {mutableStateOf(false)}
     var invalid by remember {mutableStateOf(false)}
     LaunchedEffect(value) {if(!focused){draft=value.toString();invalid=false}}
     val shape=RoundedCornerShape(6.dp)
-    BasicTextField(if(focused)draft else graphDisplayNumber(draft,displayDigits),{draft=it;invalid=false},Modifier.width(82.dp).height(32.dp).padding(horizontal=3.dp).keepInputVisible()
+    BasicTextField(if(focused)editText else graphDisplayNumber(draft,displayDigits),{editText=it;draft=it;invalid=false},Modifier.width(82.dp).height(32.dp).padding(horizontal=3.dp).keepInputVisible()
         .background(c.display,shape).border(1.dp,if(invalid)MaterialTheme.colorScheme.error else c.grid,shape)
         .onFocusChanged {state->
             val wasFocused=focused;focused=state.isFocused
+            if(!wasFocused&&focused)editText=graphDisplayNumber(draft,displayDigits)
             if(wasFocused&&!focused) {
                 val number=draft.trim().toDoubleOrNull()
                 if(number==null||!number.isFinite()||abs(number)>1e9) {
@@ -74,7 +76,12 @@ import kotlin.math.*
     val c=LocalInstrument.current
     val shape=RoundedCornerShape(7.dp)
     var focused by remember {mutableStateOf(false)}
-    BasicTextField(if(focused)value else graphDisplayNumber(value,displayDigits),onValue,modifier.keepInputVisible().height(40.dp).background(c.display,shape).border(1.dp,c.grid,shape).onFocusChanged {focused=it.isFocused}.semantics {contentDescription=label},
+    var editText by remember {mutableStateOf(graphDisplayNumber(value,displayDigits))}
+    LaunchedEffect(value,displayDigits) {if(!focused||value!=editText)editText=graphDisplayNumber(value,displayDigits)}
+    BasicTextField(if(focused)editText else graphDisplayNumber(value,displayDigits),{editText=it;onValue(it)},modifier.keepInputVisible().height(40.dp).background(c.display,shape).border(1.dp,c.grid,shape).onFocusChanged {
+        if(!focused&&it.isFocused)editText=graphDisplayNumber(value,displayDigits)
+        focused=it.isFocused
+    }.semantics {contentDescription=label},
         textStyle=MaterialTheme.typography.bodyMedium.copy(fontSize=14.sp,color=c.ink),singleLine=true,cursorBrush=SolidColor(c.accent),
         decorationBox={inner->Row(Modifier.fillMaxSize().padding(horizontal=10.dp),verticalAlignment=Alignment.CenterVertically) {
                 Text(label,fontSize=11.sp,color=c.muted)
