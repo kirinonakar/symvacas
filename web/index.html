@@ -64,12 +64,18 @@ y=2*x {x&gt;2}</pre>
       <div id="graph-range-controls">
       <div class="graph-range-actions"><button id="graph-reset-ranges" hidden>Reset ranges</button></div>
       <div class="form-row ranges"><label>x min<input id="graph-min" type="number" value="-10" step="any"></label><label>max<input id="graph-max" type="number" value="10" step="any"></label><label>y min<input id="graph-ymin" type="number" value="-5" step="any"></label><label>max<input id="graph-ymax" type="number" value="5" step="any"></label></div>
+      <div id="graph-surface-z-range" class="graph-surface-z-range" hidden>
+        <label class="check"><input id="graph-auto-z" type="checkbox" checked>Automatic z range</label>
+        <div class="form-row"><label>z min<input id="graph-zmin" type="number" step="any" value="-1"></label><label>z max<input id="graph-zmax" type="number" step="any" value="1"></label></div>
+      </div>
       <div id="graph-mixed-ranges" class="form-row ranges" hidden>
         <div id="graph-t-ranges" class="graph-range-domain" hidden><label>t min<input id="graph-parameter-min" type="number" value="0" step="any"></label><label>max<input id="graph-parameter-max" type="number" value="6.283185307179586" step="any"></label></div>
         <div id="graph-theta-ranges" class="graph-range-domain" hidden><label>θ min<input id="graph-theta-min" type="number" value="0" step="any"></label><label>max<input id="graph-theta-max" type="number" value="6.283185307179586" step="any"></label></div>
       </div>
       <div id="graph-viewport-ranges" class="form-row"><label>View x min<input id="graph-xmin" type="number" value="-10" step="any"></label><label>View x max<input id="graph-xmax" type="number" value="10" step="any"></label></div>
-      <div id="graph-surface-controls" class="graph-surface-panel" hidden="">
+      </div></details>
+      <details id="graph-surface-rendering" class="graph-section" open hidden aria-label="Rendering"><summary>Rendering</summary>
+      <div id="graph-surface-controls" class="graph-surface-panel">
         <div class="graph-surface-appearance">
           <label><span>Rendering</span><select id="graph-surface-render"><option value="wireframe">Wireframe</option><option value="surface" selected>Surface</option><option value="surface-wireframe">Surface + mesh</option></select></label>
           <label><span>Surface color</span><input id="graph-surface-color" type="color" value="#007b68"></label>
@@ -88,12 +94,8 @@ y=2*x {x&gt;2}</pre>
           <label><span>Elevation</span><span class="graph-surface-slider"><input id="graph-elevation" type="range" min="-90" max="90" step="any" value="32"><output id="graph-elevation-value">32°</output></span></label>
           <label><span>Zoom</span><span class="graph-surface-slider"><input id="graph-surface-zoom" type="range" min="0.4" max="3" step="0.01" value="1"><output id="graph-surface-zoom-value">100%</output></span></label>
         </div>
-        <div class="graph-surface-z-range">
-          <label class="check"><input id="graph-auto-z" type="checkbox" checked>Automatic z range</label>
-          <div class="form-row"><label>z min<input id="graph-zmin" type="number" step="any" value="-1"></label><label>z max<input id="graph-zmax" type="number" step="any" value="1"></label></div>
-        </div>
       </div>
-      </div></details>
+      </details>
       <details id="graph-analysis" class="graph-section"><summary>Analyze</summary><div class="form-row"><label>Analysis<select id="graph-analysis-action"><option value="root">Root</option><option value="yintercept">Y-intercept</option><option value="intersection">Intersection</option><option value="intersectionangle">Intersection angle</option><option value="minimum">Minimum</option><option value="maximum">Maximum</option><option value="inflection">Inflection</option><option value="derivative">Derivative</option><option value="tangent">Tangent</option><option value="tangentangle">Tangent angle</option><option value="integral">Integral</option><option value="arclength">Arc length</option><option value="asymptotes">Asymptotes</option></select></label><label>Other curve<select id="graph-other"></select></label><label>a / point<input id="graph-analysis-a" value="-10"></label><label>b<input id="graph-analysis-b" value="10"></label><button id="graph-analysis-visible-range">Use visible x range</button><button id="graph-analysis-run">Analyze</button><button id="graph-analysis-clear">Clear analysis</button></div><label id="graph-tangent-position" hidden="">Tangent position<input id="graph-tangent-slider" type="range" min="-10" max="10" value="0" step="any"></label><div id="graph-analysis-result" class="formula-preview" aria-live="polite"></div></details>
       <details id="graph-coordinates" class="graph-section"><summary>Coordinate table</summary><div id="graph-table" class="scroll-table"></div></details>
     </section>
