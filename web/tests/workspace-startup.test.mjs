@@ -9,6 +9,7 @@ import {createCalculator} from '../calculator.js';
 import {createAppDialogs} from '../app-dialogs.js';
 import {setLanguage} from '../i18n.js';
 import {setComputationLimitsRemoved} from '../computation-limits.js';
+import {parse} from '../parser.js';
 
 // Exercise production workspace construction against the real page HTML.
 // This runs in a DOM emulator, not in the user's browser or a browser automation tool.
@@ -103,6 +104,50 @@ test('calculator, graph and equation production inputs convert pasted LaTeX imme
   calculator.showResult({ok:true,exact:'1/2',decimal:'0.5',tree:fraction,decimalTree:{kind:'number',value:'0.5'}},'1/2');
   document.getElementById('answer-copy').click();assert.equal(copies.pop(),'\\frac{1}{2}');
   option.checked=false;option.dispatchEvent(new window.Event('change'));document.getElementById('answer-copy').click();assert.equal(copies.pop(),'1/2');
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.deepEqual(errors,[]);
+});
+
+test('RCL saved statistics fills catalog lists and preserves table dimensions',async context=>{
+  let calculator;context.after(()=>calculator?.dispose());
+  const {window,state,errors}=fixture(context),document=window.document,noop=()=>{};
+  const ui={toast:message=>errors.push(message),openDialog:(_title,content)=>document.getElementById('dialog').replaceChildren(content),clipboard:noop,pickFile:noop};
+  calculator=createCalculator({state,engine:{ready:false},isBusy:()=>false,ui,persist:noop,schedulePersist:noop,requestOptions:()=>({}),error:message=>errors.push(message),changeMode:noop,updateButtons:noop,pressKey:noop,modeDialog:noop,variablesDialog:noop,matrixInsertDialog:noop,graphs:{}});
+  window.matchMedia=()=>({matches:false,addEventListener:noop,removeEventListener:noop});
+  document.getElementById('dialog').close=noop;
+  const dialogs=createAppDialogs({state,ui,persist:noop,calculator,changeMode:noop,pressKey:noop,refreshDisplays:noop,renderMatrix:noop,error:message=>errors.push(message),reloadState:noop});
+  Object.assign(state.datasets,{Sample:'1\n2\n3',Pairs:'1,2\n3,4',Triples:'1,2,3\n4,5,6'});
+  Object.assign(state.datasetKinds,{Sample:'list',Pairs:'xy',Triples:'xyz'});
+  const field=document.getElementById('expression');
+  state.favorites=['sumdata([])'];
+  document.getElementById('catalog-button').click();
+  document.querySelector('#dialog [data-category="Favorites"]').click();
+  [...document.querySelectorAll('#dialog .catalog-entry button')].find(button=>button.textContent==='sumdata([])').click();
+  assert.equal(field.value,'sumdata([])');
+  assert.equal(field.selectionStart,9);
+  assert.equal(field.selectionEnd,9);
+  function recall(marked,name='Sample',selection=null){
+    const caret=marked.indexOf('|');field.value=marked.replace('|','');field.setSelectionRange(...(selection||[caret,caret]));
+    dialogs.variables();
+    [...document.querySelectorAll('#dialog button')].find(button=>button.textContent===name).click();
+    return field.value;
+  }
+  for(const name of ['sumdata','mean','median','variance','stdev','mode','skewness','kurtosis','quartiles','stats']){
+    assert.equal(recall(`${name}([|])`),`${name}([1,2,3])`);
+    assert.deepEqual(parse(field.value).args[0].args.map(node=>node.kind),['number','number','number']);
+  }
+  assert.equal(recall('variance([|],0)'),'variance([1,2,3],0)');
+  assert.equal(recall('correlation([4,5,6],[|])'),'correlation([4,5,6],[1,2,3])');
+  assert.equal(recall('mean([ | ])'),'mean([ 1,2,3 ])');
+  assert.equal(recall('regression([|],linear)','Pairs'),'regression([[1,2],[3,4]],linear)');
+  assert.deepEqual(parse(field.value).args[0].args.map(row=>row.args.length),[2,2]);
+  assert.equal(recall('regression([|],multiple)','Triples'),'regression([[1,2,3],[4,5,6]],multiple)');
+  assert.equal(recall('mean(|)'),'mean([1,2,3])');
+  assert.equal(recall('|'),'[1,2,3]');
+  assert.equal(recall('mean([4,|])'),'mean([4,[1,2,3]])');
+  assert.equal(recall('mean([])|','Sample',[5,7]),'mean([1,2,3])');
+  calculator.showResult({ok:true,exact:'2',decimal:'2',tree:{kind:'number',value:'2'}},'mean([1,2,3])');
+  assert.equal(recall('mean([|])'),'[1,2,3]');
   await new Promise(resolve=>setTimeout(resolve,0));
   assert.deepEqual(errors,[]);
 });

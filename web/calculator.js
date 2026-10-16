@@ -245,12 +245,15 @@ export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist
     }
     preview();
   };
-  function insert(text,cursor=null,{factor=false,fraction=false,latexSource=null}={}) {
+  function insert(text,cursor=null,{factor=false,fraction=false,latexSource=null,dataset=false}={}) {
     if(isBusy())return;
     if(engineeringConversion)exitEngineering();
     const field=$('expression'),undo=undoStack();undo.push(field.value);if(undo.length>100)undo.shift();
     const outsideStructure=['after','end'].includes(inputBoundary?.edge)&&inputBoundary.source===field.value&&inputBoundary.position===field.selectionStart&&field.selectionStart===field.selectionEnd;
     if(committed){inputAnswer=null;field.value=!lastResult?.assignment&&(fraction||/^[+\-*/÷^%!∠]/.test(text))?'Ans':'';field.setSelectionRange(field.value.length,field.value.length);committed=false;$('commit-indicator').textContent='';}
+    // RCL fills the list in a catalog template without adding another list level.
+    if(dataset&&field.selectionStart===field.selectionEnd&&
+      /\[\s*$/.test(field.value.slice(0,field.selectionStart))&&/^\s*\]/.test(field.value.slice(field.selectionEnd)))text=text.slice(1,-1);
     if(text.startsWith('=')){
       const position=functionRelationExit(field.value,field.selectionStart,field.selectionEnd);
       if(position!==null){field.setSelectionRange(position,position);inputBoundary=null;}

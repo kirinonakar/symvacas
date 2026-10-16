@@ -110,7 +110,17 @@ export function mathDisplay(tree,digits=10,decimal=false,{notation='off',groupin
       }
       case 'rows': return el('mtable',args.map(a => el('mtr',[el('mtd',[a])])));
       case 'row': return row([el('mtext',[],`${value}: `),...args]);
-      case 'list': case 'set': case 'tuple': return fenced(join(args,','),t.kind === 'set' ? '{' : t.kind==='tuple'?'(':'[',t.kind === 'set' ? '}' : t.kind==='tuple'?')':']');
+      case 'list': case 'set': case 'tuple': {
+        const result=fenced(join(args,','),t.kind === 'set' ? '{' : t.kind==='tuple'?'(':'[',t.kind === 'set' ? '}' : t.kind==='tuple'?')':']');
+        // Empty lists have no child operand to anchor their inside caret.
+        if(t.start!==undefined){
+          result.firstElementChild.setAttribute('data-source-start',String(t.start));
+          result.firstElementChild.setAttribute('data-source-end',String(t.start+1));
+          result.lastElementChild.setAttribute('data-source-start',String(t.end-1));
+          result.lastElementChild.setAttribute('data-source-end',String(t.end));
+        }
+        return result;
+      }
       case 'quantity': return row([...args,el('mtext',[],` ${value}`)]);
       case 'dms': return row(args.flatMap((a,i) => [a,operator(['°','′','″'][i])]));
       case 'symbol': return el('mi',[],latexSymbolLabels[value]||{oo:'∞',E:'e',I:'i'}[value]||value);

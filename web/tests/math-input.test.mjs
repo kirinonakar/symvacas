@@ -4,6 +4,32 @@ import {latexInput,parse} from '../parser.js';
 import {latexPaste} from '../math-input.js';
 import {readFileSync} from 'node:fs';
 import {graphInputTree} from '../graph-input.js';
+import {JSDOM} from 'jsdom';
+import {expressionInputDisplay} from '../expression-display.js';
+import {markInputCursor} from '../input-cursor.js';
+
+test('empty catalog lists draw the caret between their brackets',context=>{
+  const dom=new JSDOM('<body></body>'),previous=globalThis.document;
+  globalThis.document=dom.window.document;
+  context.after(()=>{dom.window.close();globalThis.document=previous;});
+  const box=(left,right)=>({left,right,top:0,bottom:24,width:right-left,height:24});
+  for(const source of ['sumdata([])','mean([])','covariance([],[])']){
+    for(const match of source.matchAll(/\[\]/g)){
+      const frame=expressionInputDisplay(source),start=match.index,end=start+2;
+      document.body.replaceChildren(frame);
+      // Known bracket bounds make this a geometry regression, without a browser.
+      frame.getBoundingClientRect=()=>box(0,200);
+      const list=frame.querySelector(`mrow[data-source-start="${start}"][data-source-end="${end}"]`);
+      list.getBoundingClientRect=()=>box(80,120);
+      list.firstElementChild.getBoundingClientRect=()=>box(80,90);
+      list.lastElementChild.getBoundingClientRect=()=>box(110,120);
+      for(const [position,left] of [[start,80],[start+1,90],[end,120]]){
+        const marker=markInputCursor(frame,source,position);
+        assert.equal(parseFloat(marker.style.left),left,`${source} at ${position}`);
+      }
+    }
+  }
+});
 
 const implicit=String.raw`\\[ (x^2+y^2)^4= \left[ (x^3-3xy^2)\cos t+ (3x^2y-y^3)\sin t \right]^2 \\]`;
 const polar=String.raw`\\[ \boxed{r=|\cos(3\theta-t)|} \\]`;

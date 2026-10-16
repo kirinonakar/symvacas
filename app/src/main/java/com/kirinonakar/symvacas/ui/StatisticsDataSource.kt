@@ -419,15 +419,12 @@ internal fun statisticsDataSource(csv:String,kind:String):String {
 
 internal fun statisticsRecallSource(editor:Editor,csv:String,kind:String,committed:Boolean=false):String {
     val literal=statisticsDataSource(csv,kind)
-    if(kind!="xy"||committed||literal=="[]"||editor.cursor!=editor.anchor)return literal
+    if(committed||editor.cursor!=editor.anchor)return literal
     val caret=editor.cursor
-    if(editor.source.getOrNull(caret-1)!='['||editor.source.getOrNull(caret)!=']')return literal
-    val regressionList=editor.tree()?.nodes()?.any {node->
-        node.kind=="call"&&node.value=="regression"&&node.args.firstOrNull()?.let {arg->
-            arg.kind=="list"&&arg.start==caret-1&&arg.end==caret+1
-        }==true
-    }==true
-    return if(regressionList)literal.substring(1,literal.length-1) else literal
+    // Catalog templates already supply the list brackets; insert only its contents.
+    val emptyList=Regex("\\[\\s*$").containsMatchIn(editor.source.substring(0,caret))&&
+        Regex("^\\s*]").containsMatchIn(editor.source.substring(caret))
+    return if(emptyList)literal.substring(1,literal.length-1) else literal
 }
 
 internal fun String.splitCsvRecord():List<String> {
