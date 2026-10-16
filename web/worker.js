@@ -2,7 +2,7 @@
  * boundary and works without SharedArrayBuffer or COOP/COEP headers. */
 import {loadPyodide} from './vendor/pyodide.mjs';
 import {fetchEngineAsset} from './engine-fetch.js';
-import {installEngine} from './engine-bootstrap.js';
+import {initializeEngine} from './engine-bootstrap.js';
 
 let pyodide;
 let waitingInput=null,inputCounter=0;
@@ -20,9 +20,11 @@ const ready = (async () => {
   postMessage({type:'status',message:'WebAssembly 런타임 로딩…'});
   // The module loader resolves its adjacent runtime assets in browsers and Node.
   const runtimeURL=new URL('./vendor/',import.meta.url);
-  pyodide = await loadPyodide({...(runtimeURL.protocol!=='file:'?{indexURL:runtimeURL.href}:{}),stdout:message=>console.log(message),stderr:message=>console.error(message)});
-  postMessage({type:'status',message:'SymPy 계산 엔진 로딩…'});
-  await installEngine(pyodide,{runtimeURL,engineURL:new URL('./engine.zip',import.meta.url)});
+  pyodide = await initializeEngine(
+    options=>loadPyodide({...options,...(runtimeURL.protocol!=='file:'?{indexURL:runtimeURL.href,packageBaseUrl:runtimeURL.href}:{}),stdout:message=>console.log(message),stderr:message=>console.error(message)}),
+    {runtimeURL,engineURL:new URL('./engine.zip',import.meta.url)},
+    ()=>postMessage({type:'status',message:'SymPy 계산 엔진 로딩…'})
+  );
   postMessage({type:'ready',version:pyodide.version});
   } finally {self.fetch=originalFetch;}
 })();
