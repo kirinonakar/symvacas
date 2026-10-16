@@ -15,8 +15,9 @@ def groups(a): return [vector(v,2) for v in a]
 def oneway(g):
     require(len(g) >= 2, 'Enter at least two groups')
     n = sum(map(len,g)); overall = mean(sum(g,[]))
-    between = sum(len(x)*(mean(x)-overall)**2 for x in g)
-    within = sum(sum((v-mean(x))**2 for v in x) for x in g)
+    centers = [mean(x) for x in g]
+    between = sum(len(x)*(center-overall)**2 for x,center in zip(g,centers))
+    within = sum(sum((v-center)**2 for v in x) for x,center in zip(g,centers))
     require(within > 0, 'Within-group variation is required')
     f = (between/(len(g)-1))/(within/(n-len(g)))
     return {'F':f,'df1':len(g)-1,'df2':n-len(g),'p':float(_f_sf(f,len(g)-1,n-len(g))), 'eta2':between/(between+within)}
@@ -69,7 +70,8 @@ def calculate(engine, name, a):
         return {'eta2':between/total}
     if name=='levene':
         g=groups(a); engine.note += ' Levene with median centers (Brown–Forsythe).'
-        return oneway([[abs(v-statistics.median(x)) for v in x] for x in g])
+        centers = [statistics.median(x) for x in g]
+        return oneway([[abs(v-center) for v in x] for x,center in zip(g,centers)])
     if name=='bartlett':
         g=groups(a); ns=[len(x) for x in g]; vs=[variance(x) for x in g]
         require(min(vs)>0, 'Each group needs positive variance')

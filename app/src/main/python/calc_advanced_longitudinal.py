@@ -5,6 +5,7 @@ import mpmath as mp
 from calc_shared import MathError, require
 from calc_statistics import _f_sf
 from calc_sphericity import corrections, helmert
+from calc_mixed_numerics import coordinates, restore_fit, random_coordinates, covariance as mixed_covariance
 from calc_advanced_common import (
     dot, inference, integer, inverse, logistic, mean, newton, option, softplus,
     standardized_design, table,
@@ -117,7 +118,9 @@ def clustered_design(rows):
     """Intercept design and response for clustered models with a numeric collinearity check."""
     design=[[1.0]+[float(v) for v in row[1:-1]] for row in rows]; response=[float(row[-1]) for row in rows]
     require(len(design)>len(design[0]),'More observations than coefficients are required')
-    require(numeric_rank(design)==len(design[0]),'Predictors are collinear')
+    # A shift of the predictor origin must not change the rank decision.
+    rank_design=[[1.0]+[row[j]-design[0][j] for j in range(1,len(row))] for row in design]
+    require(numeric_rank(rank_design)==len(design[0]),'Predictors are collinear')
     return design,response
 
 
@@ -153,22 +156,24 @@ def small_inverse(values):
 
 
 def gls_solution(information,vector,total,fixed=None):
-    """Solve GLS, optionally fixing one coefficient for a likelihood profile."""
-    vector=mp.matrix(vector); p=information.rows
-    if fixed is None:
-        beta=inverse(information)*vector
-    else:
-        index,value=fixed; free=[j for j in range(p) if j!=index]; beta=mp.zeros(p,1); beta[index]=value
-        if free:
-            matrix=mp.matrix([[information[i,j] for j in free] for i in free])
-            right=mp.matrix([vector[i]-information[i,index]*value for i in free])
-            fitted=inverse(matrix)*right
-            for i,b in zip(free,fitted): beta[i]=b
+    """Solve GLS, optionally imposing a linear coefficient constraint."""
+    vector=mp.matrix(vector)
+    covariance=inverse(information); beta=covariance*vector
+    if fixed is not None:
+        weights,value=fixed
+        direction=mp.matrix(weights); adjustment=covariance*direction
+        beta+=adjustment*((value-(direction.T*beta)[0])/(direction.T*adjustment)[0])
     rss=total-float((2*vector.T*beta-beta.T*information*beta)[0])
     return beta,rss
 
 
 def intercept_fit(x,y,clusters,method,fixed=None):
+    setup=coordinates(x,y,fixed)
+    fields=_intercept_fit(setup[0],setup[1],clusters,method,setup[6])
+    return restore_fit(fields,setup,method)
+
+
+def _intercept_fit(x,y,clusters,method,fixed=None):
     """Gaussian random-intercept ML/REML fit with per-cluster algebra (no n x n matrices)."""
     n=len(y); p=len(x[0])
     gram=[[math.fsum(r[i]*r[j] for r in x) for j in range(p)] for i in range(p)]
@@ -206,7 +211,7 @@ def mixed_intercept(engine,x,y,clusters,ids,method,ci_options=None):
     objective,beta,information,rss,ratio=intercept_fit(x,y,clusters,method)
     sigma=rss/(len(y)-len(x[0])) if method=='reml' else rss/len(y)
     engine.note += ' Gaussian random-intercept mixed model, '+('restricted maximum likelihood (REML)' if method=='reml' else 'maximum likelihood (ML)')+', Wald inference. Rows: subject ID, predictors, response.'
-    result={'coefficients':inference(list(map(float,beta)),inverse(information)*sigma,['Intercept']+['x'+str(i) for i in range(1,len(x[0]))]),'residual variance':sigma,'random intercept variance':ratio*sigma,'ICC':ratio/(1+ratio),'subjects':len(ids),'estimation':method.upper(),'singular fit':int(ratio==0)}
+    result={'coefficients':inference(list(map(float,beta)),mixed_covariance(information,sigma),['Intercept']+['x'+str(i) for i in range(1,len(x[0]))]),'residual variance':sigma,'random intercept variance':ratio*sigma,'ICC':ratio/(1+ratio),'subjects':len(ids),'estimation':method.upper(),'singular fit':int(ratio==0)}
     result['subject random effects (BLUP)']=[{'subject':id_,'Intercept':ratio*math.fsum(y[i]-dot(x[i],beta) for i in c)/(1+len(c)*ratio)} for id_,c in zip(ids,clusters)]
     if ratio==0: engine.note += ' Singular fit: random-intercept variance is zero.'
     mixed_diagnostics(engine,result,objective,len(y),len(x[0]),1,True)
@@ -217,6 +222,13 @@ def mixed_intercept(engine,x,y,clusters,ids,method,ci_options=None):
 
 
 def random_effects_fit(x,y,clusters,slopes,method,fixed=None):
+    setup=coordinates(x,y,fixed)
+    fields,best=_random_effects_fit(setup[0],setup[1],clusters,slopes,method,setup[6])
+    restored=restore_fit(fields,setup,method,slopes)
+    return restored,(best[0],restored[0],best[2],best[3])
+
+
+def _random_effects_fit(x,y,clusters,slopes,method,fixed=None):
     """Gaussian random intercept plus up to three random slopes (ML or REML)."""
     n=len(y); p=len(x[0]); count=1+len(slopes); pairs=[(i,j) for i in range(count) for j in range(i+1)]
     blocks=[]
@@ -274,7 +286,7 @@ def random_effects_fit(x,y,clusters,slopes,method,fixed=None):
     def objective(parameters):
         result=evaluate(parameters)
         return math.inf if result is None else result[0]
-    seed=intercept_fit(x,y,clusters,method,fixed)[4]
+    seed=_intercept_fit(x,y,clusters,method,fixed)[4]
     start=math.sqrt(max(0,seed))
     best=None
     for scale in (max(.1,start),.25,0.0):
@@ -342,7 +354,7 @@ def mixed_random_effects(engine,x,y,clusters,ids,slopes,method,ci_options=None):
     n=len(y); p=len(x[0]); count=1+len(slopes)
     _,beta,information,rss,theta=fields
     sigma=rss/(n-p) if method=='reml' else rss/n
-    result={'coefficients':inference(list(map(float,beta)),inverse(information)*sigma,['Intercept']+['x'+str(i) for i in range(1,p)],reliable=best[3]),'residual variance':sigma,'random intercept variance':sigma*float(theta[0,0])}
+    result={'coefficients':inference(list(map(float,beta)),mixed_covariance(information,sigma),['Intercept']+['x'+str(i) for i in range(1,p)],reliable=best[3]),'residual variance':sigma,'random intercept variance':sigma*float(theta[0,0])}
     for index,slope in enumerate(slopes):
         result['random slope variance x'+str(slope)]=sigma*float(theta[index+1,index+1])
         denominator=math.sqrt(float(theta[0,0])*float(theta[index+1,index+1]))
@@ -357,13 +369,14 @@ def mixed_random_effects(engine,x,y,clusters,ids,slopes,method,ci_options=None):
         result['random slope variance']=result['random slope variance x'+str(slopes[0])]
         result['intercept-slope correlation']=result['intercept-slope correlation x'+str(slopes[0])]
     result['ICC at x=0']=float(theta[0,0])/(1+float(theta[0,0]))
-    eigenvalues=[float(v) for v in mp.eigsy(theta,eigvals_only=True)]
+    random_design,residual,stable_theta,effects_transform=random_coordinates(x,y,slopes,beta,theta)
+    eigenvalues=[float(v) for v in mp.eigsy(stable_theta,eigvals_only=True)]
     result['singular fit']=int(min(eigenvalues)<=1e-6*max(1,max(eigenvalues)))
     result['optimizer iterations']=best[2]; result['optimizer converged']=int(best[3])
     result['subject random effects (BLUP)']=[]
     for id_,c in zip(ids,clusters):
-        z=mp.matrix([[1.0]+[x[i][s] for s in slopes] for i in c])
-        effects=theta*inverse(mp.eye(count)+z.T*z*theta)*z.T*mp.matrix([y[i]-dot(x[i],beta) for i in c])
+        z=mp.matrix([random_design[i] for i in c])
+        effects=effects_transform*stable_theta*inverse(mp.eye(count)+z.T*z*stable_theta)*z.T*mp.matrix([residual[i] for i in c])
         result['subject random effects (BLUP)'].append({'subject':id_,**{label:float(v) for label,v in zip(['Intercept']+['x'+str(s) for s in slopes],effects)}})
     result['subjects']=len(ids); result['estimation']=method.upper()
     engine.note += ' Gaussian random intercept with random slopes on '+', '.join('x'+str(s) for s in slopes)+', '+('restricted maximum likelihood (REML)' if method=='reml' else 'maximum likelihood (ML)')+', Wald inference. Rows: subject ID, predictors, response.'

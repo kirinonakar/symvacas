@@ -1,11 +1,47 @@
 import json
 from pathlib import Path
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
+import sympy as s
 from test_advanced_statistics import tree, evaluate
 from calc_engine import dispatch
+from calc_statistics import _sample_mean_variance
+from calc_advanced_common import variance
+from calc_advanced_inference import calculate
 
 
 class ColumnTTestTests(unittest.TestCase):
+    def test_sample_moments_preserve_exact_small_spreads_and_approximate_inputs(self):
+        for offset, scale in [(s.Integer(0),s.Integer(1)), (s.Integer(10)**100,s.Rational(1,10)**100),
+                              (-s.Integer(10)**100,s.Rational(1,7)), (s.sqrt(2),s.Integer(1))]:
+            with self.subTest(offset=offset,scale=scale):
+                mean, sample_variance, n = _sample_mean_variance([offset+k*scale for k in (0,1,4)])
+                self.assertEqual(n,3)
+                self.assertEqual(s.simplify(mean-offset-s.Rational(5,3)*scale),0)
+                self.assertEqual(s.simplify(sample_variance-s.Rational(13,3)*scale**2),0)
+        values = [s.Float('1e30',80)+s.Rational(k,1000) for k in (0,1,4)]
+        _, sample_variance, _ = _sample_mean_variance(values)
+        self.assertLess(abs(sample_variance-s.Rational(13,3000000)),s.Float('1e-50'))
+
+    def test_companion_estimators_do_not_repeat_group_reductions_per_observation(self):
+        class CountedSample(list):
+            passes = 0
+            def __iter__(self):
+                self.passes += 1
+                return super().__iter__()
+        sample = CountedSample(range(1000))
+        self.assertAlmostEqual(variance(sample),1000*1001/12)
+        self.assertLessEqual(sample.passes,3)
+        samples = [[s.Integer(i%17) for i in range(300)], [s.Integer(i%23) for i in range(400)]]
+        import calc_advanced_inference as inference
+        with patch.object(inference.statistics,'median',wraps=inference.statistics.median) as median, \
+                patch.object(inference,'mean',wraps=inference.mean) as mean:
+            result = calculate(SimpleNamespace(note=''),'levene',samples)
+        self.assertTrue(0<=result['p']<=1)
+        self.assertLessEqual(median.call_count,len(samples))
+        self.assertLessEqual(mean.call_count,len(samples)+1)
+
     def test_grouped_columns_match_independent_scipy_references_and_actual_group_labels(self):
         cases=json.loads((Path(__file__).parent/'fixtures/statistics_t_columns.json').read_text(encoding='utf8'))['cases']
         for item in cases:

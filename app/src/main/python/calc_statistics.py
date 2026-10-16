@@ -230,7 +230,13 @@ def _sample_mean_variance(data):
     for value in values: _real_value(value, "Sample values must be real numbers")
     n = s.Integer(len(values))
     mean = s.Add(*values)/n
-    variance = s.Add(*[(value - mean)**2 for value in values])/(n - 1)
+    if all(value.is_Rational for value in values):
+        # Raw moments are exact for rationals (including decimal inputs), with
+        # no cancellation. Avoid building a centered symbolic power per value.
+        variance = (s.Add(*[value*value for value in values])-n*mean**2)/(n - 1)
+    else:
+        # Keep centered moments for approximate and other symbolic numbers.
+        variance = s.Add(*[(value - mean)**2 for value in values])/(n - 1)
     return mean, variance, n
 
 def _data_center(samples):

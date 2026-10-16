@@ -75,7 +75,9 @@ def dot(a, b): return sum(x*y for x, y in zip(a, b))
 def mean(x): return sum(x)/len(x)
 
 
-def variance(x): return sum((v-mean(x))**2 for v in x)/(len(x)-1)
+def variance(x):
+    center = mean(x)
+    return sum((v-center)**2 for v in x)/(len(x)-1)
 
 
 def normal_p(z): return float(2*_normal_sf(abs(z)))
