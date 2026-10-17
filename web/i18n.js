@@ -198,7 +198,6 @@ Object.assign(korean,nativeKorean,{
   "Pearson r · pairwise complete observations": "Pearson r · 각 열 쌍의 결측값 제외",
   "Scatter": "산점도",
   "Plot data": "데이터 그리기",
-  "Store dataset as variable": "데이터를 변수로 저장",
   "Model y =": "모형 y =",
   "Initial values and bounds (optional)": "초깃값 및 범위 (선택)",
   "Density / P(X = k)": "밀도 / P(X = k)",

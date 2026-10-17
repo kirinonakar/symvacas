@@ -1,7 +1,7 @@
 import {$,value,element,control} from './app-ui.js';
 import {t,setText} from './i18n.js';
 import {downloadFile} from './storage.js';
-import {statisticsCommand,statisticsAnalysisData,statisticsCategoryLabels,csvRows,statisticsDataRows,statisticsDatasetSource,numericStatisticsRows,statisticsColumnCount,statisticsColumnNames,statisticsKindForColumns,statisticsCsvHasHeader,statisticsColumnLabels,statisticsHeatMapColumnNames,statisticsDetectedColumns,statisticsImportRows,statisticsPasteText,statisticsPasteCell} from './workspace-commands.js';
+import {statisticsCommand,statisticsAnalysisData,statisticsCategoryLabels,csvRows,statisticsDataRows,numericStatisticsRows,statisticsColumnCount,statisticsColumnNames,statisticsKindForColumns,statisticsCsvHasHeader,statisticsColumnLabels,statisticsHeatMapColumnNames,statisticsDetectedColumns,statisticsImportRows,statisticsPasteText,statisticsPasteCell} from './workspace-commands.js';
 import {readXlsxWorkbook} from './xlsx-reader.js';
 import {statisticsPlot,statisticsPlotPanels} from './statistics-plot.js';
 import {statisticsHeatMapData,statisticsCorrelationHeatMap,statisticsPlotNumber,statisticsNamedBarData,statisticsScatterColumns,statisticsScatterData} from './statistics-plot-data.js';
@@ -43,7 +43,7 @@ export function newStatisticsDatasetName(requestedName,names,currentName='') {
   return name;
 }
 
-export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorkspaceMath,storeExpression,error,changeMode,replaceInput,graphs,clearResult,onSummary}) {
+export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorkspaceMath,error,changeMode,replaceInput,graphs,clearResult,onSummary}) {
   const {toast,pickFile,openDialog}=ui;
   let statisticsGraph=null;
   let scatterAxes={xColumn:0,yColumn:1};
@@ -526,7 +526,6 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
     event.preventDefault();field.setRangeText(converted,start,end,'end');field.dispatchEvent(new field.ownerDocument.defaultView.Event('input',{bubbles:true}));
   });
   $('statistics-data').addEventListener('change',()=>{invalidateRegression();statisticsControls();if(!$('statistics-grid').hidden)statisticsGrid();});
-  $('statistics-store').onclick=async()=>{const name=value('dataset-name').trim();if(!/^[A-Za-z][A-Za-z0-9_]*$/.test(name)){error('Dataset name must be a valid variable name');return;}try{await storeExpression(name,statisticsDatasetSource(value('statistics-data'),dataKind()),{statistics:true});}catch(exc){error(exc.message);}};
   $('statistics-plot-run').onclick=()=>{try{statisticsGraph={...statisticsGraph,rows:numericStatisticsRows(dataRows()),curve:statisticsGraph?.curve||[]};$('statistics-plot').hidden=false;drawStatisticsGraph();}catch(exc){error(exc.message);}};
   $('statistics-visualize').addEventListener('toggle',()=>{if($('statistics-visualize').open&&statisticsGraph&&!$('statistics-plot').hidden)drawStatisticsGraph();});
   $('statistics-plot-type').onchange=()=>{statisticsControls();$('statistics-plot-run').click();persist();};

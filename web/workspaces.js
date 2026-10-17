@@ -21,7 +21,7 @@ export function createWorkspaces({state,engine,ui,persist,restoreSelect,requestO
   const refreshEquationInput=bindEquationInput($('equation-source'),$('equation-line-numbers'),persist);
   for(const id of ['equation-source','equation-a','equation-b','equation-c','equation-d','equation-variable','equation-extra','equation-initial'])bindMathPaste($(id),{multiline:id==='equation-source',onError:toast});
   const matrix=createMatrixWorkspace({state,persist,restoreSelect,refreshWorkspaceMath,storeExpression:storeWorkspaceExpression,error,changeMode,replaceInput});
-  const statistics=createStatisticsWorkspace({state,engine,ui,persist,refreshWorkspaceMath,storeExpression:storeWorkspaceExpression,error,changeMode,replaceInput,graphs,clearResult,onSummary:()=>run("statistics-summary")});
+  const statistics=createStatisticsWorkspace({state,engine,ui,persist,refreshWorkspaceMath,error,changeMode,replaceInput,graphs,clearResult,onSummary:()=>run("statistics-summary")});
   const functions=createFunctionsWorkspace({state,ui,persist,refreshWorkspaceMath,changeMode,insert});
   const python=createPythonWorkspace({engine,ui,persist,requestOptions,error,run});
   const probability=createProbabilityWorkspace({state,engine,persist,requestOptions});
