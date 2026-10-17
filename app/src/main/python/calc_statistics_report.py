@@ -378,7 +378,7 @@ def statistics_report(name, value, precision, labels=None):
         for row in checks+value['Unavailable comparisons']:
             if row.get('Reason'): details.append({'section':label(row['Column']), 'label':row.get('Check', 'Unavailable comparison'), 'text':row['Reason']})
     elif overall:
-        metrics = ['mean', 'sd', 'min', 'max', 'valid.n']
+        metrics = ['mean', 'sd', 'min', 'max', 'valid.n', 'sum']
         add('Numeric data', ['Column']+metrics,
             [[table_labels.get('overall:column:'+str(row['Column']), str(row['Column']+1))]+
              [row[key] for key in metrics] for row in value['Numeric data']])

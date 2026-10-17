@@ -39,11 +39,12 @@ def overall_summary(columns, categorical):
             category_rows.extend({'Column': s.Integer(index), **row} for row in summary_frequencies(data))
         else:
             n = len(data)
-            mean = s.Add(*data)/n if n else s.nan
+            total = s.Add(*data)
+            mean = total/n if n else s.nan
             sd = s.sqrt(s.Add(*[(value-mean)**2 for value in data])/(n-1)) if n > 1 else s.nan
             numeric_rows.append({'Column': s.Integer(index), 'mean': mean, 'sd': sd,
                                  'min': min(data) if n else s.nan, 'max': max(data) if n else s.nan,
-                                 'valid.n': s.Integer(n)})
+                                 'valid.n': s.Integer(n), 'sum': total})
     return {'Numeric data': numeric_rows, 'Categorical data': category_rows}
 
 def shape_statistics(data, corrected=True):

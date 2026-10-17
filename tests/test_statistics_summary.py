@@ -58,10 +58,11 @@ class StatisticsSummaryTests(unittest.TestCase):
                 for section in report['sections']:
                     self.assertTrue(section['literalColumns'])
                     if section['title']=='Numeric data':
-                        self.assertEqual(section['columns'],['Column','mean','sd','min','max','valid.n'])
+                        self.assertEqual(section['columns'],['Column','mean','sd','min','max','valid.n','sum'])
                         self.assertEqual(len(section['rows']),len(item['numeric']))
                         for actual,expected in zip(section['rows'],item['numeric']):
                             self.assertEqual(actual[0],expected[0])
+                            self.assertEqual(len(actual),len(expected))
                             for value,target in zip(actual[1:],expected[1:]):
                                 if target is None:self.assertEqual(value,'undefined')
                                 else:self.assertAlmostEqual(float(value['decimal']),target)
@@ -82,7 +83,8 @@ class StatisticsSummaryTests(unittest.TestCase):
         result=json.loads(dispatch(json.dumps(request)))
         self.assertTrue(result['ok'],result.get('error'))
         numeric,categorical=result['statisticsReport']['sections']
-        self.assertEqual(int(numeric['rows'][0][-1]['decimal']),5000)
+        self.assertEqual(int(numeric['rows'][0][-2]['decimal']),5000)
+        self.assertEqual(int(numeric['rows'][0][-1]['decimal']),10000)
         self.assertEqual(categorical['totalRows'],5002)
         self.assertEqual(len(categorical['copyRows']),5002)
         self.assertEqual(categorical['rows'][0][-1],'2500 (50.00%)')
