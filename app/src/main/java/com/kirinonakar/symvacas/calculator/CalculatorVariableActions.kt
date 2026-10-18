@@ -77,7 +77,7 @@ internal object CalculatorVariableActions {
                             dmsDisplay=false;dmsConversion=false
                         }
                     }
-                    if(finishInput){result?.put("assignment",true);committed=true}
+                    if(finishInput)result?.let {commit(editor.source,it.put("assignment",true))}
                     inputVersion++;resultVersion=-1;error="";save()
                 } catch(e:Exception) {error=e.message ?: "Invalid variable"} finally {busy=false}
             }
@@ -110,8 +110,8 @@ internal object CalculatorVariableActions {
             functions=JSONObject(functions.toString()).put(definition.name,definition.json())
             error=""
             val message="${definition.name}(${definition.parameters.joinToString()}) defined"
-            if(showResult){result=JSONObject().put("exact",message).put("decimal",message).put("tree",JSONObject().put("kind","text").put("value",message));dmsDisplay=false;dmsConversion=false}
-            if(finishInput){result?.put("assignment",true);committed=true}
+            if(showResult){result=JSONObject().put("ok",true).put("exact",message).put("decimal",message).put("tree",JSONObject().put("kind","text").put("value",message));dmsDisplay=false;dmsConversion=false}
+            if(finishInput)result?.let {commit(editor.source,it.put("assignment",true))}
             save()
         } catch(e: Exception) { error=e.message ?: "Invalid function" }
     }
