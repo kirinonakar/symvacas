@@ -13,6 +13,7 @@
 /build
 **/build/
 .venv/
+/tmp
 /web/node_modules/
 __pycache__/
 *.log
