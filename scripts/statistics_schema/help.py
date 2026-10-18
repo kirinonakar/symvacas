@@ -1,5 +1,4 @@
-"""Bilingual operational help and catalog usage descriptions."""
-from statistics_help import USES, enrich_help
+"""Bilingual operational help for analysis forms and schema definitions."""
 from statistics_social_schema import SPECS as SOCIAL_SPECS
 from statistics_research_schema import SPECS as RESEARCH_SPECS
 from statistics_comparison_schema import HELP as COMPARISON_HELP
@@ -107,15 +106,3 @@ def append_research_help(schema):
         item['help']+=extra[0];item['helpKo']+=extra[1];item['formHelp']+=extra[0];item['formHelpKo']+=extra[1]
     meta=next(item for item in schema if item['id']=='metaanalysis')
     meta['help']+=continuous_help[0];meta['helpKo']+=continuous_help[1];meta['formHelp']+=continuous_help[0];meta['formHelpKo']+=continuous_help[1]
-
-
-def catalog_uses(rank_specs):
-    uses = dict(USES)
-    uses.update({'scheffe':('Compare means with simultaneous protection for all linear contrasts.','모든 선형 대비를 보호하며 평균을 비교합니다.'),
-                 'dunnett':('Compare each treatment group with a chosen control.','각 처리군을 선택한 대조군과 비교합니다.'),
-                 'conover':('Compare pooled mean ranks after Kruskal–Wallis.','Kruskal–Wallis 이후 전체 평균순위를 비교합니다.')})
-    for id_ in ("arima", "sarima"):
-        uses[id_] = ("Forecast equally spaced time-series observations.", "일정한 간격의 시계열 관측값을 예측합니다.")
-    for spec in [*SOCIAL_SPECS, *RESEARCH_SPECS, *EXTENSION_SPECS, *rank_specs]:
-        uses[spec[0]] = (spec[1]+".", spec[2]+".")
-    return uses
