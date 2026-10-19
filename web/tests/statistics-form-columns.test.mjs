@@ -7,6 +7,33 @@ import {advancedStatisticsReservedColumns,createAdvancedStatistics} from '../adv
 import {socialStatisticsPlan} from '../statistics-social-forms.js';
 const definition=id=>schema.find(d=>d.id===id);
 
+test('MANCOVA preserves selected covariate/response order and encodes text groups',()=>{
+  const rows=[['A','2','9','7','3'],['B','4','8','6','5'],['A','6','7','5','8']];
+  const opts={group:'0',covariates:'4,1',responses:'3,2',level:'0.9',slopes:'test'};
+  const plan=socialStatisticsPlan('mancova',rows,opts,['Treatment','Age','Speed','Score','Baseline']);
+  assert.equal(plan.expression,'mancova([[1,3,2,7,9],[2,5,4,6,8],[1,8,6,5,7]],2,0.9,1)');
+  assert.deepEqual(plan.labels,{Group:'Treatment','group:1':'A','group:2':'B',x1:'Baseline',x2:'Age','response:1':'Score','response:2':'Speed'});
+  assert.throws(()=>socialStatisticsPlan('mancova',rows,{...opts,responses:'1,2'}),/distinct/);
+  assert.throws(()=>socialStatisticsPlan('mancova',rows,{...opts,responses:'2'}),/two responses/);
+  assert.throws(()=>socialStatisticsPlan('mancova',[['A','','9','7','3']],opts),/Complete/);
+  const d=definition('mancova');assert.equal(d.section,'tests');
+  assert.deepEqual(advancedStatisticsReservedColumns(d,{},'responses',4),[0,1]);
+  assert.deepEqual(advancedStatisticsReservedColumns(d,opts,'responses',5),[0,4,1]);
+  assert.deepEqual(advancedStatisticsReservedColumns(d,{},'covariates',4),[0]);
+});
+
+test('MANCOVA production form excludes covariates from response checkboxes',context=>{
+  const dom=new JSDOM(readFileSync(new URL('../index.html',import.meta.url),'utf8'));
+  const previous=globalThis.document;globalThis.document=dom.window.document;
+  context.after(()=>{dom.window.close();globalThis.document=previous;});
+  const state={fields:{'statistics-tests-kind':'mancova'},datasets:{}};
+  const api=createAdvancedStatistics({state,persist:()=>{},data:()=> 'A,1,3,7\nA,2,5,6\nB,3,6,9\nB,4,8,7',columnLimit:()=>4,section:'tests'});
+  assert.ok(api);
+  const response=document.getElementById('statistics-form-mancova-responses');
+  assert.ok(response);
+  assert.deepEqual([...response.parentElement.querySelectorAll('input[type="checkbox"]')].map(input=>input.dataset.column),['2','3']);
+});
+
 test('post-hoc forms preserve unequal sample sizes, control identity and group labels',()=>{
   const rows=[['1','3','6'],['2','4','8'],['','5','9']];
   const base={grouping:'columns',columns:'2,0,1',control:'2',adjustment:'holm'};

@@ -8,6 +8,18 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StatisticsFormColumnsTest {
+    @Test fun mancovaPreservesRolesAndTextGroupLabels() {
+        val d=definition("mancova")
+        val rows=listOf(listOf("A","2","9","7","3"),listOf("B","4","8","6","5"),listOf("A","6","7","5","8"))
+        val opts=JSONObject().put("group","0").put("covariates","4,1").put("responses","3,2").put("level","0.9").put("slopes","test")
+        assertEquals("mancova([[1,3,2,7,9],[2,5,4,6,8],[1,8,6,5,7]],2,0.9,1)",guidedStatisticsCommand(d,rows,opts))
+        assertEquals(mapOf("Group" to "Treatment","group:1" to "A","group:2" to "B","x1" to "Baseline","x2" to "Age","response:1" to "Score","response:2" to "Speed"),advancedStatisticsTermLabels(d,rows,opts,listOf("Treatment","Age","Speed","Score","Baseline")))
+        assertEquals(setOf(0,1),advancedStatisticsReservedColumns(d,JSONObject(),"responses",4))
+        assertEquals(setOf(0,4,1),advancedStatisticsReservedColumns(d,opts,"responses",5))
+        assertEquals(setOf(0),advancedStatisticsReservedColumns(d,JSONObject(),"covariates",4))
+        assertTrue(runCatching {guidedStatisticsCommand(d,rows,JSONObject(opts.toString()).put("responses","1,2"))}.exceptionOrNull() is IllegalArgumentException)
+        assertTrue(runCatching {guidedStatisticsCommand(d,rows,JSONObject(opts.toString()).put("responses","2"))}.exceptionOrNull() is IllegalArgumentException)
+    }
     @Test fun normalityOmnibusUsesSelectedColumnAndEnforcesMinimumSampleSize() {
         val d=definition("normaltest")
         val rows=(0..7).map {listOf("99",it.toString())}+listOf(listOf("100",""))

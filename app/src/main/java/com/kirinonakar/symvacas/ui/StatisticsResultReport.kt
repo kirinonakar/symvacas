@@ -126,13 +126,6 @@ internal fun statisticsCellText(m:CalculatorModel,cell:JSONObject)=ResultDisplay
                 if(start+1==highlights.length())Spacer(Modifier.weight(1f))
             }
         }
-        report.optJSONArray("notes")?.let {notes->
-            if(notes.length()>0){var notesExpanded by remember(report){mutableStateOf(false)}
-                LaunchedEffect(collapseRequest){if(collapseRequest>0)notesExpanded=false}
-                TextButton(onClick={notesExpanded=!notesExpanded}){Text((if(notesExpanded)"▾ " else "▸ ")+tr("Interpretation & assumptions"))}
-                if(notesExpanded)for(index in 0 until notes.length())Text(tr(notes.getString(index)),fontSize=12.sp,color=c.muted)
-            }
-        }
         val variablesFirst=report.optString("analysis")=="stats"&&report.optString("title")!="Overall"
         val primary=setOf("Summary","ANOVA","Overall model","Overall ANOVA","Overall Welch ANOVA",report.getString("title"))+(if(report.optString("title")=="Overall")setOf("Numeric data","Categorical data") else emptySet())+(if(variablesFirst)setOf("Analyzed variables") else emptySet())
         val prominent=primary+setOf("Model diagnostics","Indicator R²","Explained variance","Latent R²","Summary","Sample summaries","Condition summaries","Contrast summaries","Assumption checks","Effect size","Mean confidence interval (95%, two-sided)","Overall ANOVA","Expected-count diagnostics")
@@ -156,15 +149,5 @@ internal fun statisticsCellText(m:CalculatorModel,cell:JSONObject)=ResultDisplay
             } else StatisticsReportSection(m,report,section,section.optInt("totalRows")>12&&section.getString("title") !in prominent)
         }
         if(!plotsShown)StatisticsVisualizations(report.optJSONArray("plots"))
-        report.optJSONArray("details")?.takeIf {it.length()>0}?.let {details->
-            val descriptions=(0 until details.length()).joinToString("\n\n") {statisticsDetailText(details.getJSONObject(it)){translateLabel(it,language)}}
-            StatisticsExplanation("Model details",descriptions,"statistics-result-details",report)
-        }
-        report.optJSONArray("assumptions")?.takeIf {it.length()>0}?.let {assumptions->
-            val descriptions=mutableListOf<String>()
-            for(index in 0 until assumptions.length())descriptions+=tr(assumptions.getString(index))
-            StatisticsExplanation("Assumptions",descriptions.joinToString("\n\n"),"statistics-result-assumptions",report)
-        }
-        m.statisticsResult?.optString("note")?.takeIf(String::isNotBlank)?.let {StatisticsExplanation("Interpretation & assumptions",it,"statistics-result-note",report)}
     }
 }

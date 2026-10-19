@@ -3396,6 +3396,144 @@
     ]
   },
   {
+    "id": "mancova",
+    "label": "MANCOVA",
+    "ko": "MANCOVA (다변량 공분산분석)",
+    "input": "table",
+    "suffix": ",1,0.95,1",
+    "example": "mancova([[1,1,3,7],[1,2,5,6],[1,3,4,9],[1,4,8,8],[2,2,6,8],[2,3,7,11],[2,4,9,9],[2,5,8,13],[3,1,5,6],[3,3,8,10],[3,4,10,11],[3,6,11,12]],1,0.95,1)",
+    "help": "Compare multiple responses jointly after adjusting for covariates. mancova(data,covariate count=1,confidence=.95,slope test=1); columns: group, covariates, then at least two responses. Reports four multivariate tests and adjusted means.",
+    "helpKo": "공변량 보정 후 여러 종속변수를 함께 비교합니다. mancova(자료,공변량 수=1,신뢰수준=.95,기울기 검정=1); 열: 그룹·공변량·종속변수 2개 이상. 다변량 검정 4종·조정 평균 제공.",
+    "section": "tests",
+    "group": "Group comparisons",
+    "groupKo": "그룹 비교",
+    "controls": [
+      {
+        "key": "group",
+        "label": "Group column",
+        "ko": "그룹 열",
+        "type": "column",
+        "default": 0
+      },
+      {
+        "key": "covariates",
+        "label": "Covariates",
+        "ko": "공변량 열",
+        "type": "columns",
+        "default": "1"
+      },
+      {
+        "key": "responses",
+        "label": "Responses (at least two)",
+        "ko": "종속변수 열 (2개 이상)",
+        "type": "columns",
+        "default": "auto"
+      },
+      {
+        "key": "level",
+        "label": "Confidence level",
+        "ko": "신뢰수준",
+        "type": "number",
+        "default": "0.95"
+      },
+      {
+        "key": "slopes",
+        "label": "Slope homogeneity",
+        "ko": "회귀 기울기 동질성",
+        "type": "choice",
+        "default": "test",
+        "choices": [
+          {
+            "id": "test",
+            "label": "Test",
+            "ko": "검정"
+          },
+          {
+            "id": "none",
+            "label": "Skip",
+            "ko": "생략"
+          }
+        ]
+      }
+    ],
+    "formHelp": "Select one categorical group column, one or more covariates and at least two distinct response columns. Complete independent rows are required. Reports partial Pillai, Wilks (Rao F), Hotelling–Lawley and Roy (upper-bound F) tests, unadjusted univariate follow-ups, and adjusted means with pointwise confidence intervals at pooled covariate means. Optional slope test jointly tests every group × covariate interaction; unavailable means it could not be estimated. Assumes linear common slopes, multivariate normal errors, equal group error covariance and full-rank design. A slope-test p value below the chosen significance level indicates that at least one covariate effect differs between groups. Examine group-specific covariate effects before interpreting common-slope adjusted means.",
+    "formHelpKo": "범주형 그룹 열 1개, 공변량 1개 이상, 서로 다른 종속변수 열 2개 이상을 선택합니다. 독립 대상별 완전자료가 필요합니다. Pillai·Wilks(Rao F)·Hotelling–Lawley·Roy(상한 F)의 부분 검정, 다중비교 보정 전 단변량 후속 검정, 전체 공변량 평균에서의 조정 평균·개별 신뢰구간을 제공합니다. 기울기 검정은 모든 그룹×공변량 상호작용을 공동 검정하며 unavailable은 추정 불가입니다. 선형 공통 기울기·다변량 정규 오차·그룹 간 등공분산·완전계수 설계를 가정합니다. 기울기 검정의 p값이 유의수준보다 작으면 일부 공변량 효과가 그룹에 따라 다르다는 뜻입니다. 이때는 공통 기울기의 조정 평균을 해석하기 전에 그룹별 공변량 효과를 확인하세요.",
+    "exampleRows": [
+      [
+        "1",
+        "1",
+        "3",
+        "7"
+      ],
+      [
+        "1",
+        "2",
+        "5",
+        "6"
+      ],
+      [
+        "1",
+        "3",
+        "4",
+        "9"
+      ],
+      [
+        "1",
+        "4",
+        "8",
+        "8"
+      ],
+      [
+        "2",
+        "2",
+        "6",
+        "8"
+      ],
+      [
+        "2",
+        "3",
+        "7",
+        "11"
+      ],
+      [
+        "2",
+        "4",
+        "9",
+        "9"
+      ],
+      [
+        "2",
+        "5",
+        "8",
+        "13"
+      ],
+      [
+        "3",
+        "1",
+        "5",
+        "6"
+      ],
+      [
+        "3",
+        "3",
+        "8",
+        "10"
+      ],
+      [
+        "3",
+        "4",
+        "10",
+        "11"
+      ],
+      [
+        "3",
+        "6",
+        "11",
+        "12"
+      ]
+    ]
+  },
+  {
     "id": "repeatedanova",
     "label": "Repeated-measures ANOVA",
     "ko": "반복측정 ANOVA",

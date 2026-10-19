@@ -4,7 +4,6 @@ import {t,setText} from './i18n.js';
 import {resultDisplayTree,resultMathDisplay} from './result-display.js';
 import {renderStatisticsVisualizations} from './statistics-visualization.js';
 import {appendStatisticsModelWorkflow} from './statistics-model-workflow.js';
-import {statisticsDetailText} from './statistics-report-details.js';
 
 const basicAnalyses=new Set('mean median variance stdev mode skewness kurtosis sumdata quartiles stats covariance correlation ttest ttest2 ttestpaired ztest ztest2 chi2test chi2independence fisherexact anova welchanova tukey gameshowell shapiro normaltest wilcoxon mannwhitney kruskal tinterval zinterval'.split(' '));
 export function statisticsReportTarget(result,source='',requested=''){
@@ -30,7 +29,6 @@ export function renderStatisticsReport(container,report,{digits=10,onCopy,onClea
     for(const item of report.highlights){const card=element('div','','statistics-highlight');card.append(element('span',t(item.label)),resultMathDisplay(resultDisplayTree(item.value,{decimal:true,mixed:false}),digits,true,options));cards.append(card);}
     panel.append(cards);
   }
-  if(report.notes?.length){const notes=element('details','','statistics-result-details');notes.append(element('summary',t('Interpretation & assumptions')));for(const note of report.notes)notes.append(element('p',t(note),'statistics-interpretation'));panel.append(notes);}
   const variablesFirst=report.analysis==='stats'&&report.title!=='Overall';
   const primary=['Summary','ANOVA','Overall model','Overall ANOVA','Overall Welch ANOVA',report.title,...(report.title==='Overall'?['Numeric data','Categorical data']:[]),...(variablesFirst?['Analyzed variables']:[])];
   const prominent=section=>primary.includes(section.title)||['Model diagnostics','Indicator R²','Explained variance','Latent R²','Summary','Sample summaries','Condition summaries','Contrast summaries','Assumption checks','Effect size','Mean confidence interval (95%, two-sided)','Overall ANOVA','Expected-count diagnostics'].includes(section.title);
@@ -75,17 +73,5 @@ export function renderStatisticsReport(container,report,{digits=10,onCopy,onClea
     target.append(block);
   }
   if(!plotsShown)renderStatisticsVisualizations(panel,report.plots);
-  if(report.details?.length){
-    const block=element('details','','statistics-result-details');
-    block.append(element('summary',t('Model details')));
-    for(const detail of report.details)block.append(element('p',statisticsDetailText(detail),'statistics-interpretation'));
-    panel.append(block);
-  }
-  if(report.assumptions?.length){
-    const block=element('details','','statistics-assumptions statistics-result-details');
-    block.append(element('summary',t('Assumptions')));
-    for(const assumption of report.assumptions)block.append(element('p',t(assumption),'statistics-interpretation'));
-    panel.append(block);
-  }
   container.append(panel);
 }

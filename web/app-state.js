@@ -78,7 +78,7 @@ export function createAppState(saved={},browserLanguage='en') {
 }
 
 export function restoreFields(state) {
-  for(const section of document.querySelectorAll('details.statistics-section[id]')) {
+  for(const section of document.querySelectorAll('details.statistics-section[id],details.statistics-model-help[id]')) {
     const expanded=state.statisticsSections[section.id];
     if(typeof expanded==='boolean')section.open=expanded;
   }
@@ -101,7 +101,7 @@ export function createPersistence({state,snapshot,onPersist,toast}) {
     if(stopped)return;
     clearTimeout(saveTimer);saveTimer=null;
     const functionsChanged=removeExpiredAnswerFunctions(state.functions,state.variables.Ans);
-    for(const section of document.querySelectorAll('details.statistics-section[id]'))state.statisticsSections[section.id]=section.open;
+    for(const section of document.querySelectorAll('details.statistics-section[id],details.statistics-model-help[id]'))state.statisticsSections[section.id]=section.open;
     for(const field of document.querySelectorAll('main input[id],main textarea[id],main select[id],.mode-bar select[id]'))state.fields[field.id]=field.type==='checkbox'?field.checked:field.value;
     const draft=snapshot();
     state.statisticsHeaderKeys=statisticsHeaderKeys();

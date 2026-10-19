@@ -78,6 +78,9 @@ DESCRIPTIONS = {
     'ancova': (
         'Compare covariate-adjusted group means. Columns: group, covariates, response. Confidence level defaults to .95; slope-homogeneity check defaults to 1.',
         '공변량을 보정한 그룹 평균 비교. 열: 그룹·공변량·종속변수. 신뢰수준 기본 .95, 기울기 동질성 검정 기본 1.'),
+    'mancova': (
+        'Compare multiple responses jointly after adjusting for covariates. mancova(data,covariate count=1,confidence=.95,slope test=1); columns: group, covariates, then at least two responses. Reports four multivariate tests and adjusted means.',
+        '공변량 보정 후 여러 종속변수를 함께 비교합니다. mancova(자료,공변량 수=1,신뢰수준=.95,기울기 검정=1); 열: 그룹·공변량·종속변수 2개 이상. 다변량 검정 4종·조정 평균 제공.'),
     'manova': (
         'Compare several responses jointly. Input: group then response columns; factorial mode adds factors, repeated mode uses subject rows with equal response blocks per time point. Reports Pillai, Wilks, Hotelling–Lawley and Roy.',
         '여러 종속변수를 함께 비교합니다. 기본은 그룹·종속변수 열; factorial은 요인설계, repeated는 대상별 시점 순서의 반응 블록. Pillai·Wilks·Hotelling–Lawley·Roy 제공.'),

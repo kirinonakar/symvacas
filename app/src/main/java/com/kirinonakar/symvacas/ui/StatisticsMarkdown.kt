@@ -55,6 +55,25 @@ internal fun statisticsDetailText(detail:JSONObject,translate:(String)->String):
         translate(detail.optString("label"))+": "+translate(detail.optString("text"))).filter {it.isNotBlank()}.joinToString(" · ")
 }
 
+/** One presentation for model descriptions, assumptions and interpretation notes. */
+internal fun statisticsModelDetails(report:JSONObject,note:String="",translate:(String)->String):List<String> {
+    fun normalize(value:String)=value.trim().replace(Regex("\\s+")," ")
+    val paragraphs=mutableListOf<String>();val seen=mutableSetOf<String>();val detailTexts=mutableSetOf<String>()
+    fun add(text:String,key:String){if(text.isNotBlank()&&seen.add(key))paragraphs+=text}
+    report.optJSONArray("details")?.let {details->for(i in 0 until details.length()) {
+        val detail=details.getJSONObject(i);val raw=normalize(detail.optString("text"))
+        if(raw.isNotBlank()) {
+            detailTexts+=raw;val text=statisticsDetailText(detail,translate)
+            add(text,if((detail.optJSONArray("context")?.length() ?: 0)>0)normalize(text) else raw)
+        }
+    }}
+    val plain=mutableListOf<String>()
+    for(key in listOf("assumptions","notes"))report.optJSONArray(key)?.let {values->for(i in 0 until values.length())plain+=values.getString(i)}
+    plain+=note
+    for(raw in plain){val key=normalize(raw);if(key.isNotBlank()&&key !in detailTexts)add(translate(raw.trim()),key)}
+    return paragraphs
+}
+
 internal fun statisticsResultMarkdown(result:JSONObject,formatCell:(JSONObject)->String,regressionEquation:String?=null,translate:(String)->String):String {
     val report=result.optJSONObject("statisticsReport") ?: result.optJSONObject("statisticsCopyReport") ?: return formatCell(result)
     val blocks=mutableListOf("## "+markdownCell(translate(report.optString("title"))))
@@ -87,14 +106,8 @@ internal fun statisticsResultMarkdown(result:JSONObject,formatCell:(JSONObject)-
         }
         if(table.size>2)blocks.add("### "+markdownCell(translate(section.optString("title")))+"\n\n"+table.joinToString("\n"))
     }
-    report.optJSONArray("details")?.takeIf {it.length()>0}?.let {details->
-        blocks.add("### "+translate("Model details")+"\n\n"+(0 until details.length()).joinToString("\n\n"){markdownCell(statisticsDetailText(details.getJSONObject(it),translate))})
-    }
-    report.optJSONArray("assumptions")?.takeIf {it.length()>0}?.let {assumptions->
-        blocks.add("### "+translate("Assumptions")+"\n\n"+(0 until assumptions.length()).joinToString("\n\n"){markdownCell(translate(assumptions.getString(it)))})
-    }
-    report.optJSONArray("notes")?.let {notes->for(index in 0 until notes.length())blocks.add(markdownCell(translate(notes.getString(index))))}
-    result.optString("note").takeIf {it.isNotBlank()}?.let {blocks.add(markdownCell(it))}
+    val descriptions=statisticsModelDetails(report,result.optString("note"),translate)
+    if(descriptions.isNotEmpty())blocks.add("### "+translate("Model details")+"\n\n"+descriptions.joinToString("\n\n",transform=::markdownCell))
     result.optJSONArray("conditions")?.takeIf {it.length()>0}?.let {conditions->
         blocks.add("### "+translate("Conditions")+"\n\n"+(0 until conditions.length()).joinToString("\n"){"- "+markdownCell(conditions.getString(it))})
     }

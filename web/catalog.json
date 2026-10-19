@@ -381,7 +381,8 @@
     "scheffe([[],[],[]])",
     "dunnett([[],[],[]],1)",
     "conover([[],[],[]],holm)",
-    "manova([])"
+    "manova([])",
+    "mancova([],1,0.95,1)"
   ],
   "Advanced statistics": [
     "metaanalysis([],pm,0.95,z,1)",

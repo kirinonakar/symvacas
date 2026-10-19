@@ -903,6 +903,9 @@ Example: ancova([[1,1,3],[1,2,5],[1,3,4],[1,4,8],[2,2,6],[2,3,7],[2,4,9],[2,5,8]
 `manova` — Compare several responses jointly. Input: group then response columns; factorial mode adds factors, repeated mode uses subject rows with equal response blocks per time point. Reports Pillai, Wilks, Hotelling–Lawley and Roy.
 Example: manova([[1,1.987,1.448],[1,3.103,3.608],[1,5.16,4.848],[1,1.995,-0.304],[1,1.802,2.591],[1,5.242,5.082],[1,3.057,2.034],[1,4.576,5.573],[2,5.08,3.415],[2,2.502,3.058],[2,4.23,4.595],[2,2.86,0.955],[2,3.16,2.341],[2,1.101,2.67],[2,3.503,2.178],[2,3.623,2.605],[3,4.285,4.069],[3,3.301,2.832],[3,2.857,3.272],[3,0.449,3.013],[3,3.447,2.311],[3,2.401,1.025],[3,3.54,2.99],[3,3.67,3.472]])
 
+`mancova` — Compare multiple responses jointly after adjusting for covariates. mancova(data,covariate count=1,confidence=.95,slope test=1); columns: group, covariates, then at least two responses. Reports four multivariate tests and adjusted means.
+Example: mancova([[1,1,3,7],[1,2,5,6],[1,3,4,9],[1,4,8,8],[2,2,6,8],[2,3,7,11],[2,4,9,9],[2,5,8,13],[3,1,5,6],[3,3,8,10],[3,4,10,11],[3,6,11,12]],1,0.95,1)
+
 `repeatedanova` — Compare repeated conditions in complete subject rows. Rows: subjects; columns: conditions. Supports one or two factors, sphericity corrections and paired post-hoc comparisons with Holm-adjusted p values.
 Example: repeatedanova([[2,4,5],[3,4,7],[4,7,8],[2,3,6],[5,6,7]],1)
 

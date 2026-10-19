@@ -51,6 +51,9 @@ FORM_HELP = {
     'twowayanova': (
         'Choose two categorical factors and a numeric response from independent observations. Enable interaction to test joint factor effects; results include Type III tests and cell means.',
         '독립 관측의 두 범주 요인·숫자 반응을 선택합니다. 상호작용을 켜면 요인의 결합 효과를 검정합니다. Type III 검정·조합별 평균 제공.'),
+    'mancova': (
+        'Select one categorical group column, one or more covariates and at least two distinct response columns. Complete independent rows are required. Reports partial Pillai, Wilks (Rao F), Hotelling–Lawley and Roy (upper-bound F) tests, unadjusted univariate follow-ups, and adjusted means with pointwise confidence intervals at pooled covariate means. Optional slope test jointly tests every group × covariate interaction; unavailable means it could not be estimated. Assumes linear common slopes, multivariate normal errors, equal group error covariance and full-rank design. A slope-test p value below the chosen significance level indicates that at least one covariate effect differs between groups. Examine group-specific covariate effects before interpreting common-slope adjusted means.',
+        '범주형 그룹 열 1개, 공변량 1개 이상, 서로 다른 종속변수 열 2개 이상을 선택합니다. 독립 대상별 완전자료가 필요합니다. Pillai·Wilks(Rao F)·Hotelling–Lawley·Roy(상한 F)의 부분 검정, 다중비교 보정 전 단변량 후속 검정, 전체 공변량 평균에서의 조정 평균·개별 신뢰구간을 제공합니다. 기울기 검정은 모든 그룹×공변량 상호작용을 공동 검정하며 unavailable은 추정 불가입니다. 선형 공통 기울기·다변량 정규 오차·그룹 간 등공분산·완전계수 설계를 가정합니다. 기울기 검정의 p값이 유의수준보다 작으면 일부 공변량 효과가 그룹에 따라 다르다는 뜻입니다. 이때는 공통 기울기의 조정 평균을 해석하기 전에 그룹별 공변량 효과를 확인하세요.'),
     'manova': (
         'Select one-way, factorial or repeated design and multiple response columns. Repeated data use one complete row per subject and equal response blocks in time order. Review multivariate tests and response summaries.',
         '일요인·요인설계·반복측정 방식과 여러 종속변수 열을 선택합니다. 반복측정은 대상별 완전한 행에 시점 순서의 같은 크기 반응 블록을 입력하세요. 다변량 검정·변수별 요약 제공.'),

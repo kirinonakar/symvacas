@@ -19,6 +19,7 @@ from calc_advanced_learning import calculate as learning
 from calc_advanced_bayesian import calculate as bayesian
 from calc_advanced_two_sample import calculate as two_sample
 from calc_advanced_ancova import calculate as ancova
+from calc_advanced_mancova import calculate as mancova
 from calc_advanced_factorial import calculate as factorial
 from calc_advanced_glm import calculate as glm
 from calc_proportion_tests import calculate as proportion
@@ -95,6 +96,7 @@ _ANALYSES = {
     'propztest': (2, 4, proportion),
     'propztest2': (2, 5, proportion),
     'ancova': (1, 3, ancova),
+    'mancova': (1, 4, mancova),
     'glm': (1, 6, glm),
     'bayesproportion': (1, 5, bayesian),
     'bayesmean': (1, 7, bayesian),

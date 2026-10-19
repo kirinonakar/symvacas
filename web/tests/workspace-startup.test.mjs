@@ -10,6 +10,7 @@ import {createAppDialogs} from '../app-dialogs.js';
 import {setLanguage} from '../i18n.js';
 import {setComputationLimitsRemoved} from '../computation-limits.js';
 import {parse} from '../parser.js';
+import {readState} from '../storage.js';
 
 // Exercise production workspace construction against the real page HTML.
 // This runs in a DOM emulator, not in the user's browser or a browser automation tool.
@@ -38,6 +39,35 @@ test('fresh page constructs and initializes every workspace without a cached dat
   assert.equal(typeof workspaces.runStatisticsModelWorkflow,'function');
   assert.ok(window.document.getElementById('statistics-models-kind').options.length);
   assert.ok(window.document.getElementById('probability-category').options.length);
+  assert.deepEqual(errors,[]);
+});
+
+test('model details stay expanded across model changes and persist open and closed states',async context=>{
+  const {window,state,errors}=fixture(context,{fields:{mode:'statistics'},statisticsSections:{'statistics-models-help-details':true}},undefined,true);
+  const get=id=>window.document.getElementById(id);
+  const settle=()=>new Promise(resolve=>setTimeout(resolve,10));
+  const details=get('statistics-models-help-details'),kind=get('statistics-models-kind');
+  assert.equal(details.open,true,'restore the saved disclosure before model construction');
+  const help=get('statistics-models-help').textContent;
+  kind.value='glm';kind.dispatchEvent(new window.Event('change'));
+  assert.equal(details.open,true,'changing the model preserves the expanded disclosure');
+  assert.notEqual(get('statistics-models-help').textContent,help);
+  kind.value='mediation';kind.dispatchEvent(new window.Event('change'));
+  assert.equal(details.open,true);
+  await settle();
+  assert.equal(readState().statisticsSections[details.id],true);
+  details.open=false;await settle();
+  assert.equal(state.statisticsSections[details.id],false);
+  assert.equal(readState().statisticsSections[details.id],false,'closing details saves immediately');
+  kind.value='glm';kind.dispatchEvent(new window.Event('change'));
+  assert.equal(details.open,false,'an explicitly closed disclosure also survives model changes');
+  details.open=true;await settle();
+  const saved=readState();details.open=false;
+  restoreFields(createAppState(saved));
+  assert.equal(details.open,true,'a reloaded page restores the most recently saved expansion');
+  get('statistics-collapse-all').click();await settle();
+  assert.equal(details.open,false);
+  assert.equal(readState().statisticsSections[details.id],false,'Collapse all saves the closed disclosure');
   assert.deepEqual(errors,[]);
 });
 

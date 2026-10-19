@@ -163,6 +163,12 @@ internal fun advancedStatisticsFormSettings(analysis:String,input:String,formsTe
     }}}
     fun setOption(key:String,value:String) {
         val next=JSONObject(settings.toString()).put(key,value)
+        if(selected=="mancova"&&key in listOf("group","covariates")) {
+            val group=next.optString("group","0").toIntOrNull()?.let {if(it==-1)count-1 else it}
+            if(key=="group"&&next.optString("covariates","1")!="auto")next.put("covariates",next.optString("covariates","1").split(',').filter {it.isNotBlank()&&it.toIntOrNull()!=group}.joinToString(","))
+            val covariates=next.optString("covariates","1").split(',').mapNotNull(String::toIntOrNull)
+            if(next.optString("responses","auto")!="auto")next.put("responses",next.optString("responses").split(',').filter {it.isNotBlank()&&it.toIntOrNull()!=group&&it.toIntOrNull() !in covariates}.joinToString(","))
+        }
         if(selected=="logisticcompare"&&key=="response") {
             val response=if(value=="-1")count-1 else value.toIntOrNull()
             for(role in listOf("basePredictors","addedPredictors")) {

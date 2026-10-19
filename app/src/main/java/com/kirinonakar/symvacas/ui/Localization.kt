@@ -1336,6 +1336,8 @@ private val korean = mapOf(
     "Move column left" to "열 왼쪽으로 이동", "Move column right" to "열 오른쪽으로 이동", "Delete column" to "열 삭제",
     "ANCOVA" to "ANCOVA (공분산분석)", "Generalized linear model (GLM)" to "GLM (일반화 선형모형)",
     "ANCOVA table" to "공분산분석 표", "Adjusted means" to "조정 평균", "Covariate coefficients" to "공변량 계수",
+    "MANCOVA" to "MANCOVA (다변량 공분산분석)", "Multivariate tests" to "다변량 검정", "Univariate follow-up tests" to "단변량 후속 검정",
+    "Error SSCP" to "오차 제곱합·교차곱 행렬",
     "Covariate reference values" to "공변량 기준값", "Slope homogeneity" to "회귀 기울기 동질성",
     "SS" to "제곱합", "MS" to "평균제곱", "partial eta2" to "부분 η²", "Residual" to "잔차",
     "raw mean" to "원래 평균", "adjusted mean" to "조정 평균", "Lower CI" to "신뢰구간 하한", "Upper CI" to "신뢰구간 상한",

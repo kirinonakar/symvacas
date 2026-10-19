@@ -91,7 +91,7 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
   function invalidateRegression(){cancelClustering();cancelRegression();statisticsGraph=null;$('regression-caption').replaceChildren();$('regression-inference').replaceChildren();$('regression-export').hidden=true;$('regression-transfer').hidden=true;$('statistics-plot').replaceChildren();$('statistics-plot').hidden=true;}
   function regressionBusy(busy){$('regression-section').setAttribute('aria-busy',String(busy));}
   function cancelRegression(){if(!regressionRun)return;regressionRun=null;regressionBusy(false);engine.cancel();}
-  for(const details of document.querySelectorAll('details.statistics-section[id]'))details.addEventListener('toggle',persist);
+  for(const details of document.querySelectorAll('details.statistics-section[id],details.statistics-model-help[id]'))details.addEventListener('toggle',persist);
   $('statistics-collapse-all').onclick=()=>{for(const details of document.querySelectorAll('.workspace[data-mode="statistics"] details[open]'))details.open=false;persist();};
   $('statistics-new').onclick=()=>{
     cancelRegression();$('statistics-data').value='';$('dataset-name').value='';$('dataset-list').value='';

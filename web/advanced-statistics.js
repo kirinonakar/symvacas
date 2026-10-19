@@ -22,7 +22,7 @@ export function advancedStatisticsReservedColumns(definition,settings,key,count)
   else if(id==='survivalanalysis')roles=['time','event',...(opts.grouping==='groups'?['group']:[])];
   else if(id==='metaregression')roles=opts.layout==='binary'?['eventsA','totalA','eventsB','totalB']:opts.layout==='continuous'?['meanA','sdA','nA','meanB','sdB','nB']:['effect','se'];
   else if(['logisticcompare','poissonreg','nbreg','glm','ordinal','multinomial','crossvalidate','linearmodel','discriminantanalysis','quantreg','zeroinflated','tobit','robustreg'].includes(id))roles=['response'];
-  else if(id==='manova')roles=['group'];
+  else if(['manova','mancova'].includes(id))roles=['group'];
   else if(['mediation','moderation'].includes(id))roles=['x','middle','response'];
   else if(id==='ancova')roles=['group','response'];
   else roles=['subject','response'];
@@ -30,6 +30,7 @@ export function advancedStatisticsReservedColumns(definition,settings,key,count)
   const excluded=['cfa','sem'].includes(id)&&key==='columns'&&opts.groupMode==='multi'?['group']:['predictors','categorical','covariates','responses','basePredictors','addedPredictors'].includes(key)?roles:[];
   const reserved=excluded.filter(role=>opts[role]!==undefined).map(role=>Number(opts[role])===-1?count-1:Number(opts[role]));
   if(['logisticcompare','modelcompare'].includes(id)&&key==='addedPredictors')reserved.push(...String(opts.basePredictors??'').split(',').filter(Boolean).map(Number));
+  if(id==='mancova'&&key==='responses')reserved.push(...String(opts.covariates??'').split(',').filter(Boolean).map(Number));
   return [...new Set(reserved.filter(at=>Number.isInteger(at)&&at>=0&&at<count))];
 }
 
@@ -591,6 +592,12 @@ export function createAdvancedStatistics({state,persist,data,columnLimit,copy,cl
           const changed=newValue=>{
             if(field.type==='column'&&Number(field.default)===-1)state.fields[id+'-auto']=false;
             state.fields[id]=newValue;
+            if(definition.id==='mancova'&&['group','covariates'].includes(field.key)){
+              const chosen=settings(),group=Number(chosen.group)===-1?count-1:Number(chosen.group);
+              if(field.key==='group'&&chosen.covariates!=='auto')state.fields[fieldId('covariates')]=String(chosen.covariates).split(',').filter(at=>at&&Number(at)!==group).join(',');
+              const covariates=String(settings().covariates).split(',').filter(Boolean).map(Number);
+              if(chosen.responses!=='auto')state.fields[fieldId('responses')]=String(chosen.responses).split(',').filter(at=>at&&Number(at)!==group&&!covariates.includes(Number(at))).join(',');
+            }
             if(['logisticcompare','modelcompare'].includes(definition.id)&&['response','time','event','subject'].includes(field.key)){
               const response=Number(newValue)===-1?count-1:Number(newValue);
               for(const role of ['basePredictors','addedPredictors'])if(settings()[role]!=='auto')state.fields[fieldId(role)]=String(settings()[role]).split(',').filter(at=>at&&Number(at)!==response).join(',');
@@ -649,7 +656,7 @@ export function createAdvancedStatistics({state,persist,data,columnLimit,copy,cl
     const button=document.querySelector(`[data-run="${panelId}"]`);button.dataset.invalidAnalysis=String(!source.value.trim());
     button.disabled=!source.value.trim()||document.documentElement.dataset.busy==='true'||document.documentElement.dataset.engine!=='ready';
   };
-  select.onchange=()=>{panel('help-details').open=false;source.value=selected().example;input.value=selected().controls?(data().trim()&&selected().input!=='none'?'current':'example'):'expression';signature='';update();persist();};
+  select.onchange=()=>{source.value=selected().example;input.value=selected().controls?(data().trim()&&selected().input!=='none'?'current':'example'):'expression';signature='';update();persist();};
   input.onchange=()=>{if(input.value==='expression'&&!source.value)source.value=selected().example;signature='';update();persist();};
   panel('example').onclick=()=>{source.value=selected().example;if(selected().controls)input.value='example';signature='';update();persist();};
   panel('data').onclick=()=>{
@@ -682,7 +689,7 @@ export function createAdvancedStatistics({state,persist,data,columnLimit,copy,cl
     select.value=plan.target;source.value=plan.expression;input.value='expression';
     state.fields[select.id]=plan.target;state.fields[source.id]=plan.expression;state.fields[input.id]='expression';
     state.fields[panelId+'-workflow-source']=plan.expression;state.fields[panelId+'-workflow-labels']=JSON.stringify(plan.termLabels);
-    panel('help-details').open=false;signature='';update();persist();
+    signature='';update();persist();
     openPanel();
   },clearResult:result=>{
     if(displayed?.copyResult===result){displayed=null;reportKey='';report.replaceChildren();report.hidden=true;}

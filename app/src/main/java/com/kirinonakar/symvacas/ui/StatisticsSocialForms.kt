@@ -1,6 +1,6 @@
 package com.kirinonakar.symvacas.ui
 
-internal val socialAnalysisIds=setOf("cronbach","efa","cfa","sem","manova","mediation","moderation","cramerv","phi","cohenkappa","dunn","conover","scheffe","dunnett","discriminantanalysis","quantreg","zeroinflated","tobit","hcluster")
+internal val socialAnalysisIds=setOf("cronbach","efa","cfa","sem","manova","mancova","mediation","moderation","cramerv","phi","cohenkappa","dunn","conover","scheffe","dunnett","discriminantanalysis","quantreg","zeroinflated","tobit","hcluster")
 
 internal data class SocialStatisticsPlan(val expression:String,val labels:Map<String,String>)
 
@@ -69,6 +69,16 @@ internal fun socialStatisticsPlan(id:String,rows:List<List<String>>,opts:Map<Str
                 } else ""
                 "$id(${table(selected)},${vector(factors)}${if(id=="sem")","+table(paths) else ""}$extra)"
             }
+        }
+        "mancova"->{
+            val group=col("group");val covariates=columns("covariates",listOf(group));val responses=columns("responses",listOf(group)+covariates)
+            require(responses.size>=2){"Select at least two responses"}
+            val selected=complete(listOf(group)+covariates+responses);val groups=selected.map {it[0]}.distinct()
+            require(groups.size>=2){"Choose at least two groups"}
+            labels["Group"]=label(group,"Group");groups.forEachIndexed {i,name->labels["group:${i+1}"]=name}
+            covariates.forEachIndexed {i,at->labels["x${i+1}"]=label(at,"x${i+1}")}
+            responses.forEachIndexed {i,at->labels["response:${i+1}"]=label(at,"Response ${i+1}")}
+            "mancova(${table(selected.map {listOf((groups.indexOf(it[0])+1).toString())+it.drop(1)})},${covariates.size},${opts["level"]},${if(opts["slopes"]=="test")1 else 0})"
         }
         "manova"->{
             if(opts["design"]=="factorial") {

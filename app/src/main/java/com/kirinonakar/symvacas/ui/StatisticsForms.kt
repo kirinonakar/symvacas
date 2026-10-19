@@ -12,7 +12,7 @@ internal fun advancedStatisticsReservedColumns(definition:JSONObject,settings:JS
         "survivalanalysis"->listOf("time","event")+if(opts["grouping"]=="groups")listOf("group") else emptyList()
         "metaregression"->when(opts["layout"]){"binary"->listOf("eventsA","totalA","eventsB","totalB");"continuous"->listOf("meanA","sdA","nA","meanB","sdB","nB");else->listOf("effect","se")}
         "logisticcompare","poissonreg","nbreg","glm","multinomial","ordinal","crossvalidate","linearmodel","discriminantanalysis","quantreg","zeroinflated","tobit","robustreg"->listOf("response")
-        "manova"->listOf("group")
+        "manova","mancova"->listOf("group")
         "mediation","moderation"->listOf("x","middle","response")
         "ancova"->listOf("group","response")
         else->listOf("subject","response")
@@ -22,7 +22,8 @@ internal fun advancedStatisticsReservedColumns(definition:JSONObject,settings:JS
         else if(key in listOf("predictors","categorical","covariates","responses","basePredictors","addedPredictors"))roles+offsets else emptyList()
     val reserved=excluded.mapNotNull {opts[it]?.toIntOrNull()?.let {at->if(at==-1)columnCount-1 else at}}
     val additional=if(id in listOf("logisticcompare","modelcompare")&&key=="addedPredictors")opts["basePredictors"].orEmpty().split(',').mapNotNull(String::toIntOrNull) else emptyList()
-    return (reserved+additional).filter {it in 0 until columnCount}.toSet()
+    val covariates=if(id=="mancova"&&key=="responses")opts["covariates"].orEmpty().split(',').mapNotNull(String::toIntOrNull) else emptyList()
+    return (reserved+additional+covariates).filter {it in 0 until columnCount}.toSet()
 }
 
 /** Map engine predictor positions to the labels of the selected data columns. */

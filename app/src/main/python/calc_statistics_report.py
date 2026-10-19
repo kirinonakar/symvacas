@@ -16,7 +16,7 @@ TITLES['modelcompare']='Model Comparison'
 TITLES['normaltest']='D’Agostino–Pearson'
 TITLES.update({'scheffe':'Scheffé post-hoc test','dunnett':'Dunnett control comparisons','conover':'Conover–Iman post-hoc test'})
 TITLES.update({'propztest':'One-sample proportion z test', 'propztest2':'Two-sample proportion z test',
-               'ancova':'ANCOVA', 'glm':'Generalized linear model (GLM)',
+               'ancova':'ANCOVA', 'mancova':'MANCOVA', 'glm':'Generalized linear model (GLM)',
                'welchanova':'Welch ANOVA','gameshowell':'Games–Howell','linearmodel':'Factorial linear model / ANOVA', 'twowayanova':'Two-way ANOVA', 'friedman':'Friedman test',
                'cohend':'Effect size', 'eta2':'Effect size', 'bootstrapci':'Bootstrap confidence interval',
                'testpower':'Power', 'kstest':'Kolmogorov–Smirnov test',
@@ -189,6 +189,9 @@ def statistics_report(name, value, precision, labels=None):
                 section['totalRow']=len(v)
                 return
             if all(isinstance(row, dict) for row in v):
+                if name=='mancova' and title=='Adjusted means':
+                    for response in dict.fromkeys(row['Response'] for row in v):
+                        interval_plot(str(response)+' adjusted means', [(row['group'],row['adjusted mean'],row['Lower CI'],row['Upper CI']) for row in v if row['Response']==response])
                 intervals=[]; expanded=[]
                 for row_index, raw in enumerate(v):
                     row=dict(raw)
@@ -214,6 +217,8 @@ def statistics_report(name, value, precision, labels=None):
                         estimate=row.get('Standardized loading',row.get('Standardized path'))
                         low=row.get('Standardized lower 95% CI'); high=row.get('Standardized upper 95% CI')
                     if label:
+                        if name=='mancova' and 'Response' in row:
+                            label=str(label)+' / '+str(row['Response'])
                         if title=='Effects': label=str(label)+' / '+str(row.get('Effect',''))
                         if name in ('cfa','sem') and 'Group' in row: label=str(row['Group'])+' / '+str(label)
                         if name in ('cfa','sem') and 'Factor' in row: label=str(label)+' / Factor '+str(row['Factor'])
@@ -223,7 +228,7 @@ def statistics_report(name, value, precision, labels=None):
                     if not context: context = [{'label':'Observation', 'value':str(row_index+1)}]
                     extract_details(title, row, context)
                     expanded.append(row)
-                if intervals:
+                if intervals and not (name=='mancova' and title=='Adjusted means'):
                     plot_title={'Loadings':'Standardized factor loadings (95% CI)','Structural paths':'Standardized structural paths (95% CI)'}.get(title,title+' intervals') if name in ('cfa','sem') else title+' intervals'
                     interval_plot(plot_title,intervals,0 if (name in ('cfa','sem','gameshowell') or 'coefficients' in title.lower() or 'post-hoc' in title.lower()) else None)
                 v=expanded

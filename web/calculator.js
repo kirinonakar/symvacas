@@ -80,7 +80,6 @@ export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist
       target.hidden=!visible;
       if(visible){
         renderStatisticsReport(target,statisticsResult.statisticsReport,{digits:state.digits,...resultOptions(),onCopy:()=>clipboard(statisticsResultMarkdown(statisticsResult,{digits:state.digits,...resultOptions()})),onClear:()=>clearResult(),onModelWorkflow:onStatisticsModelWorkflow,isBusy:()=>isBusy()||!engine.ready});
-        if(statisticsResult.note)target.append(element('p',statisticsResult.note,'hint'));
       }else target.replaceChildren();
     }
   }

@@ -1,6 +1,6 @@
 import {statisticsComparisonData} from './statistics-comparison-data.js';
 
-export const socialAnalysisIds=new Set(['cronbach','efa','cfa','sem','manova','mediation','moderation','cramerv','phi','cohenkappa','dunn','conover','scheffe','dunnett','discriminantanalysis','quantreg','zeroinflated','tobit','hcluster']);
+export const socialAnalysisIds=new Set(['cronbach','efa','cfa','sem','manova','mancova','mediation','moderation','cramerv','phi','cohenkappa','dunn','conover','scheffe','dunnett','discriminantanalysis','quantreg','zeroinflated','tobit','hcluster']);
 
 export function socialStatisticsPlan(id,rows,opts,columnLabels=[]){
   const n=Math.max(0,...rows.map(row=>row.length)),labels={};
@@ -67,6 +67,15 @@ export function socialStatisticsPlan(id,rows,opts,columnLabels=[]){
       }
       expression=`${id}(${table(selected)},${list(factors)}${id==='sem'?','+table(paths):''}${extra})`;
     }
+  }else if(id==='mancova'){
+    const group=col('group'),covariates=columns('covariates',[group]),responses=columns('responses',[group,...covariates]);
+    if(responses.length<2)throw new Error('Select at least two responses');
+    const selected=complete([group,...covariates,...responses]),groups=[...new Set(selected.map(row=>row[0]))];
+    if(groups.length<2)throw new Error('Choose at least two groups');
+    labels.Group=label(group,'Group');groups.forEach((name,i)=>{labels[`group:${i+1}`]=name;});
+    covariates.forEach((at,i)=>{labels[`x${i+1}`]=label(at,`x${i+1}`);});
+    responses.forEach((at,i)=>{labels[`response:${i+1}`]=label(at,`Response ${i+1}`);});
+    expression=`mancova(${table(selected.map(row=>[groups.indexOf(row[0])+1,...row.slice(1)]))},${covariates.length},${opts.level},${opts.slopes==='test'?1:0})`;
   }else if(id==='manova'){
     if(opts.design==='factorial'){
       const factors=columns('factorColumns'),responses=columns('responses',factors),selected=complete([...factors,...responses]);
