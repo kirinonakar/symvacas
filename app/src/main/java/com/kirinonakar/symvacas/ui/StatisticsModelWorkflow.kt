@@ -86,7 +86,7 @@ internal fun statisticsModelWorkflowPlan(workflow:JSONObject,factors:String,path
         } else {
             if(isKorean())"CFA의 측정모형·자료·추정 옵션을 이어받습니다. 잠재 경로(출발,도착;…)와 필요하면 효과 부트스트랩을 지정한 뒤 SEM을 실행하세요." else "The CFA measurement model, data and estimation options carry forward. Specify latent paths (source,target;…) and optional effect bootstrap before running SEM."
         }
-        StatisticsExplanation("Usage notes",usageNotes,"statistics-workflow-help",workflow)
+        StatisticsExplanation("Usage notes",usageNotes,"statistics-workflow-help")
         Field(factors,"Factor IDs in analyzed column order",Modifier.fillMaxWidth(),enabled=target=="cfa"&&enabled){factors=it}
         val ids=factors.split(',').map {it.trim().toIntOrNull()};val labels=workflow.getJSONObject("termLabels")
         for(factor in 1..workflow.getInt("factorCount"))Text("${tr("Factor")} $factor: "+ids.mapIndexedNotNull {i,id->if(id==factor)labels.optString("feature:${i+1}","${tr("Feature")} ${i+1}") else null}.joinToString(", "),fontSize=11.sp,color=c.muted)

@@ -37,7 +37,7 @@ import kotlin.math.min
     val title="${tr(if(oob)"OOB ROC curve" else "ROC curve")} · AUC=$auc"
     val xLabel=tr("False positive rate (FPR)");val yLabel=tr("Sensitivity (TPR)")
     Text(title,fontSize=12.sp)
-    StatisticsExplanation("Plot details",tr(if(oob)"ROC/AUC uses OOB predictions; positive class = 1." else "ROC/AUC uses fitted data; positive class = 1."),if(oob)"statistics-oob-roc-help" else "statistics-roc-help",report)
+    StatisticsExplanation("Plot details",tr(if(oob)"ROC/AUC uses OOB predictions; positive class = 1." else "ROC/AUC uses fitted data; positive class = 1."),if(oob)"statistics-oob-roc-help" else "statistics-roc-help")
     ExportableGraphCanvas(Modifier.widthIn(max=360.dp).fillMaxWidth().aspectRatio(1f).testTag(if(oob)"statistics-oob-roc" else "statistics-roc").semantics {contentDescription="$title · $xLabel · $yLabel"},colors.display,exports,
         exportFooterHeight=24.dp,exportFooter={
             val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply {color=colors.muted.toArgb();textSize=11.sp.toPx()}

@@ -289,6 +289,7 @@ import org.json.JSONArray
             enabled=command!=null&&!m.busy&&!m.regressionBusy,modifier=Modifier.testTag("statistics-run-test"),
             onCancel={m.cancel()},onClick={command?.let {m.calculationAction="statistics-analysis";m.calculateStatistics(it,termLabels)}})
     }
+    StatisticsAnalysisError(m,"statistics-analysis")
     statisticsReportFor(m.statisticsResult,m.statisticsResultSource,statisticsTestAnalyses(test))?.let {StatisticsResultReport(m,it)}
     }
     AdvancedStatistics(m,data,kind,"tests","More tests & effect sizes")

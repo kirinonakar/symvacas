@@ -10,7 +10,9 @@ import org.json.JSONObject
 internal object CalculatorStatisticsActions {
     fun CalculatorModel.performCalculateStatistics(source:String,termLabels:Map<String,String>) {
         if(busy||regressionBusy)return
-        val input=try {statisticsRequest(source,removeComputationLimit)} catch(e:Exception) {error=e.message ?: "Syntax ERROR";return}
+        val action=calculationAction.takeIf {it.startsWith("statistics-")} ?: "statistics-analysis"
+        showStatisticsError(action,"");error=""
+        val input=try {statisticsRequest(source,removeComputationLimit)} catch(e:Exception) {showStatisticsError(action,e.message ?: "Syntax ERROR");return}
         val calculationRequest=request().put("tree",JSONObject(input.tree.json()))
             .put("statisticsDatasets",JSONObject(input.datasets)).put("statisticsTermLabels",JSONObject(termLabels))
             .put("variables",variables).put("equationSteps",false).put("solutionSteps",false)
@@ -24,10 +26,10 @@ internal object CalculatorStatisticsActions {
                     if(response.has("resultAst"))next.put("Ans",response.getJSONObject("resultAst")) else next.remove("Ans")
                     variables=next
                     save()
-                } else error=response.optString("error").ifBlank {"Math ERROR"}
+                } else showStatisticsError(action,response.optString("error").ifBlank {"Math ERROR"})
             } catch(e:Exception) {
                 if(e is CancellationException)throw e
-                error=e.message?.takeIf(String::isNotBlank) ?: "Math ERROR"
+                showStatisticsError(action,e.message?.takeIf(String::isNotBlank) ?: "Math ERROR")
             } finally {busy=false}
         }
     }
@@ -48,7 +50,8 @@ internal object CalculatorStatisticsActions {
     }
     fun CalculatorModel.performFitRegression(source: String, data: String, responseColumn:Int?) {
         regressionJob?.cancel()
-        val statisticsInput=try {statisticsRequest(source,removeComputationLimit)} catch(e:Exception) {error=e.message ?: "Syntax ERROR";return}
+        showStatisticsError("regression","");error=""
+        val statisticsInput=try {statisticsRequest(source,removeComputationLimit)} catch(e:Exception) {showStatisticsError("regression",e.message ?: "Syntax ERROR");return}
         val tree=statisticsInput.tree
         val fittedMode=tree.args.getOrNull(1)?.value ?: "linear"
         val calculationRequest=request().put("tree",JSONObject(tree.json())).put("statisticsDatasets",JSONObject(statisticsInput.datasets))
@@ -75,10 +78,10 @@ internal object CalculatorStatisticsActions {
                     if(response.has("resultAst")) next.put("Ans",response.getJSONObject("resultAst")) else next.remove("Ans")
                     variables=next
                     save()
-                } else {statisticsState.clearRegression();error=response.optString("error").ifBlank {"Math ERROR"}}
+                } else {statisticsState.clearRegression();showStatisticsError("regression",response.optString("error").ifBlank {"Math ERROR"})}
             } catch(e:Exception) {
                 if(e is CancellationException)throw e
-                statisticsState.clearRegression();error=e.message?.takeIf(String::isNotBlank) ?: "Math ERROR"
+                statisticsState.clearRegression();showStatisticsError("regression",e.message?.takeIf(String::isNotBlank) ?: "Math ERROR")
             } finally {if(regressionJob===currentJob){statisticsState.regressionBusy=false;regressionJob=null}}
         }
     }

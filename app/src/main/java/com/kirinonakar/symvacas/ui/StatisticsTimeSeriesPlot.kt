@@ -91,7 +91,7 @@ import kotlin.math.roundToInt
             Row(horizontalArrangement=Arrangement.spacedBy(12.dp)){listOf("Observed","Fitted","Forecast").forEachIndexed {i,name->Text("● ${tr(name)}",fontSize=11.sp,color=colors[i])}}
             Text("${String.format(Locale.ROOT,"%.4g",plot.getDouble("level")*100)}% ${tr("Prediction interval")}",fontSize=11.sp,color=c.muted)
         }
-        plot.optString("caption").takeIf {it.isNotBlank()}?.let {StatisticsExplanation("Plot details",tr(it),"statistics-timeseries-plot-help",plot)}
+        plot.optString("caption").takeIf {it.isNotBlank()}?.let {StatisticsExplanation("Plot details",tr(it),"statistics-timeseries-plot-help")}
         PlotExportActions(exports,"symvacas-${plot.getString("kind")}")
     }
 }

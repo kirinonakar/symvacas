@@ -432,18 +432,19 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                     SmallAction("Overall",translate=false,modifier=summaryActionModifier.testTag("statistics-summary-overall")) {
                         runCatching {statisticsOverallPlan(data,dataKind)}.onSuccess {plan->
                             m.calculationAction="statistics-summary";m.calculateStatistics(plan.source,statisticsTermLabels=plan.termLabels)
-                        }.onFailure {m.error=it.message.orEmpty()}
+                        }.onFailure {m.showStatisticsError("statistics-summary",it.message.orEmpty())}
                     }
                     fun summarize(command:String,columnIndex:Int=0) {m.calculationAction="statistics-summary";m.calculateStatistics(command,statisticsTermLabels=mapOf("sample:1" to statisticsColumnLabels(data,dataKind)[columnIndex]))}
                     dataColumns.indices.forEach {column->SmallAction(statisticsColumnLabels(data,dataKind)[column],translate=false,modifier=summaryActionModifier){
                         runCatching {statisticsSummaryPlan(data,dataKind,column)}.onSuccess {plan->
                             m.calculationAction="statistics-summary";m.calculateStatistics(plan.source,statisticsTermLabels=plan.termLabels)
-                        }.onFailure {m.error=it.message.orEmpty()}
+                        }.onFailure {m.showStatisticsError("statistics-summary",it.message.orEmpty())}
                     }}
                     val correlationCommand=statisticsCorrelationCommand(numericRows,dataKind)
                     if(dataKind=="xy")SmallAction("correlation",active=if(correlationCommand==null)false else null,translate=false,modifier=summaryActionModifier.testTag("statistics-correlation")){correlationCommand?.let {summarize(it)}}
                 }
             }
+            StatisticsAnalysisError(m,"statistics-summary")
             statisticsReportFor(m.statisticsResult,m.statisticsResultSource,setOf("stats","mean","median","variance","stdev","mode","skewness","kurtosis","sumdata","quartiles","correlation","covariance"))?.let {StatisticsResultReport(m,it)}
         AdvancedStatistics(m,data,dataKind,"preparation","Data preparation",onDataApplied={updated->
             m.clearRegression();data=updated
@@ -574,7 +575,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                     if(selectedMode !in listOf("custom","polynomial","randomforest","svm","bayeslinear","bayeslogistic")&&(selectedMode !in listOf("linear","multiple","logistic")||regularization=="none")) {
                         val table=statisticsRegressionTable(numericRows,dataKind,selectedMode,selectedResponse)
                         if(table!=null)m.fitRegression("regression($table,$selectedMode)",data,if(selectedMode in listOf("multiple","logistic"))selectedResponse else null)
-                        else m.error="Add more data points than fit parameters"
+                        else m.showStatisticsError("regression","Add more data points than fit parameters")
                     }
                 })
                 val regressionNotes=buildList {
@@ -588,7 +589,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                     }
                     if(dataKind=="xy"&&regression=="custom")add(if(isKorean())"수식·독립변수를 지정하세요. 시작값·경계는 [[매개변수,시작값,하한,상한],…]이며 상한은 생략할 수 있습니다." else "Set the formula and independent variable. Initial values/bounds: [[parameter,initial,lower,upper],…]; upper bounds are optional.")
                 }.distinct().joinToString("\n")
-                if(regressionNotes.isNotBlank())StatisticsExplanation("Model details",regressionNotes,"statistics-regression-help",regression)
+                if(regressionNotes.isNotBlank())StatisticsExplanation("Model details",regressionNotes,"statistics-regression-help")
                 if(dataColumns.size>1&&regression in listOf("linear","multiple","logistic")) {
                     StatisticsSelectionTitle("Regularization")
                     Choices(listOf("none","ridge","lasso","elasticnet"),regularization,{m.clearRegression();regularization=it})
@@ -708,6 +709,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                         m.fitRegression("regression($table,custom,$customFormula,$customVariable$guesses)",data)
                     },enabled=customFormula.isNotBlank()&&customVariable.matches(Regex("[A-Za-z][A-Za-z0-9_]*"))&&paired.size>=2&&!m.busy)
                 }
+                StatisticsAnalysisError(m,"regression")
                 if(regression=="logistic"&&dataColumns.size>=2)SmallAction("Nested model comparison") {
                     val predictors=dataColumns.indices.filter {it!=responseColumn}
                     val options=org.json.JSONObject().put("family","logistic").put("response",responseColumn.toString()).put("basePredictors",predictors.dropLast(1).joinToString(",")).put("addedPredictors",predictors.takeLast(1).joinToString(","))

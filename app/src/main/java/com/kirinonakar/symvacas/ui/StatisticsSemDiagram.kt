@@ -88,7 +88,7 @@ import kotlin.math.*
             }
             }
         }
-        StatisticsExplanation("Plot details",legend,"statistics-sem-diagram-help",plot)
+        StatisticsExplanation("Plot details",legend,"statistics-sem-diagram-help")
         PlotExportActions(exports,"symvacas-sem-diagram")
     }
 }

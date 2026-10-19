@@ -85,10 +85,10 @@ export function createWorkspaces({state,engine,ui,persist,restoreSelect,requestO
       else if(workspace==='tip')source=tipExpression();
       else if(workspace==='currency'){source=`(${value('currency-amount')})*(${value('currency-rate')})`;}
       const expressionRequest=workspace.startsWith('statistics')?statisticsRequest(latexInput(source)):{tree:parse(latexInput(source))};
-      let result=await engine.execute({...requestOptions(),...expressionRequest,...(workspace==='equation'?{equationSteps:true,solutionSteps:true}:{}),...(advancedContext?.termLabels?{statisticsTermLabels:advancedContext.termLabels}:{})},{context:workspace});if(workspace==='tip'&&result.ok)result=moneyResult(result,Number(value('tip-people')));if(statisticsContext&&result.ok)result={...result,note:[statisticsContext,result.note].filter(Boolean).join('\n')};(workspace.startsWith('statistics')?showStatisticsResult:showResult)(result,source,workspace==='equation'?equationSource():source,{decimalDisplay:workspace==='regression',statisticsTarget:workspace==='statistics'?'statistics-analysis-result':workspace.startsWith('statistics-')?workspace+'-result':''});
+      let result=await engine.execute({...requestOptions(),...expressionRequest,...(workspace==='equation'?{equationSteps:true,solutionSteps:true}:{}),...(advancedContext?.termLabels?{statisticsTermLabels:advancedContext.termLabels}:{})},{context:workspace});if(workspace==='tip'&&result.ok)result=moneyResult(result,Number(value('tip-people')));if(statisticsContext&&result.ok)result={...result,note:[statisticsContext,result.note].filter(Boolean).join('\n')};if(!result.ok&&statistics.showAdvancedError(result.error,workspace))return;(workspace.startsWith('statistics')?showStatisticsResult:showResult)(result,source,workspace==='equation'?equationSource():source,{decimalDisplay:workspace==='regression',statisticsTarget:workspace==='statistics'?'statistics-analysis-result':workspace.startsWith('statistics-')?workspace+'-result':''});
       if(workspace==='equation')equationSteps.show(result);
       if(advancedContext&&workspace!=='statistics-summary')statistics.showAdvancedResult(result,advancedContext,workspace);
-    }catch(exc){const message=exc.message||'Math ERROR';statistics.showAdvancedError(message,workspace);error(message);}
+    }catch(exc){const message=exc.message||'Math ERROR';if(!statistics.showAdvancedError(message,workspace))error(message);}
   }
   document.querySelectorAll('[data-run]').forEach(button=>button.onclick=()=>run(button.dataset.run));
 

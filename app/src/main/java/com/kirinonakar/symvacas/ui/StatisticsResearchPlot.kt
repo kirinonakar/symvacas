@@ -82,7 +82,7 @@ internal fun researchPlotBounds(points:List<Pair<Double,Double>>,lines:List<List
             observations.forEach {(x,y)->drawCircle(c.accent.copy(alpha=.8f),3.dp.toPx(),Offset(px(x),py(y)))}
             label(left,16.dp.toPx(),ylabel,Paint.Align.LEFT);label(left+w/2,size.height-8.dp.toPx(),xlabel)
         }
-        if(plot.has("caption"))StatisticsExplanation("Plot details",tr(plot.getString("caption")),"statistics-research-plot-help",plot)
+        if(plot.has("caption"))StatisticsExplanation("Plot details",tr(plot.getString("caption")),"statistics-research-plot-help")
         PlotExportActions(exports,"symvacas-${plot.getString("title").lowercase().replace(' ','-')}")
     }
 }

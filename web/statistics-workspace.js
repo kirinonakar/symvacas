@@ -58,6 +58,17 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
   const summaryExpression=()=>summaryOp!=='correlation'?summaryPlan().source:statisticsCommand(value("statistics-data"),{op:summaryOp,column:Number(value("statistics-summary-column")),kind:dataKind()});
   const summaryTermLabels=()=>{const labels=statisticsColumnLabels(value("statistics-data"),dataKind());return summaryOp==="correlation"?{'sample:1':labels[0],'sample:2':labels[1]}:summaryPlan().termLabels;};
   const analysisPanels={};
+  const analysisErrorId=panel=>panel==='statistics'?'statistics-analysis-error':`${panel}-error`;
+  function showAnalysisError(message,panel) {
+    if(analysisPanels[panel]){analysisPanels[panel].showError(message);return true;}
+    if(!['statistics','statistics-summary','regression'].includes(panel))return false;
+    const button=document.querySelector(`[data-run="${panel}"]`);
+    if(!button)return false;
+    let status=$(analysisErrorId(panel));
+    if(!status){status=element('p','','error');status.id=analysisErrorId(panel);status.setAttribute('role','alert');(button.closest('.form-row')||button).after(status);}
+    status.textContent=t(message||'Math ERROR');status.hidden=false;
+    return true;
+  }
   let regressionRun=null;
   let detectedColumnSource=null,detectedColumnCount=null;
   let clusterRun=null;
@@ -636,9 +647,10 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
       regressionBusy(true);
       const result=await engine.execute({...options,...expressionRequest},{context:'regression'});
       if(regressionRun!==run||source!==statisticsExpression('regression'))return;
+      if(!result.ok){showAnalysisError(result.error,'regression');return;}
       showResult(result,source,source,{decimalDisplay:true});
       if(result.ok)showRegression(result);
-    }catch(exc){if(regressionRun===run)error(exc.message);}
+    }catch(exc){if(regressionRun===run)showAnalysisError(exc.message,'regression');}
     finally{if(regressionRun===run){regressionRun=null;regressionBusy(false);}}
   }
   for(const section of ['preparation','general','tests','models','advanced'])analysisPanels[`statistics-${section}`]=createAdvancedStatistics({state,persist,data:()=>value('statistics-data'),columnLimit:()=>dataColumns(),copy:ui.clipboard,clearResult,section,applyData:updated=>{
@@ -666,6 +678,6 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
   }
   statisticsControls();
   return {datasetsList,summaryExpression,summaryTermLabels,expression:statisticsExpression,analysisTermLabels,prepareModelWorkflow:plan=>advanced.prepareModelWorkflow(plan),advancedExpression:(panel='statistics-advanced')=>analysisPanels[panel].expression(),advancedContext:(panel='statistics-advanced')=>analysisPanels[panel].context(),showAdvancedResult:(result,context,panel='statistics-advanced')=>analysisPanels[panel]?.showResult(result,context),analysisSummary,render,showRegression,runRegression,
-    showAdvancedError:(message,panel)=>analysisPanels[panel]?.showError(message),clearAdvancedError:panel=>analysisPanels[panel]?.clearError(),
+    showAdvancedError:showAnalysisError,clearAdvancedError:panel=>{analysisPanels[panel]?.clearError();const status=$(analysisErrorId(panel));if(status)status.hidden=true;},
     clearResult:result=>{if(statisticsGraph?.result===result)clearRegression();for(const panel of Object.values(analysisPanels))panel.clearResult(result);}};
 }

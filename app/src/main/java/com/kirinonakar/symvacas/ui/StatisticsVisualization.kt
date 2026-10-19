@@ -162,7 +162,7 @@ private fun plotNumber(value:Double)=String.format(Locale.ROOT,"%.4g",value)
             if(kind=="interaction")add(tr("Lines connect fitted cell means; nonparallel lines suggest interaction. Intervals are shown separately. Interpret with the interaction F test."))
             if(kind=="clusters")add(tr("Colors: cluster membership · crosses: centroids. Axes show original feature values."))
         }
-        if(explanations.isNotEmpty())StatisticsExplanation("Plot details",explanations.joinToString("\n\n"),"statistics-$kind-plot-help",plot)
+        if(explanations.isNotEmpty())StatisticsExplanation("Plot details",explanations.joinToString("\n\n"),"statistics-$kind-plot-help")
         if(kind=="interaction") {
             val labels=plot.getJSONArray("lineLabels")
             Column {for(i in 0 until labels.length())Text("● "+labels.getString(i),fontSize=11.sp,color=c.curves[i%c.curves.size])}
@@ -231,8 +231,8 @@ private fun plotNumber(value:Double)=String.format(Locale.ROOT,"%.4g",value)
             }
             label(left+w/2,size.height-8.dp.toPx(),xlabel)
         }
-        if(plot.has("secondary"))StatisticsExplanation("Plot details",tr("Bars: adjusted p · dots: raw p · dashed line: α"),"statistics-comparison-plot-help",plot)
-        if(plot.has("caption"))StatisticsExplanation("Plot details",tr(plot.getString("caption")),"statistics-interval-plot-help",plot)
+        if(plot.has("secondary"))StatisticsExplanation("Plot details",tr("Bars: adjusted p · dots: raw p · dashed line: α"),"statistics-comparison-plot-help")
+        if(plot.has("caption"))StatisticsExplanation("Plot details",tr(plot.getString("caption")),"statistics-interval-plot-help")
         PlotExportActions(exports,"symvacas-${plot.getString("kind")}")
     }
 }

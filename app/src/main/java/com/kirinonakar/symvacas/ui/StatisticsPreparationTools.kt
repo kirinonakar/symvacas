@@ -112,7 +112,7 @@ import org.json.JSONObject
             "recode"->"Write one old value, new value rule per line; <missing> matches a blank cell. Numeric intervals use < and ≥. Unmatched values follow the selected option."
             else->"Use column names (x, y, z, …) or header names in arithmetic formulas. A label such as test (x) accepts test or x. Supports sqrt, abs, exp, log, trigonometric functions (radians), round, min, max, sum, mean and if(condition,a,b). Missing or invalid numerical results become blank."
         }
-        StatisticsExplanation("Usage notes",tr(help),"statistics-preparation-$id-help",id)
+        StatisticsExplanation("Usage notes",tr(help),"statistics-preparation-$id-help")
         val previewOptions=options.filterKeys {key->(0 until fields.length()).none {fields.getJSONObject(it).let {field->field.getString("key")==key&&!field.optBoolean("preview",true)}}}
         val key=listOf(data,kind,JSONObject(previewOptions).toString(),m.removeComputationLimit.toString())
         var preview by remember {mutableStateOf<Pair<List<String>,StatisticsPreparationResult>?>(null)}

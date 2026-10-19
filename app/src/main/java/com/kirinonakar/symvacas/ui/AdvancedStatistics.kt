@@ -239,7 +239,7 @@ internal fun advancedStatisticsFormSettings(analysis:String,input:String,formsTe
                 }
                 if(section=="advanced"&&selected!="survivalanalysis")SmallAction(if(ko)"생존분석" else "Survival analysis"){choose(definitions.first {it.getString("id")=="survivalanalysis"})}
             }
-            StatisticsExplanation(if(section=="general")"Usage notes" else "Model details",definition.getString(if(definition.has("controls")&&input!="expression")if(ko)"formHelpKo" else "formHelp" else if(ko)"expressionHelpKo" else "expressionHelp"),"statistics-$section-model-help",selected,expansionKey=if(section=="general")"general-usage-notes" else "statistics-$section-model-help")
+            StatisticsExplanation(if(section=="general")"Usage notes" else "Model details",definition.getString(if(definition.has("controls")&&input!="expression")if(ko)"formHelpKo" else "formHelp" else if(ko)"expressionHelpKo" else "expressionHelp"),"statistics-$section-model-help",expansionKey="statistics-$section-model-help")
             if(definition.has("controls")) {
                 val ids=if(definition.getString("input")=="none")listOf("example","expression") else listOf("current","example","expression")
                 val inputLabels=ids.map {when(it){"current"->if(ko)"현재 데이터" else "Current data";"example"->if(ko)"예제·직접 설정" else "Example / parameters";else->if(ko)"분석 식" else "Expression"}}
@@ -273,9 +273,9 @@ internal fun advancedStatisticsFormSettings(analysis:String,input:String,formsTe
                     val usesCurrentData=input=="current"&&(definition.has("controls")||expression==runCatching {advancedStatisticsCommand(definition,rows)}.getOrNull())
                     val termLabels=if(usesCurrentData||input!="expression")advancedStatisticsTermLabels(definition,rows,settings,columns) else if(expression==workflowSource)JSONObject(workflowLabels).let {labels->labels.keys().asSequence().associateWith {key->labels.getString(key)}} else emptyMap()
                     m.calculationAction="statistics-$section";m.calculateStatistics(expression,termLabels)
-                }.onFailure {pending=false;m.error=it.message?.takeIf(String::isNotBlank) ?: "Math ERROR"}},enabled=command.isSuccess&&command.getOrDefault("").isNotBlank()&&!m.busy&&!m.regressionBusy,modifier=Modifier.testTag("statistics-$section-run"))
+                }.onFailure {pending=false;m.showStatisticsError("statistics-$section",it.message?.takeIf(String::isNotBlank) ?: "Math ERROR")}},enabled=command.isSuccess&&command.getOrDefault("").isNotBlank()&&!m.busy&&!m.regressionBusy,modifier=Modifier.testTag("statistics-$section-run"))
             }
-            if(m.calculationAction=="statistics-$section"&&m.error.isNotBlank())Text(tr(m.error),Modifier.testTag("statistics-$section-error"),color=MaterialTheme.colorScheme.error,fontSize=12.sp)
+            StatisticsAnalysisError(m,"statistics-$section")
             if(selected=="impute"&&onDataApplied!=null) {
                 val values=m.statisticsResult?.optJSONObject("imputation")?.optJSONArray("data")
                 val appliedMessage=tr("Missing values applied to current data")

@@ -193,15 +193,14 @@ print(calc.integrate(x**2, x, 0, 1))</textarea></label>
         <div id="statistics-preparation-tools"></div>
         <details id="statistics-preparation-impute" class="statistics-section"><summary>Missing-value imputation</summary>
           <select id="statistics-preparation-kind" hidden></select>
-          <div class="form-row"><button id="statistics-preparation-example">Example</button><button id="statistics-preparation-data">Use current data</button></div>
           <details id="statistics-preparation-help-details" class="statistics-model-help"><summary>Model details</summary><p id="statistics-preparation-help" class="hint"></p></details>
           <label>Input source<select id="statistics-preparation-input"><option value="current">Current data</option><option value="example">Example</option><option value="expression">Expression</option></select></label>
           <div id="statistics-preparation-controls" class="form-row"></div>
           <details id="statistics-preparation-example-preview" hidden><summary>Show example data</summary><pre id="statistics-preparation-example-data" class="hint"></pre></details>
           <details id="statistics-preparation-preview" hidden><summary>Show analysis expression</summary><pre id="statistics-preparation-preview-source" class="hint"></pre></details>
-          <p id="statistics-preparation-status" class="hint" role="status" aria-live="polite"></p>
           <label id="statistics-preparation-expression">Analysis expression<textarea id="statistics-preparation-source" rows="3" spellcheck="false"></textarea></label>
           <button data-run="statistics-preparation">Analyze</button>
+          <p id="statistics-preparation-status" class="hint" role="status" aria-live="polite"></p>
           <button id="statistics-preparation-apply" data-imputation-apply hidden disabled>Apply to current data</button>
           <div id="statistics-preparation-result" class="statistics-analysis-result" aria-live="polite" hidden></div>
         </details>
@@ -241,15 +240,15 @@ print(calc.integrate(x**2, x, 0, 1))</textarea></label>
       <div id="regression-custom" class="form-row" hidden=""><label>Model y =<input id="regression-formula" value="A*exp(-k*x)+C"></label><label>Independent variable<input id="regression-variable" value="x"></label><label>Initial values and bounds (optional)<input id="regression-initials" placeholder="[[A,1],[k,1,0],[C,0]]"></label></div>
       <details id="regression-data-details" class="statistics-model-help" hidden><summary>Model details</summary><p id="regression-data-help">Last column is response; previous columns are predictors. Logistic response: 0 or 1.</p></details><div id="regression-caption" class="formula-preview"></div><div id="regression-inference"></div><button id="regression-export" hidden>Export residual CSV</button></section>
       <details id="statistics-models" class="statistics-section"><summary>Models</summary>
-        <div class="form-row"><label>Analyze<select id="statistics-models-kind"></select></label><button id="statistics-models-example">Example</button><button id="statistics-models-data">Use current data</button></div>
+        <div class="form-row"><label>Analyze<select id="statistics-models-kind"></select></label></div>
         <details id="statistics-models-help-details" class="statistics-model-help"><summary>Model details</summary><p id="statistics-models-help" class="hint"></p></details>
         <label>Input source<select id="statistics-models-input"><option value="current">Current data</option><option value="example">Example</option><option value="expression">Expression</option></select></label>
         <div id="statistics-models-controls" class="form-row"></div>
         <details id="statistics-models-example-preview" hidden><summary>Show example data</summary><pre id="statistics-models-example-data" class="hint"></pre></details>
         <details id="statistics-models-preview" hidden><summary>Show analysis expression</summary><pre id="statistics-models-preview-source" class="hint"></pre></details>
-        <p id="statistics-models-status" class="hint" role="status" aria-live="polite"></p>
         <label id="statistics-models-expression">Analysis expression<textarea id="statistics-models-source" rows="3" spellcheck="false"></textarea></label>
         <button data-run="statistics-models">Analyze</button>
+        <p id="statistics-models-status" class="hint" role="status" aria-live="polite"></p>
         <div id="statistics-models-result" class="statistics-analysis-result" aria-live="polite" hidden></div>
       </details>
       </details>
@@ -267,40 +266,40 @@ print(calc.integrate(x**2, x, 0, 1))</textarea></label>
       <div id="statistics-analysis-result" class="statistics-analysis-result" aria-live="polite" hidden></div>
       </div>
       <div id="statistics-general" hidden>
-        <div class="form-row"><label hidden>Analyze<select id="statistics-general-kind"></select></label><button id="statistics-general-example">Example</button><button id="statistics-general-data">Use current data</button></div>
+        <select id="statistics-general-kind" hidden></select>
         <details id="statistics-general-help-details" class="statistics-model-help"><summary>Model details</summary><p id="statistics-general-help" class="hint"></p></details>
         <label>Input source<select id="statistics-general-input"><option value="current">Current data</option><option value="example">Example</option><option value="expression">Expression</option></select></label>
         <div id="statistics-general-controls" class="form-row"></div>
         <details id="statistics-general-example-preview" hidden><summary>Show example data</summary><pre id="statistics-general-example-data" class="hint"></pre></details>
         <details id="statistics-general-preview" hidden><summary>Show analysis expression</summary><pre id="statistics-general-preview-source" class="hint"></pre></details>
-        <p id="statistics-general-status" class="hint" role="status" aria-live="polite"></p>
         <label id="statistics-general-expression">Analysis expression<textarea id="statistics-general-source" rows="3" spellcheck="false"></textarea></label>
         <button data-run="statistics-general">Analyze</button>
+        <p id="statistics-general-status" class="hint" role="status" aria-live="polite"></p>
         <div id="statistics-general-result" class="statistics-analysis-result" aria-live="polite" hidden></div>
       </div>
       <details id="statistics-tests" class="statistics-section"><summary>More tests &amp; effect sizes</summary>
-        <div class="form-row"><label>Analyze<select id="statistics-tests-kind"></select></label><button id="statistics-tests-example">Example</button><button id="statistics-tests-data">Use current data</button></div>
+        <div class="form-row"><label>Analyze<select id="statistics-tests-kind"></select></label></div>
         <details id="statistics-tests-help-details" class="statistics-model-help"><summary>Model details</summary><p id="statistics-tests-help" class="hint"></p></details>
         <label>Input source<select id="statistics-tests-input"><option value="current">Current data</option><option value="example">Example</option><option value="expression">Expression</option></select></label>
         <div id="statistics-tests-controls" class="form-row"></div>
         <details id="statistics-tests-example-preview" hidden><summary>Show example data</summary><pre id="statistics-tests-example-data" class="hint"></pre></details>
         <details id="statistics-tests-preview" hidden><summary>Show analysis expression</summary><pre id="statistics-tests-preview-source" class="hint"></pre></details>
-        <p id="statistics-tests-status" class="hint" role="status" aria-live="polite"></p>
         <label id="statistics-tests-expression">Analysis expression<textarea id="statistics-tests-source" rows="3" spellcheck="false"></textarea></label>
         <button data-run="statistics-tests">Analyze</button>
+        <p id="statistics-tests-status" class="hint" role="status" aria-live="polite"></p>
         <div id="statistics-tests-result" class="statistics-analysis-result" aria-live="polite" hidden></div>
       </details>
       </details>
       <details id="statistics-advanced" class="statistics-section"><summary>Advanced analysis</summary>
-        <div class="form-row"><label>Analyze<select id="statistics-advanced-kind"></select></label><button id="statistics-advanced-example">Example</button><button id="statistics-advanced-data">Use current data</button></div>
+        <div class="form-row"><label>Analyze<select id="statistics-advanced-kind"></select></label></div>
         <details id="statistics-advanced-help-details" class="statistics-model-help"><summary>Model details</summary><p id="statistics-advanced-help" class="hint"></p></details>
         <label>Input source<select id="statistics-advanced-input"><option value="current">Current data</option><option value="example">Example</option><option value="expression">Expression</option></select></label>
         <div id="statistics-advanced-controls" class="form-row"></div>
         <details id="statistics-advanced-example-preview" hidden><summary>Show example data</summary><pre id="statistics-advanced-example-data" class="hint"></pre></details>
         <details id="statistics-advanced-preview" hidden><summary>Show analysis expression</summary><pre id="statistics-advanced-preview-source" class="hint"></pre></details>
-        <p id="statistics-advanced-status" class="hint" role="status" aria-live="polite"></p>
         <label id="statistics-advanced-expression">Analysis expression<textarea id="statistics-advanced-source" rows="3" spellcheck="false"></textarea></label>
         <button data-run="statistics-advanced">Analyze</button>
+        <p id="statistics-advanced-status" class="hint" role="status" aria-live="polite"></p>
         <div id="statistics-advanced-result" class="statistics-analysis-result" aria-live="polite" hidden></div>
         <div id="statistics-survival-tools" class="form-row" hidden><span class="hint">Kaplan–Meier · log-rank · Cox</span><label class="check"><input id="statistics-survival-band" type="checkbox" checked>95% CI band</label></div>
         <section id="statistics-survival-result" class="survival-report" aria-live="polite" hidden></section>

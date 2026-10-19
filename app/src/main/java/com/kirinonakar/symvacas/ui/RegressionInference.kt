@@ -128,7 +128,7 @@ import kotlin.math.abs
         val binomial=report.optString("fitScale")=="binomial"||report.optString("model").startsWith("logistic")
         val residualHelp=tr(if(binomial)"Deviance residual vs fitted probability." else if(machineLearning)"Residual vs fitted" else "Residual vs fitted; Durbin–Watson uses input row order.")+
             if(binomial)"\n\n"+tr("Logistic leverage and Cook's D use a one-step GLM approximation.") else ""
-        StatisticsExplanation("Plot details",residualHelp,"statistics-residual-help",report)
+        StatisticsExplanation("Plot details",residualHelp,"statistics-residual-help")
         val rows=report.optJSONArray("residuals")
         val residuals=if(rows==null)emptyList() else (0 until rows.length()).mapNotNull {rows.optJSONObject(it)}
         val points=residuals.mapNotNull {row->

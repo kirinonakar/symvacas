@@ -22,10 +22,10 @@ import com.kirinonakar.symvacas.calculator.CalculatorModel
 import com.kirinonakar.symvacas.ui.theme.LocalInstrument
 import org.json.JSONObject
 
-@Composable internal fun StatisticsExplanation(title:String,text:String,tag:String,resetKey:Any=text,expansionKey:String=tag) {
+@Composable internal fun StatisticsExplanation(title:String,text:String,tag:String,expansionKey:String=tag) {
     val model=LocalStatisticsExplanationModel.current
     val stateKey="explanation:$expansionKey"
-    var localExpanded by remember(resetKey) {mutableStateOf(false)}
+    var localExpanded by remember(expansionKey) {mutableStateOf(false)}
     val expanded=model?.statisticsSectionExpanded(stateKey) ?: localExpanded
     val collapseRequest=LocalStatisticsCollapseRequest.current
     LaunchedEffect(collapseRequest){if(model==null&&collapseRequest>0)localExpanded=false}
@@ -40,6 +40,10 @@ import org.json.JSONObject
         }
         if(expanded)SelectionContainer {Text(text,Modifier.fillMaxWidth(),fontSize=11.sp,color=LocalInstrument.current.muted)}
     }
+}
+
+@Composable internal fun StatisticsAnalysisError(m:CalculatorModel,action:String) {
+    if(m.statisticsErrorAction==action&&m.statisticsErrorMessage.isNotBlank())Text(tr(m.statisticsErrorMessage),Modifier.fillMaxWidth().testTag("$action-error"),color=MaterialTheme.colorScheme.error,fontSize=12.sp)
 }
 
 @Composable internal fun StatisticsSelectionTitle(title:String,translate:Boolean=true) {

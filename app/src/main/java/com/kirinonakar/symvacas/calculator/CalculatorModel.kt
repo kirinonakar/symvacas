@@ -71,6 +71,13 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
     internal var inputAnswer:JSONObject?=loadObject("inputAnswer").takeIf{it.has("kind")}
     internal var lastAnswerResult:JSONObject?=loadObject("lastAnswerResult").takeIf{it.has("exact")}
     var error by mutableStateOf("")
+    var statisticsErrorMessage by mutableStateOf("")
+        private set
+    var statisticsErrorAction by mutableStateOf("")
+        private set
+    internal fun showStatisticsError(action:String,message:String) {
+        statisticsErrorAction=action;statisticsErrorMessage=message
+    }
     var probabilityDraft by mutableStateOf(loadObject("probabilityDraft"))
         private set
     var advancedStatisticsDraft by mutableStateOf(loadObject("advancedStatisticsDraft"))

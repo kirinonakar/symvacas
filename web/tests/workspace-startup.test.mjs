@@ -51,11 +51,35 @@ test('model analysis exposes engine failures and thrown requests in its own pane
   const {window,errors}=fixture(context,{fields:{mode:'statistics','statistics-models-kind':'modelcompare','statistics-models-input':'example'}},engine);
   const status=window.document.getElementById('statistics-models-status');
   const run=()=>window.document.querySelector('[data-run="statistics-models"]').onclick();
+  assert.equal(window.document.querySelector('[data-run="statistics-models"]').nextElementSibling,status,'errors occupy the line immediately below Analyze');
   await run();
   assert.equal(status.textContent,'Model could not converge');assert.equal(status.getAttribute('role'),'alert');
   failure='throw';await run();
   assert.equal(status.textContent,'Engine connection failed');assert.equal(status.getAttribute('role'),'alert');
-  assert.deepEqual(errors,['Engine connection failed']);
+  assert.deepEqual(errors,[],'analysis errors do not reach the page-level error banner');
+});
+
+test('basic, summary and regression failures appear below their own action rows',async context=>{
+  let failure='response';
+  const engine={ready:true,execute:async()=>{
+    if(failure==='throw')throw new Error('Request failed');
+    return {ok:failure==='success',error:'Invalid model data'};
+  }};
+  const {window,errors}=fixture(context,{fields:{mode:'statistics','statistics-kind':'xy','statistics-data':'1,2\n2,4\n3,5'}},engine);
+  const get=id=>window.document.getElementById(id);
+  for(const panel of ['statistics','statistics-summary','regression']){
+    const button=window.document.querySelector(`[data-run="${panel}"]`);
+    const id=panel==='statistics'?'statistics-analysis-error':`${panel}-error`;
+    failure='response';await button.onclick();
+    const status=get(id);assert.ok(status,panel);
+    assert.equal((button.closest('.form-row')||button).nextElementSibling,status,panel);
+    assert.equal(status.textContent,'Invalid model data');assert.equal(status.hidden,false);
+    failure='throw';await button.onclick();
+    assert.equal(status.textContent,'Request failed');
+    assert.equal(get('statistics-error').hidden,true,'page-level banner stays hidden');
+    failure='success';await button.onclick();assert.equal(status.hidden,true,'retry clears the previous local error');
+  }
+  assert.deepEqual(errors,[]);
 });
 
 test('model details stay expanded across model changes and persist open and closed states',async context=>{
@@ -85,6 +109,28 @@ test('model details stay expanded across model changes and persist open and clos
   assert.equal(details.open,false);
   assert.equal(readState().statisticsSections[details.id],false,'Collapse all saves the closed disclosure');
   assert.deepEqual(errors,[]);
+});
+
+test('separate usage disclosures retain independent states across analysis changes',async context=>{
+  const {window,errors}=fixture(context,{fields:{mode:'statistics'},statisticsSections:{'statistics-analysis-help-details':true,'statistics-general-help-details':false}},undefined,true);
+  const get=id=>window.document.getElementById(id),kind=get('statistics-op');
+  const basic=get('statistics-analysis-help-details'),additional=get('statistics-general-help-details');
+  const settle=()=>new Promise(resolve=>setTimeout(resolve,10));
+  const choose=id=>{kind.value=id;kind.dispatchEvent(new window.Event('change'));};
+  choose('ztest');assert.equal(basic.open,true);
+  basic.open=false;choose('ttest');assert.equal(basic.open,false);
+  choose('pearson');assert.equal(additional.open,false,'another fold position keeps its own state');
+  additional.open=true;choose('spearman');assert.equal(additional.open,true);
+  choose('ttest');assert.equal(basic.open,false);
+  choose('pearson');assert.equal(additional.open,true);
+  await settle();
+  const saved=readState();
+  assert.equal(saved.statisticsSections[basic.id],false);
+  assert.equal(saved.statisticsSections[additional.id],true);
+  basic.open=true;additional.open=false;
+  restoreFields(createAppState(saved));
+  assert.equal(basic.open,false);assert.equal(additional.open,true);
+  await settle();assert.deepEqual(errors,[]);
 });
 
 test('failed calculator previews stay suppressed after engine recovery until input changes',async context=>{
