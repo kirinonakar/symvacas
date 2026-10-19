@@ -4,6 +4,7 @@ from .forms import build_forms
 from .examples import add_example_rows
 from .help import build_form_help
 from .catalog import catalog_description
+from .guidance import analysis_help
 from statistics_help import enrich_help
 
 
@@ -18,7 +19,10 @@ def build_schema():
         if item['id'] not in forms:
             continue
         item['controls'] = forms[item['id']]
-        item['formHelp'], item['formHelpKo'] = form_help[item['id']]
+        for korean in (False, True):
+            suffix = 'Ko' if korean else ''
+            item['formHelp' + suffix] = analysis_help(item, form_help[item['id']][int(korean)], korean)
+            item['expressionHelp' + suffix] = analysis_help(item, item['help' + suffix], korean)
     add_example_rows(schema)
     return schema
 

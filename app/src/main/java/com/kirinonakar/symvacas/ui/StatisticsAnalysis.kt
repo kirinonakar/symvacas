@@ -20,6 +20,7 @@ import org.json.JSONArray
     val generalDefinitions=remember {context.assets.open("advanced_statistics.json").bufferedReader().use {reader->
         val schema=JSONArray(reader.readText());List(schema.length()){schema.getJSONObject(it)}.filter {it.getString("section")=="general"}
     }}
+    val basicExplanations=remember {context.assets.open("statistics_analysis_help.json").bufferedReader().use {org.json.JSONObject(it.readText())}}
     fun generalLabel(definition:org.json.JSONObject)=if(definition.getString("id")=="mcnemar")"McNemar" else definition.getString("label")
     val guidedAnalyses=generalDefinitions.associate {generalLabel(it) to it.getString("id")}
     val expanded=m.statisticsSectionExpanded("analysis")
@@ -132,27 +133,18 @@ import org.json.JSONArray
     } else {
     val ko=isKorean()
     val usageNotes=buildList {
-        add(if(ko)when(test) {
-            "t test"->when {pairedTest->"같은 대상의 완전한 쌍으로 평균 차이를 비교합니다.";twoSample->"독립 두 그룹의 평균을 비교합니다. Welch는 이분산, Student는 등분산 가정입니다.";else->"선택한 숫자 열의 평균을 기준값과 비교합니다. 빈 셀은 제외합니다."}
-            "z test"->"선택한 표본의 평균을 비교합니다. 알려진 모집단 표준편차를 입력하세요."
-            "ANOVA"->if(anovaMethod.startsWith("Welch"))"독립 그룹의 평균 비교: Welch ANOVA·Games–Howell 사후비교·가정 점검." else "등분산 독립 그룹의 평균 비교: ANOVA·Tukey–Kramer 사후비교·가정 점검."
-            "Wilcoxon"->"일표본 또는 완전한 대응 쌍의 차이를 순위로 비교합니다. 위치 차이 해석에는 차이의 대칭성을 확인하세요."
-            "Mann–Whitney"->"독립 두 그룹의 분포를 순위로 비교합니다. 위치 차이 해석에는 비슷한 분포 형태가 필요합니다."
-            "Kruskal–Wallis"->"선택한 독립 그룹들의 분포를 순위로 비교합니다."
-            "χ² test"->"두 범주 열의 완전한 행으로 연관성을 검정합니다. 열마다 범주 2개 이상이 필요합니다."
-            "Fisher exact"->"두 이항 범주 열의 완전한 행으로 2×2 연관성을 검정합니다."
-            else->"분석할 열을 선택하세요. 빈 셀은 제외합니다."
-        } else when(test) {
-            "t test"->when {pairedTest->"Compare mean differences using complete pairs from the same subjects.";twoSample->"Compare independent means: Welch allows unequal variances; Student assumes equal variances.";else->"Compare the selected numeric sample mean with a target. Blank cells are omitted."}
-            "z test"->"Compare sample means using known population standard deviations."
-            "ANOVA"->if(anovaMethod.startsWith("Welch"))"Independent mean comparisons: Welch ANOVA, Games–Howell and assumption checks." else "Equal-variance independent mean comparisons: ANOVA, Tukey–Kramer and assumption checks."
-            "Wilcoxon"->"Rank comparison of one-sample or complete paired differences. A location interpretation assumes symmetric differences."
-            "Mann–Whitney"->"Rank comparison of two independent distributions. A location interpretation needs similar shapes."
-            "Kruskal–Wallis"->"Rank comparison of the selected independent group distributions."
-            "χ² test"->"Test association using complete rows in two categorical columns, with at least two categories per column."
-            "Fisher exact"->"Test 2×2 association using complete rows in two binary category columns."
-            else->"Choose analysis columns. Blank cells are omitted."
-        })
+        val helpId=when(test) {
+            "t test"->if(pairedTest)"ttestpaired" else if(twoSample)"ttest2" else "ttest"
+            "z test"->if(twoSample)"ztest2" else "ztest"
+            "ANOVA"->"anova"
+            "Wilcoxon"->"wilcoxon"
+            "Mann–Whitney"->"mannwhitney"
+            "Kruskal–Wallis"->"kruskal"
+            "χ² test"->"chi2independence"
+            "Fisher exact"->"fisherexact"
+            else->null
+        }
+        helpId?.let {add(basicExplanations.getJSONObject(it).getString(if(ko)"helpKo" else "help"))}
         if(groupedMode)add(if(test in listOf("ANOVA","Kruskal–Wallis","χ² test")) {
             if(ko)"그룹 열·값 열을 선택하면 모든 그룹을 비교합니다." else "Choose group and value columns to compare all groups."
         } else if(ko)"그룹 열·값 열과 비교할 그룹을 선택하세요." else "Choose group and value columns and the groups to compare.")

@@ -172,6 +172,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
 
 @Composable fun StatisticsScreen(m: CalculatorModel) {
     val context=LocalContext.current
+    val analysisExplanations=remember {context.assets.open("statistics_analysis_help.json").bufferedReader().use {org.json.JSONObject(it.readText())}}
     val clipboard=LocalClipboardManager.current
     val scope=rememberCoroutineScope()
     val panelScroll=rememberScrollState()
@@ -577,6 +578,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                     }
                 })
                 val regressionNotes=buildList {
+                    analysisExplanations.optJSONObject("regression-$regression")?.let {add(it.getString(if(isKorean())"helpKo" else "help"))}
                     if(dataKind!="list"&&regression in listOf("multiple","logistic","bayeslinear","bayeslogistic"))add(tr(if(regression in listOf("logistic","bayeslogistic"))"Selected column is response; others are predictors. Logistic response: 0 or 1." else "Selected column is response; others are predictors."))
                     if(regularized)add(tr("Predictors standardized; coefficients in original units."))
                     if(regression=="svm")add(if(isKorean())"설명변수는 표준화합니다. C>0, gamma>0 또는 auto, epsilon≥0(반응 단위). 분류는 0/1 자료를 사용합니다. 학습·교차검증 지표를 확인하세요." else "Predictors are standardized. C>0, gamma>0 or auto, epsilon≥0 in response units. Classification uses 0/1 data. Review training and cross-validation metrics.")

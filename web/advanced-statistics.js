@@ -577,7 +577,7 @@ export function createAdvancedStatistics({state,persist,data,columnLimit,copy,cl
     const suite=definition.id==='survivalanalysis';
     if(section==='advanced')$('statistics-survival-tools').hidden=!suite;
     if(displayed){let key='';try{key=JSON.stringify(context());}catch{}if(key!==reportKey){displayed=null;report.replaceChildren();report.hidden=true;}else renderSurvivalResult();}
-    help.textContent=definition.controls&&input.value!=='expression'?(korean?definition.formHelpKo:definition.formHelp):(korean?definition.helpKo:definition.help);
+    help.textContent=definition.controls&&input.value!=='expression'?(korean?definition.formHelpKo:definition.formHelp):(korean?definition.expressionHelpKo:definition.expressionHelp);
     for(const option of select.options){const item=schema.find(item=>item.id===option.value);option.textContent=korean?item.ko:item.label;}
     for(const group of select.querySelectorAll('optgroup')){const item=schema.find(item=>item.group===group.dataset.group);group.label=korean?item.groupKo:item.group;}
     panel('data').disabled=definition.input==='none';

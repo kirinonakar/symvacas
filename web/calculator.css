@@ -328,6 +328,7 @@ input:disabled,select:disabled{opacity:.45;cursor:default}
 .statistics-section>summary{font-size:17px;cursor:pointer}
 .statistics-model-help{margin:8px 0;color:var(--muted);font-size:12px}
 .statistics-model-help>summary,.statistics-assumptions>summary{cursor:pointer}
+.statistics-model-help>p{white-space:pre-line}
 .statistics-section[open]>summary{margin-bottom:12px}
 .graph-range-actions{display:flex;justify-content:flex-end}
 .graph-range-actions:has(button[hidden]){display:none}
