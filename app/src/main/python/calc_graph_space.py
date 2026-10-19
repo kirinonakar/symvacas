@@ -1,5 +1,6 @@
 """Per-row domains and finite parameter families for spatial curves."""
 from itertools import product
+from functools import lru_cache
 import math
 import sympy as s
 from calc_conditions import build_condition
@@ -7,6 +8,30 @@ from calc_limits import within_limit
 from calc_shared import require
 from calc_graph_common import _finite_real, graph_expressions, graph_function, parameter_names, resolved_parameters
 from calc_graph3d import space_coordinate_trees, space_curve_samples
+
+
+@lru_cache(maxsize=128)
+def space_intervals(condition,start,end):
+    """Reuse immutable domains across family members and animation frames."""
+    domain=condition.as_set().intersect(s.Interval(start,end))
+    intervals=list(domain.args) if isinstance(domain,s.Union) else [domain]
+    intervals.sort(key=lambda interval:float(interval.inf) if interval!=s.EmptySet else math.inf)
+    result=[]
+    for interval in intervals:
+        if not isinstance(interval,s.Interval):continue
+        low,high=float(interval.start),float(interval.end)
+        if interval.left_open:low=math.nextafter(low,high)
+        if interval.right_open:high=math.nextafter(high,low)
+        if high>low:result.append((low,high))
+    return tuple(result)
+
+
+@lru_cache(maxsize=64)
+def affine_space_curve(expressions,t):
+    """Certify a straight segment for every value of the other parameters."""
+    try:
+        return all(expression.is_polynomial(t) and s.Poly(expression,t).degree()<=1 for expression in expressions)
+    except (s.PolynomialError,AttributeError):return False
 
 
 def space_definition(tree):
@@ -58,28 +83,22 @@ def sample_space_row(engine,request,tree,start,end,bounds):
     for items in lists:
         require(all(isinstance(item,s.Expr) for item in items),'Curve parameter lists must contain finite real values')
         require(not any(item.free_symbols & {t,*family_symbols} for item in items),'Curve parameter lists must contain finite real values independent of t and family parameters')
-        numbers=[_finite_real(item.subs(sliders)) for item in items]
+        numbers=[_finite_real(item.subs(sliders) if item.free_symbols else item) for item in items]
         require(all(value is not None for value in numbers),'Curve parameter lists must contain finite real values')
         count*=len(numbers)
         require(within_limit(count,100),'Curve family limit: 100 curves per row')
         values.append(numbers)
     curves=[];positions=[]
+    linear=affine_space_curve(expressions,t)
     for selection in product(*values):
         local={**sliders,**dict(zip(family_symbols,selection))}
-        condition=guard.subs(local)
+        condition=guard.subs(local) if guard.free_symbols.intersection(local) else guard
         require(condition.free_symbols <= {t},'Curve restrictions must depend on t or graph parameters')
-        domain=condition.as_set().intersect(s.Interval(start,end))
-        intervals=list(domain.args) if isinstance(domain,s.Union) else [domain]
-        intervals.sort(key=lambda interval:float(interval.inf) if interval!=s.EmptySet else math.inf)
+        intervals=space_intervals(condition,start,end)
         curve=[];parameters=[]
         fn=graph_function(expressions,(t,),local)
-        for interval in intervals:
-            if not isinstance(interval,s.Interval):continue
-            low,high=float(interval.start),float(interval.end)
-            if interval.left_open:low=math.nextafter(low,high)
-            if interval.right_open:high=math.nextafter(high,low)
-            if high<=low:continue
-            points,ts=space_curve_samples(fn,low,high,int(request.get('samples',500)),bounds)
+        for low,high in intervals:
+            points,ts=space_curve_samples(fn,low,high,int(request.get('samples',500)),bounds,linear=linear)
             if parameters:
                 curve.append(None);parameters.append((parameters[-1]+ts[0])/2)
             curve.extend(points);parameters.extend(ts)

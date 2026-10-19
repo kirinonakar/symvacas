@@ -366,7 +366,7 @@ test('packaged graph modules execute every graph kind in the production WASM wor
     assert.deepEqual(family.parameters,['a']);
     assert.equal(family.spaceCurves.length,6);
     family.spaceCurves.forEach((curve,i)=>{
-      assert.ok(curve.length>100);
+      assert.equal(curve.length,2);
       assert.equal(curve.length,family.curveParameters[i].length);
       curve.forEach(([x,y,z],j)=>{
         const t=family.curveParameters[i][j],k=i/10;
@@ -378,7 +378,7 @@ test('packaged graph modules execute every graph kind in the production WASM wor
     });
   }
   const narrowSpace=await graph('space','C(t)=(t,k,a) {0.1234<t<0.1235,k=[0,1]}');
-  assert.ok(narrowSpace.spaceCurves.every(curve=>curve.length>100&&curve.every(([t])=>t>.1234&&t<.1235)));
+  assert.ok(narrowSpace.spaceCurves.every(curve=>curve.length===2&&curve.every(([t])=>t>.1234&&t<.1235)));
   const integral=await execute({action:'graphAnalysis',trees:[parse('x')],analysis:'integral',a:0,b:1});
   assert.equal(integral.value,.5);
   assert.ok(integral.integralFill.length>0);

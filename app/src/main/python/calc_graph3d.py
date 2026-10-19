@@ -77,13 +77,18 @@ def space_coordinate_trees(tree):
     return None
 
 
-def space_curve_samples(function,start,end,count,bounds):
+def space_curve_samples(function,start,end,count,bounds,linear=False):
     count=max(100,min(512,count));values={}
     def point(t):
         try:
             p=list(map(float,function(t)))
             return p if len(p)==3 and all(math.isfinite(v) and abs(v)<1e100 for v in p) else None
         except (ValueError,TypeError,ZeroDivisionError,OverflowError):return None
+    # Only a symbolic affine certificate permits omitting all interior samples.
+    # Degenerate parameter values still use the ordinary undefined-value path.
+    if linear:
+        first,last=point(start),point(end)
+        if first is not None and last is not None:return [first,last],[start,end]
     for i in range(count+1):
         at=start+(end-start)*i/count;values[at]=point(at)
     def refine(left,right,depth):
