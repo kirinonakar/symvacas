@@ -4,6 +4,19 @@ import {parse} from '../parser.js';
 import {statisticsRequest} from '../statistics-request.js';
 import {savedStatisticsDatasets} from '../statistics-bindings.js';
 
+test('Bayesian regression modes stay literal with analytic and NUTS options',()=>{
+  for(const mode of ['bayeslinear','bayeslogistic']){
+    const prior=mode==='bayeslinear'?'2.5,0.95,2,1':'2.5,0.95';
+    for(const sampler of ['',',[nuts,100,50,4,7,2]']){
+      const source=`regression([[1,0],[2,0],[3,1],[4,1]],${mode},[${prior}${sampler}])`;
+      for(const tree of [parse(source),statisticsRequest(source).tree]){
+        assert.equal(tree.args[1].kind,'symbol');
+        assert.equal(tree.args[1].value,mode);
+      }
+    }
+  }
+});
+
 test('saved dataset references keep exact cells, table shapes and updated values',()=>{
   const state={datasets:{D1:'value\n0.1\n\n0.2\n1/2',D2:'x,y\n1,2\n3,4',Unused:'bad('},datasetKinds:{D1:'list',D2:'xy'}};
   const bindings=source=>savedStatisticsDatasets(parse(source),state);

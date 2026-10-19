@@ -582,7 +582,6 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                     analysisExplanations.optJSONObject("regression-$regression")?.let {add(it.getString(if(isKorean())"helpKo" else "help"))}
                     if(dataKind!="list"&&regression in listOf("multiple","logistic","bayeslinear","bayeslogistic"))add(tr(if(regression in listOf("logistic","bayeslogistic"))"Selected column is response; others are predictors. Logistic response: 0 or 1." else "Selected column is response; others are predictors."))
                     if(regularized)add(tr("Predictors standardized; coefficients in original units."))
-                    if(regression=="svm")add(if(isKorean())"설명변수는 표준화합니다. C>0, gamma>0 또는 auto, epsilon≥0(반응 단위). 분류는 0/1 자료를 사용합니다. 학습·교차검증 지표를 확인하세요." else "Predictors are standardized. C>0, gamma>0 or auto, epsilon≥0 in response units. Classification uses 0/1 data. Review training and cross-validation metrics.")
                     if(bayesian) {
                         add(tr("Zero-mean priors include the intercept on standardized predictors; coefficients in original units."))
                         if(bayesianMethod=="nuts")add(if(isKorean())"NUTS는 추출 수·워밍업·체인 수를 지정하고 R-hat·ESS·발산 수를 확인하세요." else "For NUTS, set draws, warmup and chains; review R-hat, ESS and divergences.")

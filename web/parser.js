@@ -7,7 +7,7 @@ const numeric = value => /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(
 const aliases = {"×":"*", "·":"*", "÷":"/", "−":"-", "π":"pi", "θ":"theta", "∞":"oo", "**":"^", "≤":"<=", "≥":">=", "→":"->"};
 // Existing units and literal calculation options, mirrored in Kotlin's Lexer.
 const namedIdentifiers=new Set(('byte day henry Hz kHz MHz oz yd exp '+
-  'approximate asymptotic bayes bayesian binary cauchy complex density exact exchangeable '+
+  'approximate asymptotic bayes bayesian bayeslinear bayeslogistic binary cauchy complex density exact exchangeable '+
   'exponential external family fixed frequency hypergeometric infinity lex nonzero normality '+
   'oneway polynomial promax sensitivity specificity standardized symbolic tukey varimax yuen yes zeroinflated '+
   'cox excludedrows excludedvalidation responsefamily '+

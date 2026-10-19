@@ -4,6 +4,18 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class StatisticsRequestTest {
+    @Test fun bayesianRegressionModesRemainLiteralWithAnalyticAndNutsOptions() {
+        for(mode in listOf("bayeslinear","bayeslogistic")) {
+            val prior=if(mode=="bayeslinear")"2.5,0.95,2,1" else "2.5,0.95"
+            for(sampler in listOf("",",[nuts,100,50,4,7,2]")) {
+                val source="regression([[1,0],[2,0],[3,1],[4,1]],$mode,[$prior$sampler])"
+                for(tree in listOf(Parser(source).parse(),statisticsRequest(source).tree)) {
+                    assertEquals("symbol",tree.args[1].kind)
+                    assertEquals(mode,tree.args[1].value)
+                }
+            }
+        }
+    }
     @Test fun modelComparisonMetadataRemainsLiteralThroughRequestParsing() {
         val request=statisticsRequest("modelcompare([[1,1,2,3]],1,cox,external,[[2,1,3,4]],0.95,0,0,[[excludedrows,1],[excludedvalidation,2],[responsefamily,gaussian]],0)")
         assertEquals("symbol",request.tree.args[2].kind)

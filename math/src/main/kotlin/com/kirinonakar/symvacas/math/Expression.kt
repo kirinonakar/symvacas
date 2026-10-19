@@ -18,7 +18,7 @@ data class Token(val text: String, val start: Int, val end: Int, val coordinateF
 object Lexer {
     // Existing units and literal calculation options containing coordinate letters.
     private val namedIdentifiers = ("byte day henry Hz kHz MHz oz yd exp " +
-        "approximate asymptotic bayes bayesian binary cauchy complex density exact exchangeable " +
+        "approximate asymptotic bayes bayesian bayeslinear bayeslogistic binary cauchy complex density exact exchangeable " +
         "exponential external family fixed frequency hypergeometric infinity lex nonzero normality " +
         "oneway polynomial promax sensitivity specificity standardized symbolic tukey varimax yuen yes zeroinflated " +
         "cox excludedrows excludedvalidation responsefamily " +

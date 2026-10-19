@@ -200,8 +200,8 @@ REGRESSION_HELP = {
         ('Combines many decision trees to predict a category or numeric response.', 'Use for nonlinear prediction with interactions; assess prediction with validation metrics.', 'Choose response, classification/regression task, tree count, maximum depth and seed.'),
         ('여러 결정트리를 결합해 범주·숫자 반응을 예측합니다.', '상호작용이 있는 비선형 예측에 사용하며 검증 지표로 예측 성능을 평가합니다.', '반응 열·분류/회귀 방식·트리 수·최대 깊이·시드를 선택합니다.')),
     'svm': (
-        ('Uses a support-vector boundary or function for classification or regression.', 'Use for nonlinear prediction through a selected kernel and assess performance with validation metrics.', 'Choose response, task, kernel, C, gamma and regression epsilon. Predictors are standardized; binary classification uses 0/1.'),
-        ('서포트 벡터의 경계·함수로 분류·회귀를 수행합니다.', '커널을 이용한 비선형 예측에 사용하며 검증 지표로 예측 성능을 평가합니다.', '반응 열·방식·커널·C·gamma·회귀 epsilon을 지정합니다. 설명변수는 표준화하며 이항 분류는 0/1 자료를 사용합니다.')),
+        ('Uses a support-vector boundary or function for classification or regression.', 'Use for nonlinear prediction through a selected kernel.', 'Choose response, task and kernel. Predictors are standardized; use C > 0, gamma > 0 or auto, and regression epsilon >= 0 in response units. Binary classification uses 0/1. Training metrics use training data; cross-validation metrics are reported separately.'),
+        ('서포트 벡터의 경계·함수로 분류·회귀를 수행합니다.', '커널을 이용한 비선형 예측에 사용합니다.', '반응 열·SVM 유형·커널을 선택합니다. 설명변수는 표준화되며 C > 0, 감마 > 0 또는 auto, 회귀 엡실론 >= 0(종속변수 단위)를 사용합니다. 분류는 0/1 자료를 사용합니다. 학습 지표는 학습 데이터 기준이며 교차검증 지표는 별도로 표시합니다.')),
     'bayeslinear': (
         ('Estimates linear coefficients and predictive uncertainty using a prior and a normal response model.', 'Use to combine prior information with data for continuous-response prediction.', 'Choose response, prior SD, credible level and variance-prior shape/scale. For NUTS set draws, warmup and chains; review R-hat, ESS and divergences.'),
         ('사전분포·정규 반응 모형으로 선형 계수와 예측 불확실성을 추정합니다.', '사전 정보와 자료를 결합해 연속형 반응을 예측할 때 사용합니다.', '반응 열·사전 SD·구간 수준·분산 사전 shape/scale을 지정합니다. NUTS는 추출 수·워밍업·체인 수를 설정하고 R-hat·ESS·발산 수를 확인합니다.')),
