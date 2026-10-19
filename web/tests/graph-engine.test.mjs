@@ -67,6 +67,48 @@ test('packaged graph modules execute every graph kind in the production WASM wor
     assert.ok(Math.abs(area-expected)<1e-9,`a=${a}: area ${area}`);
   }
 
+  // Exact reported LaTeX must reach the shared analytic contour path after
+  // parsing and WASM packaging, with real-domain and denominator semantics.
+  const radialSineSources=[
+    String.raw`\frac{\sin\left(a \cdot x^{2}+a \cdot y^{2}\right)}{\left(x^{2}+y^{2}\right)}`,
+    String.raw`\sin\left(\sqrt{a \cdot x^{2}+a \cdot y^{2}}\right)`,
+  ];
+  for(const [index,source] of radialSineSources.entries()){
+    const tree=graphInputTree(source);
+    for(const a of [1e-12,-1e-12,.3,1,-1,5])for(const view of [[-10,10,-5,5],[2,4,-1,1]]){
+      const [min,max,yMin,yMax]=view;
+      const result=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:[tree],
+        min,max,yMin,yMax,samples:200,parameters:{a}});
+      assert.deepEqual(result.implicitCurves,[true]);
+      assert.deepEqual(result.parameters,['a']);
+      const radii=new Set();let previous=null;
+      for(const point of result.curves[0]){
+        if(point===null){previous=null;continue;}
+        const [x,y]=point,r=Math.hypot(x,y);
+        assert.ok(x>=min-1e-9&&x<=max+1e-9&&y>=yMin-1e-9&&y<=yMax+1e-9);
+        if(index===0)assert.ok(r>0,'The denominator excludes the origin');
+        if(previous)assert.ok(Math.abs(r-Math.hypot(...previous))<1e-9,'Separate circles must not connect');
+        const phase=index===0?a*r*r:Math.sqrt(Math.max(0,a*r*r));
+        assert.ok(Math.abs(Math.sin(phase))<1e-10);
+        if(index===1&&a<0)assert.equal(r,0);
+        radii.add(r.toFixed(8));previous=point;
+      }
+      const nearest=(lo,hi)=>lo<=0&&hi>=0?0:Math.min(Math.abs(lo),Math.abs(hi));
+      const rmin=Math.hypot(nearest(min,max),nearest(yMin,yMax));
+      const rmax=Math.hypot(Math.max(Math.abs(min),Math.abs(max)),Math.max(Math.abs(yMin),Math.abs(yMax)));
+      const expected=new Set();
+      if(index===1&&rmin===0)expected.add((0).toFixed(8));
+      if(index===0||a>0){
+        const last=Math.floor((index===0?Math.abs(a)*rmax*rmax:Math.sqrt(a)*rmax)/Math.PI);
+        for(let n=1;n<=last;n++){
+          const radius=index===0?Math.sqrt(n*Math.PI/Math.abs(a)):n*Math.PI/Math.sqrt(a);
+          if(radius>=rmin)expected.add(radius.toFixed(8));
+        }
+      }
+      assert.deepEqual(radii,expected,`${source}, a=${a}, view=${view}`);
+    }
+  }
+
   const cartesian=await graph('cartesian','a*x',{parameters:{a:2},derivativeSelected:0});
   assert.equal(cartesian.derivativeCurveIndex,1);
   for(const [x,y] of cartesian.curves[0])assert.ok(Math.abs(y-2*x)<1e-12);

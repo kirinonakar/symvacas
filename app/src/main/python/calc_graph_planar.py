@@ -24,6 +24,7 @@ from calc_graph_sampling import (
 from calc_graph_shading import graph_shading, inequality_shading
 from calc_graph_contours import scaled_contour
 from calc_graph_radial import radial_contour
+from calc_graph_radial_sine import sine_contour
 
 
 def is_inequality_tree(tree):
@@ -68,6 +69,8 @@ def inequality_parts(engine, tree):
 
 
 def contour_curve(expression, x, y, sliders, xmin, xmax, ymin, ymax, count, logarithmic=False):
+    sine = sine_contour(expression, x, y, sliders, xmin, xmax, ymin, ymax, logarithmic)
+    if sine is not None: return sine
     radial = radial_contour(expression, x, y, sliders, xmin, xmax, ymin, ymax, logarithmic)
     if radial is not None: return radial
     scaled = scaled_contour(expression, x, y, sliders, xmin, xmax, ymin, ymax, count, logarithmic)
