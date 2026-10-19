@@ -551,11 +551,24 @@ export function createAdvancedStatistics({state,persist,data,columnLimit,copy,cl
     if(expressionCache.key!==key||expressionCache.text!==text||expressionCache.count!==count||expressionCache.validation!==validation)expressionCache={key,text,count,validation,value:guidedStatisticsCommand(selected(),currentRows(),calculationSettings(),resolvedColumnNames())};
     return expressionCache.value;
   };
+  let analysisFailure=null;
+  const failureSnapshot=()=>JSON.stringify([select.value,input.value,settings(),data(),source.value,state.datasets[settings().validationDataset]]);
+  const showError=message=>{
+    analysisFailure={snapshot:failureSnapshot(),message:message||'Math ERROR'};
+    status.textContent=t(analysisFailure.message);status.classList.add('error');status.setAttribute('role','alert');
+  };
+  const clearError=()=>{analysisFailure=null;};
   const preview=()=>{
+    let failed=false;
     if(selected().controls&&input.value!=='expression'){
       try{source.value=expression();status.textContent=`${currentRows().length} ${getLanguage()==='ko'?'행':'rows'}`;}
-      catch(exc){source.value='';status.textContent=t(exc.message);}
+      catch(exc){source.value='';status.textContent=t(exc.message||'Math ERROR');failed=true;}
     }else status.textContent='';
+    if(analysisFailure){
+      if(analysisFailure.snapshot!==failureSnapshot())analysisFailure=null;
+      else if(!failed){status.textContent=t(analysisFailure.message);failed=true;}
+    }
+    status.classList.toggle('error',failed);status.setAttribute('role',failed?'alert':'status');
   };
   const update=()=>{
     const definition=selected();
@@ -677,7 +690,7 @@ export function createAdvancedStatistics({state,persist,data,columnLimit,copy,cl
     renderSurvivalReport(report,displayed.result,{...displayed.context,band:$('statistics-survival-band').checked,digits:state.digits,
       onCopy:copy&&snapshot?()=>copy(statisticsResultMarkdown(snapshot,{digits:state.digits,notation:state.resultDisplayMode})):null,onClear:snapshot?()=>clearResult(snapshot):null});
   }
-  return {expression,context,render:update,selectAnalysis:(analysis,values={})=>{
+  return {expression,context,render:update,showError,clearError,selectAnalysis:(analysis,values={})=>{
     select.value=analysis;input.value='current';state.fields[select.id]=analysis;state.fields[input.id]='current';
     for(const [key,value] of Object.entries(values)){
       const id=`statistics-form-${analysis}-${key}`;state.fields[id]=String(value);
@@ -695,6 +708,8 @@ export function createAdvancedStatistics({state,persist,data,columnLimit,copy,cl
     if(displayed?.copyResult===result){displayed=null;reportKey='';report.replaceChildren();report.hidden=true;}
     if(imputation&&imputation.result===result.imputation){imputation=null;update();}
   },showResult:(result,runContext)=>{
+    if(!result.ok){showError(result.error);return;}
+    clearError();preview();
     if(result.ok&&result.imputation&&runContext.dataSnapshot!==undefined){try{if(JSON.stringify(context())===JSON.stringify(runContext)){imputation={result:result.imputation,context:runContext};update();}}catch{}}
     if(!result.ok||!result.survival)return;
     try{if(JSON.stringify(context())!==JSON.stringify(runContext))return;}catch{return;}

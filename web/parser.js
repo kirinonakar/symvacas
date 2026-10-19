@@ -10,6 +10,7 @@ const namedIdentifiers=new Set(('byte day henry Hz kHz MHz oz yd exp '+
   'approximate asymptotic bayes bayesian binary cauchy complex density exact exchangeable '+
   'exponential external family fixed frequency hypergeometric infinity lex nonzero normality '+
   'oneway polynomial promax sensitivity specificity standardized symbolic tukey varimax yuen yes zeroinflated '+
+  'cox excludedrows excludedvalidation responsefamily '+
   'Daily Weekly Monthly Quarterly Yearly').split(' '));
 function scan(source) {
   if (!computationLimitsRemoved() && source.length > 8192) throw new SyntaxError('Expression exceeds 8192 characters');

@@ -8,6 +8,21 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StatisticsFormColumnsTest {
+    @Test fun modelComparisonFormsKeepOptionNamesAndFamiliesIntactInRequests() {
+        val d=definition("modelcompare")
+        val families=d.getJSONObject("exampleRowsByFamily")
+        for(family in families.keys()) {
+            val settings=JSONObject().put("family",family).put("basePredictors",when(family){"cox"->"2";"lmm","glmm","gee"->"1";else->"0"})
+            val rows=advancedStatisticsExampleRows(d,settings)
+            val command=guidedStatisticsCommand(d,rows,settings)
+            val tree=com.kirinonakar.symvacas.math.statisticsRequest(command).tree
+            assertEquals(family,"symbol",tree.args[2].kind)
+            assertEquals(family,family,tree.args[2].value)
+            assertTrue(family,tree.args[8].args.all {it.args[0].kind=="symbol"})
+            assertTrue(family,tree.args[8].args.any {it.args[0].value=="excludedrows"})
+            assertTrue(family,advancedStatisticsTermLabels(d,rows,settings,statisticsColumnNames(statisticsKindForColumns(rows.first().size))).isNotEmpty())
+        }
+    }
     @Test fun mancovaPreservesRolesAndTextGroupLabels() {
         val d=definition("mancova")
         val rows=listOf(listOf("A","2","9","7","3"),listOf("B","4","8","6","5"),listOf("A","6","7","5","8"))

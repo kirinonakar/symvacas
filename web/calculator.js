@@ -55,6 +55,7 @@ export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist
   }
   function showStatisticsResult(result,source='',displaySource=source,{decimalDisplay=false,statisticsTarget=''}={}) {
     if(!result.ok){if(value('mode')==='statistics')error(result.error||'계산 오류');else toast(result.error||'계산 오류');return;}
+    $('statistics-error').hidden=true;
     statisticsResult=result;statisticsResultSource=displaySource;statisticsDecimal=decimalDisplay;
     statisticsResultTarget=statisticsReportTarget(result,source,statisticsTarget);
     if(result.resultAst&&!result.assignment)state.variables.Ans=result.resultAst;

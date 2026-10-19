@@ -21,6 +21,7 @@ object Lexer {
         "approximate asymptotic bayes bayesian binary cauchy complex density exact exchangeable " +
         "exponential external family fixed frequency hypergeometric infinity lex nonzero normality " +
         "oneway polynomial promax sensitivity specificity standardized symbolic tukey varimax yuen yes zeroinflated " +
+        "cox excludedrows excludedvalidation responsefamily " +
         "Daily Weekly Monthly Quarterly Yearly").split(' ').toSet()
     private val coordinateFactors = Regex("[xyz]|[^xyz]+")
     fun scan(source: String, removeComputationLimit: Boolean = false): List<Token> {

@@ -1,7 +1,7 @@
 import {setComputationLimitsRemoved} from './computation-limits.js';
 import {EngineClient} from './engine-client.js';
 import {readState,writeState} from './storage.js';
-import {translateDOM,setText,setLanguage} from './i18n.js';
+import {translateDOM,setText,setLanguage,t} from './i18n.js';
 import {renderFormulas} from './formula-preview.js';
 import {createGraphWorkspace} from './graph-workspace.js';
 import {$,value,element,createAppUI} from './app-ui.js';
@@ -48,6 +48,7 @@ function updateButtons() {
 }
 function error(message) {
   $('answer').replaceChildren(element('span',message,'error'));$('note').textContent='';
+  if(value('mode')==='statistics'){$('statistics-error').textContent=t(message||'Math ERROR');$('statistics-error').hidden=false;}
   calculator?.clearExplanations();
   if(value('mode')==='equation'){try{renderFormulas($('result-source'),workspaces.equationSource().split(/\r?\n/),{digits:state.digits});}catch{}}
   else if(value('mode')==='programmer')setText($('programmer-output'),message);

@@ -4,6 +4,14 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class StatisticsRequestTest {
+    @Test fun modelComparisonMetadataRemainsLiteralThroughRequestParsing() {
+        val request=statisticsRequest("modelcompare([[1,1,2,3]],1,cox,external,[[2,1,3,4]],0.95,0,0,[[excludedrows,1],[excludedvalidation,2],[responsefamily,gaussian]],0)")
+        assertEquals("symbol",request.tree.args[2].kind)
+        assertEquals("cox",request.tree.args[2].value)
+        val pairs=request.tree.args[8].args
+        assertEquals(listOf("excludedrows","excludedvalidation","responsefamily"),pairs.map {it.args[0].value})
+        assertTrue(pairs.all {it.args[0].kind=="symbol"})
+    }
     @Test fun largeModelComparisonKeepsNestedParameterOptionsAsFormulaAst() {
         val data=(0 until 1200).joinToString(","){"[$it,1.25,2.5]"}
         val request=statisticsRequest("modelcompare([$data],0,cfa,fit,0,0.95,0,0,[[factors,[1,1,1]],[addedresidual,[[2,3]]]],0)")

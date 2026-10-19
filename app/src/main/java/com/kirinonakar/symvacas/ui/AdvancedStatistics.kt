@@ -255,7 +255,7 @@ internal fun advancedStatisticsFormSettings(analysis:String,input:String,formsTe
                     }
                     SmallAction(if(expressionExpanded)"Hide analysis expression" else "Show analysis expression"){expressionExpanded=!expressionExpanded}
                     if(expressionExpanded)Text(command.getOrDefault("").let {if(it.length>4096)it.take(4096)+"\n…\n"+tr("Preview shortened; analysis uses all rows.") else it},fontSize=11.sp,color=LocalInstrument.current.muted)
-                    command.exceptionOrNull()?.message?.let {Text(tr(it),fontSize=12.sp,color=MaterialTheme.colorScheme.error)}
+                    command.exceptionOrNull()?.let {Text(tr(it.message?.takeIf(String::isNotBlank) ?: "Math ERROR"),fontSize=12.sp,color=MaterialTheme.colorScheme.error)}
                 }
             }
             if(input=="expression"||!definition.has("controls"))Field(source,if(ko)"분석 식" else "Analysis expression",Modifier.fillMaxWidth().testTag("statistics-$section-source")){source=it;message=""}
@@ -266,15 +266,16 @@ internal fun advancedStatisticsFormSettings(analysis:String,input:String,formsTe
                     else runCatching {advancedStatisticsCommand(definition,advancedStatisticsRows(data,columnLimit,m.removeComputationLimit))}.onSuccess {source=it;input="current";message=""}.onFailure {message=it.message.orEmpty()}
                 }
                 CalculationButton("Analyze",m.busy&&m.calculationAction=="statistics-$section",m.inputVersion,
-                    onCancel={pending=false;m.cancel()},onClick={command.getOrNull()?.let {
-                    if(selected=="impute"&&input=="current"){imputationData=data;imputationExpression=it}
+                    onCancel={pending=false;m.cancel()},onClick={m.calculationAction="statistics-$section";runCatching {val expression=command.getOrThrow()
+                    if(selected=="impute"&&input=="current"){imputationData=data;imputationExpression=expression}
                     survivalReport=null;previousResult=m.statisticsResult;pending=selected=="survivalanalysis"
                     reportPlan=if(pending&&input!="expression")survivalAnalysisPlan(rows,settings,columns) else null
-                    val usesCurrentData=input=="current"&&(definition.has("controls")||it==runCatching {advancedStatisticsCommand(definition,rows)}.getOrNull())
-                    val termLabels=if(usesCurrentData||input!="expression")advancedStatisticsTermLabels(definition,rows,settings,columns) else if(it==workflowSource)JSONObject(workflowLabels).let {labels->labels.keys().asSequence().associateWith {key->labels.getString(key)}} else emptyMap()
-                    m.calculationAction="statistics-$section";m.calculateStatistics(it,termLabels)
-                }},enabled=command.isSuccess&&command.getOrDefault("").isNotBlank()&&!m.busy&&!m.regressionBusy,modifier=Modifier.testTag("statistics-$section-run"))
+                    val usesCurrentData=input=="current"&&(definition.has("controls")||expression==runCatching {advancedStatisticsCommand(definition,rows)}.getOrNull())
+                    val termLabels=if(usesCurrentData||input!="expression")advancedStatisticsTermLabels(definition,rows,settings,columns) else if(expression==workflowSource)JSONObject(workflowLabels).let {labels->labels.keys().asSequence().associateWith {key->labels.getString(key)}} else emptyMap()
+                    m.calculationAction="statistics-$section";m.calculateStatistics(expression,termLabels)
+                }.onFailure {pending=false;m.error=it.message?.takeIf(String::isNotBlank) ?: "Math ERROR"}},enabled=command.isSuccess&&command.getOrDefault("").isNotBlank()&&!m.busy&&!m.regressionBusy,modifier=Modifier.testTag("statistics-$section-run"))
             }
+            if(m.calculationAction=="statistics-$section"&&m.error.isNotBlank())Text(tr(m.error),Modifier.testTag("statistics-$section-error"),color=MaterialTheme.colorScheme.error,fontSize=12.sp)
             if(selected=="impute"&&onDataApplied!=null) {
                 val values=m.statisticsResult?.optJSONObject("imputation")?.optJSONArray("data")
                 val appliedMessage=tr("Missing values applied to current data")

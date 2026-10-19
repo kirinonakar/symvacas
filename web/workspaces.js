@@ -61,6 +61,8 @@ export function createWorkspaces({state,engine,ui,persist,restoreSelect,requestO
   async function run(workspace) {
     if(workspace==='equation')equationSteps.clear();
     try{
+      statistics.clearAdvancedError(workspace);
+      if(workspace.startsWith('statistics')||workspace==='regression')$('statistics-error').hidden=true;
       persist();refreshWorkspaceMath();
       if(workspace==='graph'){await graphs.run();return;}
       if(workspace==='python'){await python.run();return;}
@@ -86,7 +88,7 @@ export function createWorkspaces({state,engine,ui,persist,restoreSelect,requestO
       let result=await engine.execute({...requestOptions(),...expressionRequest,...(workspace==='equation'?{equationSteps:true,solutionSteps:true}:{}),...(advancedContext?.termLabels?{statisticsTermLabels:advancedContext.termLabels}:{})},{context:workspace});if(workspace==='tip'&&result.ok)result=moneyResult(result,Number(value('tip-people')));if(statisticsContext&&result.ok)result={...result,note:[statisticsContext,result.note].filter(Boolean).join('\n')};(workspace.startsWith('statistics')?showStatisticsResult:showResult)(result,source,workspace==='equation'?equationSource():source,{decimalDisplay:workspace==='regression',statisticsTarget:workspace==='statistics'?'statistics-analysis-result':workspace.startsWith('statistics-')?workspace+'-result':''});
       if(workspace==='equation')equationSteps.show(result);
       if(advancedContext&&workspace!=='statistics-summary')statistics.showAdvancedResult(result,advancedContext,workspace);
-    }catch(exc){error(exc.message);}
+    }catch(exc){const message=exc.message||'Math ERROR';statistics.showAdvancedError(message,workspace);error(message);}
   }
   document.querySelectorAll('[data-run]').forEach(button=>button.onclick=()=>run(button.dataset.run));
 

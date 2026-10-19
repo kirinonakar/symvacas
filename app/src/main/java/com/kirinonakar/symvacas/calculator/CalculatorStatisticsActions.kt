@@ -2,6 +2,7 @@ package com.kirinonakar.symvacas.calculator
 
 import androidx.lifecycle.viewModelScope
 import com.kirinonakar.symvacas.math.statisticsRequest
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.json.JSONObject
@@ -23,7 +24,10 @@ internal object CalculatorStatisticsActions {
                     if(response.has("resultAst"))next.put("Ans",response.getJSONObject("resultAst")) else next.remove("Ans")
                     variables=next
                     save()
-                } else error=response.optString("error","Math ERROR")
+                } else error=response.optString("error").ifBlank {"Math ERROR"}
+            } catch(e:Exception) {
+                if(e is CancellationException)throw e
+                error=e.message?.takeIf(String::isNotBlank) ?: "Math ERROR"
             } finally {busy=false}
         }
     }
@@ -71,7 +75,10 @@ internal object CalculatorStatisticsActions {
                     if(response.has("resultAst")) next.put("Ans",response.getJSONObject("resultAst")) else next.remove("Ans")
                     variables=next
                     save()
-                } else {statisticsState.clearRegression();error=response.optString("error","Math ERROR")}
+                } else {statisticsState.clearRegression();error=response.optString("error").ifBlank {"Math ERROR"}}
+            } catch(e:Exception) {
+                if(e is CancellationException)throw e
+                statisticsState.clearRegression();error=e.message?.takeIf(String::isNotBlank) ?: "Math ERROR"
             } finally {if(regressionJob===currentJob){statisticsState.regressionBusy=false;regressionJob=null}}
         }
     }

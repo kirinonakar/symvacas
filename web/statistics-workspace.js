@@ -661,5 +661,6 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
   }
   statisticsControls();
   return {datasetsList,summaryExpression,summaryTermLabels,expression:statisticsExpression,analysisTermLabels,prepareModelWorkflow:plan=>advanced.prepareModelWorkflow(plan),advancedExpression:(panel='statistics-advanced')=>analysisPanels[panel].expression(),advancedContext:(panel='statistics-advanced')=>analysisPanels[panel].context(),showAdvancedResult:(result,context,panel='statistics-advanced')=>analysisPanels[panel]?.showResult(result,context),analysisSummary,render,showRegression,runRegression,
+    showAdvancedError:(message,panel)=>analysisPanels[panel]?.showError(message),clearAdvancedError:panel=>analysisPanels[panel]?.clearError(),
     clearResult:result=>{if(statisticsGraph?.result===result)clearRegression();for(const panel of Object.values(analysisPanels))panel.clearResult(result);}};
 }

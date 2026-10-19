@@ -42,6 +42,22 @@ test('fresh page constructs and initializes every workspace without a cached dat
   assert.deepEqual(errors,[]);
 });
 
+test('model analysis exposes engine failures and thrown requests in its own panel',async context=>{
+  let failure='response';
+  const engine={ready:true,execute:async()=>{
+    if(failure==='throw')throw new Error('Engine connection failed');
+    return {ok:false,error:'Model could not converge'};
+  }};
+  const {window,errors}=fixture(context,{fields:{mode:'statistics','statistics-models-kind':'modelcompare','statistics-models-input':'example'}},engine);
+  const status=window.document.getElementById('statistics-models-status');
+  const run=()=>window.document.querySelector('[data-run="statistics-models"]').onclick();
+  await run();
+  assert.equal(status.textContent,'Model could not converge');assert.equal(status.getAttribute('role'),'alert');
+  failure='throw';await run();
+  assert.equal(status.textContent,'Engine connection failed');assert.equal(status.getAttribute('role'),'alert');
+  assert.deepEqual(errors,['Engine connection failed']);
+});
+
 test('model details stay expanded across model changes and persist open and closed states',async context=>{
   const {window,state,errors}=fixture(context,{fields:{mode:'statistics'},statisticsSections:{'statistics-models-help-details':true}},undefined,true);
   const get=id=>window.document.getElementById(id);
