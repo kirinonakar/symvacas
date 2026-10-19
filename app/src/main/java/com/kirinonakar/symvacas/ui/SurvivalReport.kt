@@ -93,6 +93,7 @@ internal fun survivalStepPoints(curve:JSONArray,index:Int):List<Pair<Double,Doub
             Text(parts.joinToString(" · "),fontSize=11.sp,color=c.muted)
         }
     }
+    StatisticsInterpretation(report,"survival")
 }
 
 @Composable private fun SurvivalTable(headers:List<String>,rows:List<List<String>>) {

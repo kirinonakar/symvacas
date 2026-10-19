@@ -41,6 +41,8 @@ def build(skip_download=False, output=None):
     (ROOT / "advanced-statistics-schema.js").write_text("export const advancedStatisticsSchema = " + json.dumps(statistics_schema,ensure_ascii=False,separators=(",", ":")) + ";\n",encoding="utf-8")
     statistics_help = json.loads((PROJECT / "app/src/main/assets/statistics_analysis_help.json").read_text(encoding="utf-8"))
     (ROOT / "statistics-analysis-help.js").write_text("export const statisticsAnalysisHelp = " + json.dumps(statistics_help,ensure_ascii=False,indent=2) + ";\n",encoding="utf-8")
+    interpretation = json.loads((PROJECT / "app/src/main/assets/statistics_interpretation.json").read_text(encoding="utf-8"))
+    (ROOT / "statistics-interpretation-schema.js").write_text("export const statisticsInterpretationSchema = " + json.dumps(interpretation,ensure_ascii=False,indent=2) + ";\n",encoding="utf-8")
     groups = {name: re.findall(r'"([^"\n]+)"', items) for name, items in re.findall(r'"([^"\n]+)" to listOf\(([^\n]+)\)', (ui_source / "UnitsConstantsScreens.kt").read_text(encoding="utf-8"))}
     native_locale = dict(re.findall(r'"([^"\n]+)" to "([^"\n]+)"', (ui_source / "Localization.kt").read_text(encoding="utf-8")))
     for filename, symbol, data in [("unit-groups.js", "unitGroups", groups), ("native-locale.js", "nativeKorean", native_locale)]:

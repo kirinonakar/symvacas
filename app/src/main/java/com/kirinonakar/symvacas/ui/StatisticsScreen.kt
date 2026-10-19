@@ -765,6 +765,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                         if(graphSource==null)m.error="Could not format fitted expression"
                         else {m.changeGraphKind("cartesian");m.updateGraphSource(graphSource);m.mode="Graph";m.plot()}
                     }
+                    m.regressionReport?.let {StatisticsInterpretation(it,"regression")}
                 }
             }
             AdvancedStatistics(m,data,dataKind,"models","Models")

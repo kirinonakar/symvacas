@@ -4,6 +4,7 @@ import {t,setText} from './i18n.js';
 import {resultDisplayTree,resultMathDisplay} from './result-display.js';
 import {renderStatisticsVisualizations} from './statistics-visualization.js';
 import {appendStatisticsModelWorkflow} from './statistics-model-workflow.js';
+import {appendStatisticsInterpretation} from './statistics-interpretation.js';
 
 const basicAnalyses=new Set('mean median variance stdev mode skewness kurtosis sumdata quartiles stats covariance correlation ttest ttest2 ttestpaired ztest ztest2 chi2test chi2independence fisherexact anova welchanova tukey gameshowell shapiro normaltest wilcoxon mannwhitney kruskal tinterval zinterval'.split(' '));
 export function statisticsReportTarget(result,source='',requested=''){
@@ -73,5 +74,6 @@ export function renderStatisticsReport(container,report,{digits=10,onCopy,onClea
     target.append(block);
   }
   if(!plotsShown)renderStatisticsVisualizations(panel,report.plots);
+  appendStatisticsInterpretation(panel,report);
   container.append(panel);
 }

@@ -153,5 +153,6 @@ internal fun statisticsCellText(m:CalculatorModel,cell:JSONObject)=ResultDisplay
             } else StatisticsReportSection(m,report,section,section.optInt("totalRows")>12&&section.getString("title") !in prominent)
         }
         if(!plotsShown)StatisticsVisualizations(report.optJSONArray("plots"))
+        StatisticsInterpretation(report)
     }
 }

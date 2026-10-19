@@ -1,3 +1,4 @@
+import {appendStatisticsInterpretation} from './statistics-interpretation.js';
 import {element,control} from './app-ui.js';
 import {t} from './i18n.js';
 import {roundNumber} from './display-format.js';
@@ -79,7 +80,7 @@ export function renderRegressionReport(container,report,digits=10,parameterLabel
     for(const row of rows.slice(0,100)){const tr=element('tr');for(const value of [number(row.row),number(row.observed),number(row.fitted),...(svmClassification?[number(row.decisionScore)]:[number(row.predictionError??row.residual),number(row.absoluteError??Math.abs(Number(row.residual)))]),...(support?[t(row.supportVector?'Yes':'No')]:[])])tr.append(element('td',value));table.append(tr);}
     const scroll=element('div');scroll.style.overflowX='auto';scroll.append(table);details.append(scroll);
     if(rows.length>100)details.append(element('p',t('Showing first 100 rows; export includes all rows.')));
-    container.append(details);return;
+    container.append(details);appendStatisticsInterpretation(container,report,'regression');return;
   }
   const details=element('details'),label=element('summary',t('Residual diagnostics'));details.append(label);
   details.append(element('p',t(report.fitScale==='binomial'||report.model?.startsWith('logistic')?'Deviance residual vs fitted probability.':machineLearning?'Residual vs fitted':'Residual vs fitted; Durbin–Watson uses input row order.')));
@@ -104,6 +105,7 @@ export function renderRegressionReport(container,report,digits=10,parameterLabel
   residualWrapper.append(residualTable);details.append(residualWrapper);
   if(rows.length>100)details.append(element('p',t('Showing first 100 rows; export includes all rows.')));
   container.append(details);
+  appendStatisticsInterpretation(container,report,'regression');
 }
 
 export function regressionResidualCSV(report){

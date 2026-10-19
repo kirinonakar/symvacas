@@ -1,6 +1,7 @@
 import {element,control} from './app-ui.js';
 import {getLanguage,t} from './i18n.js';
 import {appendPlotExportButtons} from './svg-export.js';
+import {appendStatisticsInterpretation} from './statistics-interpretation.js';
 
 const colors=['var(--accent)','#cf7131','#8254b6','#397ec6','#bf547f','#86962e'];
 export function survivalNumber(n,digits=5){return n===null||n===undefined||!Number.isFinite(Number(n))?'—':Number(Number(n).toPrecision(Math.min(5,Math.max(2,digits)))).toString();}
@@ -63,4 +64,5 @@ export function renderSurvivalReport(container,report,{groups=[],predictors=[],b
       container.append(element('p',summary.join(' · '),'hint'));
     }
   }
+  appendStatisticsInterpretation(container,report,'survival');
 }
