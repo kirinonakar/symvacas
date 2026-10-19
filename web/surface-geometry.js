@@ -11,6 +11,30 @@ export function surfaceZRange(min,max){
 const limits=bounds=>[[bounds.xmin,bounds.xmax],[bounds.ymin,bounds.ymax],[bounds.zmin,bounds.zmax]];
 const finite=point=>point?.length===3&&point.every(Number.isFinite);
 const interpolate=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*t);
+const circleCache=new Map();
+export function radialSurfaceGeometry(rings){
+  const vertices=[],normals=[],triangles=[],triangleNormals=[],rows=[];
+  for(const [radius,height,slope,count] of rings){
+    if(!circleCache.has(count))circleCache.set(count,Array.from({length:count},(_,i)=>[Math.cos(2*Math.PI*i/count),Math.sin(2*Math.PI*i/count)]));
+    const row=[];
+    for(const [x,y] of circleCache.get(count)){
+      row.push(vertices.length);vertices.push([radius*x,radius*y,height]);normals.push([-slope*x,-slope*y,1]);
+    }
+    rows.push(row);
+  }
+  const face=(a,b,c)=>{triangles.push([vertices[a],vertices[b],vertices[c]]);triangleNormals.push([normals[a],normals[b],normals[c]]);};
+  for(let ring=1;ring<rows.length;ring++){
+    const inner=rows[ring-1],outer=rows[ring];
+    if(inner.length===1){for(let j=0;j<outer.length;j++)face(inner[0],outer[j],outer[(j+1)%outer.length]);continue;}
+    let i=0,j=0;
+    while(i<inner.length||j<outer.length){
+      const a=inner[i%inner.length],b=outer[j%outer.length],nextInner=(i+1)*outer.length,nextOuter=(j+1)*inner.length;
+      if(nextInner<=nextOuter&&i<inner.length){face(a,b,inner[(i+1)%inner.length]);i++;}
+      else {face(a,b,outer[(j+1)%outer.length]);j++;}
+    }
+  }
+  return {triangles,normals:triangleNormals};
+}
 export function clipSurfaceSegment(a,b,bounds){
   if(!finite(a)||!finite(b))return null;
   let start=0,end=1;
@@ -67,34 +91,57 @@ export function surfaceLightingGradient(points,levels){
 export function prepareSurfaceFaces(mesh,bounds,triangles=null,triangleNormals=null,convex=false){
   const faces=[];
   const input=triangles?[...triangles]:[];
+  const ranges=limits(bounds),spans=ranges.map(([lo,hi])=>hi-lo),normalized=new Map(),inside=new Map(),normalLights=new Map();
+  const normalize=p=>{
+    if(!normalized.has(p)){
+      normalized.set(p,[2*(p[0]-bounds.xmin)/spans[0]-1,2*(p[1]-bounds.ymin)/spans[1]-1,2*(p[2]-bounds.zmin)/spans[2]-1]);
+      inside.set(p,p[0]>=bounds.xmin&&p[0]<=bounds.xmax&&p[1]>=bounds.ymin&&p[1]<=bounds.ymax&&p[2]>=bounds.zmin&&p[2]<=bounds.zmax);
+    }
+    return normalized.get(p);
+  };
+  const normalLight=n=>{
+    if(!normalLights.has(n)){
+      const x=n[0]*spans[0],y=n[1]*spans[1],z=n[2]*spans[2],length=Math.hypot(x,y,z);
+      normalLights.set(n,length>0?.35+.65*Math.abs((x*-.4+y*-.5+z*.75)/(length*Math.hypot(.4,.5,.75))):NaN);
+    }
+    return normalLights.get(n);
+  };
+  // Central differences share one normal at each grid vertex. Never bridge an
+  // undefined sample; boundary vertices use the available one-sided tangent.
+  const gridNormals=new Map();
+  for(let row=0;row<mesh.length;row++)for(let col=0;col<mesh[row].length;col++){
+    const point=mesh[row][col];if(!finite(point))continue;
+    const neighbor=(r,c)=>finite(mesh[r]?.[c])?mesh[r][c]:point;
+    const left=neighbor(row,col-1),right=neighbor(row,col+1),down=neighbor(row-1,col),up=neighbor(row+1,col);
+    const u=right.map((v,i)=>v-left[i]),v=up.map((n,i)=>n-down[i]);
+    gridNormals.set(point,[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]]);
+  }
   for(let row=0;row<mesh.length-1;row++)for(let col=0;col<Math.min(mesh[row].length,mesh[row+1].length)-1;col++){
     const cell=[mesh[row][col],mesh[row][col+1],mesh[row+1][col+1],mesh[row+1][col]];
     if(!cell.every(finite))continue;
     input.push([cell[0],cell[1],cell[2]],[cell[0],cell[2],cell[3]]);
   }
-  const spans=limits(bounds).map(([lo,hi])=>hi-lo),normalize=p=>p.map((v,i)=>2*(v-limits(bounds)[i][0])/spans[i]-1);
-  const closed=convex&&input.every(triangle=>triangle.every(p=>finite(p)&&limits(bounds).every(([lo,hi],i)=>p[i]>=lo&&p[i]<=hi)));
+  const closed=convex&&input.every(triangle=>triangle.every(p=>finite(p)&&(normalize(p),inside.get(p))));
   for(const [index,triangle] of input.entries()){
       if(triangle.length!==3||!triangle.every(finite))continue;
-      const points=clipSurfacePolygon(triangle,bounds);if(!points.length)continue;
-      const [a,b,c]=triangle.map(normalize),u=b.map((v,i)=>v-a[i]),v=c.map((n,i)=>n-a[i]);
-      const normal=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]],length=Math.hypot(...normal);
+      const [a,b,c]=triangle.map(normalize);
+      const points=triangle.every(p=>inside.get(p))?triangle:clipSurfacePolygon(triangle,bounds);if(!points.length)continue;
+      const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
+      const normal=[uy*vz-uz*vy,uz*vx-ux*vz,ux*vy-uy*vx],length=Math.hypot(...normal);
       if(!length)continue;
       const light=.35+.65*Math.abs((normal[0]*-.4+normal[1]*-.5+normal[2]*.75)/(length*Math.hypot(.4,.5,.75)));
-      const normals=triangleNormals?.[index];
+      const normals=index<(triangles?.length||0)?triangleNormals?.[index]:triangle.map(p=>gridNormals.get(p));
       let levels=null;
-      if(normals?.length===3&&normals.every(n=>finite(n)&&Math.hypot(...n)>0)){
-        const average=normals.reduce((sum,n)=>sum.map((v,i)=>v+n[i]*spans[i]),[0,0,0]);
-        if(normal.reduce((sum,v,i)=>sum+v*average[i],0)<0)for(let i=0;i<3;i++)normal[i]=-normal[i];
+      if(normals?.length===3&&normals.every(n=>finite(n)&&Number.isFinite(normalLight(n)))){
+        let orientation=0;for(let i=0;i<3;i++)orientation+=normal[i]*spans[i]*(normals[0][i]+normals[1][i]+normals[2][i]);
+        if(orientation<0)for(let i=0;i<3;i++)normal[i]=-normal[i];
         levels=normals.map((n,i)=>{
-          const scaled=n.map((v,k)=>v*spans[k]),size=Math.hypot(...scaled);
-          const brightness=.35+.65*Math.abs((scaled[0]*-.4+scaled[1]*-.5+scaled[2]*.75)/(size*Math.hypot(.4,.5,.75)));
-          return (.65+.35*Math.max(0,Math.min(1,(triangle[i][2]-bounds.zmin)/(bounds.zmax-bounds.zmin))))*brightness;
+          return (.65+.35*Math.max(0,Math.min(1,(triangle[i][2]-bounds.zmin)/spans[2])))*normalLight(n);
         });
       }
       faces.push({points,source:triangle,normal,levels,light,height:points.reduce((sum,p)=>sum+(p[2]-bounds.zmin)/(bounds.zmax-bounds.zmin),0)/points.length});
   }
-  return {faces,closed,convex,limits:limits(bounds)};
+  return {faces,closed,convex,limits:ranges};
 }
 export function projectSurfaceFaces(prepared,projection,transparent=false){
   const cache=new Map(),project=p=>{if(!cache.has(p))cache.set(p,projection.project(p));return cache.get(p);},faces=[];

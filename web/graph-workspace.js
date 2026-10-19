@@ -84,7 +84,7 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
   function queueDraw(){if(graphState.frame!==null)return;graphState.frame=requestFrame(()=>{graphState.frame=null;draw();});}
   const resizeObserver=window.ResizeObserver?new window.ResizeObserver(queueDraw):null;
   resizeObserver?.observe($('graph-plot'));
-  const surface={opacity:1,sliceEnabled:false,sliceAxis:'z',slicePosition:0,rotation:35,elevation:32,zoom:1,renderMode:'surface',color:'#007b68',samples:26,autoDensity:true,autoZ:!['graph-zmin','graph-zmax'].every(id=>Number.isFinite(saved.ranges?.[id])),...saved.surface};
+  const surface={opacity:1,sliceEnabled:false,sliceAxis:'z',slicePosition:0,rotation:35,elevation:32,zoom:1,renderMode:'surface',color:'#007b68',colorMode:'solid',samples:26,autoDensity:true,autoZ:!['graph-zmin','graph-zmax'].every(id=>Number.isFinite(saved.ranges?.[id])),...saved.surface};
   surface.opacity=Number.isFinite(surface.opacity)?Math.max(.1,Math.min(1,surface.opacity)):1;
   surface.sliceAxis=['x','y','z'].includes(surface.sliceAxis)?surface.sliceAxis:'z';
   const storedSection=saved.surface?.slicePosition??saved.surface?.sliceZ??0;
@@ -93,6 +93,7 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
   surface.elevation=Number.isFinite(surface.elevation)?Math.max(-90,Math.min(90,surface.elevation)):32;
   if(!['wireframe','surface','surface-wireframe'].includes(surface.renderMode))surface.renderMode='surface';
   if(!/^#[0-9a-f]{6}$/i.test(surface.color))surface.color='#007b68';
+  if(!['solid','rainbow'].includes(surface.colorMode))surface.colorMode='solid';
   surface.samples=Number.isFinite(surface.samples)?Math.max(12,Math.min(96,Math.round(surface.samples))):26;
   const sourceDrafts={implicit:'x^2+y^2=1',cartesian:'sin(x)\ncos(x)',parametric:'[cos(t),sin(t)]',space:'C(t)=4*(sin(t),cos(t),0.6*sin(2*t))',polar:'2*cos(3*t)',sequence:'n\nu(n-1)+u(n-2)',surface:'sin(sqrt(x^2+y^2))',differential:'y-t',...saved.sources};
   let sourceKind=kind();sourceDrafts[sourceKind]=value('graph-source');
@@ -262,6 +263,7 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
     $('graph-source').oninput();persist();
   }
   function render(){
+    surfaceColorControls();
     exportControls();heightControls();densityControls();parameterVisibility();formulas();renderRangeNumbers();analysisControls();syncParameterControls();if(!graphState.result||!graphState.bounds)return;
     for(const [id,number,suffix] of [['graph-rotation',surface.rotation,'°'],['graph-elevation',surface.elevation,'°'],['graph-surface-zoom',surface.zoom*100,'%']]){let output=$(id+'-value');if(!output){output=document.createElement('output');output.id=id+'-value';$(id).insertAdjacentElement('afterend',output);}output.textContent=displayNumber(number,options().displayDigits)+suffix;}
     let shown=graphState.result;
@@ -397,6 +399,7 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
   }
   $('graph-surface-render').onchange=()=>{surface.renderMode=value('graph-surface-render');render();persist();};
   $('graph-surface-color').oninput=()=>{surface.color=value('graph-surface-color');render();persist();};
+  $('graph-surface-color-mode').onchange=()=>{surface.colorMode=value('graph-surface-color-mode');render();persist();};
   $('graph-surface-samples').oninput=()=>{surface.samples=Number(value('graph-surface-samples'));$('graph-surface-samples-value').textContent=`${surface.samples} × ${surface.samples}`;queue();};
   $('graph-surface-samples').onchange=()=>{persist();queue();};
   $('graph-auto-density').onchange=()=>{surface.autoDensity=$('graph-auto-density').checked;densityControls();persist();queue();};
@@ -432,6 +435,7 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
     const primary=pairedSliders.get('graph-min');if(primary)primary.track.closest('.graph-range-pair').hidden=['parametric','polar','space'].includes(kind());
   }
   function typeControls(){
+    surfaceColorControls();
     for(const section of $('graph-help').querySelectorAll('[data-graph-help-kind]'))section.hidden=section.dataset.graphHelpKind!==kind();
     ensurePositiveY();yScaleControls();const yPair=pairedSliders.get('graph-ymin');if(yPair)resetRangeDomain(yPair);parameterRangeVisibility();$('graph-reset-ranges').hidden=kind()!=='surface';$('graph-viewport-ranges').hidden=['cartesian','implicit','surface'].includes(kind());for(const id of ['graph-surface-z-range','graph-surface-rendering'])$(id).hidden=!['surface','space'].includes(kind());$('graph-surface-samples').closest('.graph-surface-density').hidden=kind()==='space';$('graph-surface-render').closest('label').hidden=kind()==='space';$('graph-surface-section-controls').hidden=kind()==='space';setText($('graph-fit'),['surface','space'].includes(kind())?'Fit Z':'Fit Y');setText($('graph-analysis-visible-range'),kind()==='cartesian'?'Use visible x range':'Use visible t range');$('graph-analysis').hidden=!['cartesian','parametric','polar'].includes(kind());$('graph-derivative-controls').hidden=kind()!=='cartesian';$('graph-initial').closest('label').hidden=!['sequence','differential'].includes(kind());$('graph-t0').closest('label').hidden=kind()!=='differential';for(const action of ['intersection','intersectionangle','asymptotes'])$('graph-analysis-action').querySelector(`[value="${action}"]`).disabled=kind()!=='cartesian';analysisControls();}
   $('graph-kind').onchange=()=>{
@@ -457,7 +461,11 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
   for(const pair of new Set(pairedSliders.values()))resetRangeDomain(pair);
   selections();formulas();typeControls();setText($('graph-axis'),graphState.radianAxis?'x: π rad':'x: decimal');for(const [id,name] of [['graph-rotation','rotation'],['graph-elevation','elevation'],['graph-surface-zoom','zoom']])$(id).value=String(surface[name]);
   $('graph-surface-render').value=surface.renderMode;$('graph-auto-z').checked=surface.autoZ;zControls();
-  $('graph-surface-color').value=surface.color;densityControls();surfaceSectionControls();
+  $('graph-surface-color').value=surface.color;$('graph-surface-color-mode').value=surface.colorMode;densityControls();surfaceSectionControls();
+  function surfaceColorControls(){
+    $('graph-surface-color-mode-label').hidden=kind()!=='surface';
+    $('graph-surface-color').closest('label').hidden=kind()==='surface'&&surface.colorMode==='rainbow';
+  }
   renderRangeNumbers();parameterControls([],true);inputLineControls();
   function addExpression(source,graphKind){
     const next=appendGraphSource(kind()===graphKind?value('graph-source'):sourceDrafts[graphKind]||'',source,graphKind);

@@ -190,6 +190,21 @@ test('bare comma inequalities reach the graph worker as one selectable region',a
   assert.deepEqual(errors,[]);
 });
 
+test('surface height colors restore, persist and hide only the solid color picker',context=>{
+  const {get,graphs,errors}=graphFixture(context,{saved:{surface:{colorMode:'rainbow'}}});
+  get('graph-kind').value='surface';get('graph-kind').onchange();
+  assert.equal(get('graph-surface-color-mode').value,'rainbow');
+  assert.equal(get('graph-surface-color-mode-label').hidden,false);
+  assert.equal(get('graph-surface-color').closest('label').hidden,true);
+  assert.equal(graphs.snapshot().surface.colorMode,'rainbow');
+  get('graph-surface-color-mode').value='solid';get('graph-surface-color-mode').onchange();
+  assert.equal(get('graph-surface-color').closest('label').hidden,false);
+  assert.equal(graphs.snapshot().surface.colorMode,'solid');
+  get('graph-kind').value='space';get('graph-kind').onchange();
+  assert.equal(get('graph-surface-color-mode-label').hidden,true);
+  assert.deepEqual(errors,[]);
+});
+
 
 test('graph discards an analysis response after its source changes',async context=>{
   let complete;

@@ -141,8 +141,10 @@ internal object CalculatorGraphActions {
         if(kind=="surface") {
             val implicit=hasImplicitSurface(source)
             val density=SurfaceMesh.sampleCount(xMin,xMax,yMin,yMax,surfaceSamples,surfaceAutoDensity,surfaceZoom.toDouble(),implicit)
-            request.put("surfaceYMin",yMin).put("surfaceYMax",yMax).put("surfaceSamples",if(graphAnimating || preview)minOf(density,if(implicit)16 else 32) else density)
+            request.put("surfaceYMin",yMin).put("surfaceYMax",yMax).put("surfaceSamples",if(graphAnimating || preview)SurfaceMesh.animationSampleCount(density,implicit) else density)
             request.put("surfaceZMin",zMin ?: yMin).put("surfaceZMax",zMax ?: yMax)
+            request.put("surfaceAutoZ",zMin==null&&zMax==null)
+            request.put("surfaceCompactGrid",true)
         }
         if(kind=="space")request.put("surfaceZMin",zMin ?: -5.0).put("surfaceZMax",zMax ?: 5.0)
         if(kind=="sequence") {

@@ -5,6 +5,7 @@ import {readFileSync} from 'node:fs';
 import {parse} from '../parser.js';
 import {graphInputTree} from '../graph-input.js';
 import {graphShadings} from '../graph-shading.js';
+import {radialSurfaceGeometry} from '../surface-geometry.js';
 
 test('packaged graph modules execute every graph kind in the production WASM worker', {timeout:60000}, async t=>{
   const worker=fork(new URL('./worker-bridge.mjs',import.meta.url),[],{execArgv:['--experimental-wasm-jspi']});
@@ -239,6 +240,32 @@ test('packaged graph modules execute every graph kind in the production WASM wor
   const surface=await graph('surface','x+y',{surfaceYMin:-1,surfaceYMax:1,surfaceSamples:12});
   assert.ok(surface.surface.length>1);
   for(const row of surface.surface)for(const [x,y,z] of row)assert.ok(Math.abs(z-x-y)<1e-12);
+  for(const a of [1,4,0,-1]){
+    const root=await execute({action:'graph',graphKind:'surface',angle:'RAD',trees:[graphInputTree('sin(sqrt(ax^2+ay^2))','surface')],
+      min:-3,max:3,surfaceYMin:-3,surfaceYMax:3,surfaceSamples:48,parameters:{a}});
+    assert.deepEqual(root.parameters,['a']);
+    if(a<0)assert.equal(root.surface.flat().filter(Boolean).length,1);
+    else for(const row of root.surface)for(const [x,y,z] of row)assert.ok(Math.abs(z-Math.sin(Math.sqrt(a*(x*x+y*y))))<1e-12);
+  }
+  const radialSource=String.raw`\frac{\sin\left(a \cdot x^{2}+a \cdot y^{2}\right)}{\left(x^{2}+y^{2}\right)}`;
+  for(const a of [1,2,-3,0,1e-12,20,100]){
+    const radial=await execute({action:'graph',graphKind:'surface',angle:'RAD',trees:[graphInputTree(radialSource,'surface')],
+      min:-10,max:10,surfaceYMin:-5,surfaceYMax:5,surfaceSamples:96,parameters:{a}});
+    assert.deepEqual(radial.parameters,['a']);
+    assert.deepEqual(radial.surfaceRings[0],[0,a,0,1]);
+    for(const [radius,z] of radial.surfaceRings){
+      const r=radius*radius,expected=r===0?a:Math.sin(a*r)/r;
+      assert.ok(Math.abs(z-expected)<1e-12);
+    }
+    if(Math.abs(a)>=1){
+      const geometry=radialSurfaceGeometry(radial.surfaceRings);
+      for(const face of geometry.triangles){
+        const [x,y,z]=[0,1,2].map(axis=>face.reduce((sum,p)=>sum+p[axis],0)/3),r=x*x+y*y;
+        const error=Math.abs(z-(r===0?a:Math.sin(a*r)/r))*200/(1.2173*Math.abs(a));
+        assert.ok(error<1.5,`a=${a}: projected mesh error ${error}`);
+      }
+    }
+  }
   const space=await graph('space','[t,t^2,t^3]');
   assert.ok(space.spaceCurves[0].length>1);
   for(const [x,y,z] of space.spaceCurves[0]){

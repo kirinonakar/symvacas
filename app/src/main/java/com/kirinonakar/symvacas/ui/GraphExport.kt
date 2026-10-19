@@ -120,30 +120,29 @@ internal class GraphExportImage(private val svg:String?,private val picture:Pict
 /** The graph uses paths, lines, circles and native text. Record those same calls
  * as vectors. Paint.getFillPath preserves dashed strokes, caps and joins. */
 internal fun drawGraphGradientPath(canvas:android.graphics.Canvas,path:android.graphics.Path,start:Offset,end:Offset,low:Int,high:Int,edgeWidth:Float) {
+    drawGraphColorGradientPath(canvas,path,start,end,intArrayOf(low,high),floatArrayOf(0f,1f),edgeWidth)
+}
+internal fun drawGraphColorGradientPath(canvas:android.graphics.Canvas,path:android.graphics.Path,start:Offset,end:Offset,colors:IntArray,positions:FloatArray,edgeWidth:Float) {
     val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color=low
+        color=android.graphics.Color.WHITE
         style=if(edgeWidth>0)Paint.Style.FILL_AND_STROKE else Paint.Style.FILL
         strokeWidth=edgeWidth
         strokeJoin=Paint.Join.ROUND
     }
-    if(canvas is GraphSvgCanvas)canvas.drawGradientPath(path,paint,start,end,low,high)
+    if(canvas is GraphSvgCanvas)canvas.drawGradientPath(path,paint,start,end,colors,positions)
     else {
-        paint.shader=android.graphics.LinearGradient(start.x,start.y,end.x,end.y,low,high,android.graphics.Shader.TileMode.CLAMP)
+        paint.shader=android.graphics.LinearGradient(start.x,start.y,end.x,end.y,colors,positions,android.graphics.Shader.TileMode.CLAMP)
         canvas.drawPath(path,paint)
     }
 }
 
 internal fun isGraphVectorCanvas(canvas:android.graphics.Canvas)=canvas is GraphSvgCanvas
-internal fun drawGraphSurfaceBatch(canvas:android.graphics.Canvas,positions:FloatArray,colors:IntArray) {
-    if(positions.isEmpty())return
+internal fun drawGraphSurfaceBatch(canvas:android.graphics.Canvas,batches:List<com.kirinonakar.symvacas.math.SurfaceVertexBatch>) {
     val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply {color=android.graphics.Color.WHITE}
-    // Non-indexed sorted triangles avoid the 16-bit index limit and allow one
-    // hardware draw with interpolated vertex colors instead of many shaders.
-    var offset=0
-    while(offset<positions.size) {
-        val count=minOf(65532,positions.size-offset)
-        canvas.drawVertices(android.graphics.Canvas.VertexMode.TRIANGLES,count,positions,offset,null,0,colors,offset/2,null,0,0,paint)
-        offset+=count
+    // All offsets stay zero, including the native nullable texture pointer.
+    // Chunks are prepared once with the geometry, rather than on every draw.
+    for(batch in batches) {
+        canvas.drawVertices(android.graphics.Canvas.VertexMode.TRIANGLES,batch.positions.size,batch.positions,0,null,0,batch.colors,0,null,0,0,paint)
     }
 }
 
@@ -152,10 +151,12 @@ private class GraphSvgCanvas(private val width:Int,private val height:Int):andro
     private val gradients=StringBuilder()
     private var gradientCount=0
     private var gradientFill:String?=null
-    fun drawGradientPath(path:android.graphics.Path,paint:Paint,start:Offset,end:Offset,low:Int,high:Int) {
+    fun drawGradientPath(path:android.graphics.Path,paint:Paint,start:Offset,end:Offset,colors:IntArray,positions:FloatArray) {
         val id="surface-gradient-${gradientCount++}"
         fun rgb(value:Int)="#"+Integer.toHexString(value and 0xffffff).padStart(6,'0')
-        gradients.append("<linearGradient id=\"$id\" gradientUnits=\"userSpaceOnUse\" x1=\"${start.x}\" y1=\"${start.y}\" x2=\"${end.x}\" y2=\"${end.y}\"><stop offset=\"0\" stop-color=\"${rgb(low)}\"/><stop offset=\"1\" stop-color=\"${rgb(high)}\"/></linearGradient>")
+        gradients.append("<linearGradient id=\"$id\" gradientUnits=\"userSpaceOnUse\" x1=\"${start.x}\" y1=\"${start.y}\" x2=\"${end.x}\" y2=\"${end.y}\">")
+        colors.forEachIndexed {i,color->gradients.append("<stop offset=\"${positions[i]}\" stop-color=\"${rgb(color)}\" stop-opacity=\"${(color ushr 24)/255f}\"/>")}
+        gradients.append("</linearGradient>")
         gradientFill="url(#$id)"
         try {drawPath(path,paint)} finally {gradientFill=null}
     }

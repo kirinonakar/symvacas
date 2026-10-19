@@ -312,6 +312,9 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
     var surfaceColor
         get()=graphState.surfaceColor
         set(value) {graphState.surfaceColor=value}
+    var surfaceColorMode
+        get()=graphState.surfaceColorMode
+        set(value) {graphState.surfaceColorMode=value}
     var surfaceSamples
         get()=graphState.surfaceSamples
         set(value) {graphState.surfaceSamples=value.coerceIn(12,96)}

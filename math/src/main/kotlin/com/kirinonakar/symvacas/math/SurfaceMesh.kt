@@ -6,9 +6,10 @@ data class SurfaceBounds(val xmin:Double,val xmax:Double,val ymin:Double,val yma
     val limits=listOf(xmin to xmax,ymin to ymax,zmin to zmax)
 }
 data class SurfaceLighting(val start:DoubleArray,val end:DoubleArray,val min:Double,val max:Double)
-data class SurfaceFace(val points:List<DoubleArray>,val depth:Double,val height:Double,val light:Double,val lighting:SurfaceLighting?=null,val projected:List<DoubleArray> = emptyList(),val front:Boolean=false,val brightness:Double?=null,val group:Int=0)
+data class SurfaceFace(val points:List<DoubleArray>,val depth:Double,val height:Double,val light:Double,val lighting:SurfaceLighting?=null,val projected:List<DoubleArray> = emptyList(),val front:Boolean=false,val brightness:Double?=null,val group:Int=0,val vertexLevels:List<Double>?=null)
 data class PreparedSurfaceFace(val points:List<DoubleArray>,val source:List<DoubleArray>,val normal:DoubleArray,val levels:List<Double>?,val height:Double,val light:Double,val group:Int=0,val closed:Boolean?=null)
 data class PreparedSurface(val faces:List<PreparedSurfaceFace>,val convex:Boolean,val closed:Boolean)
+data class SurfaceVertexBatch(val positions:FloatArray,val colors:IntArray)
 
 class SurfaceProjection(val bounds:SurfaceBounds,rotation:Double,elevation:Double) {
     private val theta=Math.toRadians(rotation)
@@ -26,11 +27,73 @@ class SurfaceProjection(val bounds:SurfaceBounds,rotation:Double,elevation:Doubl
 }
 
 object SurfaceMesh {
+    fun colorBatches(faces:List<SurfaceFace>,palette:IntArray,bounds:SurfaceBounds,opacity:Double=1.0,rainbow:Boolean=false):List<SurfaceVertexBatch> {
+        val count=faces.sumOf {(it.projected.size-2).coerceAtLeast(0)*3}
+        val positions=FloatArray(count*2);val colors=IntArray(count);var index=0
+        val cachedColors=Array(palette.size) {java.util.IdentityHashMap<DoubleArray,Int>()}
+        val alpha=(opacity*255).roundToInt() shl 24
+        for(face in faces) {
+          val group=face.group%palette.size
+          fun color(k:Int):Int {
+            val point=face.points[k]
+            if(face.vertexLevels!=null)cachedColors[group][point]?.let {return it}
+            val base=if(rainbow)SurfaceColors.rainbow((point[2]-bounds.zmin)/(bounds.zmax-bounds.zmin)) else palette[group]
+            val brightness=(face.vertexLevels?.get(k) ?: SurfaceColors.gradientValue(face.lighting,face.projected[k],face.brightness ?: ((.65+.35*face.height)*face.light))).coerceIn(0.0,1.0)
+            val result=alpha or ((((base shr 16)and 255)*brightness).roundToInt() shl 16) or ((((base shr 8)and 255)*brightness).roundToInt() shl 8) or (((base and 255)*brightness).roundToInt())
+            if(face.vertexLevels!=null)cachedColors[group][point]=result
+            return result
+          }
+          fun vertex(k:Int) {
+            val p=face.projected[k]
+            positions[index*2]=p[0].toFloat();positions[index*2+1]=p[1].toFloat()
+            colors[index]=color(k);index++
+          }
+          for(i in 1 until face.projected.lastIndex){vertex(0);vertex(i);vertex(i+1)}
+        }
+        return vertexBatches(positions,colors)
+    }
+    fun vertexBatches(positions:FloatArray,colors:IntArray):List<SurfaceVertexBatch> {
+        require(positions.size%6==0&&colors.size==positions.size/2) {"Surface triangles need three position/color pairs"}
+        if(positions.isEmpty())return emptyList()
+        // Canvas JNI adds vertOffset to its nullable texture pointer. Nonzero
+        // offsets with texs=null can crash in SkVertices::MakeCopy, so every
+        // draw owns a contiguous zero-offset buffer. Split only between faces.
+        if(positions.size<=65532)return listOf(SurfaceVertexBatch(positions,colors))
+        return (positions.indices step 65532).map {offset->
+            val end=minOf(offset+65532,positions.size)
+            SurfaceVertexBatch(positions.copyOfRange(offset,end),colors.copyOfRange(offset/2,end/2))
+        }
+    }
+    private val circles=java.util.concurrent.ConcurrentHashMap<Int,List<Pair<Double,Double>>>()
+    fun radialGeometry(rings:List<DoubleArray>):Pair<List<List<DoubleArray>>,List<List<DoubleArray>>> {
+        val vertices=mutableListOf<DoubleArray>();val normals=mutableListOf<DoubleArray>();val rows=mutableListOf<List<Int>>()
+        for(ring in rings) {
+            val (radius,height,slope)=ring;val count=ring[3].toInt()
+            val circle=circles.getOrPut(count) {List(count) {cos(2*PI*it/count) to sin(2*PI*it/count)}}
+            rows.add(circle.map {(x,y)->
+                val index=vertices.size;vertices.add(doubleArrayOf(radius*x,radius*y,height));normals.add(doubleArrayOf(-slope*x,-slope*y,1.0));index
+            })
+        }
+        val faces=mutableListOf<List<DoubleArray>>();val lights=mutableListOf<List<DoubleArray>>()
+        fun face(a:Int,b:Int,c:Int) {faces.add(listOf(vertices[a],vertices[b],vertices[c]));lights.add(listOf(normals[a],normals[b],normals[c]))}
+        for(ring in 1 until rows.size) {
+            val inner=rows[ring-1];val outer=rows[ring]
+            if(inner.size==1) {for(j in outer.indices)face(inner[0],outer[j],outer[(j+1)%outer.size]);continue}
+            var i=0;var j=0
+            while(i<inner.size||j<outer.size) {
+                val a=inner[i%inner.size];val b=outer[j%outer.size]
+                if((i+1)*outer.size<=(j+1)*inner.size&&i<inner.size) {face(a,b,inner[(i+1)%inner.size]);i++}
+                else {face(a,b,outer[(j+1)%outer.size]);j++}
+            }
+        }
+        return faces to lights
+    }
     fun sampleCount(xmin:Double,xmax:Double,ymin:Double,ymax:Double,requested:Int=26,automatic:Boolean=true,zoom:Double=1.0,implicit:Boolean=false):Int {
         val maximum=if(implicit)32 else 96
         if(!automatic)return requested.coerceIn(12,maximum)
         return ceil(max(26.0,max(xmax-xmin,ymax-ymin)*8)*sqrt(zoom)).coerceIn(12.0,maximum.toDouble()).toInt()
     }
+    fun animationSampleCount(density:Int,implicit:Boolean)=if(implicit)minOf(density,16) else density
     fun zRange(low:Double,high:Double):Pair<Double,Double> {
         if(!low.isFinite()||!high.isFinite())return -1.0 to 1.0
         if(high>low)return low to high
@@ -85,8 +148,30 @@ object SurfaceMesh {
     }
     fun prepare(mesh:List<List<DoubleArray?>>,bounds:SurfaceBounds,triangles:List<List<DoubleArray>> = emptyList(),triangleNormals:List<List<DoubleArray>> = emptyList(),convex:Boolean=false):PreparedSurface {
         val faces=mutableListOf<PreparedSurfaceFace>()
-        val normalize=SurfaceProjection(bounds,0.0,0.0)::normalize
+        val projection=SurfaceProjection(bounds,0.0,0.0)
+        val normalized=java.util.IdentityHashMap<DoubleArray,DoubleArray>()
+        val inside=java.util.IdentityHashMap<DoubleArray,Boolean>()
+        fun normalize(point:DoubleArray)=normalized.getOrPut(point){
+            inside[point]=point[0]>=bounds.xmin&&point[0]<=bounds.xmax&&point[1]>=bounds.ymin&&point[1]<=bounds.ymax&&point[2]>=bounds.zmin&&point[2]<=bounds.zmax
+            projection.normalize(point)
+        }
+        val normalLights=java.util.IdentityHashMap<DoubleArray,Double>()
+        fun normalLight(n:DoubleArray)=normalLights.getOrPut(n) {
+            val x=n[0]*(bounds.xmax-bounds.xmin);val y=n[1]*(bounds.ymax-bounds.ymin);val z=n[2]*(bounds.zmax-bounds.zmin)
+            val length=sqrt(x*x+y*y+z*z)
+            if(length>0).35+.65*abs((x*-.4+y*-.5+z*.75)/(length*sqrt(.4*.4+.5*.5+.75*.75))) else Double.NaN
+        }
         val input=triangles.toMutableList()
+        // Share central-difference normals across grid faces, stopping at holes.
+        val gridNormals=java.util.IdentityHashMap<DoubleArray,DoubleArray>()
+        for(row in mesh.indices)for(col in mesh[row].indices) {
+            val point=mesh[row][col]?.takeIf(::finite) ?: continue
+            fun neighbor(r:Int,c:Int)=mesh.getOrNull(r)?.getOrNull(c)?.takeIf(::finite) ?: point
+            val left=neighbor(row,col-1);val right=neighbor(row,col+1)
+            val down=neighbor(row-1,col);val up=neighbor(row+1,col)
+            val u=DoubleArray(3) {right[it]-left[it]};val v=DoubleArray(3) {up[it]-down[it]}
+            gridNormals[point]=doubleArrayOf(u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0])
+        }
         for(row in 0 until mesh.lastIndex)for(col in 0 until min(mesh[row].size,mesh[row+1].size)-1) {
             val cell=listOf(mesh[row][col],mesh[row][col+1],mesh[row+1][col+1],mesh[row+1][col])
             if(!cell.all(::finite))continue
@@ -95,25 +180,25 @@ object SurfaceMesh {
         val closed=convex&&input.all {triangle->triangle.all {p->finite(p)&&bounds.limits.withIndex().all {(i,limit)->p[i]>=limit.first&&p[i]<=limit.second}}}
         for((index,triangle) in input.withIndex()) {
                 if(triangle.size!=3 || !triangle.all(::finite))continue
-                val points=clipPolygon(triangle,bounds)
+                val (a,b,c)=triangle.map(::normalize)
+                val points=if(triangle.all {inside[it]==true})triangle else clipPolygon(triangle,bounds)
                 if(points.isEmpty())continue
-                val (a,b,c)=triangle.map(normalize)
-                val u=DoubleArray(3) {b[it]-a[it]};val v=DoubleArray(3) {c[it]-a[it]}
-                val normal=doubleArrayOf(u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0])
-                val length=sqrt(normal.sumOf {it*it});if(length==0.0)continue
+                val ux=b[0]-a[0];val uy=b[1]-a[1];val uz=b[2]-a[2];val vx=c[0]-a[0];val vy=c[1]-a[1];val vz=c[2]-a[2]
+                val normal=doubleArrayOf(uy*vz-uz*vy,uz*vx-ux*vz,ux*vy-uy*vx)
+                val length=sqrt(normal[0]*normal[0]+normal[1]*normal[1]+normal[2]*normal[2]);if(length==0.0)continue
                 val light=.35+.65*abs((normal[0]*-.4+normal[1]*-.5+normal[2]*.75)/(length*sqrt(.4*.4+.5*.5+.75*.75)))
-                val normals=triangleNormals.getOrNull(index)
-                val levels=if(normals?.size==3 && normals.all {finite(it)&&sqrt(it.sumOf {v->v*v})>0}) {
-                    val average=DoubleArray(3) {axis->normals.sumOf {it[axis]}*(bounds.limits[axis].second-bounds.limits[axis].first)}
-                    if(normal.indices.sumOf {normal[it]*average[it]}<0)for(i in normal.indices)normal[i]=-normal[i]
+                val normals=if(index<triangles.size)triangleNormals.getOrNull(index) else triangle.mapNotNull {gridNormals[it]}
+                val levels=if(normals?.size==3 && normals.all {finite(it)&&normalLight(it).isFinite()}) {
+                    if(convex) {
+                        val average=DoubleArray(3) {axis->normals.sumOf {it[axis]}*(bounds.limits[axis].second-bounds.limits[axis].first)}
+                        if(normal.indices.sumOf {normal[it]*average[it]}<0)for(i in normal.indices)normal[i]=-normal[i]
+                    }
                     normals.mapIndexed {i,n->
-                        val scaled=DoubleArray(3) {axis->n[axis]*(bounds.limits[axis].second-bounds.limits[axis].first)}
-                        val size=sqrt(scaled.sumOf {it*it})
-                        val brightness=.35+.65*abs((scaled[0]*-.4+scaled[1]*-.5+scaled[2]*.75)/(size*sqrt(.4*.4+.5*.5+.75*.75)))
-                        (.65+.35*((triangle[i][2]-bounds.zmin)/(bounds.zmax-bounds.zmin)).coerceIn(0.0,1.0))*brightness
+                        (.65+.35*((triangle[i][2]-bounds.zmin)/(bounds.zmax-bounds.zmin)).coerceIn(0.0,1.0))*normalLight(n)
                     }
                 } else null
-                faces.add(PreparedSurfaceFace(points,triangle,normal,levels,points.map {(it[2]-bounds.zmin)/(bounds.zmax-bounds.zmin)}.average(),light))
+                var height=0.0;for(p in points)height+=(p[2]-bounds.zmin)/(bounds.zmax-bounds.zmin)
+                faces.add(PreparedSurfaceFace(points,triangle,normal,levels,height/points.size,light))
         }
         return PreparedSurface(faces,convex,closed)
     }
@@ -149,15 +234,17 @@ object SurfaceMesh {
             }
         }
     }
-    fun project(prepared:PreparedSurface,projection:SurfaceProjection,transparent:Boolean=false):List<SurfaceFace> {
+    fun project(prepared:PreparedSurface,projection:SurfaceProjection,transparent:Boolean=false,withLighting:Boolean=true):List<SurfaceFace> {
         val cache=java.util.IdentityHashMap<DoubleArray,DoubleArray>()
         fun point(p:DoubleArray)=cache.getOrPut(p){projection.project(p)}
         val faces=prepared.faces.mapNotNull {face->
-            val front=face.normal.indices.sumOf {face.normal[it]*projection.direction[it]}>1e-12*sqrt(face.normal.sumOf {it*it})
+            val front=(withLighting||prepared.convex||(face.closed ?: prepared.closed))&&face.normal.indices.sumOf {face.normal[it]*projection.direction[it]}>1e-12*sqrt(face.normal.sumOf {it*it})
             if(!transparent&&(face.closed ?: prepared.closed)&&!front)return@mapNotNull null
             val projected=face.points.map(::point)
-            val lighting=face.levels?.let {lightingGradient(face.source.map(::point),it)}
-            SurfaceFace(face.points,projected.map {it[2]}.average(),face.height,face.light,lighting,projected,front,face.levels?.average(),face.group)
+            val lighting=if(withLighting||face.points!==face.source)face.levels?.let {lightingGradient(face.source.map(::point),it)} else null
+            val levels=if(withLighting||face.levels==null)null else if(face.points===face.source)face.levels else projected.map {SurfaceColors.gradientValue(lighting,it,face.levels.average())}
+            var depth=0.0;for(p in projected)depth+=p[2]
+            SurfaceFace(face.points,depth/projected.size,face.height,face.light,lighting,projected,front,face.levels?.average(),face.group,levels)
         }
         return faces.sortedWith(compareBy<SurfaceFace> {if(!transparent&&prepared.convex&&it.front)1 else 0}.thenBy {it.depth})
     }

@@ -261,6 +261,9 @@ Object.assign(korean,nativeKorean,{
   "Axis": "축",
   "Position": "위치",
   "Surface color": "표면 색상",
+  "Color mode": "색상 모드",
+  "Solid color": "단색",
+  "Rainbow (Z)": "무지개 (Z값)",
   "Mesh density": "격자 밀도",
   "Automatic z range": "자동 z 범위",
   "Fit Z": "z 범위 맞춤"

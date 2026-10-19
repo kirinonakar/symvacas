@@ -45,6 +45,34 @@ def axis_quadric(expression,axes):
     except (s.PolynomialError,ValueError,TypeError):return None
 
 
+@lru_cache(maxsize=64)
+def continuous_surface_expression(expression):
+    """Draw proven removable sine quotients using their continuous extension.
+
+    Only cancel polynomial factors: probing nearby values could incorrectly fill
+    poles or multivariate singularities whose limit depends on direction.
+    This is a rendering program; the calculator's expression stays unchanged.
+    """
+    def extend(term):
+        numerator, denominator = s.fraction(term)
+        if denominator == 1 or not denominator.is_polynomial():
+            return term
+        for factor in s.Mul.make_args(numerator):
+            if factor.func != s.sin or not factor.args[0].is_polynomial():
+                continue
+            argument = factor.args[0]
+            coefficient = s.cancel((numerator/factor)*argument/denominator)
+            if coefficient.is_polynomial():
+                return coefficient*s.sinc(argument)
+        return term
+    return expression.replace(lambda term: isinstance(term,s.Mul), extend)
+
+
+@lru_cache(maxsize=32)
+def surface_coordinates(low,high,count):
+    return tuple(low+(high-low)*index/count for index in range(count+1))
+
+
 def graph_surface(engine, request, trees, xmin, xmax):
     require(1<=len(trees)<=5,"Enter one to five surface expressions z=f(x,y) or F(x,y,z)=0")
     if len(trees)==1:
@@ -96,18 +124,23 @@ def graph_surface_single(engine, request, tree, xmin, xmax):
         return {"surface":[],"surfaceVertices":vertices,"surfaceTriangles":triangles,"surfaceNormals":normals,"implicitSurface":True,
                 "zMin":zmin,"zMax":zmax,"surfaceSamples":count,"parameters":sorted(names)}
     names = parameter_names([expression], {"x","y"})
-    fn = graph_function(expression, (x,y), resolved_parameters(engine, request, [expression], {"x","y"}))
+    sliders=resolved_parameters(engine, request, [expression], {"x","y"})
     count = capped(max(12, int(request.get("surfaceSamples", 26))),96)
+    from calc_graph_surface import radial_sine_surface
+    radial=radial_sine_surface(expression,x,y,sliders,xmin,xmax,ymin,ymax,count) if request.get('surfaceAutoZ',True) else None
+    if radial is not None:return {**radial,'parameters':sorted(names)}
+    fn = graph_function(continuous_surface_expression(expression), (x,y), sliders)
+    xs,ys=surface_coordinates(xmin,xmax,count),surface_coordinates(ymin,ymax,count)
+    compact=request.get('surfaceCompactGrid',False)
     mesh = []
-    for row in range(count+1):
-        yy = ymin+(ymax-ymin)*row/count
+    for yy in ys:
         points = []
-        for col in range(count+1):
-            xx = xmin+(xmax-xmin)*col/count
+        for xx in xs:
             try: z = _finite_real(fn(xx,yy))
             except (TypeError, ValueError, ZeroDivisionError, OverflowError): z = None
-            points.append([xx,yy,z] if z is not None else None)
+            points.append(z if compact else [xx,yy,z] if z is not None else None)
         mesh.append(points)
-    values = [point[2] for row in mesh for point in row if point is not None]
+    values = [point if compact else point[2] for row in mesh for point in row if point is not None]
     require(values, "Surface has no finite values in this range")
+    if compact:return {"surface":[],"surfaceGrid":{"x":xs,"y":ys,"z":mesh},"zMin":min(values),"zMax":max(values),"surfaceSamples":count,"parameters":sorted(names)}
     return {"surface":mesh,"zMin":min(values),"zMax":max(values),"surfaceSamples":count,"parameters":sorted(names)}

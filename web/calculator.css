@@ -225,6 +225,7 @@ input:disabled,select:disabled{opacity:.45;cursor:default}
 .graph-surface-panel label{margin:0;min-width:0;gap:6px}.graph-surface-panel label>span{line-height:20px}
 .graph-surface-appearance select,.graph-surface-appearance input[type="color"]{height:42px;min-width:0;width:100%}
 .graph-surface-appearance input[type="color"]{padding:5px;cursor:pointer}
+.graph-surface-density{grid-column:1/-1}
 .graph-surface-slider{display:flex;align-items:center;gap:10px;min-width:0;height:42px}
 .graph-surface-slider input[type="range"]{flex:1;min-width:0;width:100%;height:36px;padding:0;border:0;background:transparent}
 .graph-surface-slider output{flex:none;min-width:5ch;text-align:right;white-space:nowrap;font-size:12px;font-variant-numeric:tabular-nums;color:var(--ink)}

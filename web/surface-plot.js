@@ -1,21 +1,27 @@
 import {displayNumber} from './display-format.js';
-import {clipSurfaceSegment,surfaceFaces,surfaceProjection,surfaceZRange} from './surface-geometry.js';
+import {clipSurfaceSegment,surfaceFaces,surfaceProjection,surfaceZRange,radialSurfaceGeometry} from './surface-geometry.js';
+import {rainbowSurfaceFill,surfaceRainbowStops} from './surface-colors.js';
 const NS='http://www.w3.org/2000/svg';
 function element(tag,attributes={},text=''){
   const node=document.createElementNS(NS,tag);
   for(const [name,value] of Object.entries(attributes))node.setAttribute(name,String(value));
   node.textContent=text;return node;
 }
-export function plotSurface(container,result,view,{digits=10,rotation=35,elevation=32,zoom=1,renderMode='surface',color='#007b68'}={}){
+export function plotSurface(container,result,view,{digits=10,rotation=35,elevation=32,zoom=1,renderMode='surface',color='#007b68',colorMode='solid'}={}){
   if(!/^#[0-9a-f]{6}$/i.test(color))color='#007b68';
   const rgb=[1,3,5].map(index=>parseInt(color.slice(index,index+2),16));
   const [zmin,zmax]=surfaceZRange(result.zMin,result.zMax),bounds={...view,zmin,zmax},w=800,h=460,pad=42,scale=(h-2*pad)*.3*zoom;
   const projection=surfaceProjection(bounds,rotation,elevation),project=point=>{const [x,y]=projection.project(point);return [w/2+x*scale,h/2+y*scale];};
   const svg=element('svg',{viewBox:`0 0 ${w} ${h}`,role:'img','aria-label':'3D surface graph','data-render-mode':renderMode});
   const defs=element('defs'),clip=element('clipPath',{id:`clip-${container.id}`});clip.append(element('rect',{x:pad,y:pad,width:w-2*pad,height:h-2*pad}));defs.append(clip);svg.append(defs);
+  const gradientContext={createLinearGradient(x1,y1,x2,y2){
+    const id=`surface-colors-${defs.children.length}`,gradient=element('linearGradient',{id,gradientUnits:'userSpaceOnUse',x1,y1,x2,y2});defs.append(gradient);
+    return {addColorStop:(at,color)=>gradient.append(element('stop',{offset:at,'stop-color':color})),toString:()=>`url(#${id})`};
+  }};
+  const radial=result.surfaceRings?radialSurfaceGeometry(result.surfaceRings):null;
   const group=element('g',{'clip-path':`url(#clip-${container.id})`});svg.append(group);
-  if(renderMode!=='wireframe')for(const face of surfaceFaces(result.surface,bounds,projection)){
-    const shaded=rgb.map(v=>Math.round(v*(.65+.35*face.height)*face.light)),fill=`rgb(${shaded.join(',')})`;
+  if(renderMode!=='wireframe')for(const face of surfaceFaces(result.surface,bounds,projection,radial?.triangles,radial?.normals)){
+    const shaded=rgb.map(v=>Math.round(v*(.65+.35*face.height)*face.light)),fill=colorMode==='rainbow'?rainbowSurfaceFill(gradientContext,face,project,zmin,zmax):`rgb(${shaded.join(',')})`;
     const polygon=element('polygon',{points:face.points.map(project).map(p=>p.join(',')).join(' '),fill,'data-surface-face':'true','data-depth':face.depth});
     // Outlines are painted with each face so rear grid lines cannot show through.
     polygon.setAttribute('stroke',renderMode==='surface-wireframe'?'var(--muted)':fill);
@@ -33,6 +39,7 @@ export function plotSurface(container,result,view,{digits=10,rotation=35,elevati
     for(const row of result.surface)path(row,color,0);
     const columns=Math.max(0,...result.surface.map(row=>row.length));
     for(let col=0;col<columns;col++)path(result.surface.map(row=>row[col]),color,1);
+    for(const triangle of radial?.triangles||[])path([...triangle,triangle[0]],color,0);
   }
   const origin=[bounds.xmin,bounds.ymin,zmin],axes=element('g',{'data-surface-axes':'true'});svg.append(axes);
   for(const [index,name] of ['x','y','z'].entries()){
@@ -47,6 +54,13 @@ export function plotSurface(container,result,view,{digits=10,rotation=35,elevati
       axes.append(element('text',{x:x+4,y:y+(index===2?-5:15),fill:'var(--muted)','font-size':12,'data-axis':name},displayNumber(Math.abs(number)<step*1e-10?0:number,digits)));
     }
     axes.append(element('text',{x:b[0]+8,y:b[1]+4,fill:'var(--ink)','font-size':14,'font-weight':'bold','data-surface-axis-label':name},name));
+  }
+  if(colorMode==='rainbow'){
+    const gradient=gradientContext.createLinearGradient(0,220,0,60);
+    surfaceRainbowStops.forEach((rgb,i)=>gradient.addColorStop(i/5,`rgb(${rgb.join(',')})`));
+    svg.append(element('rect',{x:678,y:60,width:12,height:160,fill:gradient}));
+    for(const t of [0,.5,1])svg.append(element('text',{x:698,y:224-160*t,fill:'var(--ink)','font-size':12},displayNumber(zmin+(zmax-zmin)*t,digits)));
+    svg.append(element('text',{x:678,y:50,fill:'var(--ink)','font-size':12},'z'));
   }
   container.replaceChildren(svg);return svg;
 }

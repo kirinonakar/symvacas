@@ -6,6 +6,12 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class GraphInputTest {
+    @Test fun radialSquareRootSurfaceParsesAdjacentAxisFactors() {
+        val tree=graphInputTree("sin(sqrt(ax^2+ay^2))","surface")
+        assertEquals("sin",tree.value);assertEquals("sqrt",tree.args.single().value)
+        assertEquals(setOf("a","x","y"),tree.nodes().filter {it.kind=="symbol"}.map {it.value}.toSet())
+        assertFalse(isImplicitSurface("sin(sqrt(ax^2+ay^2))"))
+    }
     @Test fun commaSeparatedInequalitiesRemainOneVisibleGraphRow() {
         val source="-1<x<1, -1<y<x"
         val program=GraphSourceCache().get("$source\ny=x", "cartesian", false)

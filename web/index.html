@@ -102,6 +102,7 @@ r=2*cos(3*θ)
         <div class="graph-surface-appearance">
           <label><span>Rendering</span><select id="graph-surface-render"><option value="wireframe">Wireframe</option><option value="surface" selected>Surface</option><option value="surface-wireframe">Surface + mesh</option></select></label>
           <label><span>Surface color</span><input id="graph-surface-color" type="color" value="#007b68"></label>
+          <label id="graph-surface-color-mode-label"><span>Color mode</span><select id="graph-surface-color-mode"><option value="solid">Solid color</option><option value="rainbow">Rainbow (Z)</option></select></label>
           <div class="graph-surface-density"><div class="graph-surface-density-heading"><label for="graph-surface-samples">Mesh density</label><label class="check"><input id="graph-auto-density" type="checkbox" checked>Auto</label></div><span class="graph-surface-slider"><input id="graph-surface-samples" type="range" min="12" max="96" step="1" value="26"><output id="graph-surface-samples-value">26 × 26</output></span></div>
         </div>
         <div id="graph-surface-section-controls" class="graph-surface-sections">

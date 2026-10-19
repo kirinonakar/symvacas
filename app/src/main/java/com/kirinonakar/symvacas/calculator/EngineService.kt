@@ -103,6 +103,7 @@ class EngineService : Service() {
 }
 
 class EngineClient(private val context: Context) {
+    private val resultDecoder=CoroutineScope(SupervisorJob()+Dispatchers.Default)
     private var remote: Messenger? = null
     private var connected = CompletableDeferred<Unit>()
     private val pending = mutableMapOf<Int, CancellableContinuation<JSONObject>>()
@@ -130,11 +131,20 @@ class EngineClient(private val context: Context) {
             timeouts.remove(msg.arg1)?.let(handler::removeCallbacks)
             inputHandlers.remove(msg.arg1)
             unlimitedRequests.remove(msg.arg1); executionBudgets.remove(msg.arg1)
-            val continuation = pending.remove(msg.arg1)
+            val id=msg.arg1
+            val continuation = pending[id]
             if (continuation?.isActive == true) {
-                val response=runCatching {JSONObject(EngineResultCodec.decode(msg.data.getString("result"),msg.data.getByteArray("resultGzip")))}
-                    .getOrElse {JSONObject().put("ok",false).put("error","Could not read calculation result. Try again.")}
-                continuation.resume(response)
+                val text=msg.data.getString("result");val compressed=msg.data.getByteArray("resultGzip")
+                resultDecoder.launch {
+                    val response=runCatching {JSONObject(EngineResultCodec.decode(text,compressed))}
+                        .getOrElse {JSONObject().put("ok",false).put("error","Could not read calculation result. Try again.")}
+                    withContext(Dispatchers.Main.immediate) {
+                        if(pending[id]===continuation) {
+                            pending.remove(id)
+                            if(continuation.isActive)continuation.resume(response)
+                        }
+                    }
+                }
             }
         }
         true
@@ -195,5 +205,5 @@ class EngineClient(private val context: Context) {
             if(continuation.isActive)continuation.resume(JSONObject().put("ok",false).put("error","Calculation cancelled"))
         }
     }
-    fun close() { closed = true; cancel(); runCatching { context.unbindService(connection) } }
+    fun close() { closed = true; cancel(); resultDecoder.cancel();runCatching { context.unbindService(connection) } }
 }

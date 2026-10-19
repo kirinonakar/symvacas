@@ -16,6 +16,8 @@ import kotlin.math.*
 
 // Graph axis ranges and individual parameter-range dialogs.
 @Composable internal fun GraphRangeDialog(m:CalculatorModel,onDismiss:()->Unit) {
+    val focusManager=LocalFocusManager.current
+    var resetRevision by remember {mutableIntStateOf(0)}
     var xmin by remember {mutableStateOf(m.xMin.toString())};var xmax by remember {mutableStateOf(m.xMax.toString())};var ymin by remember {mutableStateOf(m.yMin.toString())};var ymax by remember {mutableStateOf(m.yMax.toString())}
     var tmin by remember {mutableStateOf(m.parameterMin.toString())};var tmax by remember {mutableStateOf(m.parameterMax.toString())}
     var thetaMin by remember {mutableStateOf(m.thetaMin.toString())};var thetaMax by remember {mutableStateOf(m.thetaMax.toString())}
@@ -27,19 +29,16 @@ import kotlin.math.*
     var zmax by remember {mutableStateOf((m.zMax ?: sampledRange.second).toString())}
     var autoZ by remember {mutableStateOf(m.zMin==null || m.zMax==null)}
     AlertDialog(onDismissRequest={onDismiss()},title={Text(tr("Graph range"))},text={Column(Modifier.verticalScroll(rememberScrollState())) {
-                RangeAxisEditor(if(m.graphKind=="sequence")"n" else "x",xmin,xmax,m.xMin,m.xMax,m.displayDigits,{xmin=it},{xmax=it})
-                RangeAxisEditor("y",ymin,ymax,m.yMin,m.yMax,m.displayDigits,{ymin=it},{ymax=it},logarithmic=m.yLog&&m.graphKind !in listOf("surface","space"))
+                key(resetRevision) {
+                RangeAxisEditor(if(m.graphKind=="sequence")"n" else "x",xmin,xmax,xmin.toDoubleOrNull() ?: m.xMin,xmax.toDoubleOrNull() ?: m.xMax,m.displayDigits,{xmin=it},{xmax=it})
+                RangeAxisEditor("y",ymin,ymax,ymin.toDoubleOrNull() ?: m.yMin,ymax.toDoubleOrNull() ?: m.yMax,m.displayDigits,{ymin=it},{ymax=it},logarithmic=m.yLog&&m.graphKind !in listOf("surface","space"))
                 if(m.graphKind in listOf("surface","space")) {
-                    SmallAction("Reset ranges") {
-                        val extent=if(m.graphKind=="space")5.0 else 3.0
-                        xmin=(-extent).toString();xmax=extent.toString();ymin=(-extent).toString();ymax=extent.toString();autoZ=true
-                        m.resetSurfaceRanges()
-                    }
                     Row(verticalAlignment=Alignment.CenterVertically) {Checkbox(autoZ,{autoZ=it});Text(tr("Automatic z range"))}
                     if(!autoZ)RangeAxisEditor("z",zmin,zmax,zmin.toDoubleOrNull() ?: -1.0,zmax.toDoubleOrNull() ?: 1.0,m.displayDigits,{zmin=it},{zmax=it})
                 }
-                if("t" in rangeAxes)RangeAxisEditor("t",tmin,tmax,m.parameterMin,m.parameterMax,m.displayDigits,{tmin=it},{tmax=it})
-                if("theta" in rangeAxes)RangeAxisEditor("θ",thetaMin,thetaMax,m.thetaMin,m.thetaMax,m.displayDigits,{thetaMin=it},{thetaMax=it})
+                if("t" in rangeAxes)RangeAxisEditor("t",tmin,tmax,tmin.toDoubleOrNull() ?: m.parameterMin,tmax.toDoubleOrNull() ?: m.parameterMax,m.displayDigits,{tmin=it},{tmax=it})
+                if("theta" in rangeAxes)RangeAxisEditor("θ",thetaMin,thetaMax,thetaMin.toDoubleOrNull() ?: m.thetaMin,thetaMax.toDoubleOrNull() ?: m.thetaMax,m.displayDigits,{thetaMin=it},{thetaMax=it})
+                }
         }},confirmButton={TextButton(onClick={
                     val values=listOf(xmin,xmax,ymin,ymax).map {it.toDoubleOrNull()}
                     val ta=tmin.toDoubleOrNull();val tb=tmax.toDoubleOrNull()
@@ -56,7 +55,25 @@ import kotlin.math.*
                         if(usesTheta){m.thetaMin=pa!!;m.thetaMax=pb!!}
                         m.save();onDismiss();m.plot()
                     }
-            }) {Text(tr("Apply"))} },dismissButton={TextButton(onClick={onDismiss()}) {Text(tr("Cancel"))} })
+            }) {Text(tr("Apply"))} },dismissButton={Row {
+                TextButton(onClick={
+                    focusManager.clearFocus()
+                    val defaults=when(m.graphKind) {
+                        "surface","parametric","polar"->listOf(-3.0,3.0,-3.0,3.0)
+                        "space"->listOf(-5.0,5.0,-5.0,5.0)
+                        "sequence"->listOf(0.0,20.0,-2.0,20.0)
+                        "differential"->listOf(-5.0,5.0,-3.0,5.0)
+                        else->listOf(-10.0,10.0,-5.0,5.0)
+                    }
+                    xmin=defaults[0].toString();xmax=defaults[1].toString();ymin=defaults[2].toString();ymax=defaults[3].toString()
+                    if(m.yLog&&m.graphKind !in listOf("surface","space")){ymin="0.1";ymax="10"}
+                    tmin=if(m.graphKind=="differential")"-5" else "0"
+                    tmax=when(m.graphKind){"differential"->"5";"sequence"->"20";else->(2*PI).toString()}
+                    thetaMin="0";thetaMax=(2*PI).toString();zmin="-1";zmax="1";autoZ=true
+                    m.error="";resetRevision++
+                }) {Text(tr("Reset"))}
+                TextButton(onClick={onDismiss()}) {Text(tr("Cancel"))}
+            } })
 
 }
 

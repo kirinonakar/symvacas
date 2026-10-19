@@ -2,8 +2,9 @@ import {yFraction,logYTicks,yScaleSegment,clipYPolygon,yScaleLine} from './graph
 import {displayNumber} from './display-format.js';
 import {integralPolygons} from './graph-integral.js';
 import {clipGraphSegment} from './graph-geometry.js';
-import {surfaceSectionPlane,surfaceSectionSegments,clipSurfaceSegment,prepareSurfaceFaces,combineSurfaceFaces,projectSurfaceFaces,surfaceProjection,surfaceZRange} from './surface-geometry.js';
+import {surfaceSectionPlane,surfaceSectionSegments,clipSurfaceSegment,prepareSurfaceFaces,combineSurfaceFaces,projectSurfaceFaces,surfaceProjection,surfaceZRange,radialSurfaceGeometry} from './surface-geometry.js';
 import {renderSurfaceGpu} from './surface-gpu.js';
+import {rainbowSurfaceFill,surfaceRainbowRgb,surfaceRainbowStops} from './surface-colors.js';
 
 import {defaultGraphColors} from './graph-colors.js';
 export const graphCurveColor=(index,colors=defaultGraphColors)=>colors[index%colors.length];
@@ -63,27 +64,33 @@ export function plotGraph(container,result,bounds,{colors=defaultGraphColors,dig
     const {rotation=35,elevation=32,zoom=1,renderMode='surface',opacity=1,sliceEnabled=false,sliceAxis='z',slicePosition=surfaceView.sliceZ??0}=surfaceView;
     const color=/^#[0-9a-f]{6}$/i.test(surfaceView.color||'')?surfaceView.color:colors[0];
     const surfaces=result.surfaces||[result],palette=surfaces.length>1?surfaces.map((_,i)=>graphCurveColor(i,colors)):[color];
+    const rainbow=surfaceView.colorMode==='rainbow'&&!result.spaceCurves;
+    canvas.dataset.colorMode=rainbow?'rainbow':'solid';
     const [zmin,zmax]=surfaceZRange(result.zMin,result.zMax),box={...bounds,zmin,zmax},projection=surfaceProjection(box,rotation,elevation),scale=ih*.3*zoom;
-    const key=result.surfaces||result.surfaceVertices||result.surface,signature=JSON.stringify(box);
+    const key=result.surfaces||result.surfaceRings||result.surfaceVertices||result.surface,signature=JSON.stringify(box);
     let cached=surfaceGeometry.get(key);
     if(cached?.signature!==signature||cached.normalsSource!==result.surfaceNormals||cached.indexSource!==result.surfaceTriangles||cached.convex!==result.convexSurface){
       const groups=surfaces.map(surface=>{
-        const triangles=(surface.surfaceTriangles||[]).map(face=>face.map(i=>surface.surfaceVertices?.[i]));
-        const normals=(surface.surfaceTriangles||[]).map(face=>face.map(i=>surface.surfaceNormals?.[i]));
+        const radial=surface.surfaceRings?radialSurfaceGeometry(surface.surfaceRings):null;
+        const triangles=radial?.triangles||(surface.surfaceTriangles||[]).map(face=>face.map(i=>surface.surfaceVertices?.[i]));
+        const normals=radial?.normals||(surface.surfaceTriangles||[]).map(face=>face.map(i=>surface.surfaceNormals?.[i]));
         return {mesh:surface.surface||[],triangles,prepared:prepareSurfaceFaces(surface.surface||[],box,triangles,normals,surface.convexSurface===true)};
       });
       cached={signature,groups,normalsSource:result.surfaceNormals,indexSource:result.surfaceTriangles,convex:result.convexSurface,prepared:combineSurfaceFaces(groups.map(group=>group.prepared))};surfaceGeometry.set(key,cached);
     }
-    const {groups}=cached,prepared={...cached.prepared,faces:cached.prepared.faces.filter(face=>!hiddenCurves.includes(face.group||0))};
+    const visibility=hiddenCurves.join(',');
+    if(cached.visibility!==visibility){cached.visibility=visibility;cached.visible=hiddenCurves.length?{...cached.prepared,faces:cached.prepared.faces.filter(face=>!hiddenCurves.includes(face.group||0))}:cached.prepared;}
+    const {groups,visible:prepared}=cached;
     const project=p=>{const [x,y]=projection.project(p);return [w/2+x*scale,h/2+y*scale];};
     clip();
-    const gpu=opacity===1&&!contextFactory&&prepared.faces.length?renderSurfaceGpu(canvas,prepared,{rotation,elevation,scale,width:w,height:h,pixelWidth:canvas.width,pixelHeight:canvas.height,color,palette,wireColor:/^#[0-9a-f]{6}$/i.test(muted)?muted:'#738a7c',renderMode}):null;
+    const gpu=opacity===1&&!contextFactory&&prepared.faces.length?renderSurfaceGpu(canvas,prepared,{rotation,elevation,scale,width:w,height:h,pixelWidth:canvas.width,pixelHeight:canvas.height,color,palette,wireColor:/^#[0-9a-f]{6}$/i.test(muted)?muted:'#738a7c',renderMode,colorMode:rainbow?'rainbow':'solid'}):null;
     if(gpu)ctx.drawImage(gpu,0,0,w,h);
     else if(renderMode!=='wireframe')for(const face of projectSurfaceFaces(prepared,projection,opacity<1)){
       const rgb=[1,3,5].map(i=>parseInt(palette[face.group||0].slice(i,i+2),16));
       const shade=value=>`rgb(${rgb.map(v=>Math.round(v*value)).join(',')})`;
       let fill=shade((.65+.35*face.height)*face.light);
-      if(face.lighting){
+      if(rainbow)fill=rainbowSurfaceFill(ctx,face,project,zmin,zmax);
+      else if(face.lighting){
         const {start,end,min,max}=face.lighting;
         fill=ctx.createLinearGradient(w/2+start[0]*scale,h/2+start[1]*scale,w/2+end[0]*scale,h/2+end[1]*scale);
         fill.addColorStop(0,shade(min));fill.addColorStop(1,shade(max));
@@ -93,19 +100,22 @@ export function plotGraph(container,result,bounds,{colors=defaultGraphColors,dig
     else for(const [index,{mesh,triangles}] of groups.entries()){
       if(hiddenCurves.includes(index))continue;
       ctx.beginPath();
-      const wire=points=>{for(let i=1;i<points.length;i++){const segment=clipSurfaceSegment(points[i-1],points[i],box);if(segment){ctx.moveTo(...project(segment[0]));ctx.lineTo(...project(segment[1]));}}};
+      const wire=points=>{for(let i=1;i<points.length;i++){const segment=clipSurfaceSegment(points[i-1],points[i],box);if(segment){
+        if(rainbow){const [a,b]=segment.map(project),gradient=ctx.createLinearGradient(...a,...b);segment.forEach((p,k)=>gradient.addColorStop(k,`rgb(${surfaceRainbowRgb((p[2]-zmin)/(zmax-zmin)).join(',')})`));line(a,b,gradient,1.3);}
+        else {ctx.moveTo(...project(segment[0]));ctx.lineTo(...project(segment[1]));}
+      }}};
       for(const row of mesh)wire(row);
       for(const triangle of triangles)if(triangle.every(finite))wire([...triangle,triangle[0]]);
       const columns=Math.max(0,...mesh.map(row=>row.length));
       for(let col=0;col<columns;col++)wire(mesh.map(row=>row[col]));
-      ctx.strokeStyle=palette[index];ctx.lineWidth=1.3;ctx.stroke();
+      if(!rainbow){ctx.strokeStyle=palette[index];ctx.lineWidth=1.3;ctx.stroke();}
     }
     const sectionAxis=['x','y','z'].indexOf(sliceAxis),sectionRange=[[xmin,xmax],[ymin,ymax],[zmin,zmax]][sectionAxis];
     if(sliceEnabled&&sectionRange&&slicePosition>=sectionRange[0]&&slicePosition<=sectionRange[1]){
       const plane=surfaceSectionPlane(box,slicePosition,sectionAxis).map(project);
       polygon(plane,accent,.08);ctx.setLineDash([5,4]);
       for(let i=0;i<4;i++)line(plane[i],plane[(i+1)%4],accent,1);ctx.setLineDash([]);
-      for(const segment of surfaceSectionSegments(prepared.faces,slicePosition,sectionAxis))line(...segment.points.map(project),palette[segment.group],3);
+      for(const segment of surfaceSectionSegments(prepared.faces,slicePosition,sectionAxis))line(...segment.points.map(project),rainbow?`rgb(${surfaceRainbowRgb((segment.points[0][2]+segment.points[1][2]-2*zmin)/(2*(zmax-zmin))).join(',')})`:palette[segment.group],3);
     }
     for(const [i,curve] of (result.spaceCurves||[]).entries()){
       if(hiddenCurves.includes(i))continue;
@@ -131,6 +141,13 @@ export function plotGraph(container,result,bounds,{colors=defaultGraphColors,dig
         const point=[...origin];point[index]=number;const at=project(point);circle(at,1.5,muted);ctx.fillText(displayNumber(Math.abs(number)<step*1e-10?0:number,digits),at[0]+4,at[1]+(index===2?-5:15));
       }
       const at=project(end);ctx.fillStyle=ink;ctx.fillText(name,at[0]+8,at[1]+4);ctx.fillStyle=muted;
+    }
+    if(rainbow){
+      const barX=w-122,barY=pad+16,barHeight=Math.min(160,ih-32),gradient=ctx.createLinearGradient(0,barY+barHeight,0,barY);
+      surfaceRainbowStops.forEach((rgb,i)=>gradient.addColorStop(i/5,`rgb(${rgb.join(',')})`));
+      ctx.fillStyle=gradient;ctx.fillRect(barX,barY,12,barHeight);ctx.fillStyle=ink;ctx.textAlign='left';
+      ctx.fillText('z',barX,barY-8);
+      for(const t of [0,.5,1])ctx.fillText(displayNumber(zmin+(zmax-zmin)*t,digits),barX+18,barY+(1-t)*barHeight+4);
     }
     return canvas;
   }
