@@ -12,6 +12,7 @@ private val korean = mapOf(
     "Enter finite increasing u and v ranges" to "u, v 범위에 유한한 값을 입력하고 최댓값을 최솟값보다 크게 설정하세요.",
     "Enter one [x(t),y(t)] pair per line." to "한 줄에 [x(t),y(t)] 쌍을 하나씩 입력하세요.",
     "Set the t interval in Range. Angles are in radians." to "범위에서 t 구간을 설정하세요. 각도 단위는 라디안입니다.",
+    "Append {0<t<1} to restrict t. Add k=[...] in the same braces to draw one curve for each k; other parameters remain sliders." to "뒤에 {0<t<1}을 붙여 t를 제한하세요. 같은 중괄호 안에 k=[...]를 추가하면 k 값마다 곡선을 그립니다. 나머지 매개변수는 슬라이더로 유지됩니다.",
     "Enter one radius expression per line; r= is optional." to "한 줄에 반지름 수식을 하나씩 입력하세요. r=는 생략할 수 있습니다.",
     "Use t for the angle in radians. Set the θ interval in Range." to "각도 변수는 t, 단위는 라디안입니다. 범위에서 θ 구간을 설정하세요.",
     "Enter one rule per line using n. For a recurrence, use u(n-1)." to "변수 n을 사용해 한 줄에 규칙을 하나씩 입력하세요. 점화식에서는 u(n-1)을 사용합니다.",

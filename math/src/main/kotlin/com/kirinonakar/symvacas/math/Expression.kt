@@ -189,7 +189,10 @@ class Parser(private val source: String, private val allowHoles: Boolean = false
         while(true) {
             val op = token.text
             if(op=="{" && min<=6) {
-                take();val condition=expression(0);val end=expect("}").end
+                take();val conditions=mutableListOf(expression(0))
+                while(token.text==",") { take();conditions+=expression(0) }
+                val end=expect("}").end
+                val condition=if(conditions.size==1)conditions[0] else Expr("list",args=conditions,start=conditions.first().start,end=conditions.last().end)
                 left=Expr("piecewise","restriction",listOf(Expr("tuple",args=listOf(left,condition),start=left.start,end=end)),left.start,end)
                 continue
             }

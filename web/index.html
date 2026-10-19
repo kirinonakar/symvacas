@@ -58,6 +58,8 @@ x^2+y^2+z^2=9</pre>
           <p class="hint">Enter one [x(t),y(t),z(t)] triple per line (up to 5).</p>
           <pre>[cos(t),sin(t),t/4]</pre>
           <p class="hint">Set the t interval in Range. Angles are in radians.</p>
+          <p class="hint">Append {0&lt;t&lt;1} to restrict t. Add k=[...] in the same braces to draw one curve for each k; other parameters remain sliders.</p>
+          <pre>[(1-2*t)*cos(k*pi/2+a),(1-2*t)*sin(k*pi/2+a),k*pi/8] {0&lt;t&lt;1, k=[0,0.1,0.2,0.3,0.4,0.5]}</pre>
         </div>
         <div data-graph-help-kind="differential" hidden>
           <p class="hint">Enter one derivative rule f(t,y) for dy/dt=f(t,y).</p>

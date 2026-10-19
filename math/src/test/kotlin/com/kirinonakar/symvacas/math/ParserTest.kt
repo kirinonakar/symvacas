@@ -49,6 +49,19 @@ class ParserTest {
         assertEquals("solveset(x=0,x,domain=S.Reals)",Editor(source,cursor).insert("=0").source)
     }
     @Test fun precedence() { assertEquals("*",p("2+3*4").args[1].value); assertEquals("unary",p("-2^2").kind); assertEquals("^",p("2^3^2").args[1].value) }
+    @Test fun spatialCurveRestrictionsKeepCommaConditionsAndParameterLists() {
+        val source="[(1-2*t)*cos(k*pi/2+a),(1-2*t)*sin(k*pi/2+a),k*pi/8]"
+        val tree=p("$source {0<t<1, k=[0,0.1,0.2,0.3,0.4,0.5]}")
+        assertEquals("restriction",tree.value)
+        val (body,guard)=tree.args.single().args
+        assertEquals(3,body.args.size)
+        assertEquals("list",guard.kind)
+        assertEquals(listOf("<","="),guard.args.map {it.value})
+        assertEquals(6,guard.args[1].args[1].args.size)
+        assertEquals("restriction",p("$source {0<t<1} {k=[0,0.5]}").args.single().args[0].value)
+        for(suffix in listOf("{0<t<1,}","{,k=[0,1]}","{0<t<1,,k=[0,1]}"))
+            assertThrows(SyntaxException::class.java){p(source+suffix)}
+    }
     @Test fun desmosPiecewiseAndRestrictionsPreserveWholeExpressionScope() {
         val piece=p("f(x)={x<0:x^2,x>=0:2*x}").args[1]
         assertEquals("piecewise",piece.kind)

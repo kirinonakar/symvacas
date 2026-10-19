@@ -14,20 +14,16 @@ from calc_graph_common import (
 
 
 def graph_space(engine,request,trees,start,end):
-    from calc_graph3d import space_coordinate_trees,space_curve_samples
+    from calc_graph_space import sample_space_row
     require(1<=len(trees)<=5,"Enter one to five 3D curves [x(t),y(t),z(t)]")
-    coordinates=[space_coordinate_trees(tree) for tree in trees]
-    require(all(coordinates),"Enter a 3D curve [x(t),y(t),z(t)] or C(t)=(x(t),y(t),z(t))")
     t=engine.symbol('t');engine.bindings['t']=t
-    flat=graph_expressions(engine,[coordinate for group in coordinates for coordinate in group],('t',))
-    names=parameter_names(flat,{'t'});sliders=resolved_parameters(engine,request,flat,{'t'})
     bounds=tuple((float(request.get(low,default[0])),float(request.get(high,default[1]))) for low,high,default in (
         ('xMin','xMax',(-5,5)),('yMin','yMax',(-5,5)),('surfaceZMin','surfaceZMax',(-5,5))))
     require(all(math.isfinite(low) and math.isfinite(high) and high>low for low,high in bounds),'Enter finite increasing ranges')
-    curves=[];parameters=[]
-    for i in range(0,len(flat),3):
-        curve,positions=space_curve_samples(graph_function(tuple(flat[i:i+3]),(t,),sliders),start,end,int(request.get('samples',500)),bounds)
-        curves.append(curve);parameters.append(positions)
+    curves=[];parameters=[];names=set()
+    for tree in trees:
+        row_curves,row_parameters,row_names=sample_space_row(engine,request,tree,start,end,bounds)
+        curves.extend(row_curves);parameters.extend(row_parameters);names.update(row_names)
     zs=[p[2] for curve in curves for p in curve if p]
     return {'surface':[],'spaceCurves':curves,'curveParameters':parameters,'parameters':sorted(names),
             'zMin':min(zs) if zs else -1,'zMax':max(zs) if zs else 1}

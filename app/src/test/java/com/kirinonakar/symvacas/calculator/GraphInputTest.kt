@@ -6,6 +6,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class GraphInputTest {
+    @Test fun spatialFamiliesStayOneInputRowWithTheirDomainAndList() {
+        val source="[(1-2*t)*cos(k*pi/2+a),(1-2*t)*sin(k*pi/2+a),k*pi/8] {0<t<1, k=[0,0.1,0.2,0.3,0.4,0.5]}"
+        val program=GraphSourceCache().get(source,"space",false)
+        assertEquals(1,program.trees.length())
+        assertEquals(0,program.shadings.length())
+        assertEquals("restriction",program.trees.getJSONObject(0).getString("value"))
+        assertEquals(setOf("t"),graphRangeAxes(source,"space"))
+        assertEquals("space" to source,graphExpressionTarget(source,"space"))
+        assertNotNull(graphEquationTree("space",source,0))
+    }
     @Test fun surfaceCoordinatesAndLocalHelpersKeepDomainsAndFormulaCaptions() {
         for(source in listOf("[cos(u)*cos(v),sin(u)*cos(v),sin(v)]","[R=2+.35*sin(6*u-3*t),x=(R+cos(v))*cos(u),y=(R+cos(v))*sin(u),z=sin(v)]","S(u,v)=(u,v,sin(u+v))")) {
             assertEquals(setOf("u","v"),graphRangeAxes(source,"surface"))

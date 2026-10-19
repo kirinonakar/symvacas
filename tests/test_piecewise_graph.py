@@ -16,6 +16,12 @@ from calc_graph_common import piecewise_boundaries
 TREES={case['source']:case['tree'] for case in json.loads((ROOT/'build/math-cases.json').read_text(encoding='utf-8'))}
 
 class PiecewiseGraphTests(unittest.TestCase):
+    def test_comma_conditions_intersect_in_existing_planar_restrictions(self):
+        curve=self.graph('y=x {0<x<1,x<0.5}')
+        finite=list(filter(None,curve))
+        self.assertTrue(finite)
+        self.assertTrue(all(0<x<.5 and x==y for x,y in finite))
+
     def test_animated_exponential_branches_keep_domains_without_symbolic_rebinding(self):
         source='f(x)={0<=x<=TR:1-e^(-x/T1),TR<x<TR+TE:(1-e^(-TR/T1))*e^(-(x-TR)/T2)}'
         for tr,te,t1,t2 in [(3,4,1,2),(2.25,.00001,.5,1),(-1,3,2,1),(2,-1,1,2),(0,2,1,2),(3,4,1,0),(3,4,0,2)]:

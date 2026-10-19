@@ -44,7 +44,9 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
         "space" -> listOf(
             false to "Enter one [x(t),y(t),z(t)] triple per line (up to 5).",
             true to "[cos(t),sin(t),t/4]",
-            false to "Set the t interval in Range. Angles are in radians."
+            false to "Set the t interval in Range. Angles are in radians.",
+            false to "Append {0<t<1} to restrict t. Add k=[...] in the same braces to draw one curve for each k; other parameters remain sliders.",
+            true to "[(1-2*t)*cos(k*pi/2+a),(1-2*t)*sin(k*pi/2+a),k*pi/8] {0<t<1, k=[0,0.1,0.2,0.3,0.4,0.5]}"
         )
         "differential" -> listOf(
             false to "Enter one derivative rule f(t,y) for dy/dt=f(t,y).",

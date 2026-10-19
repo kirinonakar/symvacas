@@ -132,7 +132,9 @@ export function parse(source,{allowHoles=false}={}) {
     while (true) {
       const op = current().text;
       if(op==='{'&&min<=6){
-        take();const condition=expression(0),end=expect('}').end;
+        take();const conditions=[expression(0)];
+        while(current().text===','){take();conditions.push(expression(0));}
+        const end=expect('}').end,condition=conditions.length===1?conditions[0]:node('list','',conditions,conditions[0].start,conditions.at(-1).end);
         left=node('piecewise','restriction',[node('tuple','',[left,condition],left.start,end)],left.start,end);continue;
       }
       if (op === '°' && min <= 40) { const dms = tryDms(left); if (dms) { left = dms; continue; } }

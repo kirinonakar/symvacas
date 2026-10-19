@@ -50,7 +50,9 @@ fun main(args: Array<String>) {
         "tvmpmt(10,0,1000,0)" to "-100"
     )
     val extras=listOf("f(x)={x<0:x^2,x>=0:2*x}","y=(1-e^(-x/900)){0<=x<=3000}","y=1-e^(-x/900) {0<=x<=3000}","y=(1-e^(-3000/900))*e^(-(x-3000)/80){x>3000}","{x<0:x^2,2*x}","y={x<0:1,2}","y=x{0.0001<=x<=0.0002}","y=x{3000>=x>=0}","{x<0:1/x,5}","{x<1:5,x>-1:1/x,0}","1/0","0^0","inverse([[1,2],[2,4]])","dot([1,2],[1,2,3])","convert(1,m,kg)","convert(-1,K,degC)","factorial(-1)","sqrt(x^2)","solve((x^2-1)/(x-1)=2,x)","sin(x)","cos(2*x)","[cos(t),sin(t)]","1/x","tan(x)","nsolve(cos(x)-x,x,0,1)","nintegrate(sin(x),x,0,pi)","stats([1,2,3])","series(exp(x),x,0,4)","solve([x+y=3,x-y=1],[x,y])","integrate(exp(-x^2),x)","integrate(exp(-x^2)*cos(2x),(x,0,oo))","integrate(exp(-x^2)*cos(2*x),x,0,oo)","minimum(x^2,x,-2,3)","maximum(x^2,x,-2,3)","eigenvalues([[1,0],[0,2]])","lu([[1,2],[3,4]])","f(3)","x+1")
+    val space="[(1-2*t)*cos(k*pi/2+a),(1-2*t)*sin(k*pi/2+a),k*pi/8]"
+    val spatialCases=listOf(space+" {0<t<1}",space+" {0<t<1, k=[0,0.1,0.2,0.3,0.4,0.5]}",space+" {0<t<1} {k=[0,0.5]}","C(t)=(t,k,a) {0.1234<t<0.1235, k=[0,1]}","[t,k,a] {0<=t<=1,k=[0,1]} {t<k}","[t,k,a] {t^2>0.25,k=[0,1]}","[t,k,a] {0<t<1,k=[]}","[t,k,a] {0<t<1,k=[t]}","[t,k,a] {0<t<1,k=[oo]}","[t,k,a] {0<t<1,k=[0,1],a=[2,3]}","[t,k,a] {2<t<3,k=[0,1]}","y=x {0<x<1,x<0.5}")
     val animatedPiecewise="f(x)={0<=x<=TR:1-e^(-x/T1),TR<x<TR+TE:(1-e^(-TR/T1))*e^(-(x-TR)/T2)}"
-    val values=cases.map { (source,expected)->"{\"source\":${quote(source)},\"expected\":${quote(expected)},\"tree\":${Parser(source).parse().json()}}" }+(extras+animatedPiecewise).map { "{\"source\":${quote(it)},\"tree\":${Parser(it).parse().json()}}" }
+    val values=cases.map { (source,expected)->"{\"source\":${quote(source)},\"expected\":${quote(expected)},\"tree\":${Parser(source).parse().json()}}" }+(extras+spatialCases+animatedPiecewise).map { "{\"source\":${quote(it)},\"tree\":${Parser(it).parse().json()}}" }
     File(args[0]).apply { parentFile.mkdirs();writeText(values.joinToString(",","[","]")) }
 }

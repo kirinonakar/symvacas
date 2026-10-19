@@ -1,5 +1,6 @@
 """Validated expression AST evaluation and calculator functions."""
 from calc_limits import limits_removed, within_limit
+from calc_conditions import build_condition
 import random
 import statistics
 import math
@@ -216,18 +217,10 @@ class Engine:
             return self.call_answer(args[0], [build(a) for a in args[1:]])
         if kind == "float": return s.Float(value,self.precision)
         if kind == "piecewise":
-            def condition(tree):
-                if tree.get('kind') == 'group': return condition(tree['args'][0])
-                if tree.get('kind') == 'relation' and tree['args'][0].get('kind') == 'relation':
-                    left, right = tree['args']
-                    return s.And(condition(left), condition({**tree, 'args':[left['args'][1],right]}))
-                result = build(tree)
-                require(isinstance(result, (Relational, s.logic.boolalg.Boolean)), 'Piecewise condition must be a relation')
-                return s.simplify(result) if not result.free_symbols else result
             branches=[]; previous=s.false
             for branch in args:
                 require(branch.get('kind')=='tuple' and len(branch.get('args',[]))==2,'Invalid piecewise branch')
-                body, guard=branch['args']; test=condition(guard)
+                body, guard=branch['args']; test=build_condition(build,guard)
                 if test == s.false: continue
                 selected=s.And(test,s.Not(previous))
                 if selected == s.false: continue

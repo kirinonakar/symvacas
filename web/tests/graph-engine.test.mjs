@@ -360,6 +360,25 @@ test('packaged graph modules execute every graph kind in the production WASM wor
     assert.ok(Math.abs(y-x*x)<1e-12);
     assert.ok(Math.abs(z-x*x*x)<1e-12);
   }
+  const spatialSource='[(1-2*t)*cos(k*pi/2+a),(1-2*t)*sin(k*pi/2+a),k*pi/8]';
+  for(const suffix of [' {0<t<1, k=[0,0.1,0.2,0.3,0.4,0.5]}',' {0<t<1} {k=[0,0.1,0.2,0.3,0.4,0.5]}']){
+    const family=await graph('space',spatialSource+suffix,{parameters:{a:.7,k:99}});
+    assert.deepEqual(family.parameters,['a']);
+    assert.equal(family.spaceCurves.length,6);
+    family.spaceCurves.forEach((curve,i)=>{
+      assert.ok(curve.length>100);
+      assert.equal(curve.length,family.curveParameters[i].length);
+      curve.forEach(([x,y,z],j)=>{
+        const t=family.curveParameters[i][j],k=i/10;
+        assert.ok(t>0&&t<1);
+        assert.ok(Math.abs(x-(1-2*t)*Math.cos(k*Math.PI/2+.7))<1e-12);
+        assert.ok(Math.abs(y-(1-2*t)*Math.sin(k*Math.PI/2+.7))<1e-12);
+        assert.ok(Math.abs(z-k*Math.PI/8)<1e-12);
+      });
+    });
+  }
+  const narrowSpace=await graph('space','C(t)=(t,k,a) {0.1234<t<0.1235,k=[0,1]}');
+  assert.ok(narrowSpace.spaceCurves.every(curve=>curve.length>100&&curve.every(([t])=>t>.1234&&t<.1235)));
   const integral=await execute({action:'graphAnalysis',trees:[parse('x')],analysis:'integral',a:0,b:1});
   assert.equal(integral.value,.5);
   assert.ok(integral.integralFill.length>0);
