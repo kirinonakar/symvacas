@@ -39,16 +39,13 @@ export function cartesianFormula(source,index=0){
   return `f${index+1}(x)=${source}`;
 }
 
-export function graphExpressionTarget(source){
+export function graphExpressionTarget(source,kind='cartesian'){
   const normalized=latexInput(source),tree=parse(normalized);
-  const hasVector=node=>['list','tuple'].includes(node.kind)&&node.args.length===3||(node.args||[]).some(hasVector);
-  if(hasVector(tree))return {kind:'space',source:normalized};
   const hasZ=node=>node.kind==='symbol'&&node.value==='z'||(node.args||[]).some(hasZ);
-  if(tree.kind==='relation'){
-
-    if(tree.args[0].kind==='symbol'&&tree.args[0].value==='z'&&!hasZ(tree.args[1]))return {kind:'surface',source:normalized.slice(tree.args[1].start,tree.args[1].end)};
+  if(kind==='surface'&&tree.kind==='relation'){
+    if(tree.args[0].kind==='symbol'&&tree.args[0].value==='z'&&!hasZ(tree.args[1]))return {kind,source:normalized.slice(tree.args[1].start,tree.args[1].end)};
   }
-  return {kind:hasZ(tree)?'surface':'cartesian',source:normalized};
+  return {kind,source:normalized};
 }
 
 export function isImplicitSurface(source){

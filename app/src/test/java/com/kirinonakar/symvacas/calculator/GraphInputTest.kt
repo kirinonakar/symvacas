@@ -6,6 +6,14 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class GraphInputTest {
+    @Test fun calculatorTransferKeepsTheSelectedGraphCategory() {
+        for((kind,source) in listOf("cartesian" to "z=x+y","parametric" to "(cos(t),sin(t))","polar" to "r=2cos(3theta)","space" to "(t,t^2,t^3)","sequence" to "n^2","differential" to "t-y")) {
+            assertEquals(kind to source,graphExpressionTarget(source,kind))
+        }
+        assertEquals("cartesian" to "(t,t^2,t^3)",graphExpressionTarget("(t,t^2,t^3)","cartesian"))
+        assertEquals("surface" to "x^2+y^2",graphExpressionTarget("z=x^2+y^2","surface"))
+        assertEquals("surface" to "x^2+y^2+z^2=1",graphExpressionTarget("x^2+y^2+z^2=1","surface"))
+    }
     @Test fun radialSquareRootSurfaceParsesAdjacentAxisFactors() {
         val tree=graphInputTree("sin(sqrt(ax^2+ay^2))","surface")
         assertEquals("sin",tree.value);assertEquals("sqrt",tree.args.single().value)

@@ -409,8 +409,8 @@ export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist
     else if(input==='MATRIX_INPUT')insert('[[,],[,]]',2);
     else if(input==='MATRIX_SIZE')matrixInsertDialog();
     else if(input==='TO_GRAPH'){
-      const original=value('expression')||'x';let source=original,graphKind='cartesian';
-      try{const target=graphExpressionTarget(original);source=target.source;graphKind=target.kind;graphs.addExpression(source,graphKind);}catch(exc){error(exc.message);return;}
+      const original=value('expression')||'x';
+      try{const target=graphExpressionTarget(original,value('graph-kind'));graphs.addExpression(target.source,target.kind);}catch(exc){error(exc.message);return;}
       changeMode('graph');
     }
     else if(input==='TO_SYSTEM'){

@@ -162,6 +162,62 @@ test('RCL saved statistics inserts dataset names and replaces empty catalog list
   assert.deepEqual(errors,[]);
 });
 
+test('graph converts input-based LaTeX paste before updating its rows and drafts',async context=>{
+  const {window,get,graphs,errors}=graphFixture(context,{source:'x=1\n2x+3\ny=0'}),field=get('graph-source');
+  function insert(text,{inputType='insertFromPaste',isComposing=false,data=text}={}){
+    field.dispatchEvent(new window.InputEvent('beforeinput',{bubbles:true,inputType,data,isComposing}));
+    field.setRangeText(text,field.selectionStart,field.selectionEnd,'end');
+    field.dispatchEvent(new window.InputEvent('input',{bubbles:true,inputType,data,isComposing}));
+  }
+  field.setSelectionRange(5,6);
+  insert('\\frac{1}{5}');
+  assert.equal(field.value,'x=1\n2(1/5)+3\ny=0');
+  assert.equal(field.selectionStart,10);
+  assert.equal(graphs.snapshot().sources.cartesian,field.value);
+  assert.equal(get('graph-line-numbers').children.length,3);
+  field.select();
+  insert('\\[x=1\\] \\[y=\\sqrt{2}\\]',{data:null});
+  assert.equal(field.value,'x=1\ny=sqrt(2)');
+  assert.equal(field.selectionStart,field.value.length);
+  assert.equal(graphs.snapshot().sources.cartesian,field.value);
+  assert.equal(get('graph-line-numbers').children.length,2);
+  field.value='{x<0:x^2,0}';field.select();
+  insert('\\frac{x}{2}',{data:null});
+  assert.equal(field.value,'x/2');
+  field.select();field.setRangeText('\\sqrt{x}',0,field.value.length,'end');
+  field.dispatchEvent(new window.InputEvent('input',{bubbles:true,inputType:'insertText',data:'\\sqrt{x}'}));
+  assert.equal(field.value,'sqrt(x)');
+  assert.equal(graphs.snapshot().sources.cartesian,'sqrt(x)');
+  field.select();insert('\\sqrt{x}',{inputType:'insertCompositionText',isComposing:true});
+  assert.equal(field.value,'\\sqrt{x}');
+  field.select();insert('x_value+TE');assert.equal(field.value,'x_value+TE');
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.deepEqual(errors,[]);
+});
+
+test('calculator sends expressions to the selected graph category and preserves other drafts',async context=>{
+  let graphs,calculator;context.after(()=>{calculator?.dispose();graphs?.dispose();});
+  const {window,state,errors}=fixture(context),get=id=>window.document.getElementById(id),noop=()=>{},modes=[];
+  graphs=createGraphWorkspace({execute:async()=>({ok:true}),options:()=>({displayDigits:10,angle:'RAD'}),onError:message=>errors.push(message),persist:noop,isBusy:()=>false,isReady:()=>false});
+  calculator=createCalculator({state,engine:{ready:false},isBusy:()=>false,ui:{toast:message=>errors.push(message),openDialog:noop,clipboard:noop,pickFile:noop},persist:noop,schedulePersist:noop,requestOptions:()=>({displayDigits:10}),error:message=>errors.push(message),changeMode:mode=>modes.push(mode),updateButtons:noop,pressKey:noop,modeDialog:noop,variablesDialog:noop,matrixInsertDialog:noop,graphs});
+  const cartesian=get('graph-source').value;
+  for(const [kind,source,expected] of [['polar','r=2cos(3theta)','r=2cos(3theta)'],['parametric','(cos(t),sin(t))','(cos(t),sin(t))'],['space','(t,t^2,t^3)','(t,t^2,t^3)'],['surface','z=x^2+y^2','x^2+y^2'],['sequence','n^2','n^2'],['differential','t-y','t-y']]){
+    get('graph-kind').value=kind;get('graph-kind').onchange();
+    get('graph-source').value='';get('graph-source').oninput();
+    calculator.replaceInput(source,{uncommit:true});calculator.handleKey('TO_GRAPH');
+    assert.equal(get('graph-kind').value,kind);
+    assert.equal(get('graph-source').value,expected);
+    assert.equal(graphs.snapshot().sources.cartesian,cartesian);
+    assert.equal(modes.at(-1),'graph');
+  }
+  get('graph-kind').value='polar';get('graph-kind').onchange();
+  calculator.replaceInput('r=1+cos(theta)',{uncommit:true});calculator.handleKey('TO_GRAPH');
+  assert.equal(get('graph-source').value,'r=2cos(3theta)\nr=1+cos(theta)');
+  calculator.handleKey('TO_GRAPH');assert.equal(get('graph-source').value,'r=2cos(3theta)\nr=1+cos(theta)');
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.deepEqual(errors,[]);
+});
+
 function graphFixture(context,{source='a*x',execute,saved={},displayDigits=3}={}){
   const {window,errors}=fixture(context),get=id=>window.document.getElementById(id);
   // Exercise the real DOM and controllers; drawing pixels is outside this DOM test.

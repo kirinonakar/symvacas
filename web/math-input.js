@@ -17,6 +17,33 @@ export function latexPaste(text,{prefix='',suffix='',multiline=false}={}) {
 }
 
 export function bindMathPaste(field,{multiline=false,onError=()=>{}}={}) {
+  let previous=field.value,selection=null;
+  field.addEventListener('beforeinput',()=>{previous=field.value;selection={start:field.selectionStart,end:field.selectionEnd};});
+  field.addEventListener('focus',()=>{previous=field.value;});
+  // Some keyboards insert clipboard text through input without a paste event.
+  // Normalize before the workspace's input handler reads source/rows/history.
+  field.addEventListener('input',event=>{
+    const source=field.value,before=previous,range=selection;previous=source;selection=null;
+    const type=event.inputType||'';
+    if(field.readOnly||field.disabled||event.isComposing||
+      !['','insertFromPaste','insertReplacementText'].includes(type)&&!(type==='insertText'&&event.data?.length>1))return;
+    let start,end;
+    if(event.data&&source.slice(field.selectionEnd-event.data.length,field.selectionEnd)===event.data){
+      start=field.selectionEnd-event.data.length;end=field.selectionEnd;
+    }else if(range&&source.length>=range.start+before.length-range.end&&source.startsWith(before.slice(0,range.start))&&source.endsWith(before.slice(range.end))){
+      start=range.start;end=source.length-(before.length-range.end);
+    }else{
+      start=0;while(start<before.length&&start<source.length&&before[start]===source[start])start++;
+      let suffix=0;while(suffix<before.length-start&&suffix<source.length-start&&before[before.length-1-suffix]===source[source.length-1-suffix])suffix++;
+      end=source.length-suffix;
+    }
+    if(start===end)return;
+    try{
+      const text=source.slice(start,end),converted=latexPaste(text,{prefix:source.slice(0,start),suffix:source.slice(end),multiline});
+      if(converted!==text)field.setRangeText(converted,start,end,'end');
+      previous=field.value;
+    }catch(error){onError(error.message);}
+  },true);
   field.addEventListener('paste',event=>{
     const text=event.clipboardData?.getData('text/plain')||event.clipboardData?.getData('text');
     if(!text||field.readOnly||field.disabled)return;
@@ -26,6 +53,7 @@ export function bindMathPaste(field,{multiline=false,onError=()=>{}}={}) {
       if(converted===text)return;
       event.preventDefault();
       field.setRangeText(converted,start,end,'end');
+      previous=field.value;
       field.dispatchEvent(new field.ownerDocument.defaultView.Event('input',{bubbles:true}));
     }catch(error){event.preventDefault();onError(error.message);}
   });

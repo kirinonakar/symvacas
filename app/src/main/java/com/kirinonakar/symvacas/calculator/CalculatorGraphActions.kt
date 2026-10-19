@@ -53,16 +53,16 @@ internal fun graphRangeAxes(source:String,kind:String):Set<String> {
     }
 }
 
-internal fun graphExpressionTarget(source:String):Pair<String,String> {
-    val tree=Parser(source).parse()
-    if(tree.nodes().any {it.kind in listOf("list","tuple") && it.args.size==3})return "space" to source
-    if(tree.kind=="relation") {
+internal fun graphExpressionTarget(source:String,kind:String="cartesian"):Pair<String,String> {
+    val normalized=LatexInput.convert(source) ?: source
+    val tree=Parser(normalized).parse()
+    if(kind=="surface" && tree.kind=="relation") {
         if(tree.args[0].kind=="symbol" && tree.args[0].value=="z" && tree.args[1].nodes().none {it.kind=="symbol" && it.value=="z"}) {
             val rhs=tree.args[1]
-            return "surface" to source.substring(rhs.start,rhs.end)
+            return kind to normalized.substring(rhs.start,rhs.end)
         }
     }
-    return (if(tree.nodes().any {it.kind=="symbol" && it.value=="z"})"surface" else "cartesian") to source
+    return kind to normalized
 }
 
 internal fun isImplicitSurface(source:String):Boolean = runCatching {
@@ -270,9 +270,8 @@ internal object CalculatorGraphActions {
     fun CalculatorModel.performSendExpressionToGraph() {
         val source=editor.source.trim()
         if(source.isEmpty()) {error="Enter an expression to graph";return}
-        val target=try {graphExpressionTarget(source)} catch(e:Exception) {error=e.message ?: "Syntax ERROR";return}
+        val target=try {graphExpressionTarget(source,graphKind)} catch(e:Exception) {error=e.message ?: "Syntax ERROR";return}
         val next=try {appendGraphSource(graphState.sourceForKind(target.first),target.second,target.first)} catch(e:Exception) {error=e.message ?: "Syntax ERROR";return}
-        changeGraphKind(target.first)
         updateGraphSource(next)
         error="";mode="Graph"
     }
