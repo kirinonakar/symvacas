@@ -1,8 +1,8 @@
 """Assemble the public schema and render catalog help without writing files."""
-from .definitions import build_definitions, CORRELATION_SPECS
+from .definitions import build_definitions
 from .forms import build_forms
 from .examples import add_example_rows
-from .help import build_form_help, append_cluster_help, append_research_help
+from .help import build_form_help
 from .catalog import catalog_description
 from statistics_help import enrich_help
 
@@ -12,15 +12,14 @@ def build_schema():
     schema = build_definitions()
     definitions = {item['id']: item for item in schema}
     forms = build_forms()
-    form_help = build_form_help(definitions, CORRELATION_SPECS)
+    form_help = build_form_help(definitions)
     for item in schema:
+        item['help'], item['helpKo'] = catalog_description(item), catalog_description(item, True)
         if item['id'] not in forms:
             continue
         item['controls'] = forms[item['id']]
         item['formHelp'], item['formHelpKo'] = form_help[item['id']]
-        append_cluster_help(item)
     add_example_rows(schema)
-    append_research_help(schema)
     return schema
 
 

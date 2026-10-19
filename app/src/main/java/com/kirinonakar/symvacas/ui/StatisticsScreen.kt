@@ -576,6 +576,17 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                         else m.error="Add more data points than fit parameters"
                     }
                 })
+                val regressionNotes=buildList {
+                    if(dataKind!="list"&&regression in listOf("multiple","logistic","bayeslinear","bayeslogistic"))add(tr(if(regression in listOf("logistic","bayeslogistic"))"Selected column is response; others are predictors. Logistic response: 0 or 1." else "Selected column is response; others are predictors."))
+                    if(regularized)add(tr("Predictors standardized; coefficients in original units."))
+                    if(regression=="svm")add(if(isKorean())"설명변수는 표준화합니다. C>0, gamma>0 또는 auto, epsilon≥0(반응 단위). 분류는 0/1 자료를 사용합니다. 학습·교차검증 지표를 확인하세요." else "Predictors are standardized. C>0, gamma>0 or auto, epsilon≥0 in response units. Classification uses 0/1 data. Review training and cross-validation metrics.")
+                    if(bayesian) {
+                        add(tr("Zero-mean priors include the intercept on standardized predictors; coefficients in original units."))
+                        if(bayesianMethod=="nuts")add(if(isKorean())"NUTS는 추출 수·워밍업·체인 수를 지정하고 R-hat·ESS·발산 수를 확인하세요." else "For NUTS, set draws, warmup and chains; review R-hat, ESS and divergences.")
+                    }
+                    if(dataKind=="xy"&&regression=="custom")add(if(isKorean())"수식·독립변수를 지정하세요. 시작값·경계는 [[매개변수,시작값,하한,상한],…]이며 상한은 생략할 수 있습니다." else "Set the formula and independent variable. Initial values/bounds: [[parameter,initial,lower,upper],…]; upper bounds are optional.")
+                }.distinct().joinToString("\n")
+                if(regressionNotes.isNotBlank())StatisticsExplanation("Model details",regressionNotes,"statistics-regression-help",regression)
                 if(dataColumns.size>1&&regression in listOf("linear","multiple","logistic")) {
                     StatisticsSelectionTitle("Regularization")
                     Choices(listOf("none","ridge","lasso","elasticnet"),regularization,{m.clearRegression();regularization=it})
@@ -588,7 +599,6 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                             Text(tr("Cross-validate α (5 folds)"),fontSize=12.sp,color=LocalInstrument.current.ink)
                         }
                         if(regularization=="elasticnet")Field(l1Ratio,"L1 ratio (0–1)",Modifier.fillMaxWidth()){m.clearRegression();l1Ratio=it}
-                        StatisticsExplanation("Model details",tr("Predictors standardized; coefficients in original units."),"statistics-regularized-help")
                     } else {
                         StatisticsSelectionTitle("Forest task")
                         val tasks=mapOf("Auto (0/1 → classification)" to "auto","Regression" to "regression","Binary classification" to "classification")
@@ -610,7 +620,6 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                     Field(svmC,"Penalty C",Modifier.fillMaxWidth()){m.clearRegression();svmC=it}
                     if(svmKernel=="rbf")Field(svmGamma,"Gamma (auto = 1/p)",Modifier.fillMaxWidth()){m.clearRegression();svmGamma=it}
                     if(svmTask!="classification")Field(svmEpsilon,"Epsilon (SVR)",Modifier.fillMaxWidth()){m.clearRegression();svmEpsilon=it}
-                    StatisticsExplanation("Model details",tr("SVM predictors are standardized. C > 0; gamma > 0 or auto; epsilon >= 0 in response units. Classification requires 0/1. Metrics use training data."),"statistics-svm-help")
                 }
                 if(dataColumns.size>1&&bayesian) {
                     StatisticsSelectionTitle("Inference method")
@@ -629,7 +638,6 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                             Field(nutsSeed,"Random seed",Modifier.weight(1f)){m.clearRegression();nutsSeed=it}
                             Spacer(Modifier.weight(1f))
                         }
-                        StatisticsExplanation("Model details",tr("NUTS adapts trajectory length; step size adapts during warmup. Check rank-normalized R-hat, bulk/tail ESS and divergences."),"statistics-nuts-help")
                     }
 
                     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -640,9 +648,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                         Field(bayesianShape,"Variance prior shape",Modifier.weight(1f)){m.clearRegression();bayesianShape=it}
                         Field(bayesianScale,"Variance prior scale",Modifier.weight(1f)){m.clearRegression();bayesianScale=it}
                     }
-                    StatisticsExplanation("Model details",tr("Zero-mean priors include the intercept on standardized predictors; coefficients in original units."),"statistics-prior-help")
                 }
-                if(dataKind!="list"&&regression in listOf("multiple","logistic","bayeslinear","bayeslogistic"))StatisticsExplanation("Model details",tr(if(regression in listOf("logistic","bayeslogistic"))"Selected column is response; others are predictors. Logistic response: 0 or 1." else "Selected column is response; others are predictors."),"statistics-regression-data-help",regression)
                 if(dataColumns.size>1&&(regularized||regression in listOf("multiple","logistic","polynomial","randomforest","svm","bayeslinear","bayeslogistic"))) {
                     StatisticsSelectionTitle("Dependent variable")
                     val responseLabels=statisticsColumnLabels(data,dataKind)
@@ -694,8 +700,6 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                     Field(customFormula,"Model y =",Modifier.fillMaxWidth()){m.clearRegression();customFormula=it}
                     Field(customVariable,"Independent variable",Modifier.fillMaxWidth()){m.clearRegression();customVariable=it}
                     Field(customInitials,"Initial values and bounds (optional)",Modifier.fillMaxWidth()){m.clearRegression();customInitials=it}
-                    StatisticsExplanation("Usage notes",if(isKorean())"형식: [[매개변수1, 시작값, 하한, 상한], [매개변수2, 시작값, 하한, 상한]]; 상한은 생략할 수 있습니다."
-                        else "Format: [[parameter1, initial, lower, upper], [parameter2, initial, lower, upper]]; upper bound can be omitted.","statistics-custom-initials-help")
                     CalculationButton("Fit custom model",m.regressionBusy,m.regressionJob ?: m.inputVersion,onCancel={m.cancelRegression()},onClick={
                         val table=numericRows.filter {it.size>=2&&it[0].isNotBlank()&&it[1].isNotBlank()}.joinToString(",","[","]"){it.take(2).joinToString(",","[","]")}
                         val guesses=customInitials.trim().takeIf(String::isNotEmpty)?.let {",$it"}.orEmpty()

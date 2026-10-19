@@ -1,108 +1,149 @@
-"""Bilingual operational help for analysis forms and schema definitions."""
-from statistics_social_schema import SPECS as SOCIAL_SPECS
-from statistics_research_schema import SPECS as RESEARCH_SPECS
-from statistics_comparison_schema import HELP as COMPARISON_HELP
-from statistics_extensions_schema import SPECS as EXTENSION_SPECS
+"""Concise operational help shared by Android and Web analysis forms."""
+from .catalog import catalog_description
 
-TIME_HELP = ('Choose one numeric column in time order (oldest first), with equal spacing and no missing values. Set [p,d,q], forecast horizon and prediction level (0–1). Auto compares valid models with/without an intercept (no differencing) or drift (one ordinary or seasonal difference), using conditional AICc and keeping the selected orders. Two or more total differences omit drift; none/constant explicitly force the choice. Conditional Gaussian estimation enforces stationary AR and invertible MA. Near-boundary fits show diagnostics and forecasts instead of stopping. Results include selected intercept/drift, candidate AICc, coefficients, conditional AIC/AICc/BIC, forecasts, prediction intervals, observed/fitted/forecast graph and residual ACF/Ljung–Box diagnostics. Intervals exclude parameter uncertainty.',
-             '오래된 값부터 시간순으로 정렬한 숫자 열 하나를 선택합니다. 간격은 일정하고 결측값이 없어야 합니다. [p,d,q]·예측 길이·예측구간 수준(0~1)을 설정합니다. 자동은 차수가 같은 유효한 모형에서 절편(차분 없음) 또는 드리프트(일반·계절 차분 합계 1회)의 포함·미포함을 조건부 AICc로 비교합니다. 전체 차분 2회 이상은 드리프트를 제외하며 없음·상수는 선택을 고정합니다. 조건부 정규 추정으로 AR 정상성·MA 가역성을 유지합니다. 경계 근처에서도 중단하지 않고 진단과 예측을 표시합니다. 선택한 절편·드리프트·후보 AICc·계수·조건부 AIC/AICc/BIC·예측표·예측구간·관측/적합/예측 그래프·잔차 ACF/Ljung–Box 진단을 출력합니다. 구간에 모수 추정 불확실성은 포함되지 않습니다.')
-TIME_HELP = (TIME_HELP[0]+' Drift is the mean change per observation, distinct from the differenced ARMA intercept. Its SE, two-sided 95% Gaussian Wald interval and p value for zero drift use joint AR/MA/intercept covariance and the delta method, conditional on the selected model. Near-boundary Wald inference can be unreliable; singular covariance is reported as unavailable.',
-             TIME_HELP[1]+' 드리프트는 관측 간격당 평균 변화량이며 차분식 ARMA 절편과 구분합니다. 드리프트의 표준오차·양측 95% 정규 Wald 신뢰구간·드리프트=0의 p값은 선택한 모형의 AR·MA·절편 전체 공분산과 델타 방법을 사용합니다. 경계 근처의 Wald 추론은 부정확할 수 있으며 공분산이 특이하면 추론을 계산할 수 없다고 표시합니다.')
+TIME_HELP = (
+    'Choose a complete numeric series in time order with equal spacing. Set model orders, forecast horizon and prediction level. Review forecasts and residual diagnostics.',
+    '시간순·등간격의 완전한 숫자 시계열을 선택합니다. 모형 차수·예측 길이·예측구간 수준을 설정하고 예측·잔차 진단을 확인하세요.')
+DATE_HELP = (
+    ' Optional dates: YYYY-MM-DD or integer years in a separate column.',
+    ' 날짜는 별도 열에 YYYY-MM-DD 또는 정수 연도로 입력합니다.')
 
-DATE_HELP = (' Date/value CSV accepts YYYY-MM-DD dates or integer years, with a header such as date,value. The value column defaults to the last column; date labels are detected automatically for two or more columns. Choose date and value columns separately. Dates must increase regularly; calendar years/months preserve leap years and month ends. Forecast tables and plots retain dates. Expressions accept an optional final date list: years or [[year,month,day],...].',
-             ' date,value 헤더의 CSV에서 YYYY-MM-DD 날짜 또는 정수 연도를 사용할 수 있습니다. 값 열의 기본은 마지막 열이며, 두 열 이상이면 날짜를 자동 인식합니다. 날짜·값 열을 각각 선택하세요. 날짜는 일정한 간격으로 증가해야 하며 달력상의 연·월 간격은 윤년과 월말을 유지합니다. 예측표와 그래프에 날짜를 표시합니다. 분석 식의 마지막 인수로 연도 목록 또는 [[연,월,일],...]을 추가할 수 있습니다.')
-DATE_HELP = (DATE_HELP[0]+' Quoted thousands-grouped numeric values (e.g. "166,682") are accepted; signs, decimals and scientific notation are preserved.',
-             DATE_HELP[1]+' 따옴표로 감싼 천 단위 쉼표 값(예: "166,682")도 숫자로 분석하며 부호·소수·과학적 표기를 유지합니다.')
+# Form help explains choices in the visible controls; expression help uses the
+# compact function descriptions in catalog.py. Keep numerical contracts in forms
+# and definitions rather than repeating their implementation in this text.
+FORM_HELP = {
+    'impute': (
+        'Choose a replacement method and, for k-NN, neighbor count. Analyze first, then Apply to current data to fill missing cells while retaining observed values and headers. Reanalyze after editing data.',
+        '대체 방법·k-NN 이웃 수를 선택합니다. 분석 후 현재 데이터에 적용하면 관측값·헤더를 유지하며 결측 셀을 채웁니다. 데이터 수정 후에는 다시 분석하세요.'),
+    'propztest': (
+        'Choose binary observations and a success value, or success/trial counts. Enter the null proportion p0 (0<p0<1) and alternative. For counts, rows belong to the same population.',
+        '이항 자료·성공 값 또는 성공 수·시행 수를 선택합니다. 기준 비율 p0(0<p0<1)·대립가설을 지정하세요. 빈도의 각 행은 같은 모집단입니다.'),
+    'propztest2': (
+        'Choose two independent binary samples and a common success value, or two count rows ordered A then B. Alternatives refer to A−B; use McNemar for paired outcomes.',
+        '독립 두 이항 표본·공통 성공 값 또는 A·B 순서의 빈도 두 행을 입력합니다. 대립가설은 A−B 기준; 대응 결과는 McNemar를 사용하세요.'),
+    'mcnemar': (
+        'Choose paired binary columns or a 2×2 count table. Select exact, continuity-corrected or asymptotic inference; results show discordant pairs and p value.',
+        '대응 이항 열 또는 2×2 빈도표를 선택합니다. 정확·연속성 보정·점근 검정 중 선택하면 불일치 쌍 수·p값을 표시합니다.'),
+    'icc': (
+        'Select complete subject × rater data. Choose one-way, two-way random absolute agreement or two-way mixed consistency, then single/average rating and confidence level.',
+        '완전한 대상×평가자 자료를 선택합니다. 일원·이원 랜덤 절대 일치·이원 혼합 일관성 중 모형을 정하고 단일/평균 평가·신뢰수준을 지정하세요.'),
+    'cohenkappa': (
+        'Choose two rater columns or a square count table with the same category order. Select unweighted, linear or quadratic weights; weighted categories must be ordered.',
+        '두 평가자 열 또는 같은 범주 순서의 정방 빈도표를 선택합니다. 무가중·선형·제곱 가중치를 지정하며 가중 분석은 순서형 범주에 사용하세요.'),
+    'blandaltman': (
+        'Select two measurements per independent subject. Difference uses A−B; log mode requires positive values and reports ratios. Review bias, limits of agreement and the proportional-bias trend.',
+        '독립 대상별 두 측정값을 선택합니다. 차이는 A−B, 로그 방식은 양수 자료의 비율입니다. 편향·일치한계·비례 편향 추세를 확인하세요.'),
+    'kstest': (
+        'Choose two numeric samples or a sample and reference distribution. Set reference parameters independently of the tested sample.',
+        '두 숫자 표본 또는 표본·기준분포를 선택합니다. 기준 모수는 검정 표본과 독립적으로 지정하세요.'),
+    'tukey': (
+        'Select independent group columns or group/value columns. Tukey–Kramer compares all means under equal variances, with adjusted p values and simultaneous 95% intervals.',
+        '독립 그룹 열 또는 그룹·값 열을 선택합니다. 등분산 가정의 Tukey–Kramer로 모든 평균 쌍·보정 p값·95% 동시 구간을 비교합니다.'),
+    'gameshowell': (
+        'Select independent group columns or group/value columns. Games–Howell allows unequal variances and reports adjusted p values and simultaneous 95% intervals.',
+        '독립 그룹 열 또는 그룹·값 열을 선택합니다. 이분산을 허용하는 Games–Howell로 보정 p값·95% 동시 구간을 확인합니다.'),
+    'ancova': (
+        'Choose group, response and numeric covariates. Results include adjusted means and Type II tests; enable the slope-homogeneity check as needed.',
+        '그룹·종속변수·숫자 공변량을 선택합니다. 조정 평균·Type II 검정을 제공하며 기울기 동질성 검정을 선택할 수 있습니다.'),
+    'twowayanova': (
+        'Choose two categorical factors and a numeric response from independent observations. Enable interaction to test joint factor effects; results include Type III tests and cell means.',
+        '독립 관측의 두 범주 요인·숫자 반응을 선택합니다. 상호작용을 켜면 요인의 결합 효과를 검정합니다. Type III 검정·조합별 평균 제공.'),
+    'manova': (
+        'Select one-way, factorial or repeated design and multiple response columns. Repeated data use one complete row per subject and equal response blocks in time order. Review multivariate tests and response summaries.',
+        '일요인·요인설계·반복측정 방식과 여러 종속변수 열을 선택합니다. 반복측정은 대상별 완전한 행에 시점 순서의 같은 크기 반응 블록을 입력하세요. 다변량 검정·변수별 요약 제공.'),
+    'repeatedanova': (
+        'Select complete condition columns with one subject per row. For two factors, set the second-factor level count. Review sphericity corrections and paired comparisons; Holm adjusts post-hoc p values.',
+        '행=대상인 완전한 조건 열을 선택합니다. 이요인은 둘째 요인 수준 수를 지정하세요. 구형성 보정·대응 사후비교를 확인하며 사후 p값은 Holm 보정입니다.'),
+    'friedman': (
+        'Select at least three repeated-condition columns, with complete measurements for the same subject in each row. Reports a tie-corrected approximate χ² test and Kendall W.',
+        '같은 대상의 완전한 측정값을 행에 놓고 반복 조건 열을 3개 이상 선택합니다. 동점 보정 χ² 근사 검정·Kendall W 제공.'),
+    'tost': (
+        'Choose a sample and target mean. Prespecify equivalence bounds in measurement units and alpha. Equivalence requires both one-sided p values below alpha; alpha=.05 gives a 90% interval.',
+        '표본·기준평균을 선택하고 원래 단위의 동등성 하한·상한과 alpha를 미리 정합니다. 두 단측 p값 모두 alpha 미만이면 동등; alpha=.05의 구간은 90%입니다.'),
+    'tost2': (
+        'Choose independent groups A and B, Welch or Student, and prespecified bounds for A−B. Equivalence requires both one-sided p values below alpha.',
+        '독립 그룹 A·B, Welch/Student, 미리 정한 A−B의 동등성 하한·상한을 선택합니다. 두 단측 p값 모두 alpha 미만이면 동등입니다.'),
+    'tostpaired': (
+        'Choose complete paired columns or match by subject ID. Prespecify bounds for A−B; equivalence requires both one-sided p values below alpha.',
+        '완전한 대응 열 또는 대상 ID 연결을 선택하고 A−B의 동등성 하한·상한을 미리 정합니다. 두 단측 p값 모두 alpha 미만이면 동등입니다.'),
+    'yuen': (
+        'Select two independent samples and trimming per tail (default .20). Compares trimmed means A−B; each group needs at least two retained values and positive Winsorized variance.',
+        '독립 두 표본·꼬리별 절사 비율(기본 .20)을 선택합니다. 절사평균 A−B 비교; 절사 후 그룹당 2개 이상·양의 Winsorized 분산이 필요합니다.'),
+    'linearmodel': (
+        'Choose response and predictors, marking categorical predictors. Interaction order 1 is additive, 2 includes all pairs. Select Type II/III and coding; Type III interactions use sum contrasts. Center numeric covariates when interpreting interactions.',
+        '반응·설명변수를 선택하고 범주 변수를 표시합니다. 상호작용 차수 1은 가법, 2는 모든 쌍입니다. Type II/III·코딩을 선택하며 Type III 상호작용은 합 대비를 사용하세요. 숫자 상호작용 해석에는 중심화를 고려하세요.'),
+    'glm': (
+        'Choose response, predictors, family and link. Binomial uses 0/1, counts nonnegative integers, Gamma/inverse Gaussian positive values. Exposure uses a log link; NB2 alpha can be fixed or estimated.',
+        '반응·설명변수·분포·연결함수를 선택합니다. 이항은 0/1, 빈도는 음이 아닌 정수, Gamma·역가우스는 양수입니다. 노출량은 로그 연결, NB2 alpha는 고정/추정을 선택하세요.'),
+    'mixedmodel': (
+        'Choose subject ID, continuous response and predictors. Select a random intercept and up to three slopes; REML is the default. Choose Wald, profile or bootstrap intervals. Compare models with different fixed effects using ML.',
+        '대상 ID·연속 반응·설명변수를 선택합니다. 랜덤 절편·최대 3개 기울기, 기본 REML. Wald·프로파일·부트스트랩 구간을 선택하세요. 고정효과가 다른 모형 비교는 ML을 사용합니다.'),
+    'glmm': (
+        'Choose subject ID, predictors and binary/count response. Select family, integration points and optional offset/exposure. One correlated random slope uses Laplace; refit checks sensitivity to integration settings.',
+        '대상 ID·설명변수·이항/빈도 반응을 선택합니다. 분포·적분점·오프셋/노출량을 지정하세요. 상관 랜덤 기울기 1개는 Laplace, refit은 적분 설정에 따른 변화를 확인합니다.'),
+    'gee': (
+        'Choose cluster ID, response, predictors and family. Select independence, exchangeable or AR(1) working correlation; AR(1) uses equally spaced row order. Add interactions and small-cluster correction as needed.',
+        '군집 ID·반응·설명변수·분포를 선택합니다. 작업상관 independence/exchangeable/AR(1), 필요하면 상호작용·소수 군집 보정을 지정하세요. AR(1)은 등간격 행 순서 기준입니다.'),
+    'crossvalidate': (
+        'Choose response, predictors, model, split and fold count. Stratified binary folds need at least as many observations per class as folds. Review held-out prediction metrics.',
+        '반응·설명변수·모형·분할·폴드 수를 선택합니다. 층화 이항 분할은 클래스별 표본 수가 폴드 수 이상이어야 합니다. 홀드아웃 예측 지표를 확인하세요.'),
+    'modelcompare': (
+        'Choose model family, baseline predictors and added predictors. Compare fit and prediction on common observations, using holdout, saved validation data or CV. For CFA/SEM, keep indicators and add paths, cross-loadings or residual covariances.',
+        '분석군·기존/추가 설명변수를 선택합니다. 같은 관측값의 적합도와 홀드아웃·저장 검증자료·CV 성능을 비교하세요. CFA/SEM은 지표를 유지하며 경로·교차적재·잔차 공분산을 추가합니다.'),
+    'logisticcompare': (
+        'Select binary response, model A predictors and model B additions. Choose saved validation data, stratified holdout or CV. Compare AUC, accuracy, log loss and Brier score; differences are B−A, with lower losses better.',
+        '이항 반응·모형 A 설명변수·B 추가 변수를 선택합니다. 저장 검증자료·층화 홀드아웃·CV로 AUC·정확도·Log loss·Brier score를 비교하세요. 차이는 B−A, 손실 감소가 개선입니다.'),
+    'bayesmean': (
+        'Select a numeric sample, prior parameters, credible level and target. Match the normal-inverse-gamma prior to data units; results include the mean posterior and next-observation prediction.',
+        '숫자 표본·사전 모수·베이지안 구간 수준·기준값을 선택합니다. 정규-역감마 사전은 자료 단위에 맞추세요. 평균 사후분포·다음 관측 예측 제공.'),
+    'bayescompare': (
+        'Select two independent samples and equal/unequal variances. Set NIG priors in data units, credible level, draws and seed. Results compare B−A with posterior intervals and Bayes factors.',
+        '독립 두 표본·등/이분산을 선택합니다. 자료 단위에 맞는 NIG 사전·구간 수준·추출 수·시드를 지정하세요. B−A 사후 구간·Bayes factor 제공.'),
+    'bayesbootstrap': (
+        'Choose one sample or a comparison and statistic. Paired data use complete rows and shared weights; the result is statistic(B)−statistic(A). Set credible level, draws and seed.',
+        '단일 표본/비교 방식·통계량을 선택합니다. 대응 자료는 완전한 행에 공통 가중치를 적용하며 결과는 각 열의 통계량 차이 B−A입니다. 구간 수준·추출 수·시드를 지정하세요.'),
+    'metaanalysis': (
+        'Choose effect/SE, binary events/totals or continuous mean/SD/n input. Select effect measure, fixed/random model and z/HKSJ inference. SE is the study-effect standard error; align effect direction across studies.',
+        '효과·SE, 이진 사건 수·전체 수, 연속형 평균·SD·n 중 입력 방식을 선택합니다. 효과 척도·고정/랜덤 모형·z/HKSJ 추론을 지정하세요. SE는 연구 효과의 표준오차이며 연구 간 효과 방향을 맞춥니다.'),
+    'metaregression': (
+        'Choose effect/SE or raw arm summaries and numeric study moderators. Set model and inference; ratio effects use the log scale. Review moderator tests and residual heterogeneity.',
+        '효과·SE 또는 두 군 요약과 숫자 연구 조절변수를 선택합니다. 모형·추론을 정하고 비율 효과는 로그 척도를 사용하세요. 조절변수 검정·잔여 이질성 제공.'),
+    'metasubgroup': (
+        'Choose study effect/SE or arm summaries and a subgroup column, with at least two studies per subgroup. Compare pooled effects using the joint subgroup-difference test.',
+        '연구 효과·SE 또는 두 군 요약·하위그룹 열을 선택합니다. 그룹당 연구 2개 이상이 필요하며 통합 효과·그룹 간 공동 검정으로 비교합니다.'),
+    'efa': (
+        'Select numeric items and factor count or parallel analysis. Choose PCA, principal-axis or ML extraction and rotation; oblimin/promax allow correlated factors. Review loadings before transferring to CFA.',
+        '숫자 문항·요인 수 또는 평행분석을 선택합니다. PCA·주축요인·ML 추출과 회전을 지정하세요. oblimin/promax는 요인 상관을 허용합니다. 적재량을 확인한 뒤 CFA로 연결하세요.'),
+    'cfa': (
+        'Select indicators and their factor IDs; add cross-loadings as needed. Use ML for continuous or WLSMV for ordered indicators; ML supports FIML for missing data. Choose group/invariance options for multi-group analysis, then review loadings, fit and the diagram.',
+        '지표·요인 번호를 지정하고 필요하면 교차적재를 추가합니다. 연속형은 ML, 순서형은 WLSMV; ML 결측은 FIML을 선택하세요. 다집단은 그룹·동일성 수준을 지정하고 적재량·적합도·경로도를 확인합니다.'),
+    'sem': (
+        'Assign indicator factor IDs and acyclic latent paths (source,target;…). Use ML for continuous or WLSMV for ordered indicators; ML supports FIML. Set group/invariance, cross-loadings, residual covariances or effect bootstrap as needed. Review standardized paths, direct/indirect/total effects and fit.',
+        '지표별 요인 번호·비순환 잠재 경로(출발,도착;…)를 지정합니다. 연속형은 ML, 순서형은 WLSMV; ML 결측은 FIML 선택. 필요하면 집단 동일성·교차적재·잔차 공분산·효과 부트스트랩을 설정하세요. 표준화 경로·직접/간접/총 효과·적합도를 확인합니다.'),
+    'pca': (
+        'Select complete numeric feature columns, component count and standardization. Standardize when units differ. Review explained variance, scores and loadings.',
+        '완전한 숫자 변수 열·주성분 수·표준화를 선택합니다. 단위가 다르면 표준화하세요. 설명분산·점수·로딩을 확인합니다.'),
+    'arima': (
+        'Select a complete, equally spaced numeric series, oldest first. Set [p,d,q], horizon and level; auto selects intercept/drift by AICc at those orders. Dates use a separate column. Review forecasts, conditional prediction intervals and residual checks.',
+        '오래된 값부터 등간격의 완전한 숫자 열을 선택합니다. [p,d,q]·예측 길이·수준 지정; auto는 해당 차수에서 AICc로 절편/드리프트를 선택합니다. 날짜는 별도 열. 예측·조건부 예측구간·잔차 진단을 확인하세요.'),
+    'sarima': (
+        'Select a complete equally spaced series spanning at least two seasons. Set [p,d,q] and seasonal [P,D,Q,s], horizon and level; dates use a separate column. Review forecasts and residual checks.',
+        '두 주기 이상의 등간격 완전 시계열을 선택합니다. [p,d,q]·계절 [P,D,Q,s]·예측 길이·수준을 지정하고 날짜는 별도 열에 입력하세요. 예측·잔차 진단을 확인합니다.'),
+    'parametricsurvival': (
+        'Choose positive time, event (1=event, 0=censored), optional predictors and Weibull/exponential/lognormal distribution. Optional entry time must satisfy 0≤entry<time. Set a prediction time; review time ratios and survival probabilities.',
+        '양수 시간·사건(1=발생, 0=중도절단)·설명변수·Weibull/지수/로그정규 분포를 선택합니다. 진입시간은 0≤진입<시간. 예측 시점을 정하고 시간비·생존확률을 확인하세요.'),
+    'designpower': (
+        'Choose fixed-sample design and alpha. Effect: known-SD standardized mean shift for z, p1 for one proportion, pA with baseline pB for two proportions, or variance ratio. n is per group for two-group designs.',
+        '고정 표본 설계·alpha를 선택합니다. 효과는 z의 알려진 SD 기준 평균 이동, 단일 비율의 p1, 두 비율의 pA·기준 pB, 또는 분산비입니다. 두 그룹 설계의 n은 그룹별 수입니다.'),
+    'designsize': (
+        'Choose design, effect, alpha and target power. Effects follow the same definitions as designpower; results show minimum n per group, total n and achieved power.',
+        '설계·효과·alpha·목표 검정력을 선택합니다. 효과는 designpower와 같은 기준이며 최소 그룹별 n·총 n·달성 검정력을 표시합니다.'),
+}
 
-research_extra={
-    'metaanalysis':(' Binary mode selects events A,total A,events B,total B and OR/RR. Expressions add a sixth argument oddsratio/riskratio and seventh zero-cell correction (default .5). Converts to log OR/log RR and SE, reports both ratios per study and pooled ratio CI, and plots log effects. Double-zero events are excluded; OR also excludes double-zero non-events. A zero cell adds the correction to all four cells; zero correction rejects such studies. Independent arms; this is inverse variance, not Mantel–Haenszel/Peto.',
-                    ' 이진 자료 방식에서는 A 사건 수·A 전체 환자 수·B 사건 수·B 전체 환자 수와 OR/RR을 선택합니다. 수식은 여섯째 인수 oddsratio/riskratio, 일곱째 0 셀 보정(기본 .5)을 추가합니다. log OR/log RR·SE로 변환하며 연구별 두 비율·통합 비율 신뢰구간을 표시하고 그래프는 로그 효과를 사용합니다. 양쪽 사건 0 연구는 제외하고 OR은 양쪽 비사건 0도 제외합니다. 0 셀이 있으면 네 셀 모두에 보정값을 더하며 0 보정은 해당 연구를 오류로 처리합니다. 독립 두 군 가정; 역분산 방식이며 Mantel–Haenszel/Peto가 아닙니다.'),
-    'blandaltman':(' Proportional bias: OLS difference on pair mean, slope SE/CI and two-sided t(n−2) p value; fitted trend is plotted. Log mode uses log measurements. Mean variation and positive residual variance are needed for inference. A nonsignificant slope does not establish absence of bias; unequal measurement error variances can induce a trend.',
-                   ' 비례 편향: 차이를 두 측정값 평균에 OLS 회귀하여 기울기·SE·신뢰구간·양측 t(n−2) p값을 표시하고 적합 추세선을 그립니다. 로그 방식은 로그 측정값을 사용합니다. 평균의 변동과 양의 잔차분산이 추론에 필요합니다. 비유의 기울기가 편향 부재를 입증하지 않으며 측정 오차의 이분산이 추세를 만들 수 있습니다.'),
-    'icc':(' Koo & Li (2016): <.50 poor, [.50,.75) moderate, [.75,.90] good, >.90 excellent. Point and CI-range ratings are shown; interpretation should use the CI and study context. Graph domain is 0–1, with arrows for out-of-range estimates; tables retain negative estimates and raw CI limits.',
-            ' Koo & Li (2016): .50 미만 낮음, .50 이상 .75 미만 보통, .75 이상 .90 이하 좋음, .90 초과 매우 좋음. 추정값·신뢰구간 범위의 판정을 표시하며 신뢰구간과 연구 맥락을 함께 해석합니다. 그래프 범위는 0~1이고 범위 밖 추정값은 화살표로 표시하며 표의 음수·원래 신뢰구간은 유지합니다.'),
-    'cohenkappa':(' Landis–Koch conventional benchmarks: <0 poor, [0,.20] slight, (.20,.40] fair, (.40,.60] moderate, (.60,.80] substantial, (.80,1] almost perfect. These are context-dependent heuristics; prevalence and chosen weights matter. Graph domain is 0–1; raw negative estimates and CI limits remain in tables. Example pairs are ordered Normal,Mild,Severe ratings from two raters.',
-                   ' Landis–Koch 관례: 0 미만 낮음, 0~.20 미약, .20 초과 .40 이하 약함, .40 초과 .60 이하 보통, .60 초과 .80 이하 상당, .80 초과 1 이하 거의 완벽. 보편적 판정 기준이 아니며 유병률·가중치·연구 맥락을 고려합니다. 그래프는 0~1, 표에는 음수·원래 신뢰구간을 유지합니다. 예제는 두 평가자의 Normal·Mild·Severe 순서형 등급 쌍입니다.'),
-    'cramerv':(' Combined Phi / Cramér’s V: signed phi is available for 2×2; V applies to larger tables. Cohen thresholds for V: .10/.30/.50 divided by sqrt(min(rows−1,columns−1)); phi uses absolute magnitude with .10/.30/.50. Ratings and threshold tables are descriptive conventions, not clinical significance. χ² and Fisher reports include both effects using uncorrected Pearson χ².',
-               ' 통합 Phi / Cramér의 V: 2×2는 부호 있는 phi, 더 큰 표는 V를 사용합니다. V의 Cohen 기준은 .10/.30/.50을 sqrt(min(행−1,열−1))로 나누며 phi는 절댓값 .10/.30/.50을 사용합니다. 판정·기준 표는 관례적 설명이며 임상적 중요성을 뜻하지 않습니다. χ²·Fisher 결과에도 보정 없는 Pearson χ² 기준의 두 효과를 표시합니다.')}
 
-continuous_help=(' Continuous mode: mean A, sample SD A, n A, mean B, sample SD B, n B. Sixth expression argument md or smd. MD uses unpooled SE²=SD A²/n A+SD B²/n B and needs common units across studies. SMD uses pooled within-study SD, Hedges g with J≈1−3/(4df−1), and variance N/(n A n B)+g²/(2(N−3.94)), matching statsmodels. Independent arms, each n≥2; comparable constructs, common within-study variance for SMD and aligned direction. Paired arms require covariance. Independent-arm change outcomes may use change means and change SDs, not separate baseline/followup summaries.',
-                 ' 연속형 방식: A 평균·표본 SD·n, B 평균·표본 SD·n. 수식의 여섯째 인수 md·smd. MD는 비합동 SE²=SD A²/n A+SD B²/n B이며 연구 간 같은 측정 단위가 필요합니다. SMD는 연구 내 합동 SD, Hedges g의 J≈1−3/(4df−1) 보정, 분산 N/(n A n B)+g²/(2(N−3.94))로 statsmodels와 같습니다. 독립 두 군, 각 n≥2. SMD는 같은 구성개념·연구 내 공통 분산·일치하는 결과 방향이 필요합니다. 대응 두 군에는 공분산이 필요합니다. 독립 두 군의 변화량 비교에는 변화량 평균·SD를 입력하며 별도의 전후 요약으로 대체하지 마세요.')
-
-
-def build_form_help(definitions, rank_specs):
-    form_help={
-     'shapiro':('Choose a numeric sample column to test normality. Interpret the p value with the Q–Q plot alongside the sample distribution.','정규성을 검정할 숫자 표본 열을 선택합니다. p값은 Q–Q plot·표본 분포와 함께 해석합니다.'),
-     'tukey':('Select independent group columns or group/value columns. Tukey–Kramer compares all pairs assuming equal variances and reports adjusted p values and 95% simultaneous intervals.','독립 그룹 열 또는 그룹·값 열을 선택합니다. Tukey–Kramer는 등분산을 가정하여 모든 쌍의 보정 p값·95% 동시 구간을 제공합니다.'),
-     'gameshowell':('Select independent group columns or group/value columns. Games–Howell compares all pairs allowing unequal variances and reports adjusted p values and 95% simultaneous intervals.','독립 그룹 열 또는 그룹·값 열을 선택합니다. Games–Howell은 이분산을 허용하여 모든 쌍의 보정 p값·95% 동시 구간을 제공합니다.'),
-     'linearmodel':('Choose response and predictors; mark only the categorical predictors. Numeric predictors retain their units. Interaction order 1 is additive, 2 includes all pairs, 3 all triples, etc. Choose Type II or III and sum or dummy coding; Type III factorial interactions require sum contrasts. Coefficient intervals and joint term F tests share the same OLS fit. Numeric main effects with interactions refer to zero: center covariates when appropriate.','반응·설명변수를 선택하고 그중 범주 변수만 표시합니다. 숫자 변수는 원래 단위를 사용합니다. 차수 1은 가법, 2는 모든 쌍, 3은 모든 삼중 상호작용 등을 포함합니다. Type II/III·합 대비/더미 코딩을 선택하며 Type III 요인 상호작용에는 합 대비가 필요합니다. 계수 구간·항별 부분 F 검정은 같은 OLS 적합을 사용합니다. 숫자 상호작용의 주효과는 0 기준이므로 필요하면 공변량을 중심화하세요.'),
-     'twowayanova':('Select two categorical factor columns and the numeric response, or columns for every factor cell ordered with A slowest. Observations must be independent; repeated measures belong in Repeated-measures ANOVA. Type III sum contrasts handle unequal cell sizes. Replication and identifiable cells are required for the interaction model. Results include residual diagnostics and cell mean intervals.','두 범주 요인 열·숫자 반응 열 또는 A를 최외곽으로 정렬한 요인 조합별 열을 선택합니다. 관측은 독립이어야 하며 반복측정은 반복측정 ANOVA를 사용하세요. 합이 0인 대비의 Type III 검정으로 불균형 셀 크기를 처리합니다. 상호작용 모형에는 반복 관측·식별 가능한 셀이 필요합니다. 잔차 진단과 셀 평균 구간을 함께 제공합니다.'),
-     'friedman':('Choose at least three numeric condition columns. Each row must be the same subject across conditions; incomplete selected rows are rejected. Tie-corrected chi-square approximation; small-sample p values can be inaccurate.','숫자 반복 조건 열을 3개 이상 선택합니다. 각 행은 모든 조건에서 같은 대상이어야 하며 선택 열의 불완전한 행은 거부합니다. 동점 보정 χ² 근사이며 소표본 p값은 부정확할 수 있습니다.'),
-     'cohend':('Select two columns and independent or paired comparison. Paired analysis uses complete rows; independent samples omit blank cells separately.','두 열과 독립·대응 비교를 선택합니다. 대응 분석은 완전한 행을, 독립 분석은 각 열의 빈 셀을 별도로 제외합니다.'),
-     'eta2':('Compare two or more groups. Choose group columns or a group/value layout.','두 개 이상 그룹을 비교합니다. 열별 그룹 또는 그룹·값 열을 선택하세요.'),
-     'bootstrapci':('Choose a column and statistic, confidence level, resamples and seed. IID percentile bootstrap.','자료 열·통계량·신뢰수준·재표집 수·시드를 선택합니다. IID 백분위 부트스트랩입니다.'),
-     'kmeans':('Select numeric feature columns, cluster count and seed. Uses raw feature scales, Euclidean distance and ten restarts; scale features appropriately. Plot axes show selected original features.','숫자 변수 열·군집 수·시드를 선택합니다. 원래 척도의 유클리드 거리와 10회 초기화를 사용하므로 변수 척도를 확인하세요. 그래프 축은 선택한 원래 변수입니다.'),
-     'multinomial':('Choose numeric category response and predictors. Smallest category is the reference.','숫자 범주 반응 열과 설명변수를 선택합니다. 가장 작은 범주가 기준입니다.'),
-     'ordinal':('Choose ordered numeric category response and predictors. Category order follows numeric order; proportional odds are assumed.','순서가 있는 숫자 범주 반응 열과 설명변수를 선택합니다. 숫자 순서를 사용하며 비례오즈를 가정합니다.'),
-     'testpower':('Set effect size, sample size, design, significance level and alternative. n is per group for independent samples, number of pairs for paired data.','효과크기·표본수·연구 설계·유의수준·대립가설을 설정합니다. n은 독립 표본의 그룹별 수 또는 대응 표본의 쌍 수입니다.'),
-     'samplesize':('Set effect size and target power before collecting data. Returned n is per group or the number of pairs, according to the selected design.','자료 수집 전에 효과크기·목표 검정력을 설정합니다. 산출된 n은 설계에 따라 그룹별 수 또는 대응 쌍 수입니다.'),
-     'pca':('Choose numeric feature columns, components and sample-SD standardization or centering only. Selected rows must be complete. Scree plot includes all components; score and loading plots use the retained components. Loading arrows show eigenvector coefficients, on separate axes from scores.','숫자 변수 열·주성분 수·표본 표준편차 표준화 또는 중심화를 선택합니다. 선택한 열의 모든 행이 완전해야 합니다. 설명분산 그래프는 모든 주성분을, 점수·로딩 그래프는 유지한 주성분을 표시합니다. 로딩 화살표는 고유벡터 계수이며 점수와 별도 좌표를 사용합니다.'),
-     'bayesbootstrap':('Single sample or statistic(B) − statistic(A). Independent columns omit blanks separately; paired columns require complete matching rows and share Dirichlet weights (difference of marginal statistics, not the statistic of row differences). Group/value columns require exactly two labels and complete selected rows; choose which observed group is A. Dirichlet(1,…,1) weights; equal-tailed posterior credible interval, P(difference > 0), P(difference < 0), P(difference = 0) and histogram. Median estimate is the ordinary sample median (average the two middle values for even n); posterior draws use the Lower weighted quantile (smallest value with weighted CDF >= 0.5); variance/SD use population weights. Seed makes draws reproducible.','단일 표본 또는 통계량(B) − 통계량(A)을 분석합니다. 독립 컬럼은 빈 셀을 각각 제외하며, 대응 컬럼은 완전한 같은 행에 공통 Dirichlet 가중치를 적용합니다(각 컬럼 통계량의 차이이며, 행별 차이의 통계량과 다릅니다). 그룹·값 컬럼은 두 그룹과 완전한 선택 행이 필요하며 먼저·둘째로 나온 그룹 중 A를 선택합니다. Dirichlet(1,…,1) 가중치·등꼬리 사후 구간·P(차이 > 0)·P(차이 < 0)·P(차이 = 0)·히스토그램. 중앙값 estimate는 일반 표본 중앙값(짝수 표본은 가운데 두 값의 평균)이고 사후추출은 Lower weighted quantile(가중 누적확률이 0.5 이상인 최소값), 분산·SD는 모집단 가중치 기준이며 시드로 재현합니다.'),
-     'bayescompare':('Independent groups; B - A. Blank cells are omitted separately in each selected column, so sample sizes may differ. Choose proper NIG priors in your measurement units. BF compares H1 with its conditioned point null. Simulation intervals and MCSE are labeled.','독립 두 집단; 차이는 B - A. 선택한 각 열의 빈 셀은 독립적으로 제외하므로 표본수가 달라도 됩니다. 측정 단위에 맞게 NIG 사전분포를 지정하세요. BF는 H1과 이를 조건부 제한한 점귀무 모형을 비교합니다. 시뮬레이션 구간·MCSE를 표시합니다.'),
-     'ancova':('Compare groups after adjusting for selected covariates. Text group labels are accepted. Type II tests, adjusted means, and optional slope homogeneity check.','선택한 공변량을 보정하여 그룹을 비교합니다. 문자 그룹도 사용할 수 있습니다. Type II 검정·조정 평균·선택적 기울기 동질성 검정.'),
-     'glm':('Choose a family, its link, response and predictors. Binomial uses 0/1; counts use nonnegative integers; Gamma/inverse Gaussian use positive responses. Exposure requires a log link. NB2 dispersion: fixed alpha or joint ML estimation.','분포·연결함수·반응변수·설명변수를 선택하세요. 이항은 0/1, 빈도는 음이 아닌 정수, Gamma·역가우스는 양수입니다. 노출량은 로그 연결에서만 사용합니다. NB2 과산포는 alpha 고정 또는 공동 ML 추정을 선택합니다.'),
-     'bayesproportion':('Beta prior → posterior proportion · credible interval · P(p > p0). BF10: Beta alternative / point null p=p0.','Beta 사전 → 사후 비율 · 베이지안 구간 · P(p > p0). BF10: Beta 대립 / p=p0 점귀무.'),
-     'bayesmean':('Normal data, unknown variance. Adjust the normal-inverse-gamma prior to your data scale; mean interval and next-observation prediction.','분산 미지의 정규 자료. 자료 척도에 맞춰 정규-역감마 사전을 조절하세요. 평균 구간·다음 관측 예측.'),
-     'bayesrate':('Gamma prior → Poisson rate · credible interval · P(rate > threshold). β is the rate parameter.','Gamma 사전 → 포아송 발생률 · 베이지안 구간 · 기준 초과 확률. β는 rate(척도의 역수)입니다.'),
-     'padjust':('Adjust p values from the selected column.','선택한 열의 p값을 보정합니다.'),
-     'levene':('Compare group variances using median centers.','중앙값 기준으로 그룹의 분산을 비교합니다.'),
-     'bartlett':('Compare variances of normally distributed groups.','정규분포를 가정해 그룹의 분산을 비교합니다.'),
-     'mcnemar':('Use two paired category columns or a 2×2 count table. Choose McNemar (uncorrected chi-square), Exact McNemar (two-sided binomial), or continuity correction. Results show the number of discordant pairs (b + c) and the selected method’s p value together.','두 대응 범주 열 또는 2×2 빈도표를 사용합니다. McNemar(보정 없는 χ²), Exact McNemar(양측 이항), 연속성 보정을 선택합니다. 결과에 불일치 쌍의 수(b + c)와 선택한 방법의 p값을 함께 표시합니다.'),
-     'kaplanmeier':('Choose time and event columns; other event values are censored.','시간·사건 열을 선택합니다. 발생 값 이외는 중도절단입니다.'),
-     'logrank':('Compare exactly two groups; other event values are censored.','두 그룹을 비교합니다. 발생 값 이외는 중도절단입니다.'),
-     'survivalanalysis':('Kaplan–Meier curves · log-rank · Cox; other event values are censored.','Kaplan–Meier 곡선 · log-rank · Cox. 발생 값 이외는 중도절단입니다.'),
-     'cox':('Proportional hazards; Breslow/Efron ties, optional entry column for left truncation and a scaled-Schoenfeld PH check.','비례위험; Breslow/Efron 동률, 선택적 진입시간 열(좌측 절단), 스케일된 Schoenfeld PH 검정.'),
-     'repeatedanova':(definitions['repeatedanova']['help'],definitions['repeatedanova']['helpKo']),
-     'mixedmodel':('Gaussian random intercept + up to three random slopes; REML (default) / ML, singular-fit diagnostics and subject BLUPs. ICC for random slopes is at x=0. Slopes: 0, a position or 1,2. Wald z inference. Optional fourth argument: profile (ML fixed-effect profile CI) or [bootstrap,200,0] (parametric fixed-effect percentile CI); alternative CI omit Wald p-values. Reports logLik/AIC/BIC; compare REML criteria only with identical fixed effects and data. Nonconverged fits withhold Wald inference.','Gaussian 랜덤 절편 + 최대 3개 랜덤 기울기; REML(기본)·ML, singular 진단·대상별 BLUP. 기울기 모형의 ICC는 x=0 기준. 기울기: 0, 번호 또는 1,2. Wald z 추론. 선택적 넷째 인수: profile(ML 고정효과 프로파일 구간), [bootstrap,200,0](모수적 고정효과 백분위 구간); 대안 구간은 Wald p값을 생략합니다. logLik/AIC/BIC 제공; REML 비교는 같은 고정효과·자료에서만 가능합니다. 미수렴 적합의 Wald 추론은 표시하지 않습니다.'),
-     'glmm':('Random intercept, optionally one correlated random slope (seventh argument: selected predictor position, 0 = none). Slopes use two-dimensional Laplace (third argument 1), use [],offset,likelihood before the slope position. Covariance and conditional modes are reported in original units. Random intercept: binomial / Poisson / NB2. ML quadrature (15 default, 1 Laplace, 7-31); conditional effects. Count families support log offset or positive exposure. Few-subject Wald inference may be unreliable. Integration checks compare likelihood at another point count, including Laplace/31 points; optional sixth argument refit compares coefficients and suppresses CI/p if shifts exceed 0.1 SE. To omit offsets use [],offset before refit.','랜덤 절편 또는 절편 + 상관 기울기 1개. 선택적 일곱째 인수: 선택한 설명변수 번호(0 없음). 기울기는 Laplace(셋째 인수 1), 3개 이상 대상 내 설명변수 변화가 필요합니다. ICC는 x=0 기준이며 singular·식별 불가 적합은 Wald 추론을 생략합니다. 이항·포아송·NB2. ML 적분(기본 15점, 1 Laplace, 7~31); 조건부 효과. 빈도 분포는 로그 오프셋·양수 노출량 지원. 소수 대상의 Wald 추론은 부정확할 수 있습니다. Laplace·31점도 다른 적분점의 우도를 비교합니다. 선택적 여섯째 인수 refit은 재적합 계수를 비교하고 0.1 SE 초과 변동이면 CI·p값을 생략합니다. 오프셋이 없으면 refit 앞에 [],offset을 사용합니다.'),
-     'poissonreg':('Log-link counts; choose predictors, response and optional offset / positive exposure.','로그 연결 빈도 모형; 설명변수·반응·선택적 오프셋·양수 노출량.'),
-     'nbreg':('NB2 counts with estimated dispersion; optional offset / positive exposure.','과산포를 추정하는 NB2 빈도 모형; 선택적 오프셋·양수 노출량.'),
-     'gee':('Working correlation independence / exchangeable / AR(1); dispersion-adjusted correlation and cluster-robust SE. Optional fifth argument small adds Mancl-DeRouen covariance and t inference with clusters minus coefficient count df; use [] as the fourth argument when there are no interactions. Review the cluster count when interpreting intervals. AR(1): row order, equal spacing. Interactions accept header names (age,weight), the shown column letters or labels (y,z / age (y),weight (z)), column numbers (2,3) or predictor order (p1,p2); separate pairs with ;.','작업상관 independence / exchangeable / AR(1); 분산 보정 상관·군집 강건 표준오차. 선택적 다섯째 인수 small은 Mancl-DeRouen 공분산·군집 수-계수 수 자유도의 t 추론을 적용합니다. 상호작용이 없으면 넷째 인수는 []입니다. 구간 해석 시 군집 수를 확인하세요. AR(1): 행 순서·등간격. 상호작용은 열 이름(age,weight), 표시된 열 문자·라벨(y,z / age (y),weight (z)), 열 번호(2,3), 설명변수 순서(p1,p2)로 입력하고 쌍은 ;로 구분합니다.'),
-     'kstest':('Compare two samples or a specified continuous distribution.','두 표본 또는 지정한 연속분포와 비교합니다.'),
-     'impute':('Analyze missing numeric cells by mean, median, mode, regression or k-NN; Apply to current data writes the replacements while retaining observed values and headers. Reanalyze after editing data.','숫자 자료의 결측값을 평균·중앙값·최빈값·회귀·k-NN으로 분석합니다. 현재 데이터에 적용하면 관측값·헤더를 유지하며 결측 셀을 실제로 대체합니다. 편집 후에는 다시 분석하세요.'),
-     'crossvalidate':('Held-out folds fitted on training rows only; choose split, model and penalty. Stratified splits require at least as many observations in each 0/1 class as folds; reduce folds when needed.','훈련 행으로만 적합하는 홀드아웃 폴드; 분할·모형·벌점을 선택합니다. 층화 분할은 0/1 각 클래스의 표본 수가 폴드 수 이상이어야 하며 부족하면 폴드 수를 줄이세요.')
+def build_form_help(definitions):
+    """Keep each analysis self-contained while reusing concise function copy."""
+    return {
+        id_: FORM_HELP.get(id_, (catalog_description(item), catalog_description(item, True)))
+        for id_, item in definitions.items()
     }
-    form_help['tinterval']=('Select a sample column and confidence level. Uses the sample SD and Student t distribution for the mean interval.', '표본 열과 신뢰수준을 선택합니다. 표본 표준편차와 Student t 분포로 평균 구간을 계산합니다.')
-    form_help['zinterval']=('Select a sample column and confidence level; enter the known population SD.', '표본 열·신뢰수준을 선택하고 알려진 모집단 표준편차를 입력합니다.')
-    form_help['propztest']=('Counts: rows are success/trial batches for one population. Binary data: select a sample column and success value. H0: p=p0; p0 must be between 0 and 1. Expected successes and failures below 10 flag unreliable normal approximation.', '빈도 입력의 각 행은 같은 모집단의 성공 수·시행 수입니다. 이항 자료는 표본 열·성공 값을 선택합니다. H0: p=p0, p0는 0과 1 사이입니다. 기대 성공·실패 수가 10 미만이면 정규근사 주의를 표시합니다.')
-    form_help['modelcompare']=COMPARISON_HELP
-    form_help['logisticcompare']=('LRT compares nested MLEs on common complete training rows. Validation columns are matched by unique headers; select any saved dataset, including the training dataset. Reusing training data evaluates performance on that data. Boundary probability belongs to class 1. Independent/holdout validation: paired DeLong AUC CI/p and exact McNemar p. CV: refit both models in every paired stratified bootstrap; pooled-CV DeLong/McNemar p values are not reported. Bootstrap CIs for accuracy, log loss and Brier score. Finite identifiable MLEs and independent observations are required. Numeric differences are B−A; lower loss/Brier indicates improvement.','LRT는 공통 완전 훈련 행의 중첩 MLE를 비교합니다. 검증 열은 고유한 header로 맞추며 훈련 데이터셋을 포함한 저장 데이터셋을 선택할 수 있습니다. 훈련 데이터를 재사용하면 해당 데이터에서의 성능을 평가합니다. 기준 확률과 같은 값은 1로 분류합니다. 독립·홀드아웃 검증은 대응 DeLong AUC 구간·p와 정확 McNemar p를 제공합니다. CV는 대응 층화 부트스트랩마다 두 모형을 재적합하며 합쳐진 CV 예측에 DeLong·McNemar p를 적용하지 않습니다. 정확도·Log loss·Brier score의 부트스트랩 구간을 제공합니다. 유한·식별 가능한 MLE와 독립 관측을 가정합니다. 차이는 B−A이며 loss·Brier 감소가 개선입니다.')
-    form_help['propztest2']=('Counts: exactly two rows, Group A then Group B. Binary data: independent columns or group/value columns with a common success value. H0: pA=pB; left/right alternatives refer to A−B. Uses the pooled null proportion; paired outcomes require McNemar.', '빈도 입력은 정확히 두 행이며 A 그룹·B 그룹 순서입니다. 이항 자료는 독립된 두 열 또는 그룹·값 열과 공통 성공 값을 선택합니다. H0: pA=pB, 좌측·우측은 A−B 기준입니다. 귀무가설의 합동 비율을 사용하며 대응 결과는 McNemar를 사용합니다.')
-    form_help['arima'] = tuple(TIME_HELP[i]+DATE_HELP[i] for i in range(2))
-    form_help['sarima'] = (definitions['sarima']['help'],definitions['sarima']['helpKo'])
-    for spec in [*SOCIAL_SPECS, *RESEARCH_SPECS, *EXTENSION_SPECS, *rank_specs]:
-        form_help[spec[0]] = (spec[6], spec[7])
-    for id_ in ('scheffe','dunnett','conover'):
-        form_help[id_]=(definitions[id_]['help'],definitions[id_]['helpKo'])
-    return form_help
-
-
-def append_cluster_help(item):
-    if item['id'] in ('mixedmodel','gee','glmm'):
-        starts={'mixedmodel':('Optional fourth argument:', '선택적 넷째 인수:'), 'glmm':('Few-subject Wald', '소수 대상의 Wald'), 'gee':('Optional fifth argument', '선택적 다섯째 인수')}
-        first,second=starts[item['id']]
-        extra=item['formHelp'][item['formHelp'].index(first):]
-        extra_ko=item['formHelpKo'][item['formHelpKo'].index(second):]
-        if item['id']=='gee':
-            extra=extra.split(' AR(1):')[0]
-            extra_ko=extra_ko.split(' AR(1):')[0]
-        item['help'] += ' ' + extra
-        item['helpKo'] += ' ' + extra_ko
-
-
-def append_research_help(schema):
-    for id_,extra in research_extra.items():
-        item=next(item for item in schema if item['id']==id_)
-        item['help']+=extra[0];item['helpKo']+=extra[1];item['formHelp']+=extra[0];item['formHelpKo']+=extra[1]
-    meta=next(item for item in schema if item['id']=='metaanalysis')
-    meta['help']+=continuous_help[0];meta['helpKo']+=continuous_help[1];meta['formHelp']+=continuous_help[0];meta['formHelpKo']+=continuous_help[1]

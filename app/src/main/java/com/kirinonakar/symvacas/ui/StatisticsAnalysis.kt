@@ -130,18 +130,42 @@ import org.json.JSONArray
         val analysis=guidedAnalyses.getValue(test)
         key(analysis){AdvancedStatistics(m,data,kind,"general",embedded=true,fixedAnalysis=analysis)}
     } else {
-    val usageNotes=when(category) {
-        "Mean comparisons"->"Blank cells are omitted. One-sample t and z tests use the selected numeric column. Independent comparisons use each selected column separately; paired t tests use complete pairs. ANOVA compares the selected independent groups. z tests require known population standard deviations."
-        "Rank & nonparametric tests"->"Blank cells are omitted. Wilcoxon uses one sample or complete pairs. Mann–Whitney compares two independent groups; Kruskal–Wallis compares the selected independent groups. For group/value data, choose the group and value columns and the matching rule for paired analyses."
-        "Categorical data"->"χ² and Fisher tests use only rows with values in both selected categorical columns. χ² requires at least two categories per column; Fisher requires exactly two. Category labels are supported."
-        else->"Blank cells are omitted from tests. Choose x,y or x,y,z data for group comparisons."
-    }
-    StatisticsExplanation("Usage notes",tr(usageNotes),"statistics-analysis-data-help",expansionKey="general-usage-notes")
+    val ko=isKorean()
+    val usageNotes=buildList {
+        add(if(ko)when(test) {
+            "t test"->when {pairedTest->"같은 대상의 완전한 쌍으로 평균 차이를 비교합니다.";twoSample->"독립 두 그룹의 평균을 비교합니다. Welch는 이분산, Student는 등분산 가정입니다.";else->"선택한 숫자 열의 평균을 기준값과 비교합니다. 빈 셀은 제외합니다."}
+            "z test"->"선택한 표본의 평균을 비교합니다. 알려진 모집단 표준편차를 입력하세요."
+            "ANOVA"->if(anovaMethod.startsWith("Welch"))"독립 그룹의 평균 비교: Welch ANOVA·Games–Howell 사후비교·가정 점검." else "등분산 독립 그룹의 평균 비교: ANOVA·Tukey–Kramer 사후비교·가정 점검."
+            "Wilcoxon"->"일표본 또는 완전한 대응 쌍의 차이를 순위로 비교합니다. 위치 차이 해석에는 차이의 대칭성을 확인하세요."
+            "Mann–Whitney"->"독립 두 그룹의 분포를 순위로 비교합니다. 위치 차이 해석에는 비슷한 분포 형태가 필요합니다."
+            "Kruskal–Wallis"->"선택한 독립 그룹들의 분포를 순위로 비교합니다."
+            "χ² test"->"두 범주 열의 완전한 행으로 연관성을 검정합니다. 열마다 범주 2개 이상이 필요합니다."
+            "Fisher exact"->"두 이항 범주 열의 완전한 행으로 2×2 연관성을 검정합니다."
+            else->"분석할 열을 선택하세요. 빈 셀은 제외합니다."
+        } else when(test) {
+            "t test"->when {pairedTest->"Compare mean differences using complete pairs from the same subjects.";twoSample->"Compare independent means: Welch allows unequal variances; Student assumes equal variances.";else->"Compare the selected numeric sample mean with a target. Blank cells are omitted."}
+            "z test"->"Compare sample means using known population standard deviations."
+            "ANOVA"->if(anovaMethod.startsWith("Welch"))"Independent mean comparisons: Welch ANOVA, Games–Howell and assumption checks." else "Equal-variance independent mean comparisons: ANOVA, Tukey–Kramer and assumption checks."
+            "Wilcoxon"->"Rank comparison of one-sample or complete paired differences. A location interpretation assumes symmetric differences."
+            "Mann–Whitney"->"Rank comparison of two independent distributions. A location interpretation needs similar shapes."
+            "Kruskal–Wallis"->"Rank comparison of the selected independent group distributions."
+            "χ² test"->"Test association using complete rows in two categorical columns, with at least two categories per column."
+            "Fisher exact"->"Test 2×2 association using complete rows in two binary category columns."
+            else->"Choose analysis columns. Blank cells are omitted."
+        })
+        if(groupedMode)add(if(test in listOf("ANOVA","Kruskal–Wallis","χ² test")) {
+            if(ko)"그룹 열·값 열을 선택하면 모든 그룹을 비교합니다." else "Choose group and value columns to compare all groups."
+        } else if(ko)"그룹 열·값 열과 비교할 그룹을 선택하세요." else "Choose group and value columns and the groups to compare.")
+        if(groupedMode&&pairedTest&&matching=="Row order within each group")add(if(ko)"행 순서로 대응시키려면 두 그룹의 대상 순서가 같아야 합니다. 결측값이 있으면 대상 ID로 연결하세요." else "Row pairing requires the same subject order in both groups. Use subject-ID matching with missing values.")
+        if(test=="χ² test")add(if(ko)"Yates 보정은 2×2 표에 적용합니다. 끄면 Pearson χ²를 사용합니다." else "Yates correction applies to 2×2 tables. Turn it off for Pearson χ².")
+        if(meanTest||test in listOf("Fisher exact","Wilcoxon","Mann–Whitney"))add(if(ko)"대립가설 기본값은 양측입니다." else "The default alternative is two-sided.")
+        if(test.endsWith("interval"))add(if(ko)"신뢰수준은 0.95 또는 95로 입력하세요." else "Enter confidence levels as 0.95 or 95.")
+    }.joinToString("\n")
+    StatisticsExplanation("Usage notes",usageNotes,"statistics-analysis-data-help",expansionKey="general-usage-notes")
     Column(verticalArrangement=Arrangement.spacedBy(2.dp)) {
         if(test=="ANOVA") {
             StatisticsSelectionTitle("ANOVA method")
             Choices(listOf("Welch (unequal variances)","Classic (equal variances)"),anovaMethod,{anovaMethod=it})
-            StatisticsExplanation("Usage notes",tr(if(anovaMethod.startsWith("Welch"))"Set analysis: Welch ANOVA + Games–Howell + assumptions" else "Set analysis: ANOVA + Tukey–Kramer + assumptions"),"statistics-anova-help")
         }
         if(test=="t test"&&(groupedMode&&!pairedComparison||!groupedMode&&activeColumn=="x-y")) {
             StatisticsSelectionTitle("Independent t method")
@@ -167,7 +191,6 @@ import org.json.JSONArray
             if(test=="Wilcoxon"||test=="t test"&&pairedComparison) {
                 StatisticsSelectionTitle("Pair matching");Choices(listOf("Row order within each group","Subject ID"),matching,{matching=it})
                 if(matching=="Subject ID"){StatisticsSelectionTitle("Subject column");Choices(columnLabels,columnLabels[subjectIndex],{subjectColumn=dataColumns[columnLabels.indexOf(it)]},translate=false)}
-                else StatisticsExplanation("Usage notes",tr("Row order pairing requires the same subject order in each group. Missing values require subject-ID matching."),"statistics-pairing-help")
                 if(!supportsGroupedColumns)pairedPlan.exceptionOrNull()?.message?.let {Text(tr(it),fontSize=11.sp,color=MaterialTheme.colorScheme.error)}
             }
         }
@@ -203,10 +226,8 @@ import org.json.JSONArray
             val names=columnOptions.map {name->dataColumns.indexOf(name).takeIf {it>=0}?.let {columnLabels[it]} ?: tr(name)}
             Choices(names,names[columnOptions.indexOf(activeColumn).coerceAtLeast(0)],{column=columnOptions[names.indexOf(it)]},translate=false)
         }
-        if(categorySelection)StatisticsExplanation("Usage notes",tr("Only complete rows in the two selected columns are analyzed."),"statistics-category-help")
-        else if(groupedMode)StatisticsExplanation("Usage notes",tr("Select group and value columns. Paired analyses use the selected matching rule; ANOVA compares all groups."),"statistics-grouped-help",test)
-        else if(test=="Wilcoxon"&&pairedTest)Text(sampleNames.joinToString(" − ")+" · "+tr("Complete pairs"),fontSize=11.sp,color=c.muted)
-        else if(twoSample||pairedTest)Text(sampleNames.joinToString(" − ")+" · "+tr(if(pairedTest)"Complete pairs" else "Independent samples"),fontSize=11.sp,color=c.muted)
+        if(!categorySelection&&!groupedMode&&test=="Wilcoxon"&&pairedTest)Text(sampleNames.joinToString(" − ")+" · "+tr("Complete pairs"),fontSize=11.sp,color=c.muted)
+        else if(!categorySelection&&!groupedMode&&(twoSample||pairedTest))Text(sampleNames.joinToString(" − ")+" · "+tr(if(pairedTest)"Complete pairs" else "Independent samples"),fontSize=11.sp,color=c.muted)
     }
     if(!multiColumnTest&&test !in listOf("Shapiro–Wilk","Wilcoxon")) {
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -230,7 +251,6 @@ import org.json.JSONArray
             Checkbox(checked=yatesCorrection,onCheckedChange={yatesCorrection=it},modifier=Modifier.testTag("statistics-yates"))
             Text(tr("Yates continuity correction"),fontSize=12.sp)
         }
-        StatisticsExplanation("Usage notes",tr("Applies only to 2×2 tables. Turn off for Pearson χ²."),"statistics-yates-help")
     }
     if(test in listOf("Fisher exact","Wilcoxon","Mann–Whitney")) {
         Column(verticalArrangement=Arrangement.spacedBy(2.dp)) {
@@ -278,7 +298,6 @@ import org.json.JSONArray
             onCancel={m.cancel()},onClick={command?.let {m.calculationAction="statistics-analysis";m.calculateStatistics(it,termLabels)}})
     }
     statisticsReportFor(m.statisticsResult,m.statisticsResultSource,statisticsTestAnalyses(test))?.let {StatisticsResultReport(m,it)}
-    StatisticsExplanation("Usage notes",if(isKorean())"검정의 기본 대립가설은 양측입니다. 신뢰수준은 0.95 또는 95로 입력할 수 있습니다." else "Tests use a two-sided alternative by default. Confidence levels accept 0.95 or 95.","statistics-test-options-help",test)
     }
     AdvancedStatistics(m,data,kind,"tests","More tests & effect sizes")
 }

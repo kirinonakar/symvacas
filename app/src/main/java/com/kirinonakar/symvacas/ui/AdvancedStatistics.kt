@@ -276,7 +276,6 @@ internal fun advancedStatisticsFormSettings(analysis:String,input:String,formsTe
                 OutlinedButton(enabled=valid,modifier=Modifier.testTag("statistics-imputation-apply"),onClick={
                     runCatching {statisticsImputationCSV(data,values!!,columnLimit)}.onSuccess {updated->imputationData=null;onDataApplied(updated);message=appliedMessage}.onFailure {message=it.message.orEmpty()}
                 }){Text(tr("Apply to current data"))}
-                StatisticsExplanation("Usage notes",tr("Apply replaces only missing cells in the current data; observed values and headers are retained. Reanalyze after editing data."),"statistics-imputation-apply-help",selected)
             }
             if(message.isNotBlank())Text(message,color=MaterialTheme.colorScheme.error,fontSize=12.sp)
             statisticsReportFor(m.statisticsResult,m.statisticsResultSource,setOf(selected,if(selected=="modelcompare")"logisticcompare" else selected))?.let {report->StatisticsResultReport(m,report){plan->
