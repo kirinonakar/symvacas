@@ -5,6 +5,24 @@ import org.junit.Test
 
 class LatexInputTest {
 
+    @Test fun alignedSurfacePasteKeepsOneRowAndEquationPasteKeepsSeparateRows() {
+        val examples=javaClass.getResourceAsStream("/latex-input.tsv")!!.bufferedReader().readLines()
+            .filter {it.startsWith("""\begin{aligned}""")}.map {it.split('\t')}
+        for((source,expected) in examples) {
+            val multiline=source.replace("\\\\","\\\\\n")
+            for(text in listOf(source,multiline,"\\[\n$multiline\n\\]","$$\n$multiline\n$$")) {
+                assertEquals(expected,LatexInput.convertPaste(text,multiline=true,surface=true))
+                val equations=Parser(expected).parse().args.map {expected.substring(it.start,it.end)}.joinToString("\n")
+                assertEquals(equations,LatexInput.convertPaste(text,multiline=true))
+                assertEquals("z=0\n$equations\nz=1",LatexInput.convertPaste("z=0\n$source\nz=1",multiline=true))
+                val edit=LatexInput.convertEdit(Editor("z=0\nold\nz=1",7,4),"z=0\n$text\nz=1",multiline=true,surface=true)!!
+                assertEquals("z=0\n$expected\nz=1",edit.source)
+                assertEquals(4+expected.length,edit.cursor)
+            }
+        }
+        for(source in listOf("""\begin{aligned}x&=1\\y&=\end{aligned}""","""\begin{aligned}x&=1\end{matrix}"""))assertNull(LatexInput.convertPaste(source,multiline=true,surface=true))
+    }
+
     @Test fun multilineCasesPreserveBranchesParametersAndPasteSelection() {
         val (source,expected)=javaClass.getResourceAsStream("/latex-input.tsv")!!.bufferedReader().readLines()
             .first {it.startsWith("""\operatorname{f}\left(x\right) = \begin{cases}""")}.split('\t')

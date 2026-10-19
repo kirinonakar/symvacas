@@ -7,6 +7,9 @@ import androidx.compose.runtime.staticCompositionLocalOf
 val LocalLanguage = staticCompositionLocalOf { "en" }
 
 private val korean = mapOf(
+    "Parametric surfaces: enter [x(u,v),y(u,v),z(u,v)]. Set u and v intervals in Range (default 0 to 2π)." to "매개변수 곡면은 [x(u,v),y(u,v),z(u,v)]로 입력하세요. 범위에서 u, v 구간을 설정합니다(기본값 0~2π).",
+    "Define helpers inside one list, followed by z=... or x=...,y=...,z=.... Free t creates an animation slider." to "하나의 목록 안에 보조식을 정의하고 z=... 또는 x=...,y=...,z=...를 입력하세요. 자유변수 t는 애니메이션 슬라이더로 표시됩니다.",
+    "Enter finite increasing u and v ranges" to "u, v 범위에 유한한 값을 입력하고 최댓값을 최솟값보다 크게 설정하세요.",
     "Enter one [x(t),y(t)] pair per line." to "한 줄에 [x(t),y(t)] 쌍을 하나씩 입력하세요.",
     "Set the t interval in Range. Angles are in radians." to "범위에서 t 구간을 설정하세요. 각도 단위는 라디안입니다.",
     "Enter one radius expression per line; r= is optional." to "한 줄에 반지름 수식을 하나씩 입력하세요. r=는 생략할 수 있습니다.",

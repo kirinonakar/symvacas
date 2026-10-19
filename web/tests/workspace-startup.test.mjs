@@ -246,6 +246,27 @@ test('bare comma inequalities reach the graph worker as one selectable region',a
   assert.deepEqual(errors,[]);
 });
 
+test('surface clipboard and keyboard paste convert aligned coordinates before source parsing',async context=>{
+  const [body,expected]=readFileSync(new URL('../../math/src/test/resources/latex-input.tsv',import.meta.url),'utf8').split(/\r?\n/)
+    .find(line=>line.startsWith(String.raw`\begin{aligned}r&=`)).split('\t');
+  const source=`\\[\n${body.replaceAll(String.raw`\\`,'\\\\\n')}\n\\]`;
+  const {window,get,graphs,requests,errors}=graphFixture(context);
+  get('graph-kind').value='surface';get('graph-kind').onchange();
+  const field=get('graph-source');field.value='z=0\nold\nz=1';field.setSelectionRange(4,7);
+  const event=new window.Event('paste',{bubbles:true,cancelable:true});Object.defineProperty(event,'clipboardData',{value:{getData:()=>source}});
+  field.dispatchEvent(event);
+  assert.equal(event.defaultPrevented,true);assert.equal(field.value,`z=0\n${expected}\nz=1`);
+  assert.equal(field.selectionStart,4+expected.length);assert.equal(get('graph-line-numbers').children.length,3);
+  assert.equal(get('graph-u-ranges').hidden,false);assert.equal(get('graph-v-ranges').hidden,false);
+  field.select();field.dispatchEvent(new window.InputEvent('beforeinput',{bubbles:true,inputType:'insertFromPaste',data:source}));
+  field.value=source;field.setSelectionRange(source.length,source.length);
+  field.dispatchEvent(new window.InputEvent('input',{bubbles:true,inputType:'insertFromPaste',data:source}));
+  assert.equal(field.value,expected);assert.equal(get('graph-line-numbers').children.length,1);
+  assert.equal(graphs.snapshot().sources.surface,expected);
+  await graphs.run();assert.equal(requests.at(-1).trees.length,1);
+  assert.equal(requests.at(-1).trees[0].args.length,4);assert.deepEqual(errors,[]);
+});
+
 test('surface height colors restore, persist and hide only the solid color picker',context=>{
   const {get,graphs,errors}=graphFixture(context,{saved:{surface:{colorMode:'rainbow'}}});
   get('graph-kind').value='surface';get('graph-kind').onchange();
@@ -259,6 +280,27 @@ test('surface height colors restore, persist and hide only the solid color picke
   get('graph-kind').value='space';get('graph-kind').onchange();
   assert.equal(get('graph-surface-color-mode-label').hidden,true);
   assert.deepEqual(errors,[]);
+});
+
+test('parametric surfaces send independent u/v ranges, preserve them and expose only t as a slider',async context=>{
+  const source='[R=2+.35*sin(6*u-3*t),x=(R+cos(v))*cos(u),y=(R+cos(v))*sin(u),z=sin(v)]';
+  const {get,graphs,requests,errors}=graphFixture(context,{saved:{sources:{surface:source},ranges:{'graph-u-min':-1,'graph-u-max':2,'graph-v-min':3,'graph-v-max':4}},
+    execute:()=>({ok:true,parameters:['t'],surface:[[[0,0,0],[1,0,1]],[[0,1,1],[1,1,0]]],zMin:0,zMax:1,parametricSurface:true})});
+  get('graph-kind').value='surface';get('graph-kind').onchange();
+  assert.equal(get('graph-u-ranges').hidden,false);assert.equal(get('graph-v-ranges').hidden,false);
+  assert.equal(get('graph-t-ranges').hidden,true);
+  await graphs.run();
+  assert.deepEqual(errors,[]);
+  assert.deepEqual([requests.at(-1).surfaceUMin,requests.at(-1).surfaceUMax,requests.at(-1).surfaceVMin,requests.at(-1).surfaceVMax],[-1,2,3,4]);
+  assert.deepEqual([...get('graph-parameters').querySelectorAll('[data-parameter]')].map(node=>node.dataset.parameter),['t']);
+  get('graph-u-max').value='5';get('graph-u-max').onchange();await graphs.run();
+  assert.equal(requests.at(-1).surfaceUMax,5);
+  assert.equal(graphs.snapshot().ranges['graph-u-max'],5);
+  get('graph-source').value='[r1=sqrt((x-2)^2+y^2),z=sin(r1-t)]';get('graph-source').oninput();
+  assert.equal(get('graph-mixed-ranges').hidden,true);
+  get('graph-source').value=source;get('graph-source').oninput();
+  assert.equal(get('graph-u-ranges').hidden,false);
+  assert.equal(graphs.snapshot().ranges['graph-u-max'],5);
 });
 
 

@@ -30,7 +30,7 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
     Column(Modifier.fillMaxWidth().zIndex(1f)) {
         LineNumberedMathInput(m.graphSource,{m.updateGraphSource(it)},tr("Graph expression"),
             Modifier.fillMaxWidth().padding(start=10.dp,end=10.dp,top=8.dp),
-            visibleLines=if(m.graphKind=="differential")1 else 3,tag="graph")
+            visibleLines=if(m.graphKind=="differential")1 else 3,tag="graph",surface=m.graphKind=="surface")
         TextButton(onClick={inputHelpOpen=!inputHelpOpen},modifier=Modifier.padding(horizontal=4.dp).testTag("graph-input-help-toggle")) {
             Text("${if(inputHelpOpen)"▾" else "▸"} ${tr("Graph input help")}",fontSize=12.sp)
         }

@@ -5,6 +5,45 @@ import sympy as s
 from calc_graph_common import graph_function, _finite_real
 
 
+def angular_surface(expression,x,y,sliders,xmin,xmax,ymin,ymax,count):
+    """Resolve atan2's angular detail on rings clustered around its singularity.
+
+    Do not fan triangles into the origin: an angle-dependent height can have
+    different directional limits there. The innermost ring is subpixel wide.
+    Keep the atan2 branch cut as two independent mesh boundaries.
+    """
+    angle=s.atan2(y,x)
+    if not expression.has(angle) or not (xmin<=0<=xmax and ymin<=0<=ymax):return None
+    frequency=1.0
+    for term in expression.atoms(s.sin,s.cos):
+        coefficient=term.args[0].expand().coeff(angle)
+        if coefficient.has(x,y):continue
+        try:value=_finite_real(graph_function(coefficient,(),sliders)())
+        except (ValueError,TypeError,ZeroDivisionError,OverflowError):value=None
+        if value is not None:frequency=max(frequency,abs(value))
+    angles=max(64,min(256,max(count*2,math.ceil(frequency*20))))
+    angles=4*math.ceil(angles/4)
+    radial_count=max(32,count)
+    radius=math.hypot(max(abs(xmin),abs(xmax)),max(abs(ymin),abs(ymax)))/math.cos(math.pi/angles)
+    if not math.isfinite(radius) or radius<=0:return None
+    radii=[radius*max(1e-6,(i/radial_count)**2) for i in range(radial_count+1)]
+    snap=lambda value:math.copysign(0.0,value) if abs(value)<1e-14 else value
+    circle=[(snap(math.cos(-math.pi+2*math.pi*i/angles)),snap(math.sin(-math.pi+2*math.pi*i/angles))) for i in range(angles+1)]
+    fn=graph_function(expression,(x,y),sliders)
+    mesh=[];heights=[]
+    for r in radii:
+        row=[]
+        for cx,cy in circle:
+            xx,yy=r*cx,r*cy
+            try:zz=_finite_real(fn(xx,yy))
+            except (ValueError,TypeError,ZeroDivisionError,OverflowError):zz=None
+            row.append([xx,yy,zz] if zz is not None else None)
+            if zz is not None and xmin<=xx<=xmax and ymin<=yy<=ymax:heights.append(zz)
+        mesh.append(row)
+    if not heights:return None
+    return {'surface':mesh,'angularSurface':True,'zMin':min(heights),'zMax':max(heights),'surfaceSamples':count}
+
+
 @lru_cache(maxsize=64)
 def radial_sine_coefficient(expression,x,y):
     numerator,denominator=s.fraction(expression)

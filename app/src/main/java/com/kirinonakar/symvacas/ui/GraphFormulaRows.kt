@@ -14,6 +14,7 @@ import com.kirinonakar.symvacas.calculator.isImplicitSurface
 import com.kirinonakar.symvacas.calculator.graphShadingBody
 import com.kirinonakar.symvacas.calculator.graphInputTree
 import com.kirinonakar.symvacas.calculator.graphPlanarKind
+import com.kirinonakar.symvacas.calculator.surfaceDefinitionTree
 import com.kirinonakar.symvacas.math.Parser
 import com.kirinonakar.symvacas.ui.theme.LocalInstrument
 import org.json.JSONObject
@@ -31,6 +32,10 @@ internal fun graphEquationTree(kind:String,source:String,index:Int,displayDigits
         else->"f${index+1}(x)"
     }
     val parsed=runCatching {Parser(source).parse()}.getOrNull()
+    if(kind=="surface" && parsed!=null)surfaceDefinitionTree(parsed)?.let {definition->
+        val equation=if(parsed.kind=="relation" || definition.args.any {it.kind=="relation"})source else "[x(u,v),y(u,v),z(u,v)]=$source"
+        return if(displayDigits==null)decimalFractionFormulaTree(equation) else regressionFormulaDisplayTree(equation,displayDigits)
+    }
     if(kind=="cartesian" && runCatching {graphPlanarKind(parsed ?: graphInputTree(source))}.getOrNull()=="inequality") {
         val equation=if(parsed==null)"[$source]" else source
         return if(displayDigits==null)decimalFractionFormulaTree(equation) else regressionFormulaDisplayTree(equation,displayDigits)

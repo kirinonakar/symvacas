@@ -48,6 +48,11 @@ cos(x)</textarea></div>
           <pre>z=sin(x)*cos(y)
 x^2+y^2+z^2=9</pre>
           <p class="hint">Set x, y and z bounds in Range. Automatic z range uses the y bounds for implicit surfaces.</p>
+          <p class="hint">Parametric surfaces: enter [x(u,v),y(u,v),z(u,v)]. Set u and v intervals in Range (default 0 to 2π).</p>
+          <pre>[(2+cos(v))*cos(u),(2+cos(v))*sin(u),sin(v)]</pre>
+          <p class="hint">Define helpers inside one list, followed by z=... or x=...,y=...,z=.... Free t creates an animation slider.</p>
+          <pre>[R=2+0.35*sin(6*u-3*t),x=(R+cos(v))*cos(u),y=(R+cos(v))*sin(u),z=sin(v)]
+[r1=sqrt((x-2)^2+y^2),r2=sqrt((x+2)^2+y^2),z=sin(4*r1-5*t)/(1+0.2*r1)+sin(4*r2-5*t)/(1+0.2*r2)]</pre>
         </div>
         <div data-graph-help-kind="space" hidden>
           <p class="hint">Enter one [x(t),y(t),z(t)] triple per line (up to 5).</p>
@@ -92,6 +97,8 @@ r=2*cos(3*θ)
         <div class="form-row"><label>z min<input id="graph-zmin" type="number" step="any" value="-1"></label><label>z max<input id="graph-zmax" type="number" step="any" value="1"></label></div>
       </div>
       <div id="graph-mixed-ranges" class="form-row ranges" hidden>
+        <div id="graph-u-ranges" class="graph-range-domain" hidden><label>u min<input id="graph-u-min" type="number" value="0" step="any"></label><label>max<input id="graph-u-max" type="number" value="6.283185307179586" step="any"></label></div>
+        <div id="graph-v-ranges" class="graph-range-domain" hidden><label>v min<input id="graph-v-min" type="number" value="0" step="any"></label><label>max<input id="graph-v-max" type="number" value="6.283185307179586" step="any"></label></div>
         <div id="graph-t-ranges" class="graph-range-domain" hidden><label>t min<input id="graph-parameter-min" type="number" value="0" step="any"></label><label>max<input id="graph-parameter-max" type="number" value="6.283185307179586" step="any"></label></div>
         <div id="graph-theta-ranges" class="graph-range-domain" hidden><label>θ min<input id="graph-theta-min" type="number" value="0" step="any"></label><label>max<input id="graph-theta-max" type="number" value="6.283185307179586" step="any"></label></div>
       </div>

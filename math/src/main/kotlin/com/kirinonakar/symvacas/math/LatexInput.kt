@@ -9,6 +9,8 @@ object LatexInput {
     private val commandPattern = Regex("""\\([A-Za-z]+)""")
     private val bracedPower = Regex("""\^\s*\{""")
     private val mathFences = listOf("\\\\[" to "\\\\]", "\\\\(" to "\\\\)", "\\[" to "\\]", "\\(" to "\\)", "$$" to "$$", "$" to "$")
+    private val alignedEnvironments=setOf("aligned","align","align*","gathered","split")
+    private val alignedStart=Regex("""^\s*\\begin\s*\{(?:aligned|align\*?|gathered|split)\}""")
 
     /** Read complete math blocks only; never discard surrounding prose or matrix row separators. */
     private fun mathBlocks(input:String):List<String>? {
@@ -49,19 +51,28 @@ object LatexInput {
     }
 
     /** Preserve independent graph/equation lines, including the surrounding line's precedence. */
-    fun convertPaste(input:String,prefix:String="",suffix:String="",multiline:Boolean=false):String? {
+    fun convertPaste(input:String,prefix:String="",suffix:String="",multiline:Boolean=false,surface:Boolean=false):String? {
+        fun block(text:String,before:String,after:String):String? {
+            val converted=convert(text,before,after) ?: return null
+            val body=mathBlocks(text)?.singleOrNull() ?: text
+            if(multiline && !surface && alignedStart.containsMatchIn(body)) {
+                val tree=Parser(converted).parse()
+                return tree.args.joinToString("\n") {converted.substring(it.start,it.end)}
+            }
+            return converted
+        }
         if(multiline)mathBlocks(input)?.let {blocks->
             return blocks.mapIndexed {index,body->
-                convert("\\[$body\\]",if(index==0)prefix.substringAfterLast('\n') else "",if(index==blocks.lastIndex)suffix.substringBefore('\n') else "") ?: return null
+                block("\\[$body\\]",if(index==0)prefix.substringAfterLast('\n') else "",if(index==blocks.lastIndex)suffix.substringBefore('\n') else "") ?: return null
             }.joinToString("\n")
         }
-        if(!multiline || '\n' !in input)return convert(input,prefix.substringAfterLast('\n'),suffix.substringBefore('\n'))
+        if(!multiline || '\n' !in input)return block(input,prefix.substringAfterLast('\n'),suffix.substringBefore('\n'))
         val lines=input.split('\n')
         var changed=false
         val converted=lines.mapIndexed {index,line->
-            val result=convert(line,if(index==0)prefix.substringAfterLast('\n') else "",if(index==lines.lastIndex)suffix.substringBefore('\n') else "")
+            val result=block(line,if(index==0)prefix.substringAfterLast('\n') else "",if(index==lines.lastIndex)suffix.substringBefore('\n') else "")
             // A wrapped expression or matrix can span physical lines; convert it as one unit.
-            if(result==null && (line.trim().startsWith('$') || line.contains('\\') || bracedPower.containsMatchIn(line)))return convert(input,prefix.substringAfterLast('\n'),suffix.substringBefore('\n'))
+            if(result==null && (line.trim().startsWith('$') || line.contains('\\') || bracedPower.containsMatchIn(line)))return block(input,prefix.substringAfterLast('\n'),suffix.substringBefore('\n'))
             if(result!=null)changed=true
             result ?: line
         }.joinToString("\n")
@@ -69,7 +80,7 @@ object LatexInput {
     }
 
     /** Convert only inserted text and leave selection-only updates intact. */
-    fun convertEdit(previous:Editor,updated:String,multiline:Boolean=false):Editor? {
+    fun convertEdit(previous:Editor,updated:String,multiline:Boolean=false,surface:Boolean=false):Editor? {
         if(updated==previous.source)return null
         val start=minOf(previous.cursor,previous.anchor)
         val end=maxOf(previous.cursor,previous.anchor)
@@ -77,10 +88,10 @@ object LatexInput {
         val suffix=previous.source.substring(end)
         if(updated.length>=prefix.length+suffix.length && updated.startsWith(prefix) && updated.endsWith(suffix)) {
             val inserted=updated.substring(prefix.length,updated.length-suffix.length)
-            convertPaste(inserted,prefix,suffix,multiline)?.let {return Editor(prefix+it+suffix,start+it.length)}
+            convertPaste(inserted,prefix,suffix,multiline,surface)?.let {return Editor(prefix+it+suffix,start+it.length)}
             return null
         }
-        return convertPaste(updated,multiline=multiline)?.let {Editor(it)}
+        return convertPaste(updated,multiline=multiline,surface=surface)?.let {Editor(it)}
     }
 
     private fun convertBody(source:String):String = buildString {
@@ -141,6 +152,9 @@ object LatexInput {
             }
             val command=source.substring(start,index)
             if(command !in commands)error("Unsupported LaTeX command: $command")
+            // A command starts a new token: r\sin(v) must not become rsin(v).
+            if((command in functions || command in greek || command in setOf("operatorname","mathrm","sqrt","log","infty","binom","int","sum","prod","lim")) &&
+                Regex("[A-Za-z_][A-Za-z0-9_]*$").containsMatchIn(toString().trimEnd()))append('*')
             when(command) {
                 "boxed" -> {
                     val (raw,next)=group(source,index)
@@ -153,9 +167,9 @@ object LatexInput {
                 }
                 "begin" -> {
                     val (environment,start)=group(source,index)
-                    require(environment in setOf("matrix","pmatrix","bmatrix","Bmatrix","vmatrix","Vmatrix","smallmatrix","cases","dcases")) {"Unsupported LaTeX environment"}
+                    require(environment in alignedEnvironments || environment in setOf("matrix","pmatrix","bmatrix","Bmatrix","vmatrix","Vmatrix","smallmatrix","cases","dcases")) {"Unsupported LaTeX environment"}
                     val (content,next)=environmentBody(source,start,environment)
-                    append(convertTable(content,environment in setOf("cases","dcases")))
+                    append(convertTable(content,environment in setOf("cases","dcases"),environment in alignedEnvironments))
                     index=next
                 }
                 "int", "sum", "prod" -> {
@@ -333,7 +347,7 @@ object LatexInput {
         error("Unclosed LaTeX environment")
     }
 
-    private fun convertTable(content:String,cases:Boolean):String {
+    private fun convertTable(content:String,cases:Boolean,aligned:Boolean=false):String {
         val rows=mutableListOf(mutableListOf<String>())
         var index=0;var start=0;var depth=0;var nested=0
         while(index<content.length) {
@@ -359,6 +373,10 @@ object LatexInput {
         if(content.substring(start).isNotBlank())rows.last().add(content.substring(start).trim())
         else if(rows.last().isEmpty() && rows.size>1)rows.removeAt(rows.lastIndex)
         else rows.last().add("")
+        if(aligned) {
+            require(rows.all {row->row.joinToString("").isNotBlank()}) {"Expected an expression in each aligned row"}
+            return rows.joinToString(",","[","]") {row->convertBody(row.joinToString(""))}
+        }
         require(rows.first().isNotEmpty() && rows.all {row->row.size==rows.first().size && row.all {it.isNotEmpty()}}) {"Expected rectangular LaTeX matrix"}
         if(cases) {
             require(rows.all {it.size==2}) {"Expected a value and condition in each LaTeX case"}

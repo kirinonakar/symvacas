@@ -46,11 +46,25 @@ internal fun graphRangeAxes(source:String,kind:String):Set<String> {
     return when(kind) {
         "polar"->setOf("theta")
         "parametric","space","differential"->setOf("t")
+        "surface"->if(rows.any {row->runCatching {isParametricSurfaceTree(graphInputTree(row,kind))}.getOrDefault(false)})setOf("u","v") else emptySet()
         "cartesian"->rows.mapNotNull {row->runCatching {when(graphPlanarKind(graphInputTree(row))) {
             "polar"->"theta";"parametric"->"t";else->null
         }}.getOrNull()}.toSet()
         else->emptySet()
     }
+}
+
+internal fun surfaceDefinitionTree(input:Expr):Expr? {
+    var tree=input
+    while(tree.kind=="group")tree=tree.args[0]
+    if(tree.kind=="relation" && tree.value in listOf("=","==") && tree.args[0].kind=="call")tree=tree.args[1]
+    while(tree.kind=="group")tree=tree.args[0]
+    return tree.takeIf {it.kind in listOf("list","tuple")}
+}
+
+internal fun isParametricSurfaceTree(tree:Expr):Boolean {
+    val definition=surfaceDefinitionTree(tree) ?: return false
+    return definition.args.none {it.kind=="relation"} || definition.args.any {it.kind=="relation" && it.args[0].kind=="symbol" && it.args[0].value in listOf("x","y")}
 }
 
 internal fun graphExpressionTarget(source:String,kind:String="cartesian"):Pair<String,String> {
@@ -67,7 +81,8 @@ internal fun graphExpressionTarget(source:String,kind:String="cartesian"):Pair<S
 
 internal fun isImplicitSurface(source:String):Boolean = runCatching {
     val tree=Parser(LatexInput.convert(source) ?: source).parse()
-    if(tree.kind=="relation")!(tree.args[0].kind=="symbol" && tree.args[0].value=="z" && tree.args[1].nodes().none {it.kind=="symbol" && it.value=="z"})
+    if(surfaceDefinitionTree(tree)!=null)false
+    else if(tree.kind=="relation")!(tree.args[0].kind=="symbol" && tree.args[0].value=="z" && tree.args[1].nodes().none {it.kind=="symbol" && it.value=="z"})
     else tree.nodes().any {it.kind=="symbol" && it.value=="z"}
 }.getOrDefault(false)
 
@@ -121,6 +136,7 @@ internal object CalculatorGraphActions {
         val secondDerivativeSelected=graphSecondDerivativeSelected?.takeIf {graphKind=="cartesian" && it in 0 until trees.length()}
         val source=graphSource;val kind=graphKind;val min=if(kind in listOf("cartesian","implicit","surface"))xMin else if(kind=="polar")thetaMin else parameterMin;val max=if(kind in listOf("cartesian","implicit","surface"))xMax else if(kind=="polar")thetaMax else parameterMax
         val paramMin=parameterMin;val paramMax=parameterMax;val polarMin=thetaMin;val polarMax=thetaMax
+        val uMin=graphState.surfaceUMin;val uMax=graphState.surfaceUMax;val vMin=graphState.surfaceVMin;val vMax=graphState.surfaceVMax
         val viewYMin=yMin;val viewYMax=yMax;val logY=yLog&&kind !in listOf("surface","space");val parameters=graphState.parameterPayload()
         val initials=sequenceInitials;val differentialSeeds=differentialInitials;val initialTime=differentialT0
         val baseRequest=request("graph").put("angle","RAD")
@@ -139,6 +155,7 @@ internal object CalculatorGraphActions {
         if(secondDerivativeSelected!=null)request.put("secondDerivativeSelected",secondDerivativeSelected)
         if(shadings.length()>0)request.put("shadings",shadings)
         if(kind=="surface") {
+            request.put("surfaceUMin",uMin).put("surfaceUMax",uMax).put("surfaceVMin",vMin).put("surfaceVMax",vMax)
             val implicit=hasImplicitSurface(source)
             val density=SurfaceMesh.sampleCount(xMin,xMax,yMin,yMax,surfaceSamples,surfaceAutoDensity,surfaceZoom.toDouble(),implicit)
             request.put("surfaceYMin",yMin).put("surfaceYMax",yMax).put("surfaceSamples",if(graphAnimating || preview)SurfaceMesh.animationSampleCount(density,implicit) else density)
@@ -174,7 +191,7 @@ internal object CalculatorGraphActions {
             graphBusy=true; error=""
             try {
                 val response=engine.execute(request)
-                val domainMatches=if(kind in listOf("cartesian","implicit","surface"))preview || min==xMin && max==xMax else if(kind=="polar")min==thetaMin && max==thetaMax else min==parameterMin && max==parameterMax
+                val domainMatches=(if(kind in listOf("cartesian","implicit","surface"))preview || min==xMin && max==xMax else if(kind=="polar")min==thetaMin && max==thetaMax else min==parameterMin && max==parameterMax) && (kind!="surface" || uMin==graphState.surfaceUMin && uMax==graphState.surfaceUMax && vMin==graphState.surfaceVMin && vMax==graphState.surfaceVMax)
                 // Keep useful preview geometry even if another pan happened while
                 // Python was running. The Canvas projects it into the latest view.
                 if(source==graphSource && kind==graphKind && logY==(yLog&&graphKind !in listOf("surface","space")) && derivativeSelected==graphDerivativeSelected && secondDerivativeSelected==graphSecondDerivativeSelected && domainMatches && (kind!="cartesian" || paramMin==parameterMin && paramMax==parameterMax && polarMin==thetaMin && polarMax==thetaMax) && (preview || viewYMin==yMin && viewYMax==yMax) && initials==sequenceInitials && differentialSeeds==differentialInitials && initialTime==differentialT0 && environment==request("graph").put("angle","RAD").toString() && (graphAnimating || graphState.parameterDragging || parameters.toString()==graphState.parameterPayload().toString())) {

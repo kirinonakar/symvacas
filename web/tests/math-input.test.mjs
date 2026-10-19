@@ -62,6 +62,22 @@ test('block recognition never drops prose or partially accepts an unsupported bl
   assert.equal(latexPaste('x+1\n\ny=2',{multiline:true}),'x+1\n\ny=2');
 });
 
+test('aligned surfaces paste as one list while independent equation rows remain separate',()=>{
+  const examples=readFileSync(new URL('../../math/src/test/resources/latex-input.tsv',import.meta.url),'utf8').split(/\r?\n/)
+    .filter(line=>line.startsWith(String.raw`\begin{aligned}`)).map(line=>line.split('\t'));
+  for(const [source,expected] of examples){
+    const multiline=source.replaceAll(String.raw`\\`,'\\\\\n');
+    const tree=parse(expected),equations=tree.args.map(node=>expected.slice(node.start,node.end)).join('\n');
+    for(const text of [source,multiline,`\\[\n${multiline}\n\\]`,`$$\n${multiline}\n$$`]){
+      assert.equal(latexPaste(text,{multiline:true,surface:true}),expected);
+      assert.equal(latexPaste(text,{multiline:true}),equations);
+      assert.equal(latexPaste(`z=0\n${source}\nz=1`,{multiline:true}),`z=0\n${equations}\nz=1`);
+      assert.equal(latexPaste(text,{multiline:true,surface:true,prefix:'z=0\n',suffix:'\nz=1'}),expected);
+    }
+  }
+  for(const source of [String.raw`\begin{aligned}x&=1\\y&=\end{aligned}`,String.raw`\begin{aligned}x&=1\end{matrix}`])assert.throws(()=>latexPaste(source,{multiline:true,surface:true}),SyntaxError);
+});
+
 test('multiline LaTeX cases paste as one graph with intact parameter names and conditions',()=>{
   const [source,expected]=readFileSync(new URL('../../math/src/test/resources/latex-input.tsv',import.meta.url),'utf8')
     .split(/\r?\n/).find(line=>line.startsWith(String.raw`\operatorname{f}\left(x\right) = \begin{cases}`)).split('\t');

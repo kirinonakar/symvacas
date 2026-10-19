@@ -85,11 +85,19 @@ def graph_surface(engine, request, trees, xmin, xmax):
 
 
 def graph_surface_single(engine, request, tree, xmin, xmax):
+    from calc_graph_parametric_surface import parametric_surface_tree, surface_definition_expressions, graph_parametric_surface
+    parametric = parametric_surface_tree(tree)
+    local_expression = None
+    if parametric is not None:
+        expressions = surface_definition_expressions(engine, parametric)
+        if len(expressions) == 3:
+            return graph_parametric_surface(engine, request, expressions)
+        local_expression = expressions[0]
     ymin, ymax = float(request.get("surfaceYMin", -3)), float(request.get("surfaceYMax", 3))
     require(math.isfinite(ymin) and math.isfinite(ymax) and ymax > ymin, "Invalid surface y range")
     x, y, z = engine.symbol("x"), engine.symbol("y"), engine.symbol("z")
     engine.bindings.update({"x":x, "y":y, "z":z})
-    expression = graph_expressions(engine, [tree], ("x", "y", "z"))[0]
+    expression = local_expression if local_expression is not None else graph_expressions(engine, [tree], ("x", "y", "z"))[0]
     if isinstance(expression,s.Equality):
         implicit=not (expression.lhs==z and not expression.rhs.has(z))
         expression=expression.lhs-expression.rhs if implicit else expression.rhs
@@ -126,7 +134,9 @@ def graph_surface_single(engine, request, tree, xmin, xmax):
     names = parameter_names([expression], {"x","y"})
     sliders=resolved_parameters(engine, request, [expression], {"x","y"})
     count = capped(max(12, int(request.get("surfaceSamples", 26))),96)
-    from calc_graph_surface import radial_sine_surface
+    from calc_graph_surface import radial_sine_surface, angular_surface
+    angular=angular_surface(expression,x,y,sliders,xmin,xmax,ymin,ymax,count)
+    if angular is not None:return {**angular,'parameters':sorted(names)}
     radial=radial_sine_surface(expression,x,y,sliders,xmin,xmax,ymin,ymax,count) if request.get('surfaceAutoZ',True) else None
     if radial is not None:return {**radial,'parameters':sorted(names)}
     fn = graph_function(continuous_surface_expression(expression), (x,y), sliders)

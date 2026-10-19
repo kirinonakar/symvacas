@@ -6,6 +6,19 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class GraphInputTest {
+    @Test fun surfaceCoordinatesAndLocalHelpersKeepDomainsAndFormulaCaptions() {
+        for(source in listOf("[cos(u)*cos(v),sin(u)*cos(v),sin(v)]","[R=2+.35*sin(6*u-3*t),x=(R+cos(v))*cos(u),y=(R+cos(v))*sin(u),z=sin(v)]","S(u,v)=(u,v,sin(u+v))")) {
+            assertEquals(setOf("u","v"),graphRangeAxes(source,"surface"))
+            assertFalse(isImplicitSurface(source))
+            val caption=graphEquationTree("surface",source,0)!!
+            assertTrue(caption.getString("kind") in listOf("relation","list"))
+        }
+        val helpers="[r1=sqrt((x-2)^2+y^2),r2=sqrt((x+2)^2+y^2),z=sin(4*r1-5*t)/(1+.2*r1)+sin(4*r2-5*t)/(1+.2*r2)]"
+        assertTrue(graphRangeAxes(helpers,"surface").isEmpty())
+        assertFalse(isImplicitSurface(helpers))
+        assertEquals("list",graphEquationTree("surface",helpers,0)!!.getString("kind"))
+        assertTrue(isImplicitSurface("x^2+y^2+z^2=9"))
+    }
     @Test fun calculatorTransferKeepsTheSelectedGraphCategory() {
         for((kind,source) in listOf("cartesian" to "z=x+y","parametric" to "(cos(t),sin(t))","polar" to "r=2cos(3theta)","space" to "(t,t^2,t^3)","sequence" to "n^2","differential" to "t-y")) {
             assertEquals(kind to source,graphExpressionTarget(source,kind))

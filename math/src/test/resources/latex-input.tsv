@@ -53,3 +53,6 @@ C(t)=4(\sin t,\cos t,0.6\sin(2t))	C(t)=4(sin(t),cos(t),0.6sin(2t))
 \begin{dcases}x & \text{if }x<0\\[4pt] -x & \text{for }x\geq0\\\end{dcases}	{x<0:x,x>=0:-x}
 \begin{cases}\begin{cases}1 & x<0\\2 & x\geq0\end{cases} & x<1\\3 & \text{otherwise}\end{cases}	{x<1:{x<0:1,x>=0:2},true:3}
 \begin{bmatrix}\begin{cases}x & x<0\\0 & \text{else}\end{cases} & 1\\2&3\end{bmatrix}	[[{x<0:x,true:0},1],[2,3]]
+\begin{aligned}r&=2+\sin(7u+2t)\sin^2v\\x&=r\sin v\cos u\\y&=r\sin v\sin u\\z&=2\cos v+0.3\sin(7u-2t)\sin v\end{aligned}	[r=2+sin(7u+2t)sin(v)^2,x=r*sin(v)cos(u),y=r*sin(v)sin(u),z=2cos(v)+0.3sin(7u-2t)sin(v)]
+\begin{aligned}r_{1}&=\sqrt{(x-2)^2+y^2}\\r_{2}&=\sqrt{(x+2)^2+y^2}\\z&=\frac{\sin(4r_{1}-5t)}{1+0.2r_{1}}+\frac{\sin(4r_{2}-5t)}{1+0.2r_{2}}\end{aligned}	[r_1=sqrt((x-2)^2+y^2),r_2=sqrt((x+2)^2+y^2),z=sin(4r_1-5t)/(1+0.2r_1)+sin(4r_2-5t)/(1+0.2r_2)]
+r\sin v+r_1\cos u+x\sqrt{y}	r*sin(v)+r_1*cos(u)+x*sqrt(y)

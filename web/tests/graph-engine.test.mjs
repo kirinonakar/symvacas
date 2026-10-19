@@ -4,8 +4,9 @@ import {fork} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {parse} from '../parser.js';
 import {graphInputTree} from '../graph-input.js';
+import {latexPaste} from '../math-input.js';
 import {graphShadings} from '../graph-shading.js';
-import {radialSurfaceGeometry} from '../surface-geometry.js';
+import {radialSurfaceGeometry,prepareSurfaceFaces} from '../surface-geometry.js';
 
 test('packaged graph modules execute every graph kind in the production WASM worker', {timeout:60000}, async t=>{
   const worker=fork(new URL('./worker-bridge.mjs',import.meta.url),[],{execArgv:['--experimental-wasm-jspi']});
@@ -282,6 +283,51 @@ test('packaged graph modules execute every graph kind in the production WASM wor
   const surface=await graph('surface','x+y',{surfaceYMin:-1,surfaceYMax:1,surfaceSamples:12});
   assert.ok(surface.surface.length>1);
   for(const row of surface.surface)for(const [x,y,z] of row)assert.ok(Math.abs(z-x-y)<1e-12);
+  const [alignedBody,alignedExpected]=readFileSync(new URL('../../math/src/test/resources/latex-input.tsv',import.meta.url),'utf8').split(/\r?\n/)
+    .find(line=>line.startsWith(String.raw`\begin{aligned}r&=`)).split('\t');
+  const alignedPaste=latexPaste(`\\[\n${alignedBody.replaceAll(String.raw`\\`,'\\\\\n')}\n\\]`,{multiline:true,surface:true});
+  assert.equal(alignedPaste,alignedExpected);
+  for(const time of [0,.7]){
+    const sampled=await graph('surface',alignedPaste,{min:-4,max:4,surfaceYMin:-4,surfaceYMax:4,surfaceUMin:0,surfaceUMax:2*Math.PI,surfaceVMin:0,surfaceVMax:Math.PI,surfaceSamples:48,parameters:{t:time}});
+    assert.deepEqual(sampled.parameters,['t']);assert.equal(sampled.parametricSurface,true);
+    for(const [j,row] of sampled.surface.entries())for(const [i,p] of row.entries()){
+      const u=2*Math.PI*i/48,v=Math.PI*j/48,r=2+Math.sin(7*u+2*time)*Math.sin(v)**2;
+      [r*Math.sin(v)*Math.cos(u),r*Math.sin(v)*Math.sin(u),2*Math.cos(v)+.3*Math.sin(7*u-2*time)*Math.sin(v)].forEach((n,axis)=>assert.ok(Math.abs(n-p[axis])<1e-12));
+    }
+  }
+  const torusSource='[R=2+0.35*sin(6*u-3*t),x=(R+cos(v))*cos(u),y=(R+cos(v))*sin(u),z=sin(v)]';
+  const wavesSource='[r1=sqrt((x-2)^2+y^2),r2=sqrt((x+2)^2+y^2),z=sin(4*r1-5*t)/(1+0.2*r1)+sin(4*r2-5*t)/(1+0.2*r2)]';
+  const vortexSource=String.raw`z = e^{\left(\left(-0.08\right) \cdot \left(x^{2}+y^{2}\right)\right)} \cdot \sin\left(5 \cdot \operatorname{atan2}\left(y, x\right)-2 \cdot \sqrt{x^{2}+y^{2}}-3 \cdot t\right)`;
+  for(const time of [0,.7]){
+    const request={action:'graph',graphKind:'surface',angle:'RAD',min:-4,max:4,surfaceYMin:-4,surfaceYMax:4,surfaceSamples:48,parameters:{t:time}};
+    const torus=await execute({...request,trees:[graphInputTree(torusSource,'surface')],surfaceUMin:0,surfaceUMax:2*Math.PI,surfaceVMin:-Math.PI,surfaceVMax:Math.PI});
+    assert.equal(torus.parametricSurface,true);assert.deepEqual(torus.parameters,['t']);
+    for(const [j,row] of torus.surface.entries())for(const [i,p] of row.entries()){
+      const u=2*Math.PI*i/48,v=-Math.PI+2*Math.PI*j/48,r=2+.35*Math.sin(6*u-3*time)+Math.cos(v);
+      [r*Math.cos(u),r*Math.sin(u),Math.sin(v)].forEach((n,axis)=>assert.ok(Math.abs(n-p[axis])<1e-12));
+    }
+    const waves=await execute({...request,trees:[graphInputTree(wavesSource,'surface')]});
+    assert.deepEqual(waves.parameters,['t']);
+    for(const row of waves.surface)for(const [x,y,z] of row){
+      const expected=[Math.hypot(x-2,y),Math.hypot(x+2,y)].reduce((sum,r)=>sum+Math.sin(4*r-5*time)/(1+.2*r),0);
+      assert.ok(Math.abs(z-expected)<1e-12);
+    }
+    const vortex=await execute({...request,trees:[graphInputTree(vortexSource,'surface')]});
+    assert.equal(vortex.angularSurface,true);assert.deepEqual(vortex.parameters,['t']);
+    for(const row of vortex.surface)for(const [x,y,z] of row){
+      assert.ok(Math.hypot(x,y)>0);
+      const expected=Math.exp(-.08*(x*x+y*y))*Math.sin(5*Math.atan2(y,x)-2*Math.hypot(x,y)-3*time);
+      assert.ok(Math.abs(z-expected)<1e-12);
+    }
+    const box={xmin:-4,xmax:4,ymin:-4,ymax:4,zmin:-1,zmax:1};
+    for(const sampled of [torus,vortex]){
+      const geometry=prepareSurfaceFaces(sampled.surface,box);
+      assert.ok(geometry.faces.length>2000);
+      assert.ok(geometry.faces.every(face=>face.levels?.every(Number.isFinite)));
+    }
+    const mixed=await execute({...request,trees:[graphInputTree(torusSource,'surface'),graphInputTree(wavesSource,'surface'),parse('z=x+y')]});
+    assert.equal(mixed.surfaces.length,3);assert.deepEqual(mixed.parameters,['t']);
+  }
   for(const a of [1,4,0,-1]){
     const root=await execute({action:'graph',graphKind:'surface',angle:'RAD',trees:[graphInputTree('sin(sqrt(ax^2+ay^2))','surface')],
       min:-3,max:3,surfaceYMin:-3,surfaceYMax:3,surfaceSamples:48,parameters:{a}});

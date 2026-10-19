@@ -21,6 +21,8 @@ import kotlin.math.*
     var xmin by remember {mutableStateOf(m.xMin.toString())};var xmax by remember {mutableStateOf(m.xMax.toString())};var ymin by remember {mutableStateOf(m.yMin.toString())};var ymax by remember {mutableStateOf(m.yMax.toString())}
     var tmin by remember {mutableStateOf(m.parameterMin.toString())};var tmax by remember {mutableStateOf(m.parameterMax.toString())}
     var thetaMin by remember {mutableStateOf(m.thetaMin.toString())};var thetaMax by remember {mutableStateOf(m.thetaMax.toString())}
+    var umin by remember {mutableStateOf(m.graphState.surfaceUMin.toString())};var umax by remember {mutableStateOf(m.graphState.surfaceUMax.toString())}
+    var vmin by remember {mutableStateOf(m.graphState.surfaceVMin.toString())};var vmax by remember {mutableStateOf(m.graphState.surfaceVMax.toString())}
     val rangeAxes=graphRangeAxes(m.graphSource,m.graphKind)
     val sampledMin=m.graphData?.optDouble("zMin",-1.0)?.takeIf(Double::isFinite) ?: -1.0
     val sampledMax=m.graphData?.optDouble("zMax",1.0)?.takeIf(Double::isFinite) ?: 1.0
@@ -37,10 +39,17 @@ import kotlin.math.*
                     if(!autoZ)RangeAxisEditor("z",zmin,zmax,zmin.toDoubleOrNull() ?: -1.0,zmax.toDoubleOrNull() ?: 1.0,m.displayDigits,{zmin=it},{zmax=it})
                 }
                 if("t" in rangeAxes)RangeAxisEditor("t",tmin,tmax,tmin.toDoubleOrNull() ?: m.parameterMin,tmax.toDoubleOrNull() ?: m.parameterMax,m.displayDigits,{tmin=it},{tmax=it})
+                if("u" in rangeAxes)RangeAxisEditor("u",umin,umax,umin.toDoubleOrNull() ?: m.graphState.surfaceUMin,umax.toDoubleOrNull() ?: m.graphState.surfaceUMax,m.displayDigits,{umin=it},{umax=it})
+                if("v" in rangeAxes)RangeAxisEditor("v",vmin,vmax,vmin.toDoubleOrNull() ?: m.graphState.surfaceVMin,vmax.toDoubleOrNull() ?: m.graphState.surfaceVMax,m.displayDigits,{vmin=it},{vmax=it})
                 if("theta" in rangeAxes)RangeAxisEditor("θ",thetaMin,thetaMax,thetaMin.toDoubleOrNull() ?: m.thetaMin,thetaMax.toDoubleOrNull() ?: m.thetaMax,m.displayDigits,{thetaMin=it},{thetaMax=it})
                 }
         }},confirmButton={TextButton(onClick={
                     val values=listOf(xmin,xmax,ymin,ymax).map {it.toDoubleOrNull()}
+                    val uv=listOf(umin,umax,vmin,vmax).map {it.toDoubleOrNull()}
+                    if("u" in rangeAxes && (uv.any {it==null || !it.isFinite()} || uv[0]!!>=uv[1]!! || uv[2]!!>=uv[3]!!)) {
+                        m.error="Enter finite increasing u and v ranges"
+                        return@TextButton
+                    }
                     val ta=tmin.toDoubleOrNull();val tb=tmax.toDoubleOrNull()
                     val za=zmin.toDoubleOrNull();val zb=zmax.toDoubleOrNull()
                     val usesT="t" in rangeAxes
@@ -53,6 +62,7 @@ import kotlin.math.*
                         if(m.graphKind=="sequence"){m.parameterMin=values[0]!!;m.parameterMax=values[1]!!}
                         else if(usesT){m.parameterMin=ta!!;m.parameterMax=tb!!}
                         if(usesTheta){m.thetaMin=pa!!;m.thetaMax=pb!!}
+                        if("u" in rangeAxes){m.graphState.surfaceUMin=uv[0]!!;m.graphState.surfaceUMax=uv[1]!!;m.graphState.surfaceVMin=uv[2]!!;m.graphState.surfaceVMax=uv[3]!!}
                         m.save();onDismiss();m.plot()
                     }
             }) {Text(tr("Apply"))} },dismissButton={Row {
@@ -70,6 +80,7 @@ import kotlin.math.*
                     tmin=if(m.graphKind=="differential")"-5" else "0"
                     tmax=when(m.graphKind){"differential"->"5";"sequence"->"20";else->(2*PI).toString()}
                     thetaMin="0";thetaMax=(2*PI).toString();zmin="-1";zmax="1";autoZ=true
+                    umin="0";umax=(2*PI).toString();vmin="0";vmax=(2*PI).toString()
                     m.error="";resetRevision++
                 }) {Text(tr("Reset"))}
                 TextButton(onClick={onDismiss()}) {Text(tr("Cancel"))}

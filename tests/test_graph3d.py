@@ -18,7 +18,96 @@ def add(*terms):
     for term in terms[1:]:result=binary('+',result,term)
     return result
 
+def bundle(**definitions):return {'kind':'list','args':[equation(sym(name),body) for name,body in definitions.items()]}
+
+def torus_tree():
+    radius=add(num(2),binary('*',num(.35),call('sin',binary('-',binary('*',num(6),sym('u')),binary('*',num(3),sym('t'))))))
+    return bundle(R=radius,x=binary('*',add(sym('R'),call('cos',sym('v'))),call('cos',sym('u'))),
+                  y=binary('*',add(sym('R'),call('cos',sym('v'))),call('sin',sym('u'))),z=call('sin',sym('v')))
+
+def waves_tree():
+    r=lambda sign:call('sqrt',add(binary('^',binary(sign,sym('x'),num(2)),num(2)),binary('^',sym('y'),num(2))))
+    wave=lambda name:binary('/',call('sin',binary('-',binary('*',num(4),sym(name)),binary('*',num(5),sym('t')))),add(num(1),binary('*',num(.2),sym(name))))
+    return bundle(r1=r('-'),r2=r('+'),z=add(wave('r1'),wave('r2')))
+
+def vortex_tree(frequency=5):
+    r2=add(binary('^',sym('x'),num(2)),binary('^',sym('y'),num(2)))
+    phase=binary('-',binary('-',binary('*',num(frequency),call('atan2',sym('y'),sym('x'))),binary('*',num(2),call('sqrt',r2))),binary('*',num(3),sym('t')))
+    return equation(sym('z'),binary('*',call('exp',binary('*',num(-.08),r2)),call('sin',phase)))
+
 class Graph3dTests(unittest.TestCase):
+
+    def test_two_parameter_torus_with_local_radius_and_animation(self):
+        for t in (0,.7,2):
+            result=self.run_graph(torus_tree(),parameters={'t':t},surfaceUMin=0,surfaceUMax=2*math.pi,surfaceVMin=-math.pi,surfaceVMax=math.pi)
+            self.assertEqual(['t'],result['parameters'])
+            self.assertTrue(result['parametricSurface'])
+            for j,row in enumerate(result['surface']):
+                v=-math.pi+2*math.pi*j/20
+                for i,(x,y,z) in enumerate(row):
+                    u=2*math.pi*i/20;radius=2+.35*math.sin(6*u-3*t)+math.cos(v)
+                    for expected,actual in zip((radius*math.cos(u),radius*math.sin(u),math.sin(v)),(x,y,z)):
+                        self.assertAlmostEqual(expected,actual,delta=1e-12)
+        stored={name:num(99) for name in ('u','v','x','y','R')}
+        fresh=self.run_graph(torus_tree(),parameters={'t':.7})
+        shadowed=self.run_graph(torus_tree(),parameters={'t':.7},variables=stored)
+        self.assertEqual(fresh['surface'],shadowed['surface'])
+
+    def test_local_distance_helpers_produce_two_animated_sources(self):
+        for t in (0,.6):
+            result=self.run_graph(waves_tree(),parameters={'t':t})
+            self.assertEqual(['t'],result['parameters'])
+            self.assertNotIn('implicitSurface',result)
+            for row in result['surface']:
+                for x,y,z in row:
+                    expected=sum(math.sin(4*r-5*t)/(1+.2*r) for r in (math.hypot(x-2,y),math.hypot(x+2,y)))
+                    self.assertAlmostEqual(expected,z,delta=1e-12)
+
+    def test_surface_helpers_are_local_and_forward_references_resolve(self):
+        tree=bundle(z=sym('b'),b=add(sym('a'),sym('x')),a=num(2))
+        result=self.run_graph(tree,trees=[tree,equation(sym('z'),sym('a'))])
+        self.assertEqual(['a'],result['parameters'])
+        self.assertEqual([],result['surfaces'][0]['parameters'])
+        self.assertTrue(all(z==1 for row in result['surfaces'][1]['surface'] for x,y,z in row))
+        for tree in (bundle(a=sym('b'),b=sym('a'),z=sym('a')),bundle(x=sym('u'),z=sym('v')),bundle(u=num(2),z=sym('u'))):
+            result=json.loads(dispatch(json.dumps({'action':'graph','graphKind':'surface','trees':[tree],'min':-2,'max':2})))
+            self.assertFalse(result['ok'])
+
+    def test_parametric_ranges_and_undefined_coordinate_samples(self):
+        tree={'kind':'list','args':[sym('u'),sym('v'),binary('/',num(1),sym('u'))]}
+        result=self.run_graph(tree,surfaceUMin=-1,surfaceUMax=1,surfaceVMin=2,surfaceVMax=3)
+        self.assertEqual([],result['parameters'])
+        self.assertTrue(all(row[10] is None for row in result['surface']))
+        self.assertEqual([-1,2,-1],result['surface'][0][0])
+        self.assertEqual([1,3,1],result['surface'][-1][-1])
+        invalid=json.loads(dispatch(json.dumps({'action':'graph','graphKind':'surface','trees':[tree],'min':-2,'max':2,'surfaceUMin':1,'surfaceUMax':0})))
+        self.assertFalse(invalid['ok'])
+        wrapped=equation(call('S',sym('u'),sym('v')),{'kind':'tuple','args':[sym('u'),sym('v'),num(0)]})
+        self.assertEqual([],self.run_graph(wrapped)['parameters'])
+
+    def test_vortex_center_uses_fine_angular_rings_without_filling_the_singularity(self):
+        for t in (0,.8):
+            result=self.run_graph(vortex_tree(),parameters={'t':t},surfaceSamples=48)
+            self.assertTrue(result['angularSurface'])
+            self.assertEqual(['t'],result['parameters'])
+            mesh=result['surface']
+            self.assertLess(math.hypot(*mesh[1][0][:2]),.002)
+            for row in mesh:
+                for x,y,z in row:
+                    r=math.hypot(x,y)
+                    self.assertGreater(r,0)
+                    self.assertAlmostEqual(math.exp(-.08*r*r)*math.sin(5*math.atan2(y,x)-2*r-3*t),z,delta=1e-12)
+            # At the innermost ring, angular interpolation error is below 1.3%
+            # of the unit amplitude, independent of the direction of approach.
+            for a,b in zip(mesh[0],mesh[0][1:]):
+                x,y=(a[0]+b[0])/2,(a[1]+b[1])/2;r=math.hypot(x,y)
+                actual=math.exp(-.08*r*r)*math.sin(5*math.atan2(y,x)-2*r-3*t)
+                self.assertLess(abs(actual-(a[2]+b[2])/2),.013)
+        branch=self.run_graph(vortex_tree(.5),parameters={'t':0})['surface'][0]
+        self.assertGreater(abs(branch[0][2]-branch[-1][2]),1.9)
+        pole=add(vortex_tree()['args'][1],binary('/',num(1),sym('x')))
+        holes=self.run_graph(pole,parameters={'t':0})['surface']
+        self.assertTrue(all(sum(point is None for point in row)==2 for row in holes))
 
     def run_graph(self,tree,kind='surface',**options):
         result=json.loads(dispatch(json.dumps({'action':'graph','graphKind':kind,'trees':[tree],

@@ -45,7 +45,10 @@ export function createGraphComputation({
     const request={...options(),action:'graph',angle:'RAD',yLog,graphKind:kind(),trees,shadings,min,max,xMin:view.xmin,xMax:view.xmax,yMin:view.ymin,yMax:view.ymax,surfaceYMin:view.ymin,surfaceYMax:view.ymax,parameterMin:numeric('graph-parameter-min'),parameterMax:numeric('graph-parameter-max'),thetaMin:numeric('graph-theta-min'),thetaMax:numeric('graph-theta-max'),parameters:{...state.parameters},variable:['parametric','polar','space','differential'].includes(kind())?'t':kind()==='sequence'?'n':'x',samples:state.animation||state.parameterDragging?200:500};
     if(kind()==='space'){[request.surfaceZMin,request.surfaceZMax]=surface.autoZ?[-5,5]:zRange();}if(kind()==='surface'){const implicit=hasImplicitSurface(value('graph-source')),density=surfaceSampleCount(view,surface.samples,surface.autoDensity,surface.zoom,implicit);request.surfaceSamples=implicit&&(state.animation||state.parameterDragging)?Math.min(density,16):density;[request.surfaceZMin,request.surfaceZMax]=surface.autoZ?[view.ymin,view.ymax]:zRange();}
     if(kind()==='sequence')request.initialTrees=splitTopLevel(value('graph-initial')).map(s=>parse(s));
-    if(kind()==='surface')request.surfaceAutoZ=surface.autoZ;
+    if(kind()==='surface'){
+      request.surfaceAutoZ=surface.autoZ;
+      Object.assign(request,{surfaceUMin:numeric('graph-u-min'),surfaceUMax:numeric('graph-u-max'),surfaceVMin:numeric('graph-v-min'),surfaceVMax:numeric('graph-v-max')});
+    }
     if(kind()==='differential'){request.initialValues=splitTopLevel(value('graph-initial')).map(Number);request.t0=numeric('graph-t0');}
     if(state.derivative!==null&&kind()==='cartesian'&&trees[state.derivative])request.derivativeSelected=state.derivative;
     if(state.secondDerivative!==null&&kind()==='cartesian'&&trees[state.secondDerivative])request.secondDerivativeSelected=state.secondDerivative;

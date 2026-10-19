@@ -23,10 +23,10 @@ import com.kirinonakar.symvacas.ui.theme.LocalInstrument
 
 @Composable internal fun LineNumberedMathInput(
     value:String,onValue:(String)->Unit,label:String,modifier:Modifier=Modifier,
-    multiline:Boolean=true,visibleLines:Int=3,tag:String="equation"
+    multiline:Boolean=true,visibleLines:Int=3,tag:String="equation",surface:Boolean=false
 ) {
     val c=LocalInstrument.current
-    val (input,change)=rememberMathInput(value,multiline=multiline,onValue=onValue)
+    val (input,change)=rememberMathInput(value,multiline=multiline,surface=surface,onValue=onValue)
     val vertical=rememberScrollState();val horizontal=rememberScrollState()
     var focused by remember {mutableStateOf(false)}
     val lineHeight=24.sp

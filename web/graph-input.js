@@ -51,13 +51,26 @@ export function graphExpressionTarget(source,kind='cartesian'){
 export function isImplicitSurface(source){
   try{
     const tree=parse(latexInput(source)),hasZ=node=>node.kind==='symbol'&&node.value==='z'||(node.args||[]).some(hasZ);
+    if(surfaceDefinitionTree(tree))return false;
     return tree.kind==='relation'?!(tree.args[0].kind==='symbol'&&tree.args[0].value==='z'&&!hasZ(tree.args[1])):hasZ(tree);
   }catch{return false;}
 }
 
 export function surfaceFormula(source){
-  try{if(parse(latexInput(source)).kind==='relation')return source;}catch{}
+  try{const tree=parse(latexInput(source));if(tree.kind==='relation')return source;const definition=surfaceDefinitionTree(tree);if(definition)return definition.args.some(node=>node.kind==='relation')?source:`[x(u,v),y(u,v),z(u,v)]=${source}`;}catch{}
   return isImplicitSurface(source)?`${source}=0`:`z=${source}`;
+}
+
+export function surfaceDefinitionTree(tree){
+  while(tree.kind==='group')tree=tree.args[0];
+  if(tree.kind==='relation'&&['=','=='].includes(tree.value)&&tree.args[0].kind==='call')tree=tree.args[1];
+  while(tree.kind==='group')tree=tree.args[0];
+  return ['list','tuple'].includes(tree.kind)?tree:null;
+}
+
+export function isParametricSurfaceTree(tree){
+  const definition=surfaceDefinitionTree(tree);
+  return !!definition&&(!definition.args.some(node=>node.kind==='relation')||definition.args.some(node=>node.kind==='relation'&&node.args[0].kind==='symbol'&&['x','y'].includes(node.args[0].value)));
 }
 
 export function parametricFormula(source,index,space=false){
@@ -158,6 +171,7 @@ export function graphRangeAxes(source,kind){
   if(!rows.length)return new Set();
   if(kind==='polar')return new Set(['theta']);
   if(['parametric','space','differential'].includes(kind))return new Set(['t']);
+  if(kind==='surface')return rows.some(row=>{try{return isParametricSurfaceTree(graphInputTree(row,kind));}catch{return false;}})?new Set(['u','v']):new Set();
   if(kind!=='cartesian')return new Set();
   const axes=new Set();
   for(const row of rows)try{const type=planarTreeKind(graphInputTree(row));if(type==='polar')axes.add('theta');else if(type==='parametric')axes.add('t');}catch{}

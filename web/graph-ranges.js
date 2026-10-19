@@ -14,9 +14,9 @@ export function createGraphRangeControls({
   state,
   value
 }){
-  const rangeIds=['graph-theta-min','graph-theta-max','graph-parameter-min','graph-parameter-max','graph-min','graph-max','graph-ymin','graph-ymax','graph-xmin','graph-xmax','graph-analysis-a','graph-analysis-b','graph-t0','graph-zmin','graph-zmax'];
+  const rangeIds=['graph-u-min','graph-u-max','graph-v-min','graph-v-max','graph-theta-min','graph-theta-max','graph-parameter-min','graph-parameter-max','graph-min','graph-max','graph-ymin','graph-ymax','graph-xmin','graph-xmax','graph-analysis-a','graph-analysis-b','graph-t0','graph-zmin','graph-zmax'];
   const sliderIds=rangeIds.filter(id=>id!=='graph-t0');
-  const rangePairs=[['graph-theta-min','graph-theta-max'],['graph-parameter-min','graph-parameter-max'],['graph-min','graph-max'],['graph-ymin','graph-ymax'],['graph-xmin','graph-xmax'],['graph-zmin','graph-zmax'],['graph-analysis-a','graph-analysis-b']];
+  const rangePairs=[['graph-u-min','graph-u-max'],['graph-v-min','graph-v-max'],['graph-theta-min','graph-theta-max'],['graph-parameter-min','graph-parameter-max'],['graph-min','graph-max'],['graph-ymin','graph-ymax'],['graph-xmin','graph-xmax'],['graph-zmin','graph-zmax'],['graph-analysis-a','graph-analysis-b']];
   const pairedSliders=new Map();
 
   const isLog=id=>state.yLog&&!['surface','space'].includes(value('graph-kind'))&&['graph-ymin','graph-ymax'].includes(id);

@@ -1,22 +1,29 @@
-import {latexInput,latexMathBlocks} from './parser.js';
+import {latexInput,latexMathBlocks,parse} from './parser.js';
 
 /** Normalize a pasted block without joining independent graph/equation lines. */
-export function latexPaste(text,{prefix='',suffix='',multiline=false}={}) {
+export function latexPaste(text,{prefix='',suffix='',multiline=false,surface=false}={}) {
   prefix=prefix.slice(prefix.lastIndexOf('\n')+1);
   suffix=suffix.split('\n')[0];
+  function block(text,prefix,suffix){
+    const converted=latexInput(text,{prefix,suffix}),body=latexMathBlocks(text)?.[0]??text;
+    if(multiline&&!surface&&/^\s*\\begin\s*\{(?:aligned|align\*?|gathered|split)\}/.test(body)){
+      return parse(converted).args.map(node=>converted.slice(node.start,node.end)).join('\n');
+    }
+    return converted;
+  }
   const blocks=multiline?latexMathBlocks(text):null;
-  if(blocks)return blocks.map((body,index)=>latexInput(`\\[${body}\\]`,{prefix:index===0?prefix:'',suffix:index===blocks.length-1?suffix:''})).join('\n');
-  if(!multiline||!text.includes('\n'))return latexInput(text,{prefix,suffix});
+  if(blocks)return blocks.map((body,index)=>block(`\\[${body}\\]`,index===0?prefix:'',index===blocks.length-1?suffix:'')).join('\n');
+  if(!multiline||!text.includes('\n'))return block(text,prefix,suffix);
   try {
     const lines=text.split(/(\r?\n)/);
-    return lines.map((line,index)=>index%2?line:latexInput(line,{prefix:index===0?prefix:'',suffix:index===lines.length-1?suffix:''})).join('');
+    return lines.map((line,index)=>index%2?line:block(line,index===0?prefix:'',index===lines.length-1?suffix:'')).join('');
   }catch {
     // Matrices and a single wrapped formula may themselves span several lines.
-    return latexInput(text,{prefix,suffix});
+    return block(text,prefix,suffix);
   }
 }
 
-export function bindMathPaste(field,{multiline=false,onError=()=>{}}={}) {
+export function bindMathPaste(field,{multiline=false,surface=false,onError=()=>{}}={}) {
   let previous=field.value,selection=null;
   field.addEventListener('beforeinput',()=>{previous=field.value;selection={start:field.selectionStart,end:field.selectionEnd};});
   field.addEventListener('focus',()=>{previous=field.value;});
@@ -39,7 +46,7 @@ export function bindMathPaste(field,{multiline=false,onError=()=>{}}={}) {
     }
     if(start===end)return;
     try{
-      const text=source.slice(start,end),converted=latexPaste(text,{prefix:source.slice(0,start),suffix:source.slice(end),multiline});
+      const text=source.slice(start,end),converted=latexPaste(text,{prefix:source.slice(0,start),suffix:source.slice(end),multiline,surface:typeof surface==='function'?surface():surface});
       if(converted!==text)field.setRangeText(converted,start,end,'end');
       previous=field.value;
     }catch(error){onError(error.message);}
@@ -49,7 +56,7 @@ export function bindMathPaste(field,{multiline=false,onError=()=>{}}={}) {
     if(!text||field.readOnly||field.disabled)return;
     const start=field.selectionStart,end=field.selectionEnd;
     try {
-      const converted=latexPaste(text,{prefix:field.value.slice(0,start),suffix:field.value.slice(end),multiline});
+      const converted=latexPaste(text,{prefix:field.value.slice(0,start),suffix:field.value.slice(end),multiline,surface:typeof surface==='function'?surface():surface});
       if(converted===text)return;
       event.preventDefault();
       field.setRangeText(converted,start,end,'end');

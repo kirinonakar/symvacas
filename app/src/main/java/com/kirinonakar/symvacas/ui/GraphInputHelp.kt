@@ -34,7 +34,12 @@ import com.kirinonakar.symvacas.ui.theme.InstrumentColors
         "surface" -> listOf(
             false to "Enter z=f(x,y) or F(x,y,z)=0, one surface per line (up to 5).",
             true to "z=sin(x)*cos(y)\nx^2+y^2+z^2=9",
-            false to "Set x, y and z bounds in Range. Automatic z range uses the y bounds for implicit surfaces."
+            false to "Set x, y and z bounds in Range. Automatic z range uses the y bounds for implicit surfaces.",
+            false to "Parametric surfaces: enter [x(u,v),y(u,v),z(u,v)]. Set u and v intervals in Range (default 0 to 2π).",
+            true to "[(2+cos(v))*cos(u),(2+cos(v))*sin(u),sin(v)]",
+            false to "Define helpers inside one list, followed by z=... or x=...,y=...,z=.... Free t creates an animation slider.",
+            true to "[R=2+0.35*sin(6*u-3*t),x=(R+cos(v))*cos(u),y=(R+cos(v))*sin(u),z=sin(v)]",
+            true to "[r1=sqrt((x-2)^2+y^2),r2=sqrt((x+2)^2+y^2),z=sin(4*r1-5*t)/(1+0.2*r1)+sin(4*r2-5*t)/(1+0.2*r2)]"
         )
         "space" -> listOf(
             false to "Enter one [x(t),y(t),z(t)] triple per line (up to 5).",

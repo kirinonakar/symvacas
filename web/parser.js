@@ -322,7 +322,8 @@ export function latexInput(input,{prefix='',suffix=''}={}) {
     function environment() {
       const environment=group();
       const cases=['cases','dcases'].includes(environment);
-      if(!cases&&!['matrix','pmatrix','bmatrix','Bmatrix','vmatrix','Vmatrix','smallmatrix'].includes(environment))throw new SyntaxError('Unsupported LaTeX environment');
+      const aligned=['aligned','align','align*','gathered','split'].includes(environment);
+      if(!cases&&!aligned&&!['matrix','pmatrix','bmatrix','Bmatrix','vmatrix','Vmatrix','smallmatrix'].includes(environment))throw new SyntaxError('Unsupported LaTeX environment');
       const stack=[environment],commands=/\\(begin|end)\s*\{([^{}]+)\}/g;
       commands.lastIndex=i;
       let end=-1,match;
@@ -353,6 +354,10 @@ export function latexInput(input,{prefix='',suffix=''}={}) {
       if(content.slice(start).trim())rows.at(-1).push(content.slice(start).trim());
       else if(!rows.at(-1).length && rows.length>1)rows.pop();
       else rows.at(-1).push('');
+      if(aligned){
+        if(rows.some(row=>!row.join('').trim()))throw new SyntaxError('Expected an expression in each aligned row');
+        return `[${rows.map(row=>body(row.join(''))).join(',')}]`;
+      }
       if(!rows[0].length || rows.some(row=>row.length!==rows[0].length || row.some(cell=>!cell)))throw new SyntaxError('Expected rectangular LaTeX matrix');
       if(cases){
         if(rows.some(row=>row.length!==2))throw new SyntaxError('Expected a value and condition in each LaTeX case');
@@ -394,6 +399,7 @@ export function latexInput(input,{prefix='',suffix=''}={}) {
       const command = /^[A-Za-z]+/.exec(text.slice(i))?.[0];
       if (!command) throw new SyntaxError('Incomplete LaTeX command');
       i += command.length;
+      if((functions.has(command)||greek.has(command)||['operatorname','mathrm','sqrt','log','infty','binom','int','sum','prod','lim'].includes(command))&&/[A-Za-z_][A-Za-z0-9_]*$/.test(result.trimEnd()))result+='*';
       if(command==='boxed') result+=`(${body(group())})`;
       else if(['operatorname','mathrm'].includes(command)){const name=group();if(!/^[A-Za-z0-9_]+$/.test(name))throw new SyntaxError('Unsupported LaTeX name');result+=name;}
       else if(command==='begin') result+=environment();
