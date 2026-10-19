@@ -80,8 +80,8 @@
     "helpKo": "모델 설명\n여러 결정트리를 결합해 범주·숫자 반응을 예측합니다.\n\n사용 시점\n상호작용이 있는 비선형 예측에 사용하며 검증 지표로 예측 성능을 평가합니다.\n\n파라미터 설명\n반응 열·분류/회귀 방식·트리 수·최대 깊이·시드를 선택합니다."
   },
   "regression-svm": {
-    "help": "Model\nUses a support-vector boundary or function for classification or regression.\n\nWhen to use\nUse for nonlinear prediction through a selected kernel; it is a predictive model rather than a coefficient significance test.\n\nParameters\nChoose response, task, kernel, C, gamma and regression epsilon. Predictors are standardized; binary classification uses 0/1.",
-    "helpKo": "모델 설명\n서포트 벡터의 경계·함수로 분류·회귀를 수행합니다.\n\n사용 시점\n커널을 이용한 비선형 예측에 사용하며 계수 유의성 검정이 아닌 예측 모형입니다.\n\n파라미터 설명\n반응 열·방식·커널·C·gamma·회귀 epsilon을 지정합니다. 설명변수는 표준화하며 이항 분류는 0/1 자료를 사용합니다."
+    "help": "Model\nUses a support-vector boundary or function for classification or regression.\n\nWhen to use\nUse for nonlinear prediction through a selected kernel and assess performance with validation metrics.\n\nParameters\nChoose response, task, kernel, C, gamma and regression epsilon. Predictors are standardized; binary classification uses 0/1.",
+    "helpKo": "모델 설명\n서포트 벡터의 경계·함수로 분류·회귀를 수행합니다.\n\n사용 시점\n커널을 이용한 비선형 예측에 사용하며 검증 지표로 예측 성능을 평가합니다.\n\n파라미터 설명\n반응 열·방식·커널·C·gamma·회귀 epsilon을 지정합니다. 설명변수는 표준화하며 이항 분류는 0/1 자료를 사용합니다."
   },
   "regression-bayeslinear": {
     "help": "Model\nEstimates linear coefficients and predictive uncertainty using a prior and a normal response model.\n\nWhen to use\nUse to combine prior information with data for continuous-response prediction.\n\nParameters\nChoose response, prior SD, credible level and variance-prior shape/scale. For NUTS set draws, warmup and chains; review R-hat, ESS and divergences.",

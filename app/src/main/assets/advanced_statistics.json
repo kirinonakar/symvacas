@@ -882,10 +882,10 @@
         ]
       }
     ],
-    "formHelp": "Model\nInternal consistency using raw and standardized Cronbach α, item-total correlations and α after item deletion.\n\nWhen to use\nUse to assess internal consistency of items intended to measure the same construct; alpha alone does not establish one factor.\n\nParameters\nInternal consistency using raw and standardized Cronbach α, item-total correlations and α after item deletion. Rows: subjects; columns: items. Reverse-code items first.",
-    "expressionHelp": "Model\nInternal consistency using raw and standardized Cronbach α, item-total correlations and α after item deletion.\n\nWhen to use\nUse to assess internal consistency of items intended to measure the same construct; alpha alone does not establish one factor.\n\nParameters\nInternal consistency using raw and standardized Cronbach α, item-total correlations and α after item deletion. Rows: subjects; columns: items. Reverse-code items first.",
-    "formHelpKo": "모델 설명\nCronbach α로 내적 일관성을 평가합니다.\n\n사용 시점\n같은 개념을 측정하는 문항의 내적 일관성을 평가할 때 사용하며 α만으로 단일요인을 입증하지는 않습니다.\n\n파라미터 설명\nCronbach α로 내적 일관성을 평가합니다. 행=대상, 열=문항; 원점수·표준화 α, 문항-총점 상관, 문항 삭제 시 α. 역문항은 먼저 역코딩하세요.",
-    "expressionHelpKo": "모델 설명\nCronbach α로 내적 일관성을 평가합니다.\n\n사용 시점\n같은 개념을 측정하는 문항의 내적 일관성을 평가할 때 사용하며 α만으로 단일요인을 입증하지는 않습니다.\n\n파라미터 설명\nCronbach α로 내적 일관성을 평가합니다. 행=대상, 열=문항; 원점수·표준화 α, 문항-총점 상관, 문항 삭제 시 α. 역문항은 먼저 역코딩하세요.",
+    "formHelp": "Model\nInternal consistency using raw and standardized Cronbach α, item-total correlations and α after item deletion.\n\nWhen to use\nUse to assess internal consistency of items intended to measure the same construct.\n\nParameters\nInternal consistency using raw and standardized Cronbach α, item-total correlations and α after item deletion. Rows: subjects; columns: items. Reverse-code items first.",
+    "expressionHelp": "Model\nInternal consistency using raw and standardized Cronbach α, item-total correlations and α after item deletion.\n\nWhen to use\nUse to assess internal consistency of items intended to measure the same construct.\n\nParameters\nInternal consistency using raw and standardized Cronbach α, item-total correlations and α after item deletion. Rows: subjects; columns: items. Reverse-code items first.",
+    "formHelpKo": "모델 설명\nCronbach α로 내적 일관성을 평가합니다.\n\n사용 시점\n같은 개념을 측정하는 문항의 내적 일관성을 평가할 때 사용합니다.\n\n파라미터 설명\nCronbach α로 내적 일관성을 평가합니다. 행=대상, 열=문항; 원점수·표준화 α, 문항-총점 상관, 문항 삭제 시 α. 역문항은 먼저 역코딩하세요.",
+    "expressionHelpKo": "모델 설명\nCronbach α로 내적 일관성을 평가합니다.\n\n사용 시점\n같은 개념을 측정하는 문항의 내적 일관성을 평가할 때 사용합니다.\n\n파라미터 설명\nCronbach α로 내적 일관성을 평가합니다. 행=대상, 열=문항; 원점수·표준화 α, 문항-총점 상관, 문항 삭제 시 α. 역문항은 먼저 역코딩하세요.",
     "exampleRows": [
       [
         "1.987",
@@ -1822,10 +1822,10 @@
         "default": 0
       }
     ],
-    "formHelp": "Model\nTests the null hypothesis that a numeric sample comes from a normal distribution.\n\nWhen to use\nUse to check a normal-model assumption alongside a Q–Q plot; a large p value does not prove normality.\n\nParameters\nShapiro–Wilk normality test for 3–5000 observations. Read the p value alongside the Q–Q plot.",
-    "expressionHelp": "Model\nTests the null hypothesis that a numeric sample comes from a normal distribution.\n\nWhen to use\nUse to check a normal-model assumption alongside a Q–Q plot; a large p value does not prove normality.\n\nParameters\nShapiro–Wilk normality test for 3–5000 observations. Read the p value alongside the Q–Q plot.",
-    "formHelpKo": "모델 설명\n숫자 표본이 정규분포에서 나왔다는 귀무가설을 검정합니다.\n\n사용 시점\nQ–Q plot과 함께 정규성 가정을 점검할 때 사용하며 큰 p값이 정규성을 증명하지는 않습니다.\n\n파라미터 설명\n관측값 3~5000개의 Shapiro–Wilk 정규성 검정. p값을 Q–Q plot과 함께 해석하세요.",
-    "expressionHelpKo": "모델 설명\n숫자 표본이 정규분포에서 나왔다는 귀무가설을 검정합니다.\n\n사용 시점\nQ–Q plot과 함께 정규성 가정을 점검할 때 사용하며 큰 p값이 정규성을 증명하지는 않습니다.\n\n파라미터 설명\n관측값 3~5000개의 Shapiro–Wilk 정규성 검정. p값을 Q–Q plot과 함께 해석하세요.",
+    "formHelp": "Model\nTests the null hypothesis that a numeric sample comes from a normal distribution.\n\nWhen to use\nUse to check a normal-model assumption alongside a Q–Q plot.\n\nParameters\nShapiro–Wilk normality test for 3–5000 observations. Read the p value alongside the Q–Q plot.",
+    "expressionHelp": "Model\nTests the null hypothesis that a numeric sample comes from a normal distribution.\n\nWhen to use\nUse to check a normal-model assumption alongside a Q–Q plot.\n\nParameters\nShapiro–Wilk normality test for 3–5000 observations. Read the p value alongside the Q–Q plot.",
+    "formHelpKo": "모델 설명\n숫자 표본이 정규분포에서 나왔다는 귀무가설을 검정합니다.\n\n사용 시점\nQ–Q plot과 함께 정규성 가정을 점검할 때 사용합니다.\n\n파라미터 설명\n관측값 3~5000개의 Shapiro–Wilk 정규성 검정. p값을 Q–Q plot과 함께 해석하세요.",
+    "expressionHelpKo": "모델 설명\n숫자 표본이 정규분포에서 나왔다는 귀무가설을 검정합니다.\n\n사용 시점\nQ–Q plot과 함께 정규성 가정을 점검할 때 사용합니다.\n\n파라미터 설명\n관측값 3~5000개의 Shapiro–Wilk 정규성 검정. p값을 Q–Q plot과 함께 해석하세요.",
     "exampleRows": [
       [
         "1"
@@ -1865,9 +1865,9 @@
         "default": 0
       }
     ],
-    "formHelp": "Model\nTests normality by combining departures in skewness and kurtosis.\n\nWhen to use\nUse to check normality through skewness and tail shape in a sufficiently large numeric sample.\n\nParameters\nSelect one numeric sample column with at least 8 finite observations and variation. K² combines skewness and kurtosis z scores; its p value uses chi-square(2). For n ≤ 20 the kurtosis approximation may be inaccurate. Review the Q–Q plot; a large p value does not prove normality.",
+    "formHelp": "Model\nTests normality by combining departures in skewness and kurtosis.\n\nWhen to use\nUse to check normality through skewness and tail shape in a sufficiently large numeric sample.\n\nParameters\nSelect one numeric sample column with at least 8 finite observations and variation. K² combines skewness and kurtosis z scores; its p value uses chi-square(2). For n ≤ 20 the kurtosis approximation may be inaccurate. Review the Q–Q plot alongside the test result.",
     "expressionHelp": "Model\nTests normality by combining departures in skewness and kurtosis.\n\nWhen to use\nUse to check normality through skewness and tail shape in a sufficiently large numeric sample.\n\nParameters\nD’Agostino–Pearson normality test using skewness and kurtosis. At least 8 observations; reports K² and an approximate p value. For n ≤ 20 the approximation may be inaccurate; review the Q–Q plot.",
-    "formHelpKo": "모델 설명\n왜도·첨도의 이탈을 결합해 정규분포라는 귀무가설을 검정합니다.\n\n사용 시점\n충분한 크기의 숫자 표본에서 왜도·꼬리 형태를 통해 정규성을 점검할 때 사용합니다.\n\n파라미터 설명\n유한 관측값 8개 이상이며 변동이 있는 숫자 표본 열을 선택하세요. K²는 왜도·첨도의 z값을 결합하며 p값은 자유도 2의 χ² 근사를 사용합니다. n ≤ 20에서는 첨도 근사가 부정확할 수 있습니다. Q–Q plot과 함께 해석하며 큰 p값이 정규성을 증명하지는 않습니다.",
+    "formHelpKo": "모델 설명\n왜도·첨도의 이탈을 결합해 정규분포라는 귀무가설을 검정합니다.\n\n사용 시점\n충분한 크기의 숫자 표본에서 왜도·꼬리 형태를 통해 정규성을 점검할 때 사용합니다.\n\n파라미터 설명\n유한 관측값 8개 이상이며 변동이 있는 숫자 표본 열을 선택하세요. K²는 왜도·첨도의 z값을 결합하며 p값은 자유도 2의 χ² 근사를 사용합니다. n ≤ 20에서는 첨도 근사가 부정확할 수 있습니다. Q–Q plot과 검정 결과를 함께 해석하세요.",
     "expressionHelpKo": "모델 설명\n왜도·첨도의 이탈을 결합해 정규분포라는 귀무가설을 검정합니다.\n\n사용 시점\n충분한 크기의 숫자 표본에서 왜도·꼬리 형태를 통해 정규성을 점검할 때 사용합니다.\n\n파라미터 설명\n왜도·첨도를 결합한 D’Agostino–Pearson 정규성 검정. 관측값 8개 이상; K²·근사 p값을 제공합니다. n ≤ 20에서는 근사가 부정확할 수 있으므로 Q–Q plot과 함께 해석하세요.",
     "exampleRows": [
       [
@@ -4724,10 +4724,10 @@
         "default": "0.05"
       }
     ],
-    "formHelp": "Model\nEquivalence of two independent means, A−B.\n\nWhen to use\nUse to assess practical equivalence of two independent means; nonsignificance in a difference test is insufficient.\n\nParameters\nChoose independent groups A and B, Welch or Student, and prespecified bounds for A−B. Equivalence requires both one-sided p values below alpha.",
-    "expressionHelp": "Model\nEquivalence of two independent means, A−B.\n\nWhen to use\nUse to assess practical equivalence of two independent means; nonsignificance in a difference test is insufficient.\n\nParameters\nEquivalence of two independent means, A−B. Input: A, B, bounds in original units, welch / student, alpha (default .05). Both one-sided p values must be below alpha.",
-    "formHelpKo": "모델 설명\n독립 두 평균 A−B의 동등성 검정.\n\n사용 시점\n독립 두 평균의 실질적 동등성을 확인할 때 사용하며 차이 검정의 비유의 결과만으로는 충분하지 않습니다.\n\n파라미터 설명\n독립 그룹 A·B, Welch/Student, 미리 정한 A−B의 동등성 하한·상한을 선택합니다. 두 단측 p값 모두 alpha 미만이면 동등입니다.",
-    "expressionHelpKo": "모델 설명\n독립 두 평균 A−B의 동등성 검정.\n\n사용 시점\n독립 두 평균의 실질적 동등성을 확인할 때 사용하며 차이 검정의 비유의 결과만으로는 충분하지 않습니다.\n\n파라미터 설명\n독립 두 평균 A−B의 동등성 검정. 입력: A·B·원래 단위의 하한·상한·welch/student·alpha(기본 .05). 두 단측 p값 모두 alpha 미만이면 동등.",
+    "formHelp": "Model\nEquivalence of two independent means, A−B.\n\nWhen to use\nUse to assess practical equivalence of two independent means within prespecified bounds.\n\nParameters\nChoose independent groups A and B, Welch or Student, and prespecified bounds for A−B. Equivalence requires both one-sided p values below alpha.",
+    "expressionHelp": "Model\nEquivalence of two independent means, A−B.\n\nWhen to use\nUse to assess practical equivalence of two independent means within prespecified bounds.\n\nParameters\nEquivalence of two independent means, A−B. Input: A, B, bounds in original units, welch / student, alpha (default .05). Both one-sided p values must be below alpha.",
+    "formHelpKo": "모델 설명\n독립 두 평균 A−B의 동등성 검정.\n\n사용 시점\n미리 정한 허용 범위에서 독립 두 평균의 실질적 동등성을 확인할 때 사용합니다.\n\n파라미터 설명\n독립 그룹 A·B, Welch/Student, 미리 정한 A−B의 동등성 하한·상한을 선택합니다. 두 단측 p값 모두 alpha 미만이면 동등입니다.",
+    "expressionHelpKo": "모델 설명\n독립 두 평균 A−B의 동등성 검정.\n\n사용 시점\n미리 정한 허용 범위에서 독립 두 평균의 실질적 동등성을 확인할 때 사용합니다.\n\n파라미터 설명\n독립 두 평균 A−B의 동등성 검정. 입력: A·B·원래 단위의 하한·상한·welch/student·alpha(기본 .05). 두 단측 p값 모두 alpha 미만이면 동등.",
     "exampleRows": [
       [
         "9.8",
@@ -6660,10 +6660,10 @@
         "default": "0"
       }
     ],
-    "formHelp": "Model\nEstimates direct and indirect effects through a mediator, with uncertainty for the indirect effect.\n\nWhen to use\nUse to examine a proposed indirect pathway; causal interpretation requires study-design assumptions.\n\nParameters\nDirect, indirect and total effects for one continuous mediator. Columns: X, M, optional covariates, Y. Reports bootstrap intervals and a Sobel approximation.",
-    "expressionHelp": "Model\nEstimates direct and indirect effects through a mediator, with uncertainty for the indirect effect.\n\nWhen to use\nUse to examine a proposed indirect pathway; causal interpretation requires study-design assumptions.\n\nParameters\nDirect, indirect and total effects for one continuous mediator. Columns: X, M, optional covariates, Y. Reports bootstrap intervals and a Sobel approximation.",
-    "formHelpKo": "모델 설명\n매개변수를 거치는 간접효과와 직접효과를 추정하고 간접효과의 불확실성을 평가합니다.\n\n사용 시점\n가정한 간접 경로를 살펴볼 때 사용하며 인과 해석에는 연구 설계에 맞는 가정이 필요합니다.\n\n파라미터 설명\n연속형 매개변수 1개의 직접·간접·총 효과. 열: X·M·선택적 공변량·Y. 부트스트랩 구간·Sobel 근사 제공.",
-    "expressionHelpKo": "모델 설명\n매개변수를 거치는 간접효과와 직접효과를 추정하고 간접효과의 불확실성을 평가합니다.\n\n사용 시점\n가정한 간접 경로를 살펴볼 때 사용하며 인과 해석에는 연구 설계에 맞는 가정이 필요합니다.\n\n파라미터 설명\n연속형 매개변수 1개의 직접·간접·총 효과. 열: X·M·선택적 공변량·Y. 부트스트랩 구간·Sobel 근사 제공.",
+    "formHelp": "Model\nEstimates direct and indirect effects through a mediator, with uncertainty for the indirect effect.\n\nWhen to use\nUse to examine a proposed indirect pathway through a mediator.\n\nParameters\nDirect, indirect and total effects for one continuous mediator. Columns: X, M, optional covariates, Y. Reports bootstrap intervals and a Sobel approximation.",
+    "expressionHelp": "Model\nEstimates direct and indirect effects through a mediator, with uncertainty for the indirect effect.\n\nWhen to use\nUse to examine a proposed indirect pathway through a mediator.\n\nParameters\nDirect, indirect and total effects for one continuous mediator. Columns: X, M, optional covariates, Y. Reports bootstrap intervals and a Sobel approximation.",
+    "formHelpKo": "모델 설명\n매개변수를 거치는 간접효과와 직접효과를 추정하고 간접효과의 불확실성을 평가합니다.\n\n사용 시점\n매개변수를 거치는 간접 경로를 살펴볼 때 사용합니다.\n\n파라미터 설명\n연속형 매개변수 1개의 직접·간접·총 효과. 열: X·M·선택적 공변량·Y. 부트스트랩 구간·Sobel 근사 제공.",
+    "expressionHelpKo": "모델 설명\n매개변수를 거치는 간접효과와 직접효과를 추정하고 간접효과의 불확실성을 평가합니다.\n\n사용 시점\n매개변수를 거치는 간접 경로를 살펴볼 때 사용합니다.\n\n파라미터 설명\n연속형 매개변수 1개의 직접·간접·총 효과. 열: X·M·선택적 공변량·Y. 부트스트랩 구간·Sobel 근사 제공.",
     "exampleRows": [
       [
         "-2.191",
@@ -18509,10 +18509,10 @@
         "default": "0"
       }
     ],
-    "formHelp": "Model\nEstimates a specified latent-variable path model and evaluates path effects and overall fit.\n\nWhen to use\nUse to assess hypothesized relationships between latent constructs and their indicators; fit alone does not establish causality.\n\nParameters\nAssign indicator factor IDs and acyclic latent paths (source,target;…). Use ML for continuous or WLSMV for ordered indicators; ML supports FIML. Set group/invariance, cross-loadings, residual covariances or effect bootstrap as needed. Review standardized paths, direct/indirect/total effects and fit.",
-    "expressionHelp": "Model\nEstimates a specified latent-variable path model and evaluates path effects and overall fit.\n\nWhen to use\nUse to assess hypothesized relationships between latent constructs and their indicators; fit alone does not establish causality.\n\nParameters\nFit a measurement model with acyclic latent paths [from,to]. ML for continuous or WLSMV for ordered indicators. Reports standardized paths, direct/indirect/total effects, fit and diagrams; optional bootstrap intervals.",
-    "formHelpKo": "모델 설명\n지정한 잠재변수 경로모형을 추정하고 경로 효과와 전체 적합도를 평가합니다.\n\n사용 시점\n잠재 개념·지표 간 가정한 관계를 평가할 때 사용하며 적합도만으로 인과성을 입증하지는 않습니다.\n\n파라미터 설명\n지표별 요인 번호·비순환 잠재 경로(출발,도착;…)를 지정합니다. 연속형은 ML, 순서형은 WLSMV; ML 결측은 FIML 선택. 필요하면 집단 동일성·교차적재·잔차 공분산·효과 부트스트랩을 설정하세요. 표준화 경로·직접/간접/총 효과·적합도를 확인합니다.",
-    "expressionHelpKo": "모델 설명\n지정한 잠재변수 경로모형을 추정하고 경로 효과와 전체 적합도를 평가합니다.\n\n사용 시점\n잠재 개념·지표 간 가정한 관계를 평가할 때 사용하며 적합도만으로 인과성을 입증하지는 않습니다.\n\n파라미터 설명\n측정모형에 비순환 잠재 경로 [출발,도착]를 지정합니다. 연속형 ML·순서형 WLSMV. 표준화 경로·직접/간접/총 효과·적합도·도표, 선택적 부트스트랩 구간 제공.",
+    "formHelp": "Model\nEstimates a specified latent-variable path model and evaluates path effects and overall fit.\n\nWhen to use\nUse to assess hypothesized relationships between latent constructs and their indicators.\n\nParameters\nAssign indicator factor IDs and acyclic latent paths (source,target;…). Use ML for continuous or WLSMV for ordered indicators; ML supports FIML. Set group/invariance, cross-loadings, residual covariances or effect bootstrap as needed. Review standardized paths, direct/indirect/total effects and fit.",
+    "expressionHelp": "Model\nEstimates a specified latent-variable path model and evaluates path effects and overall fit.\n\nWhen to use\nUse to assess hypothesized relationships between latent constructs and their indicators.\n\nParameters\nFit a measurement model with acyclic latent paths [from,to]. ML for continuous or WLSMV for ordered indicators. Reports standardized paths, direct/indirect/total effects, fit and diagrams; optional bootstrap intervals.",
+    "formHelpKo": "모델 설명\n지정한 잠재변수 경로모형을 추정하고 경로 효과와 전체 적합도를 평가합니다.\n\n사용 시점\n잠재 개념·지표 간 가정한 관계를 평가할 때 사용합니다.\n\n파라미터 설명\n지표별 요인 번호·비순환 잠재 경로(출발,도착;…)를 지정합니다. 연속형은 ML, 순서형은 WLSMV; ML 결측은 FIML 선택. 필요하면 집단 동일성·교차적재·잔차 공분산·효과 부트스트랩을 설정하세요. 표준화 경로·직접/간접/총 효과·적합도를 확인합니다.",
+    "expressionHelpKo": "모델 설명\n지정한 잠재변수 경로모형을 추정하고 경로 효과와 전체 적합도를 평가합니다.\n\n사용 시점\n잠재 개념·지표 간 가정한 관계를 평가할 때 사용합니다.\n\n파라미터 설명\n측정모형에 비순환 잠재 경로 [출발,도착]를 지정합니다. 연속형 ML·순서형 WLSMV. 표준화 경로·직접/간접/총 효과·적합도·도표, 선택적 부트스트랩 구간 제공.",
     "exampleRows": [
       [
         "1.987",

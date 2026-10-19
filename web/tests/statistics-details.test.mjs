@@ -62,7 +62,7 @@ test('interpretation covers all analyses in both languages and distinguishes inf
     }
   }
   setLanguage('en');
-  assert.match(statisticsInterpretation({analysis:'ttest'}),/does not prove equality/);
+  assert.match(statisticsInterpretation({analysis:'ttest'}),/chosen significance level/);
   assert.match(statisticsInterpretation({analysis:'tost'}),/both one-sided p values/);
   assert.match(statisticsInterpretation({bayesian:true,model:'bayeslinear'},'regression'),/chosen prior/);
   assert.match(statisticsInterpretation({model:'svm'},'regression'),/Cross|cross-validated/);
