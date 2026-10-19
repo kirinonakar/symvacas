@@ -358,6 +358,7 @@
     "mannwhitney([],[])",
     "kruskal([],[],[])",
     "shapiro([])",
+    "normaltest([])",
     "chi2test([],[])",
     "chi2independence([],[])",
     "fisherexact([],[])",

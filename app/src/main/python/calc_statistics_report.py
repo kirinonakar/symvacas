@@ -5,6 +5,7 @@ from calc_display import approximate, display_rounded, display_tree, readable
 
 BASIC = set('mean median variance stdev mode skewness kurtosis sumdata quartiles stats covariance correlation ttest ttest2 ttestpaired ztest ztest2 chi2test chi2independence fisherexact anova tukey shapiro wilcoxon mannwhitney kruskal tinterval zinterval'.split())
 BASIC.update(('welchanova','gameshowell'))
+BASIC.add('normaltest')
 TITLES = dict(zip('stats mean median variance stdev sumdata quartiles covariance correlation ttest ttest2 ttestpaired ztest ztest2 chi2test chi2independence fisherexact anova tukey shapiro wilcoxon mannwhitney kruskal tinterval zinterval padjust effectsize levene bartlett mcnemar kaplanmeier logrank cox repeatedanova poissonreg nbreg mixedmodel gee glmm multinomial ordinal bootstrap power samplesize impute crossvalidate pca kmeans'.split(),
     ['Descriptive statistics','Mean','Median','Variance','Standard deviation','Sum','Quartiles','Covariance','Correlation','One-sample t test','Welch t test','Paired t test','One-sample z test','Two-sample z test','χ² test','χ² independence test','Fisher exact test','ANOVA','Tukey HSD','Shapiro–Wilk','Wilcoxon','Mann–Whitney','Kruskal–Wallis','t interval','z interval','P-value adjustment','Effect size','Levene test','Bartlett test','McNemar test','Kaplan–Meier','Log-rank test','Cox regression','Repeated-measures ANOVA','Poisson regression','Negative binomial regression','Mixed model','GEE','GLMM','Multinomial regression','Ordinal regression','Bootstrap','Power','Sample size','Imputation','Cross-validation','PCA','K-means']))
 
@@ -12,6 +13,7 @@ TITLES = dict(zip('stats mean median variance stdev sumdata quartiles covariance
 TITLES.update({'mode':'Mode', 'skewness':'Skewness', 'kurtosis':'Excess kurtosis'})
 TITLES['logisticcompare']='Nested logistic model comparison'
 TITLES['modelcompare']='Model Comparison'
+TITLES['normaltest']='D’Agostino–Pearson'
 TITLES.update({'scheffe':'Scheffé post-hoc test','dunnett':'Dunnett control comparisons','conover':'Conover–Iman post-hoc test'})
 TITLES.update({'propztest':'One-sample proportion z test', 'propztest2':'Two-sample proportion z test',
                'ancova':'ANCOVA', 'glm':'Generalized linear model (GLM)',
@@ -412,6 +414,7 @@ def statistics_report(name, value, precision, labels=None):
     if name in ('tost','tost2','tostpaired'): priority=['estimate','TOST p','Lower p','Upper p']
     if name=='logisticcompare':priority=['LRT χ²','LRT p','ΔAIC (B − A)','ΔBIC (B − A)']
     if name=='modelcompare':priority=['F','LRT χ²','Difference χ²','p','ΔR² (B − A)','ΔAUC (B − A)','ΔC-index (B − A)','ΔRMSE (B − A)','ΔAIC (B − A)']
+    if name=='normaltest': priority=['K²','p value','n']
     highlights=[{'label':('χ² p' if name in ('cfa','sem') else 'p value') if key=='p' and name in ('cfa','sem','mcnemar') else key,'value':cell(value[key])} for key in priority if isinstance(value,dict) and key in value and finite(value[key]) is not None][:4]
     report = {'analysis': name, 'title': report_title, 'sections': sections,'highlights':highlights,'plots':plots}
     if name=='pearson':

@@ -4,9 +4,20 @@ import java.io.File
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StatisticsFormColumnsTest {
+    @Test fun normalityOmnibusUsesSelectedColumnAndEnforcesMinimumSampleSize() {
+        val d=definition("normaltest")
+        val rows=(0..7).map {listOf("99",it.toString())}+listOf(listOf("100",""))
+        val opts=JSONObject().put("column","1")
+        assertEquals("normaltest([0,1,2,3,4,5,6,7])",guidedStatisticsCommand(d,rows,opts))
+        assertEquals(mapOf("sample:1" to "Outcome"),advancedStatisticsTermLabels(d,rows,opts,listOf("ID","Outcome")))
+        assertTrue(runCatching {guidedStatisticsCommand(d,rows.take(7),opts)}.exceptionOrNull() is IllegalArgumentException)
+        assertEquals("tests",d.getString("section"))
+        assertEquals("Distribution & variance",d.getString("group"))
+    }
     @Test fun posthocCommandsPreserveUnequalSamplesAndSelectedControl() {
         val rows=listOf(listOf("1","3","6"),listOf("2","4","8"),listOf("","5","9"))
         val opts=mapOf("grouping" to "columns","columns" to "2,0,1","control" to "2","adjustment" to "holm")

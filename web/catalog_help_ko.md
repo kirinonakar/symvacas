@@ -860,6 +860,9 @@ Example: blandaltman([[10,10.5],[12,11.8],[8,8.6],[15,14.7],[11,11.3],[9,9.1]],0
 `shapiro` — 관측값 3~5000개의 Shapiro–Wilk 정규성 검정. p값을 Q–Q plot과 함께 해석하세요.
 Example: shapiro([1,2,3,4,5])
 
+`normaltest` — 왜도·첨도를 결합한 D’Agostino–Pearson 정규성 검정. 관측값 8개 이상; K²·근사 p값을 제공합니다. n ≤ 20에서는 근사가 부정확할 수 있으므로 Q–Q plot과 함께 해석하세요.
+Example: normaltest([2,8,0,4,1,9,9,0,3,5,6,2,7,4,1,8,3,6,5,10,4])
+
 `kstest` — 두 표본의 연속분포 또는 표본과 normal(평균,SD)·uniform(하한,폭)을 비교합니다. 기준 모수는 검정 표본과 독립적으로 지정하세요.
 Example: kstest([1,2,4,5],[2,3,5,8])
 

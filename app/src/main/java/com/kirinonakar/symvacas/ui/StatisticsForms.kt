@@ -37,7 +37,7 @@ internal fun advancedStatisticsTermLabels(definition:JSONObject,rows:List<List<S
     if(id=="modelcompare")return modelComparisonPlan(rows,opts+mapOf("validation" to "apparent"),columnLabels).labels
     if(id=="logisticcompare")return logisticComparisonLabels(rows,opts,columnLabels)
     if(id in listOf("twowayanova","linearmodel"))return statisticsFactorialData(rows,opts,columnLabels).labels
-    if(id=="shapiro")return mapOf("sample:1" to columnLabels.getOrElse(column("column")){"Sample 1"})
+    if(id in listOf("shapiro","normaltest"))return mapOf("sample:1" to columnLabels.getOrElse(column("column")){"Sample 1"})
     if(id=="kstest"&&opts["mode"]!="two")return mapOf("sample:1" to columnLabels.getOrElse(column("first")){"Sample 1"})
     if(id in listOf("cohend","bayescompare","levene","bartlett","eta2","friedman","repeatedanova","kstest","tukey","gameshowell")||id=="bayesbootstrap"&&opts["layout"]!="single") {
         val selections=opts+mapOf("grouping" to (if(id=="bayesbootstrap")opts["layout"].orEmpty() else opts["grouping"].orEmpty()))
@@ -202,6 +202,7 @@ internal fun guidedStatisticsCommand(definition:JSONObject,rows:List<List<String
                 "$id(${plan.samples.joinToString(",") {vector(binary(it))}}$tail)"
             }
         }
+        "normaltest"->{val sample=values(col("column"));require(sample.size>=8) {"D'Agostino-Pearson needs at least 8 values"};"normaltest(${vector(sample)})"}
         "shapiro"->{val sample=values(col("column"));require(sample.size in 3..5000) {"Shapiro-Wilk needs 3 to 5000 values"};"shapiro(${vector(sample)})"}
         "tukey","gameshowell"->{val plan=statisticsComparisonData(rows,opts,all=true);require(plan.samples.size>=2&&plan.samples.all {it.size>=2}) {"Enter at least two observations in each group"};"$id(${plan.samples.joinToString(",",transform=::vector)})"}
         "testpower","samplesize"->{

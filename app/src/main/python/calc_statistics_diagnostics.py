@@ -109,7 +109,12 @@ def companion_report(report, name, value, inputs, precision, labels=None, residu
         samples=[flatten(group) for group in args[0]]
         extras.append(('Overall Kruskal–Wallis',statistical_test(proxy,'kruskal',samples,[])))
         notes.append('Rank comparisons use pooled midranks across all selected groups. A location interpretation requires similar distribution shapes. Conover–Iman is a post-hoc procedure following a significant Kruskal–Wallis test.')
-    elif name=='shapiro' and args: samples=[flatten(args[0])]
+    elif name in ('shapiro','normaltest') and args:
+        samples=[flatten(args[0])]
+        if name=='normaltest':
+            notes.append('D’Agostino–Pearson combines skewness and kurtosis z scores into K². The p value uses a chi-square approximation with 2 degrees of freedom; a large p value does not prove normality. Review the Q–Q plot and study design.')
+            if len(samples[0])<=20:
+                report.setdefault('warnings',[]).append({'text':'For n ≤ 20, the kurtosis approximation in D’Agostino–Pearson may be inaccurate.'})
     elif name=='wilcoxon' and args:
         samples=[[x-y for x,y in zip(args[0],args[1])]] if len(args)==2 else [flatten(args[0])]
         labels={'sample:1':labels['sample:1']+' − '+labels['sample:2'] if len(args)==2 and labels.get('sample:1') and labels.get('sample:2') else labels.get('sample:1','Paired differences (A − B)')}

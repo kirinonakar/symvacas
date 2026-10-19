@@ -860,6 +860,9 @@ Example: blandaltman([[10,10.5],[12,11.8],[8,8.6],[15,14.7],[11,11.3],[9,9.1]],0
 `shapiro` — Shapiro–Wilk normality test for 3–5000 observations. Read the p value alongside the Q–Q plot.
 Example: shapiro([1,2,3,4,5])
 
+`normaltest` — D’Agostino–Pearson normality test using skewness and kurtosis. At least 8 observations; reports K² and an approximate p value. For n ≤ 20 the approximation may be inaccurate; review the Q–Q plot.
+Example: normaltest([2,8,0,4,1,9,9,0,3,5,6,2,7,4,1,8,3,6,5,10,4])
+
 `kstest` — Compare continuous distributions: two sample lists, or data with normal(mean,SD) / uniform(lower,width). Specify reference parameters independently of the sample.
 Example: kstest([1,2,4,5],[2,3,5,8])
 

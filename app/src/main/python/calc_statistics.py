@@ -252,6 +252,51 @@ def _confidence_level(value):
     require(0 < level < 1, "The confidence level must be between 0 and 1, or between 1 and 100 percent")
     return level
 
+def _dagostino_pearson(data, digits=30):
+    """D'Agostino skew transform + Anscombe-Glynn kurtosis transform, chi²(2)."""
+    values = [s.sympify(v) if isinstance(v, (int, float)) else v for v in flatten(data)]
+    n = len(values)
+    require(n >= 8, "D'Agostino-Pearson needs at least 8 values")
+    require(all(getattr(v, 'is_number', False) and getattr(v, 'is_real', None) is True
+                and getattr(v, 'is_finite', None) is True for v in values),
+            "D'Agostino-Pearson values must be finite real numbers")
+    with mp.workdps(digits + 15):
+        # Center and scale before taking powers, preserving affine invariance
+        # for very large/small observations without float overflow/underflow.
+        # Subtract exact inputs before rounding to retain small differences
+        # on top of an arbitrarily large common offset.
+        shifted = [_mpf(v-values[0], digits) for v in values]
+        scale = max(abs(v) for v in shifted)
+        require(scale > 0, "D'Agostino-Pearson needs variation")
+        shifted = [v/scale for v in shifted]
+        mean = mp.fsum(shifted)/n
+        centered = [v-mean for v in shifted]
+        m2 = mp.fsum(v*v for v in centered)/n
+        skew = (mp.fsum(v**3 for v in centered)/n)/m2**mp.mpf('1.5')
+        kurt = (mp.fsum(v**4 for v in centered)/n)/m2**2
+
+        y = skew*mp.sqrt(mp.mpf((n+1)*(n+3))/(6*(n-2)))
+        beta2 = mp.mpf(3*(n*n+27*n-70)*(n+1)*(n+3))/((n-2)*(n+5)*(n+7)*(n+9))
+        w2 = -1+mp.sqrt(2*(beta2-1))
+        delta = 1/mp.sqrt(mp.log(w2)/2)
+        alpha = mp.sqrt(2/(w2-1))
+        # asinh is stable for negative skew and maps zero skew exactly to zero.
+        skew_z = delta*mp.asinh(y/alpha)
+
+        expected = mp.mpf(3*(n-1))/(n+1)
+        variance = mp.mpf(24*n*(n-2)*(n-3))/((n+1)**2*(n+3)*(n+5))
+        x = (kurt-expected)/mp.sqrt(variance)
+        root_beta1 = (mp.mpf(6*(n*n-5*n+2))/((n+7)*(n+9))
+                      *mp.sqrt(mp.mpf(6*(n+3)*(n+5))/(n*(n-2)*(n-3))))
+        a = 6+8/root_beta1*(2/root_beta1+mp.sqrt(1+4/root_beta1**2))
+        denominator = 1+x*mp.sqrt(2/(a-4))
+        require(denominator != 0, "D'Agostino-Pearson kurtosis transform is undefined")
+        cube_root = mp.sign(denominator)*mp.root((1-2/a)/abs(denominator), 3)
+        kurt_z = (1-2/(9*a)-cube_root)/mp.sqrt(2/(9*a))
+        statistic = skew_z**2+kurt_z**2
+        return statistic, mp.exp(-statistic/2), skew_z, kurt_z, n
+
+
 def _shapiro_wilk(data):
     """Shapiro-Wilk W with Royston's AS R94 p-value approximation (3 <= n <= 5000)."""
     # Derived diagnostics (contrasts/model residuals) also pass native numbers.
@@ -634,6 +679,13 @@ def statistical_test(engine, name, a, nodes):
     if name in ("wilcoxon", "mannwhitney", "kruskal"):
         from calc_inference import rank_test
         return rank_test(engine, name, args, tail)
+    if name == "normaltest":
+        require(len(a) == 1 and isinstance(a[0], (list, tuple)), "normaltest takes one data list")
+        k2, p, skew_z, kurt_z, n = _dagostino_pearson(a[0], digits)
+        with mp.workdps(digits + 15):
+            return {"K²": _mp_result(k2, engine), "df": s.Integer(2),
+                    "p value": _mp_result(p, engine), "skewness z": _mp_result(skew_z, engine),
+                    "kurtosis z": _mp_result(kurt_z, engine), "n": s.Integer(n)}
     if tail != "both": engine.note = "One-tailed probability (" + tail + " tail)."
     if name == "shapiro":
         require(len(args) == 1 and isinstance(args[0], (list, tuple)), "shapiro takes one data list")

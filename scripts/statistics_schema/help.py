@@ -12,6 +12,9 @@ DATE_HELP = (
 # compact function descriptions in catalog.py. Keep numerical contracts in forms
 # and definitions rather than repeating their implementation in this text.
 FORM_HELP = {
+    'normaltest': (
+        'Select one numeric sample column with at least 8 finite observations and variation. K² combines skewness and kurtosis z scores; its p value uses chi-square(2). For n ≤ 20 the kurtosis approximation may be inaccurate. Review the Q–Q plot; a large p value does not prove normality.',
+        '유한 관측값 8개 이상이며 변동이 있는 숫자 표본 열을 선택하세요. K²는 왜도·첨도의 z값을 결합하며 p값은 자유도 2의 χ² 근사를 사용합니다. n ≤ 20에서는 첨도 근사가 부정확할 수 있습니다. Q–Q plot과 함께 해석하며 큰 p값이 정규성을 증명하지는 않습니다.'),
     'impute': (
         'Choose a replacement method and, for k-NN, neighbor count. Analyze first, then Apply to current data to fill missing cells while retaining observed values and headers. Reanalyze after editing data.',
         '대체 방법·k-NN 이웃 수를 선택합니다. 분석 후 현재 데이터에 적용하면 관측값·헤더를 유지하며 결측 셀을 채웁니다. 데이터 수정 후에는 다시 분석하세요.'),

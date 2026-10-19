@@ -6,7 +6,7 @@ import {renderStatisticsVisualizations} from './statistics-visualization.js';
 import {appendStatisticsModelWorkflow} from './statistics-model-workflow.js';
 import {statisticsDetailText} from './statistics-report-details.js';
 
-const basicAnalyses=new Set('mean median variance stdev mode skewness kurtosis sumdata quartiles stats covariance correlation ttest ttest2 ttestpaired ztest ztest2 chi2test chi2independence fisherexact anova welchanova tukey gameshowell shapiro wilcoxon mannwhitney kruskal tinterval zinterval'.split(' '));
+const basicAnalyses=new Set('mean median variance stdev mode skewness kurtosis sumdata quartiles stats covariance correlation ttest ttest2 ttestpaired ztest ztest2 chi2test chi2independence fisherexact anova welchanova tukey gameshowell shapiro normaltest wilcoxon mannwhitney kruskal tinterval zinterval'.split(' '));
 export function statisticsReportTarget(result,source='',requested=''){
   if(!result?.statisticsReport)return '';
   if(['statistics-summary-result','statistics-analysis-result','statistics-advanced-result','statistics-tests-result','statistics-general-result','statistics-models-result','statistics-preparation-result'].includes(requested))return requested;

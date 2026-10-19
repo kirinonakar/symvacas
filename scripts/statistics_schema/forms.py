@@ -19,6 +19,7 @@ def build_forms():
     count_fields=[col('response','Response','반응 열',-1),multi('predictors','Predictors','설명변수 열')]+offset_fields
     forms={
         'shapiro':[col('column','Sample column','표본 열',0)],
+        'normaltest':[col('column','Sample column','표본 열',0)],
         'tukey':group_fields,'gameshowell':group_fields,
         'scheffe':group_fields,
         'dunnett':group_fields+[field('control','Control group number (group order, 1-based)','대조군 번호 (그룹 순서, 1부터)','number','1')],

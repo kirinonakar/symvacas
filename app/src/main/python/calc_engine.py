@@ -32,7 +32,7 @@ HEAVY_CALLS += ('anova','welchanova','tukey','gameshowell')
 HEAVY_CALLS += ("factorint","divisors")
 HEAVY_CALLS += ("mean", "median", "mode", "skewness", "kurtosis", "variance", "stdev", "sumdata", "quartiles", "stats",
                 "covariance", "correlation", "ttest", "ttest2", "ttestpaired", "ztest", "ztest2",
-                "chi2test", "chi2independence", "fisherexact", "anova", "shapiro", "kruskal", "zinterval")
+                "chi2test", "chi2independence", "fisherexact", "anova", "shapiro", "normaltest", "kruskal", "zinterval")
 
 def statistics_display_terms(value, labels):
     """Label term cells for display while keeping the reusable answer unchanged."""

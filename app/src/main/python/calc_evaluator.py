@@ -1007,7 +1007,7 @@ class Engine:
             result=advanced(self, name, a)
             self.statistics_inputs=(name,a,nodes)
             return result
-        if name in ("ttest", "ttest2", "ttestpaired", "ztest", "ztest2", "chi2test", "chi2independence", "fisherexact", "anova", "welchanova", "tukey", "gameshowell", "shapiro", "wilcoxon", "mannwhitney", "kruskal", "tinterval", "zinterval"):
+        if name in ("ttest", "ttest2", "ttestpaired", "ztest", "ztest2", "chi2test", "chi2independence", "fisherexact", "anova", "welchanova", "tukey", "gameshowell", "shapiro", "normaltest", "wilcoxon", "mannwhitney", "kruskal", "tinterval", "zinterval"):
             result=statistical_test(self, name, a, nodes)
             self.statistics_inputs=(name,a,nodes)
             return result

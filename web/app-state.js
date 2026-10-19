@@ -7,7 +7,7 @@ import {advancedStatisticsSchema} from './advanced-statistics-schema.js';
 import {restoreStatisticsHeaderKeys,statisticsHeaderKeys} from './statistics-headers.js';
 
 const statisticsCommands=new Set([
-  ...'regression mean median variance stdev mode skewness kurtosis sumdata quartiles stats covariance correlation ttest ttest2 ttestpaired ztest ztest2 chi2test chi2independence fisherexact anova welchanova tukey gameshowell shapiro wilcoxon mannwhitney kruskal tinterval zinterval'.split(' '),
+  ...'regression mean median variance stdev mode skewness kurtosis sumdata quartiles stats covariance correlation ttest ttest2 ttestpaired ztest ztest2 chi2test chi2independence fisherexact anova welchanova tukey gameshowell shapiro normaltest wilcoxon mannwhitney kruskal tinterval zinterval'.split(' '),
   ...advancedStatisticsSchema.map(item=>item.id)
 ]);
 function calculatorHistoryEntry(entry){

@@ -42,6 +42,9 @@ DESCRIPTIONS = {
     'shapiro': (
         'Shapiro–Wilk normality test for 3–5000 observations. Read the p value alongside the Q–Q plot.',
         '관측값 3~5000개의 Shapiro–Wilk 정규성 검정. p값을 Q–Q plot과 함께 해석하세요.'),
+    'normaltest': (
+        'D’Agostino–Pearson normality test using skewness and kurtosis. At least 8 observations; reports K² and an approximate p value. For n ≤ 20 the approximation may be inaccurate; review the Q–Q plot.',
+        '왜도·첨도를 결합한 D’Agostino–Pearson 정규성 검정. 관측값 8개 이상; K²·근사 p값을 제공합니다. n ≤ 20에서는 근사가 부정확할 수 있으므로 Q–Q plot과 함께 해석하세요.'),
     'kstest': (
         'Compare continuous distributions: two sample lists, or data with normal(mean,SD) / uniform(lower,width). Specify reference parameters independently of the sample.',
         '두 표본의 연속분포 또는 표본과 normal(평균,SD)·uniform(하한,폭)을 비교합니다. 기준 모수는 검정 표본과 독립적으로 지정하세요.'),

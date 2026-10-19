@@ -209,6 +209,7 @@ export function guidedStatisticsCommand(definition,rows,settings={},columnLabels
     if(keys.some(key=>!String(opts[key]).trim()))throw new Error('Enter all study design parameters');
     return `${id}(${keys.map(key=>opts[key]).join(',')},${opts.design}${opts.tail==='two'?'':','+opts.tail})`;
   }
+  if(id==='normaltest'){const sample=values(column('column'));if(sample.length<8)throw new Error("D'Agostino-Pearson needs at least 8 values");return `normaltest(${list(sample)})`;}
   if(id==='shapiro'){const sample=values(column('column'));if(sample.length<3||sample.length>5000)throw new Error('Shapiro-Wilk needs 3 to 5000 values');return `shapiro(${list(sample)})`;}
   if(['tukey','gameshowell'].includes(id)){const plan=statisticsComparisonData(rows,opts,{all:true});if(plan.samples.length<2||plan.samples.some(sample=>sample.length<2))throw new Error('Enter at least two observations in each group');return `${id}(${plan.samples.map(list).join(',')})`;}
   if(id==='bootstrapci')return `bootstrapci(${list(values(column('column')))},${opts.statistic},${opts.level},${opts.samples},${opts.seed})`;
@@ -380,7 +381,7 @@ export function advancedStatisticsTermLabels(definition,rows,settings={},columnL
   if(id==='logisticcompare')return logisticComparisonLabels(rows,opts,columnLabels);
   const column=key=>Number(opts[key])===-1?n-1:Number(opts[key]);
   if(['twowayanova','linearmodel'].includes(id))return statisticsFactorialData(rows,opts,columnLabels).labels;
-  if(id==='shapiro')return {'sample:1':columnLabels[column('column')]||'Sample 1'};
+  if(['shapiro','normaltest'].includes(id))return {'sample:1':columnLabels[column('column')]||'Sample 1'};
   if(id==='kstest'&&opts.mode!=='two')return {'sample:1':columnLabels[column('first')]||'Sample 1'};
   if(['cohend','bayescompare','levene','bartlett','eta2','friedman','repeatedanova','kstest','tukey','gameshowell'].includes(id)||id==='bayesbootstrap'&&opts.layout!=='single'){
     const settings={...opts,grouping:id==='bayesbootstrap'?opts.layout:opts.grouping};
