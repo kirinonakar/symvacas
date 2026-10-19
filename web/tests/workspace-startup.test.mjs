@@ -41,6 +41,28 @@ test('fresh page constructs and initializes every workspace without a cached dat
   assert.deepEqual(errors,[]);
 });
 
+test('failed calculator previews stay suppressed after engine recovery until input changes',async context=>{
+  let calculator;context.after(()=>calculator?.dispose());
+  const requests=[],noop=()=>{},engine={ready:true,execute:async(request,options)=>{
+    requests.push({request,options});
+    return options?.preview?{ok:false,error:'preview expired'}:{ok:true,exact:'2',decimal:'2',tree:{kind:'number',value:'2'}};
+  }};
+  const {window,state,errors}=fixture(context,{fields:{mode:'scientific',expression:'1+1'}},engine);
+  calculator=createCalculator({state,engine,isBusy:()=>false,ui:{toast:noop,openDialog:noop,clipboard:noop},persist:noop,schedulePersist:noop,
+    requestOptions:()=>({}),error:message=>errors.push(message),changeMode:noop,updateButtons:noop,pressKey:noop,modeDialog:noop,variablesDialog:noop,matrixInsertDialog:noop,graphs:{}});
+  const settle=()=>new Promise(resolve=>setTimeout(resolve,150));
+  calculator.schedulePreview();await settle();
+  assert.equal(requests.length,1);assert.equal(requests[0].options.preview,true);
+  calculator.resetPreview();await settle();
+  assert.equal(requests.length,1,'a recovered engine does not retry unchanged failed input');
+  await calculator.evaluate('1+1');
+  assert.equal(requests.length,2);assert.equal(requests[1].options?.preview,undefined,'explicit calculation remains available');
+  window.document.getElementById('expression').value='2+2';
+  calculator.replaceInput('2+2',{uncommit:true});await settle();
+  assert.equal(requests.length,3);assert.equal(requests[2].options.preview,true);
+  assert.deepEqual(errors,[]);
+});
+
 test('SVM workspace restores task and kernel controls and updates dependent fields',context=>{
   const {window,errors}=fixture(context,{fields:{mode:'statistics','statistics-data':'y,a,b\n0,-1,7\n1,1,7',
     'statistics-kind':'columns','statistics-columns':'3','regression-kind':'svm','regression-svm-task':'classification',

@@ -1,8 +1,9 @@
 import {executionTimeoutMillis} from './execution-budget.js';
 const EXECUTION_TIMEOUT_ERROR = '계산 시간이 60초를 초과했습니다.';
+const PREVIEW_TIMEOUT_MILLIS = 3000;
 
 export class EngineClient extends EventTarget {
-  constructor() { super(); this.counter = 0; this.pending = null; this.start(); }
+  constructor() { super(); this.counter = 0; this.pending = null; this.queued = null; this.start(); }
   emit(type,detail) { this.dispatchEvent(new CustomEvent(type,{detail})); }
   start(attempt=0) {
     clearTimeout(this.startupTimer);
@@ -17,12 +18,12 @@ export class EngineClient extends EventTarget {
       if (initializing && attempt < 1) {
         this.emit('status','계산 엔진 로딩을 다시 시도합니다…');
         this.start(attempt+1);
-      } else this.emit('status',error);
+      } else { this.finishQueued({ok:false,error}); this.emit('status',error); }
     };
     worker.onmessage = ({data}) => {
       // A terminated startup attempt can still have queued messages.
       if (this.worker !== worker) return;
-      if (data.type === 'ready') { clearTimeout(this.startupTimer); this.ready = true; this.emit('status','계산 엔진 준비 완료 · WASM'); this.emit('ready'); }
+      if (data.type === 'ready') { clearTimeout(this.startupTimer); this.ready = true; this.emit('status','계산 엔진 준비 완료 · WASM'); this.emit('ready'); this.runQueued(); }
       else if (data.type === 'status') this.emit('status',data.message);
       else if (data.type === 'fatal') fail(data.error);
       else if (data.type === 'input' && data.id === this.pending?.id) this.requestInput(data);
@@ -38,7 +39,19 @@ export class EngineClient extends EventTarget {
     this.pending.inputController?.abort();
     const {resolve,background} = this.pending; this.pending = null;
     this.emit('activity',false);
-    if (!background) this.emit('busy',false);
+    if (!background && !this.queued) this.emit('busy',false);
+    resolve(result);
+    this.runQueued();
+  }
+  runQueued() {
+    if (!this.queued || !this.ready || this.pending) return;
+    const {request,options,resolve}=this.queued; this.queued=null;
+    this.execute(request,options).then(resolve);
+  }
+  finishQueued(result) {
+    if (!this.queued) return;
+    const {resolve}=this.queued; this.queued=null;
+    if (!this.pending) this.emit('busy',false);
     resolve(result);
   }
   async requestInput(data) {
@@ -61,30 +74,40 @@ export class EngineClient extends EventTarget {
       if(this.pending===pending&&this.worker===worker)this.cancel(String(error));
     }
   }
-  execute(request,{background=false,onInput,context=''}={}) {
+  execute(request,{background=false,preview=false,onInput,context=''}={}) {
+    if (this.queued) return Promise.resolve({ok:false,error:'계산 중입니다. 중지한 뒤 다시 실행해 주세요.'});
     if (!this.ready) return Promise.resolve({ok:false,error:'계산 엔진이 로딩 중입니다.'});
     if (this.pending?.background && !background) {
-      // Explicit work takes priority, while allowing the current preview to finish.
+      // Preserve explicit work across a stalled preview's worker restart.
       this.pending.background = false;
+      let resolve;
+      const promise=new Promise(done=>{resolve=done;});
+      this.queued={request,options:{onInput,context},resolve};
       this.emit('busy',true);
-      const worker=this.worker;
-      return this.pending.promise.then(result => this.worker===worker&&this.ready ? this.execute(request,{onInput,context}) : result);
+      return promise;
     }
     if (this.pending) return Promise.resolve({ok:false,error:'계산 중입니다. 중지한 뒤 다시 실행해 주세요.'});
     let resolve;
     const promise = new Promise(done => { resolve = done; });
     const id = ++this.counter;
-    const remaining=executionTimeoutMillis(request),timeoutError=remaining>60000?'계산 시간이 허용 시간을 초과했습니다.':EXECUTION_TIMEOUT_ERROR;
-    this.pending = {id,resolve,promise,background,onInput,context,remaining,timeoutError,started:Date.now(),timer:Number.isFinite(remaining)?setTimeout(() => this.cancel(timeoutError),remaining):null};
+    const boundedPreview=background&&preview;
+    // Cooperatively stop ordinary previews first; only stalled work needs a restart.
+    if (boundedPreview) request={...request,budget:Math.min(2,request.budget??2)};
+    const remaining=boundedPreview?PREVIEW_TIMEOUT_MILLIS:executionTimeoutMillis(request),timeoutError=boundedPreview?'미리보기 계산 시간이 초과되었습니다.':remaining>60000?'계산 시간이 허용 시간을 초과했습니다.':EXECUTION_TIMEOUT_ERROR;
+    this.pending = {id,resolve,promise,background,onInput,context,remaining,timeoutError,started:Date.now(),timer:Number.isFinite(remaining)?setTimeout(() => this.restart(timeoutError,boundedPreview),remaining):null};
     this.emit('activity',true);
     if (!background) this.emit('busy',true);
     this.worker.postMessage({id,request});
     return promise;
   }
   cancel(message='계산이 중지되었습니다.') {
+    this.restart(message);
+  }
+  restart(message,preserveQueued=false) {
     clearTimeout(this.startupTimer);
     this.worker?.terminate();
     this.worker = null; this.ready = false;
+    if (!preserveQueued) this.finishQueued({ok:false,error:message});
     this.finish({ok:false,error:message});
     this.emit('status','계산 엔진 재시작…');
     this.start();

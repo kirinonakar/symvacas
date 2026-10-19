@@ -127,6 +127,78 @@ test('cancelled foreground work waiting for a preview cannot run on the restarte
   assert.equal((await next).ok,true);
 });
 
+test('bounded previews return cooperatively without restarting the warm worker',async t=>{
+  const {engine,workers,tick}=runtime(t);
+  workers[0].message({type:'ready'});
+  const request={tree:{kind:'number',value:'1'},budget:60};
+  const preview=engine.execute(request,{background:true,preview:true});
+  assert.equal(workers[0].request.request.budget,2);
+  assert.equal(request.budget,60,'preview settings do not mutate the committed request');
+  tick(2000);
+  workers[0].message({type:'result',id:workers[0].request.id,result:{ok:false,error:'Computation limit reached'}});
+  assert.equal((await preview).ok,false);
+  tick(1000);assert.equal(workers.length,1);assert.equal(engine.ready,true);
+});
+
+test('a stalled preview restarts only at its deadline and automatically runs queued foreground work',async t=>{
+  const {engine,workers,tick}=runtime(t),busy=[];
+  engine.addEventListener('busy',event=>busy.push(event.detail));
+  workers[0].message({type:'ready'});
+  const preview=engine.execute({tree:{kind:'number',value:'1'}},{background:true,preview:true});
+  const staleId=workers[0].request.id;
+  tick(2500);
+  const request={action:'python',budget:60},onInput=async()=> 'answer';
+  const commit=engine.execute(request,{context:'python',onInput});
+  tick(499);assert.equal(workers.length,1);
+  tick(1);assert.equal(workers.length,2);assert.equal(workers[0].terminated,true);
+  assert.equal((await preview).ok,false);
+  assert.equal(workers[1].request,undefined,'foreground waits for initialization');
+  assert.ok(!busy.includes(false),'controls remain locked across the restart');
+  workers[0].message({type:'result',id:staleId,result:{ok:true,exact:'stale'}});
+  workers[1].message({type:'ready'});
+  assert.deepEqual(workers[1].request.request,request);
+  assert.equal(engine.pending.context,'python');assert.equal(engine.pending.onInput,onInput);
+  tick(3000);assert.equal(workers.length,2,'foreground receives its own full deadline');
+  workers[1].message({type:'result',id:workers[1].request.id,result:{ok:true,exact:'2'}});
+  assert.equal((await commit).exact,'2');assert.equal(busy.at(-1),false);
+});
+
+test('cancelling during preview recovery discards queued work even if a replacement becomes ready',async t=>{
+  const {engine,workers,tick}=runtime(t);
+  workers[0].message({type:'ready'});
+  const preview=engine.execute({},{background:true,preview:true});
+  const commit=engine.execute({action:'evaluate'});
+  tick(3000);assert.equal((await preview).ok,false);
+  engine.cancel();assert.equal((await commit).error,'계산이 중지되었습니다.');
+  workers[1].message({type:'ready'});workers[2].message({type:'ready'});
+  assert.equal(workers[1].request,undefined);assert.equal(workers[2].request,undefined);
+});
+
+test('failed preview recovery settles queued work after the bounded startup retries',async t=>{
+  const {engine,workers,tick}=runtime(t),busy=[];
+  engine.addEventListener('busy',event=>busy.push(event.detail));
+  workers[0].message({type:'ready'});
+  const preview=engine.execute({},{background:true,preview:true});
+  const commit=engine.execute({action:'evaluate'});
+  tick(3000);assert.equal((await preview).ok,false);
+  tick(120000);tick(120000);
+  assert.equal((await commit).ok,false);assert.equal(engine.queued,null);
+  assert.equal(busy.at(-1),false);
+});
+
+test('only calculation previews have a short hard deadline, including when limits are removed',async t=>{
+  const {engine,workers,tick}=runtime(t);
+  workers[0].message({type:'ready'});
+  const preview=engine.execute({removeComputationLimit:true},{background:true,preview:true});
+  tick(2999);assert.equal(workers.length,1);
+  tick(1);assert.equal((await preview).ok,false);assert.equal(workers.length,2);
+  workers[1].message({type:'ready'});
+  const graph=engine.execute({action:'graph'},{background:true});
+  tick(3000);assert.equal(workers.length,2);
+  workers[1].message({type:'result',id:workers[1].request.id,result:{ok:true}});
+  assert.equal((await graph).ok,true);
+});
+
 test('Python input pauses the deadline and resumes with the remaining execution budget',async t=>{
   const {engine,workers,tick}=runtime(t);
   workers[0].message({type:'ready'});

@@ -235,6 +235,8 @@ class AdvancedStatisticsTests(unittest.TestCase):
                 result=run('glmm',rows,'binomial',points)
                 self.assertEqual(float(result['random intercept variance']),0)
                 self.assertAlmostEqual(float(result['log likelihood']),-24*math.log(2),places=8)
+                self.assertAlmostEqual(float(result['AIC']),48*math.log(2)+4,places=8)
+                self.assertAlmostEqual(float(result['BIC']),48*math.log(2)+2*math.log(24),places=8)
                 self.assertAlmostEqual(float(result['coefficients'][0]['SE']),math.sqrt(5/12),places=6)
                 self.assertTrue(all(float(row['posterior mean'])==0 for row in result['subject random effects']))
             counts=[[g,t,v] for g in range(1,6) for t,v in enumerate([1,2,1,3,2])]

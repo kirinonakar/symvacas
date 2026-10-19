@@ -37,6 +37,7 @@ export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist
   let previewSource=value('expression');
   let inputBoundary=null;
   let calculationPreviewTimer=null,calculationPreviewKey=null,calculationPreviewRevision=0;
+  let failedCalculationPreviewKey=null;
   const undoStack=()=>calcSession?.undo||expressionUndo;
   function showResult(result,source='',displaySource=source,{decimalDisplay=false}={}) {
     if(!result.ok){error(result.error||'계산 오류');return;}
@@ -184,7 +185,9 @@ export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist
   }
   function scheduleCalculationPreview() {
     const key=calculationPreviewState();
-    if(key===calculationPreviewKey)return;
+    // Engine recovery must not repeatedly restart the same failed preview.
+    if(key===calculationPreviewKey||key===failedCalculationPreviewKey)return;
+    failedCalculationPreviewKey=null;
     cancelCalculationPreview();calculationPreviewKey=key;
     if(value('mode')!=='scientific'||committed||calcSession)return;
     const source=value('expression');
@@ -205,9 +208,9 @@ export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist
       try {
         if(engine.pending)await engine.pending.promise;
         if(revision!==calculationPreviewRevision||key!==calculationPreviewState()||isBusy()||!engine.ready)return;
-        const result=await execute({...requestOptions(),tree,budget:2},{background:true});
+        const result=await execute({...requestOptions(),tree,budget:2},{background:true,preview:true});
         if(revision!==calculationPreviewRevision||key!==calculationPreviewState())return;
-        if(result.ok){lastResult=result;lastResultSource=source;renderResult();}else clearPreviewResult();
+        if(result.ok){lastResult=result;lastResultSource=source;renderResult();}else{failedCalculationPreviewKey=key;clearPreviewResult();}
       } catch { /* Incomplete or failed previews leave the input editable. */ }
     },100);
   }

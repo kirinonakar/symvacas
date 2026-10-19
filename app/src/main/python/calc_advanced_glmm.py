@@ -160,9 +160,11 @@ def calculate(engine,name,a):
     coefficients=list(map(float,transform*mp.matrix(point[:p])))
     coefficient_cov=transform*covariance[:p,:p]*transform.T
     _,effects=marginal(point[:p],sd,alpha,True)
+    # Count fitted coordinates in the selected model, including boundary reductions.
+    count=p+int(random)+int(nb)
     result={'coefficients':inference(coefficients,coefficient_cov,['Intercept']+['x'+str(i) for i in range(1,p)],True),
             'family':family,'random intercept variance':sd*sd,'subjects':len(ids),
-            'log likelihood':-value,'AIC':2*(p+1+int(is_nb))+2*value,'BIC':math.log(n)*(p+1+int(is_nb))+2*value,
+            'log likelihood':-value,'AIC':2*count+2*value,'BIC':math.log(n)*count+2*value,
             'quadrature points':nodes_count,'estimation':'ML (Laplace)' if nodes_count==1 else 'ML (adaptive Gauss-Hermite)',
             'iterations':it,'optimizer converged':1,'singular fit':int(sd*sd<1e-6),
             'subject random effects':effects}

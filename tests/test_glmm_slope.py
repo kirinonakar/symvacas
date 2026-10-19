@@ -1,5 +1,6 @@
 """Independent Laplace likelihood fits and original-unit covariance contracts."""
 import json
+import math
 import unittest
 from test_advanced_statistics import ROOT, run
 from calc_shared import MathError
@@ -19,6 +20,10 @@ class GlmmSlopeTests(unittest.TestCase):
                     self.assertAlmostEqual(float(actual),expected,delta=case['tolerance']*max(1,abs(expected)),msg=str(path))
                 self.assertEqual('ML (two-dimensional Laplace)',result['estimation'])
                 self.assertLess(abs(float(result['random intercept-slope correlation'])),1)
+                count=6 if case['arguments'][1]=='nbinom' else 5
+                deviance=-2*float(result['log likelihood'])
+                self.assertAlmostEqual(float(result['AIC']),deviance+2*count,places=8)
+                self.assertAlmostEqual(float(result['BIC']),deviance+math.log(len(case['arguments'][0]))*count,places=8)
 
     def test_covariance_and_modes_transform_to_original_predictor_units(self):
         args=self.cases[0]['arguments']; base=run('glmm',*args)

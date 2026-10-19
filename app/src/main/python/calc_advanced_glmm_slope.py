@@ -121,7 +121,8 @@ def calculate(engine,name,a):
     for id_,mode in zip(ids,modes):
         transformed=list(map(float,back*mp.matrix(mode)))
         effects.append({'subject':id_,'conditional intercept mode':transformed[0],'conditional slope mode':transformed[1]})
-    count=p+3+int(is_nb)
+    # The selected Poisson boundary has no estimated NB2 dispersion coordinate.
+    count=p+3+int(nb)
     vi,vs=float(random_cov[0,0]),float(random_cov[1,1])
     result={'coefficients':coefficient_rows,'family':family,'subjects':len(ids),'n':n,
             'random intercept variance':vi,'random slope predictor':'x'+str(slope),
