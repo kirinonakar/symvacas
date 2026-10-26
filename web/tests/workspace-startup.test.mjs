@@ -10,7 +10,8 @@ import {createAppDialogs} from '../app-dialogs.js';
 import {setLanguage} from '../i18n.js';
 import {setComputationLimitsRemoved} from '../computation-limits.js';
 import {parse} from '../parser.js';
-import {readState} from '../storage.js';
+import {createStorage} from '../storage.js';
+import {IDBFactory} from 'fake-indexeddb';
 
 // Exercise production workspace construction against the real page HTML.
 // This runs in a DOM emulator, not in the user's browser or a browser automation tool.
@@ -25,13 +26,14 @@ function fixture(context,saved={},engine={ready:false},usePersistence=false){
   window.HTMLElement.prototype.scrollIntoView=()=>{};
   const state=createAppState(saved);setLanguage(state.language);setComputationLimitsRemoved(state.removeComputationLimit);restoreFields(state);
   const noop=()=>{},errors=[];
-  const persistence=usePersistence?createPersistence({state,snapshot:()=>({expression:'',graph:{}}),onPersist:noop,toast:noop}):null;
+  const indexedDB=new IDBFactory(),storage=createStorage({indexedDB:()=>indexedDB,localStorage:()=>window.localStorage});
+  const persistence=usePersistence?createPersistence({state,snapshot:()=>({expression:'',graph:{}}),onPersist:noop,toast:noop,saveState:storage.writeState}):null;
   context.after(()=>persistence?.dispose());
   const workspaces=createWorkspaces({state,engine,ui:{toast:noop,pickFile:noop,openDialog:noop,clipboard:noop},persist:persistence?.persist||noop,
     restoreSelect:id=>restoreSelect(state,id),requestOptions:()=>({}),isBusy:()=>false,error:message=>errors.push(message),changeMode:noop,replaceInput:noop,insert:noop,evaluate:noop,showResult:noop,showStatisticsResult:noop,clearResult:noop,
     graphs:{render:noop,run:noop}});
   workspaces.initialize();
-  return {window,state,workspaces,errors};
+  return {window,state,workspaces,errors,storage,persistence};
 }
 
 test('fresh page constructs and initializes every workspace without a cached dataset',context=>{
@@ -83,9 +85,9 @@ test('basic, summary and regression failures appear below their own action rows'
 });
 
 test('model details stay expanded across model changes and persist open and closed states',async context=>{
-  const {window,state,errors}=fixture(context,{fields:{mode:'statistics'},statisticsSections:{'statistics-models-help-details':true}},undefined,true);
+  const {window,state,errors,storage,persistence}=fixture(context,{fields:{mode:'statistics'},statisticsSections:{'statistics-models-help-details':true}},undefined,true);
   const get=id=>window.document.getElementById(id);
-  const settle=()=>new Promise(resolve=>setTimeout(resolve,10));
+  const settle=async()=>{await new Promise(resolve=>setTimeout(resolve,10));await persistence.flush();};
   const details=get('statistics-models-help-details'),kind=get('statistics-models-kind');
   assert.equal(details.open,true,'restore the saved disclosure before model construction');
   const help=get('statistics-models-help').textContent;
@@ -95,24 +97,24 @@ test('model details stay expanded across model changes and persist open and clos
   kind.value='mediation';kind.dispatchEvent(new window.Event('change'));
   assert.equal(details.open,true);
   await settle();
-  assert.equal(readState().statisticsSections[details.id],true);
+  assert.equal((await storage.readState()).statisticsSections[details.id],true);
   details.open=false;await settle();
   assert.equal(state.statisticsSections[details.id],false);
-  assert.equal(readState().statisticsSections[details.id],false,'closing details saves immediately');
+  assert.equal((await storage.readState()).statisticsSections[details.id],false,'closing details saves after flushing');
   kind.value='glm';kind.dispatchEvent(new window.Event('change'));
   assert.equal(details.open,false,'an explicitly closed disclosure also survives model changes');
   details.open=true;await settle();
-  const saved=readState();details.open=false;
+  const saved=await storage.readState();details.open=false;
   restoreFields(createAppState(saved));
   assert.equal(details.open,true,'a reloaded page restores the most recently saved expansion');
   get('statistics-collapse-all').click();await settle();
   assert.equal(details.open,false);
-  assert.equal(readState().statisticsSections[details.id],false,'Collapse all saves the closed disclosure');
+  assert.equal((await storage.readState()).statisticsSections[details.id],false,'Collapse all saves the closed disclosure');
   assert.deepEqual(errors,[]);
 });
 
 test('separate usage disclosures retain independent states across analysis changes',async context=>{
-  const {window,errors}=fixture(context,{fields:{mode:'statistics'},statisticsSections:{'statistics-analysis-help-details':true,'statistics-general-help-details':false}},undefined,true);
+  const {window,errors,storage,persistence}=fixture(context,{fields:{mode:'statistics'},statisticsSections:{'statistics-analysis-help-details':true,'statistics-general-help-details':false}},undefined,true);
   const get=id=>window.document.getElementById(id),kind=get('statistics-op');
   const basic=get('statistics-analysis-help-details'),additional=get('statistics-general-help-details');
   const settle=()=>new Promise(resolve=>setTimeout(resolve,10));
@@ -124,7 +126,7 @@ test('separate usage disclosures retain independent states across analysis chang
   choose('ttest');assert.equal(basic.open,false);
   choose('pearson');assert.equal(additional.open,true);
   await settle();
-  const saved=readState();
+  await persistence.flush();const saved=await storage.readState();
   assert.equal(saved.statisticsSections[basic.id],false);
   assert.equal(saved.statisticsSections[additional.id],true);
   basic.open=true;additional.open=false;

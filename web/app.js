@@ -1,6 +1,6 @@
 import {setComputationLimitsRemoved} from './computation-limits.js';
 import {EngineClient} from './engine-client.js';
-import {readState,writeState} from './storage.js';
+import {readState} from './storage.js';
 import {translateDOM,setText,setLanguage,t} from './i18n.js';
 import {renderFormulas} from './formula-preview.js';
 import {createGraphWorkspace} from './graph-workspace.js';
@@ -15,9 +15,11 @@ import {bindKeyPress} from './keypad.js';
 import {bindMathCopy} from './latex-output.js';
 import {graphColorsForTheme} from './graph-colors.js';
 
-const saved=readState(),state=createAppState(saved,navigator.language),ui=createAppUI();
+let storageUnavailable=false;
+const saved=await readState({onError:()=>{storageUnavailable=true;}}),state=createAppState(saved,navigator.language),ui=createAppUI();
 bindMathCopy(document,()=>state.copyAsLatex&&['scientific','graph','equation'].includes(value('mode')));
 setLanguage(state.language);
+if(storageUnavailable)ui.toast('브라우저 저장 공간을 사용할 수 없어 이번 세션에서만 보관합니다.');
 setComputationLimitsRemoved(state.removeComputationLimit);
 restoreFields(state);
 let calculator,graphs,workspaces,keypad,dialogs;
@@ -38,7 +40,7 @@ keypad=createCalculatorKeypad({state,persist,isCalcActive:()=>calculator.calcAct
 workspaces=createWorkspaces({state,engine,ui,persist,restoreSelect:id=>restoreSelect(state,id),requestOptions,isBusy:()=>runtime.busy,error,changeMode,
   replaceInput:calculator.replaceInput,insert:calculator.insert,evaluate:calculator.evaluate,showResult:calculator.showResult,showStatisticsResult:calculator.showStatisticsResult,clearResult:calculator.clearResult,graphs});
 dialogs=createAppDialogs({state,ui,persist,calculator,changeMode,pressKey:keypad.press,refreshDisplays,renderMatrix:workspaces.renderMatrix,error,
-  reloadState:next=>{if(!writeState(next))throw new Error('Could not save data');persistence.dispose();location.reload();}});
+  reloadState:async next=>{if(!await persistence.replace(next))throw new Error('Could not save data');location.reload();}});
 
 function updateButtons() {
   runtime.updateStopButton();
@@ -81,7 +83,8 @@ $('digits-indicator').onclick=()=>{
 };
 const clearModePress=bindKeyPress($('mode-status'),()=>dialogs.mode(),()=>changeMode('scientific'));
 document.querySelectorAll('main input,main select,main textarea').forEach(field=>field.addEventListener('change',persist));
-window.addEventListener('pagehide',()=>{clearModePress();persist();persistence.dispose();calculator.dispose();runtime.dispose();ui.dispose();graphs.dispose();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')void persistence.flush();});
+window.addEventListener('pagehide',()=>{clearModePress();void persistence.flush();persistence.dispose();calculator.dispose();runtime.dispose();ui.dispose();graphs.dispose();});
 window.addEventListener('resize',()=>{graphs.render();calculator.renderInputCursor();});
 
 async function initialize() {

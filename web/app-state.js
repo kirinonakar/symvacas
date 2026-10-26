@@ -95,8 +95,16 @@ export function restoreSelect(state,id) {
   if(state.fields[id]!==undefined&&Array.from($(id).options).some(o=>o.value===String(state.fields[id])))$(id).value=String(state.fields[id]);
 }
 
-export function createPersistence({state,snapshot,onPersist,toast}) {
-  let saveTimer=null,storageWarning=false,stopped=false;
+export function createPersistence({state,snapshot,onPersist,toast,saveState=writeState}) {
+  let saveTimer=null,writeTimer=null,storageWarning=false,stopped=false;
+  async function save(){
+    clearTimeout(writeTimer);writeTimer=null;
+    let saved=false;
+    try{saved=await saveState({...state,history:state.persistHistory?state.history:[]});}catch{}
+    if(!saved&&!storageWarning){storageWarning=true;toast('브라우저 저장 공간을 사용할 수 없어 이번 세션에서만 보관합니다.');}
+    if(saved)storageWarning=false;
+    return saved;
+  }
   function persist() {
     if(stopped)return;
     clearTimeout(saveTimer);saveTimer=null;
@@ -107,9 +115,20 @@ export function createPersistence({state,snapshot,onPersist,toast}) {
     state.statisticsHeaderKeys=statisticsHeaderKeys();
     state.fields.expression=draft.expression;
     state.graph=draft.graph;
-    if(!writeState({...state,history:state.persistHistory?state.history:[]})&&!storageWarning){storageWarning=true;toast('브라우저 저장 공간을 사용할 수 없어 이번 세션에서만 보관합니다.');}
+    // Capture drafts synchronously for JSON export, but batch disk writes.
+    if(writeTimer===null)writeTimer=setTimeout(save,250);
     onPersist({functionsChanged});
   }
   function schedulePersist(){if(stopped)return;clearTimeout(saveTimer);saveTimer=setTimeout(persist,150);}
-  return {persist,schedulePersist,dispose:()=>{stopped=true;clearTimeout(saveTimer);}};
+  function dispose(){stopped=true;clearTimeout(saveTimer);clearTimeout(writeTimer);saveTimer=writeTimer=null;}
+  function flush(){if(stopped)return Promise.resolve(false);persist();return save();}
+  async function replace(next){
+    if(stopped)return false;
+    dispose();
+    let saved=false;
+    try{saved=await saveState(next);}catch{}
+    if(!saved)stopped=false;
+    return saved;
+  }
+  return {persist,schedulePersist,flush,replace,dispose};
 }

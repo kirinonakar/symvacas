@@ -159,18 +159,19 @@ export function createAppDialogs({state,ui,persist,calculator,changeMode,pressKe
       const backup=JSON.parse(await file.text());
       if(!backup||typeof backup!=='object'||!backup.fields||!backup.variables||!backup.functions)throw new Error('SymvaCAS 웹 백업 파일이 아닙니다.');
       // All restored names and math are still validated by the parser/engine.
-      reloadState(backup);
+      await reloadState(backup);
     })));
     const dataActions=element('div','','form-row');
     dataActions.append(control('Export all data',()=>{persist();downloadFile('symvacas-data.json',encodeData(state),'application/json');}),
-      control('Import all data',()=>pickFile('.json',async file=>{const data=decodeData(await file.text());persist();reloadState(mergeData(state,data));})));
+      control('Import all data',()=>pickFile('.json',async file=>{const data=decodeData(await file.text());persist();await reloadState(mergeData(state,data));})));
     const confirmAction=(title,description,action)=>{
-      const body=element('div');body.append(element('p',t(description)),control('Cancel',()=>$('dialog').close()),control('Confirm',()=>{try{action();}catch(exc){toast(exc.message);}}));openDialog(title,body);
+      let pending=false;
+      const body=element('div');body.append(element('p',t(description)),control('Cancel',()=>$('dialog').close()),control('Confirm',async()=>{if(pending)return;pending=true;try{await action();}catch(exc){toast(exc.message);}finally{pending=false;}}));openDialog(title,body);
     };
     content.append(element('h3',t('Data & reset')),element('p',t('Transfer variables, saved statistics datasets and functions between Android and Web. Matching names are replaced; other data and settings are kept.'),'hint'),dataActions,
-      control('Delete all data',()=>confirmAction('Delete all data','Delete all variables, statistics data and functions? This cannot be undone.',()=>{persist();reloadState(deleteDataState(state));})),
+      control('Delete all data',()=>confirmAction('Delete all data','Delete all variables, statistics data and functions? This cannot be undone.',()=>{persist();return reloadState(deleteDataState(state));})),
       element('p',t('Reset history, settings, inputs, selections and expanded sections. Variables, saved statistics datasets and functions are preserved.'),'hint'),
-      control('Reset all settings',()=>confirmAction('Reset all settings','Reset history, settings, inputs, selections and expanded sections. Variables, saved statistics datasets and functions are preserved.',()=>{persist();reloadState(resetSettingsState(state));})));
+      control('Reset all settings',()=>confirmAction('Reset all settings','Reset history, settings, inputs, selections and expanded sections. Variables, saved statistics datasets and functions are preserved.',()=>{persist();return reloadState(resetSettingsState(state));})));
     $('settings-body').replaceChildren(content);translateDOM($('settings-dialog'));$('settings-dialog').showModal();
   }
   $('settings-close').onclick=()=>$('settings-dialog').close();
