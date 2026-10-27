@@ -31,6 +31,29 @@ test('packaged graph modules execute every graph kind in the production WASM wor
   const graph=(graphKind,source,options={})=>execute({action:'graph',graphKind,trees:[parse(source)],
     min:-1,max:1,yMin:-2,yMax:2,angle:'RAD',...options});
 
+  const algebraicTrees=[String.raw`\frac{1}{a} \cdot x`,String.raw`x^{2}+y^{3} = a`].map(source=>graphInputTree(source));
+  for(const a of [0,1e-12,-1e-12,.01,-.01,1,-1,5]){
+    const result=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:algebraicTrees,
+      min:-10,max:10,yMin:-5,yMax:5,samples:200,parameters:{a}});
+    assert.deepEqual(result.parameters,['a']);
+    const [line,cubic]=result.curves;
+    if(a===0)assert.deepEqual(line,[]);
+    else{
+      assert.ok(line.length<=4);
+      assert.ok(line.some(([x,y])=>x===0&&y===0));
+      for(const [x,y] of line)assert.ok(Math.abs(x-a*y)<1e-12);
+    }
+    assert.ok(cubic.length>0&&cubic.length<350);
+    for(const point of cubic)if(point){
+      const [x,y]=point;
+      assert.ok(Math.abs(x*x+y**3-a)<1e-9);
+      assert.ok(x>=-10-1e-9&&x<=10+1e-9&&y>=-5-1e-9&&y<=5+1e-9);
+    }
+    if(a>0)for(const root of [-Math.sqrt(a),Math.sqrt(a)]){
+      assert.ok(cubic.some(point=>point&&Math.abs(point[0]-root)<1e-12&&point[1]===0));
+    }
+  }
+
   // Reported bare-comma input must fill the intersection, not two independent regions.
   for(const [source,expectedArea,inside,styles] of [
     ['-1<x<1, -1<y<x',2,(x,y)=>x>=-1-1e-8&&x<=1+1e-8&&y>=-1-1e-8&&y<=x+1e-8,['dashed','dashed','dashed','dashed']],

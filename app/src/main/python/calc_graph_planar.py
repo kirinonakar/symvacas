@@ -25,6 +25,7 @@ from calc_graph_shading import graph_shading, inequality_shading
 from calc_graph_contours import scaled_contour
 from calc_graph_radial import radial_contour
 from calc_graph_radial_sine import sine_contour
+from calc_graph_algebraic import affine_samples, odd_power_contour
 
 
 def is_inequality_tree(tree):
@@ -69,6 +70,8 @@ def inequality_parts(engine, tree):
 
 
 def contour_curve(expression, x, y, sliders, xmin, xmax, ymin, ymax, count, logarithmic=False):
+    algebraic = odd_power_contour(expression, x, y, sliders, xmin, xmax, ymin, ymax, count, logarithmic)
+    if algebraic is not None: return algebraic
     sine = sine_contour(expression, x, y, sliders, xmin, xmax, ymin, ymax, logarithmic)
     if sine is not None: return sine
     radial = radial_contour(expression, x, y, sliders, xmin, xmax, ymin, ymax, logarithmic)
@@ -131,6 +134,8 @@ def graph_cartesian(engine, request, trees, xmin, xmax):
     require(math.isfinite(ymin) and math.isfinite(ymax) and ymax > ymin, "Invalid implicit y range")
     curves, implicit = [], []
     def sample(expression):
+        linear = affine_samples(expression, x, sliders, xmin, xmax, bool(request.get("yLog")))
+        if linear is not None: return linear
         function=graph_function(expression, (x,), sliders)
         # Split at explicit branch boundaries, including same-sign jumps and
         # narrow restricted intervals that a uniform grid can entirely miss.

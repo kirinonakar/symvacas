@@ -29,7 +29,8 @@ try{
   const radialSines=['sin(a*x^2+a*y^2)/(x^2+y^2)','sin(sqrt(a*x^2+a*y^2))'];
   const piecewise='f(x)={0<=x<=TR:1-e^(-x/T1),TR<x<TR+TE:(1-e^(-TR/T1))*e^(-(x-TR)/T2)}';
   const nearZero=[{a:1e-6,b:2},{a:2,b:1e-12},{a:-1e-80,b:1e-100},{a:0,b:1},{a:1,b:0},{a:-2,b:-2}];
-  for(const [sources,scenario] of [...radialSines.map(source=>[[source],'radial-sine']),[['-1<x<1, -1<y<ax'],'comma-band'],[[piecewise],'piecewise'],[['a*sin(x+b)'],'normal'],[['a*cos(x+b)>y'],'normal'],[['a*sin(x+b)','a*cos(x+b)>y'],'normal'],[['a*sin(x+b)<y<a*cos(x+b)'],'normal'],[[heart],'normal'],[[heart],'near-zero'],[[heart],'edge'],[[heart],'pan-edge'],[[rose],'rotation']]){
+  for(const [sources,scenario] of [[['x/a'],'algebraic'],[['x^2+y^3=a'],'algebraic'],[['x/a','x^2+y^3=a'],'algebraic'],...radialSines.map(source=>[[source],'radial-sine']),[['-1<x<1, -1<y<ax'],'comma-band'],[[piecewise],'piecewise'],[['a*sin(x+b)'],'normal'],[['a*cos(x+b)>y'],'normal'],[['a*sin(x+b)','a*cos(x+b)>y'],'normal'],[['a*sin(x+b)<y<a*cos(x+b)'],'normal'],[[heart],'normal'],[[heart],'near-zero'],[[heart],'edge'],[[heart],'pan-edge'],[[rose],'rotation']]){
+    if(process.argv.includes('--algebraic')&&scenario!=='algebraic')continue;
     if(process.argv.includes('--radial-sine')&&scenario!=='radial-sine')continue;
     if(process.argv.includes('--piecewise')&&scenario!=='piecewise')continue;
     if(process.argv.includes('--comma')&&scenario!=='comma-band')continue;
