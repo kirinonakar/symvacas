@@ -54,6 +54,45 @@ test('packaged graph modules execute every graph kind in the production WASM wor
     }
   }
 
+  const cubicSumTree=graphInputTree(String.raw`x^{3}+y^{3} = a`);
+  for(const a of [0,1e-12,-1e-12,.01,-.01,1,-1,5]){
+    const result=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:[cubicSumTree],
+      min:-10,max:10,yMin:-5,yMax:5,samples:200,parameters:{a}});
+    assert.deepEqual(result.parameters,['a']);
+    assert.deepEqual(result.implicitCurves,[true]);
+    const curve=result.curves[0];
+    assert.ok(curve.length>0&&curve.length<250);
+    for(const point of curve)if(point){
+      const [x,y]=point;
+      assert.ok(Math.abs(x**3+y**3-a)<1e-9);
+      assert.ok(x>=-10-1e-9&&x<=10+1e-9&&y>=-5-1e-9&&y<=5+1e-9);
+    }
+    const root=Math.cbrt(a);
+    for(const [x,y] of [[root,0],[0,root]]){
+      assert.ok(curve.some(p=>p&&Math.hypot(p[0]-x,p[1]-y)<1e-12));
+    }
+  }
+
+  const cubicSquareTree=graphInputTree(String.raw`x^{3}+y^{2} = a`);
+  for(const a of [0,1e-12,-1e-12,.01,-.01,1,-1,5]){
+    const result=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:[cubicSquareTree],
+      min:-10,max:10,yMin:-5,yMax:5,samples:200,parameters:{a}});
+    assert.deepEqual(result.parameters,['a']);
+    assert.deepEqual(result.implicitCurves,[true]);
+    const curve=result.curves[0];
+    assert.ok(curve.length>0&&curve.length<350);
+    for(const point of curve)if(point){
+      const [x,y]=point;
+      assert.ok(Math.abs(x**3+y*y-a)<1e-9);
+      assert.ok(x>=-10-1e-9&&x<=10+1e-9&&y>=-5-1e-9&&y<=5+1e-9);
+    }
+    const contacts=[[Math.cbrt(a),0]];
+    if(a>=0)contacts.push([0,Math.sqrt(a)],[0,-Math.sqrt(a)]);
+    for(const [x,y] of contacts)assert.ok(curve.some(p=>p&&Math.hypot(p[0]-x,p[1]-y)<1e-12));
+    assert.ok(curve.some(p=>p&&p[1]>0));
+    assert.ok(curve.some(p=>p&&p[1]<0));
+  }
+
   // Reported bare-comma input must fill the intersection, not two independent regions.
   for(const [source,expectedArea,inside,styles] of [
     ['-1<x<1, -1<y<x',2,(x,y)=>x>=-1-1e-8&&x<=1+1e-8&&y>=-1-1e-8&&y<=x+1e-8,['dashed','dashed','dashed','dashed']],

@@ -72,6 +72,10 @@ def inequality_parts(engine, tree):
 def contour_curve(expression, x, y, sliders, xmin, xmax, ymin, ymax, count, logarithmic=False):
     algebraic = odd_power_contour(expression, x, y, sliders, xmin, xmax, ymin, ymax, count, logarithmic)
     if algebraic is not None: return algebraic
+    # Some curves have multiple y branches but one real x for each y, such as
+    # x**3+y**2=a. Reuse the same sampler with axes and viewport exchanged.
+    transposed = odd_power_contour(expression, y, x, sliders, ymin, ymax, xmin, xmax, count, logarithmic)
+    if transposed is not None: return [[point[1], point[0]] if point is not None else None for point in transposed]
     sine = sine_contour(expression, x, y, sliders, xmin, xmax, ymin, ymax, logarithmic)
     if sine is not None: return sine
     radial = radial_contour(expression, x, y, sliders, xmin, xmax, ymin, ymax, logarithmic)

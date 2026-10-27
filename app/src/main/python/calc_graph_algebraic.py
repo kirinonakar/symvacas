@@ -40,6 +40,7 @@ def affine_samples(expression, x, sliders, xmin, xmax, logarithmic=False):
 def _odd_power_coefficients(expression, x, y):
     # Polynomial coordinates exclude poles and other missing-domain points.
     # C*y**n + A*x**2 + B*x + D = 0 has one real y branch for odd n.
+    # Also accept A*x**3 + D, whose viewport crossings have one real root.
     if not expression.is_polynomial(x, y): return None
     polynomial = s.Poly(expression, y)
     degree = polynomial.degree()
@@ -47,8 +48,12 @@ def _odd_power_coefficients(expression, x, y):
     if any(polynomial.nth(index) != 0 for index in range(1, degree)): return None
     coefficient = polynomial.nth(degree)
     constant = s.Poly(polynomial.nth(0), x)
-    if coefficient.has(x) or constant.degree() > 2: return None
-    return degree, (constant.nth(2), constant.nth(1), constant.nth(0), coefficient)
+    if coefficient.has(x): return None
+    x_degree = 2
+    if constant.degree() > 2:
+        if constant.degree() != 3 or constant.nth(2) != 0 or constant.nth(1) != 0: return None
+        x_degree = 3
+    return degree, x_degree, (constant.nth(x_degree), constant.nth(1), constant.nth(0), coefficient)
 
 
 def _quadratic_roots(a, b, c):
@@ -95,26 +100,32 @@ def odd_power_contour(expression, x, y, sliders, xmin, xmax, ymin, ymax, count, 
     if logarithmic: return None
     specification = _odd_power_coefficients(expression, x, y)
     if specification is None: return None
-    degree, coefficients = specification
+    degree, x_degree, coefficients = specification
     try:
         a, b, d, c = graph_function(coefficients, (), sliders)()
         if not c or any(_finite_real(value) is None for value in (a, b, d, c)): return None
         known = {}
         def function(at):
             if at in known: return known[at]
-            value = -((a*at+b)*at+d)/c
-            result = math.copysign(abs(value)**(1/degree), value)
+            value = -(a*at*at*at+d)/c if x_degree == 3 else -((a*at+b)*at+d)/c
+            result = math.cbrt(value) if degree == 3 else math.copysign(abs(value)**(1/degree), value)
             if not math.isfinite(result): raise OverflowError
             return result
         # Cut at viewport edges and vertical tangents before adaptive sampling.
         # This preserves narrow visible sections even as parameters cross zero.
         cuts = {xmin, xmax}
         for level in (ymin, 0.0, ymax):
-            for root in _quadratic_roots(a, b, d+c*level**degree):
+            constant = d+c*level**degree
+            roots = ((math.cbrt(-constant/a),) if a else ()) if x_degree == 3 else _quadratic_roots(a, b, constant)
+            for root in roots:
                 if xmin <= root <= xmax:
                     if root in known and known[root] != level: return None
                     cuts.add(root); known[root] = level
-        if a:
+        if x_degree == 3:
+            # Split at the horizontal tangent as well as the y=0 crossing;
+            # otherwise a nearly straight S curve can hide its small bend.
+            if xmin < 0 < xmax: cuts.add(0.0)
+        elif a:
             vertex = -b/(2*a)
             if xmin < vertex < xmax: cuts.add(vertex)
         cuts = sorted(cuts)
