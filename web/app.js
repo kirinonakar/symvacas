@@ -14,6 +14,7 @@ import {createAppDialogs} from './app-dialogs.js';
 import {bindKeyPress} from './keypad.js';
 import {bindMathCopy} from './latex-output.js';
 import {graphColorsForTheme} from './graph-colors.js';
+import {createWorkspaceNavigation} from './workspace-navigation.js';
 
 let storageUnavailable=false;
 const saved=await readState({onError:()=>{storageUnavailable=true;}}),state=createAppState(saved,navigator.language),ui=createAppUI();
@@ -41,6 +42,7 @@ workspaces=createWorkspaces({state,engine,ui,persist,restoreSelect:id=>restoreSe
   replaceInput:calculator.replaceInput,insert:calculator.insert,evaluate:calculator.evaluate,showResult:calculator.showResult,showStatisticsResult:calculator.showStatisticsResult,clearResult:calculator.clearResult,graphs});
 dialogs=createAppDialogs({state,ui,persist,calculator,changeMode,pressKey:keypad.press,refreshDisplays,renderMatrix:workspaces.renderMatrix,error,
   reloadState:async next=>{if(!await persistence.replace(next))throw new Error('Could not save data');location.reload();}});
+const workspaceNavigation=createWorkspaceNavigation({changeMode});
 
 function updateButtons() {
   runtime.updateStopButton();
@@ -59,6 +61,7 @@ function error(message) {
 function changeMode(mode) {
   $('mode').value=mode;document.documentElement.dataset.workspace=mode;
   setText($('mode-status'),$('mode').selectedOptions[0].textContent);
+  workspaceNavigation.update(mode);
   const panel=$('answer').closest('.answer-panel'),actions=$('exact-toggle').parentElement;
   panel.hidden=['graph','python','programmer','constants','probability','statistics'].includes(mode);actions.hidden=panel.hidden;
   if(mode==='scientific'){$('tape-active').append(panel);$('calculator-display').append(actions);}

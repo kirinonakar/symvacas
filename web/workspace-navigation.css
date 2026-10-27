@@ -1,0 +1,49 @@
+/* Compact screens keep the existing mode picker. */
+.workspace-navigation{display:none}
+
+/* Both keypad pages need 840px of content width. Allow 224px for the sidebar,
+   16px for keypad padding and space for the document scrollbar. Short windows
+   use a split calculator layout, whose keypad would no longer fit both pages. */
+@media(min-width:1100px) and (min-height:593px){
+  :root .instrument{
+    display:grid;
+    grid-template-columns:224px minmax(0,1fr);
+    grid-template-rows:44px 48px auto 1fr auto;
+    grid-template-areas:"sidebar header" "sidebar mode" "sidebar runtime" "sidebar main" "sidebar footer";
+    max-width:1344px;
+    overflow:visible;
+  }
+  :root .instrument>header{grid-area:header;min-width:0}
+  :root .instrument>.mode-bar{grid-area:mode;min-width:0}
+  :root .instrument>.runtime-bar{grid-area:runtime;min-width:0}
+  :root .instrument>main{grid-area:main;min-width:0}
+  :root .instrument>footer{grid-area:footer;min-width:0}
+  :root[data-workspace="scientific"] .instrument{
+    grid-template-columns:224px minmax(0,1fr);
+    grid-template-areas:"sidebar header" "sidebar mode" "sidebar runtime" "sidebar main";
+    overflow:hidden;
+  }
+  .workspace-navigation{
+    grid-area:sidebar;
+    display:block;
+    position:sticky;
+    top:0;
+    align-self:start;
+    height:100dvh;
+    min-height:0;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    padding:16px 12px;
+    background:var(--panel);
+    border-right:1px solid var(--line);
+    scrollbar-width:thin;
+  }
+  .workspace-navigation-heading{font-size:12px;color:var(--muted);padding:0 12px;margin:0 0 12px}
+  .workspace-navigation ul{list-style:none;padding:0;margin:0}
+  .workspace-navigation li{margin:2px 0}
+  .workspace-navigation button{display:block;width:100%;text-align:left;font-size:13px;font-weight:500;padding:9px 12px;line-height:1.4;overflow-wrap:anywhere}
+  .workspace-navigation button[aria-current]{background:var(--bar);color:var(--accent);font-weight:700}
+  .workspace-navigation .workspace-navigation-sections{margin:4px 0 8px 16px;padding-left:8px;border-left:1px solid var(--line)}
+  .workspace-navigation .workspace-navigation-section{font-size:12px;padding:7px 10px;color:var(--muted)}
+  .workspace[data-mode="statistics"] details.statistics-section{scroll-margin-top:12px}
+}

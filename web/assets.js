@@ -1,4 +1,4 @@
-self.SYMVACAS_CACHE = 'symvacas-static-5086bcb94d173103';
+self.SYMVACAS_CACHE = 'symvacas-static-cc52c70a46333316';
 self.SYMVACAS_ASSETS = [
   "./",
   "./advanced-statistics-schema.js",
@@ -127,6 +127,8 @@ self.SYMVACAS_ASSETS = [
   "./unit-groups.js",
   "./worker.js",
   "./workspace-commands.js",
+  "./workspace-navigation.css",
+  "./workspace-navigation.js",
   "./workspaces.js",
   "./xlsx-reader.js",
   "./vendor/licenses/mpmath-LICENSE.txt",
