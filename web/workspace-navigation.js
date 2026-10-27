@@ -14,6 +14,7 @@ export function createWorkspaceNavigation({changeMode}) {
       activeSection=null;
       changeMode(option.value);
       update(option.value);
+      if(option.value==='statistics')document.querySelector('.instrument').scrollIntoView({block:'start'});
     },'workspace-navigation-mode');
     button.dataset.workspaceTarget=option.value;
     modeButtons.set(option.value,button);

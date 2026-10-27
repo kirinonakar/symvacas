@@ -2,6 +2,9 @@ package com.kirinonakar.symvacas.calculator
 
 import org.json.JSONObject
 
+internal const val EXECUTION_RESPONSE_GRACE_MILLIS=5_000L
+
+// Keep the Kotlin, Python and JS work estimates aligned via tests/fixtures/execution_budget.json.
 internal fun executionTimeoutMillis(request:JSONObject):Long {
     val variables=request.optJSONObject("variables")
     fun number(node:JSONObject?,depth:Int=0):Double {
@@ -26,5 +29,5 @@ internal fun executionTimeoutMillis(request:JSONObject):Long {
         for(index in 0 until (args?.length() ?: 0))seconds+=work(args!!.optJSONObject(index))
         return seconds
     }
-    return (60+work(request.optJSONObject("tree")))*1000
+    return (60+work(request.optJSONObject("tree")))*1000+EXECUTION_RESPONSE_GRACE_MILLIS
 }

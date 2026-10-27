@@ -4,9 +4,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import com.kirinonakar.symvacas.math.*
 import org.json.JSONObject
+import org.json.JSONException
 
 internal data class SurfaceSceneRequest(val data:JSONObject?,val bounds:SurfaceBounds,val rotation:Float,val elevation:Float,val mode:String,val opacity:Float,val rainbow:Boolean,val palette:List<Color>,val visible:List<Boolean>,val source:String,val kind:String)
 internal data class SurfaceScene(val request:SurfaceSceneRequest,val groups:List<SurfaceGeometry>,val prepared:PreparedSurface,val projection:SurfaceProjection,val faces:List<SurfaceFace>,val batches:List<SurfaceVertexBatch>,val curves:List<List<DoubleArray?>>,val edges:List<List<Pair<DoubleArray,DoubleArray>>>)
+
+internal fun prepareSurfaceScene(builder:SurfaceSceneBuilder,request:SurfaceSceneRequest):SurfaceScene? = try {
+    builder.build(request)
+} catch(_:JSONException) {null} catch(_:IllegalArgumentException) {null} catch(_:IndexOutOfBoundsException) {null}
 
 /** One conflated worker owns this cache. Completed frames remain drawable while
  * the next frame is prepared; animation never cancels a half-built frame. */
@@ -75,9 +80,10 @@ internal fun readSurfaceGeometry(data:JSONObject):SurfaceGeometry {
     val vertices=points("surfaceVertices");val normals=points("surfaceNormals")
     val indices=data.optJSONArray("surfaceTriangles")
     val faces=(0 until (indices?.length() ?: 0)).mapNotNull {i->
-        val face=indices!!.getJSONArray(i);val ids=(0 until face.length()).map {face.optInt(it,-1)}
+        val face=indices!!.optJSONArray(i) ?: return@mapNotNull null
+        val ids=(0 until face.length()).map {face.optInt(it,-1)}
         ids.takeIf {it.size==3&&it.all {id->vertices.getOrNull(id)!=null}}
     }
-    return SurfaceGeometry(mesh,faces.map {face->face.map {vertices[it]!!}},faces.map {face->face.mapNotNull {normals.getOrNull(it)}},data.optBoolean("convexSurface",false))
+    return SurfaceGeometry(mesh,faces.map {face->face.mapNotNull {vertices.getOrNull(it)}},faces.map {face->face.mapNotNull {normals.getOrNull(it)}},data.optBoolean("convexSurface",false))
 }
 

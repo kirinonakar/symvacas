@@ -9,6 +9,21 @@ import org.junit.Test
 class SurfaceSceneTest {
     private fun request(data:JSONObject)=SurfaceSceneRequest(data,SurfaceBounds(-1.0,1.0,-1.0,1.0,-2.0,2.0),35f,32f,"surface",1f,true,listOf(Color(0xff007b68)),listOf(true),"x+y","surface")
 
+    @Test fun malformedGeometryDoesNotKillScenePreparationAndNextFrameRecovers() {
+        val builder=SurfaceSceneBuilder()
+        val malformed=JSONObject("""{"surfaceGrid":{"x":[0,1],"y":[0,1],"z":[[1]]}}""")
+        assertNull(prepareSurfaceScene(builder,request(malformed)))
+        val valid=JSONObject("""{"surfaceGrid":{"x":[0,1],"y":[0,1],"z":[[0,1],[1,2]]}}""")
+        assertNotNull(prepareSurfaceScene(builder,request(valid)))
+    }
+
+    @Test fun trianglesWithMissingVerticesOrInvalidIndicesAreSkipped() {
+        val data=JSONObject("""{"surfaceVertices":[[0,0,0],[1,0,0],[0,1,0],null,[0,0]],"surfaceTriangles":[[0,1,2],[0,1,3],[0,1,4],[0,1,9],[-1,1,2],[0,1],null]}""")
+        val geometry=readSurfaceGeometry(data)
+        assertEquals(1,geometry.triangles.size)
+        assertEquals(3,geometry.triangles.single().size)
+    }
+
     @Test fun compactGridRendersTheSamePositionsAndColorsAsTheFullGrid() {
         val full=JSONObject("""{"surface":[[[-1,-1,-2],[0,-1,-1],[1,-1,0]],[[-1,0,-1],[0,0,0],[1,0,1]],[[-1,1,0],[0,1,1],[1,1,2]]]}""")
         val compact=JSONObject("""{"surface":[],"surfaceGrid":{"x":[-1,0,1],"y":[-1,0,1],"z":[[-2,-1,0],[-1,0,1],[0,1,2]]}}""")

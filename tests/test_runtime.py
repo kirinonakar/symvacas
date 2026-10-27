@@ -3,6 +3,9 @@ import pathlib
 import subprocess
 import sys
 import unittest
+import threading
+import queue
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 
 PYTHON = pathlib.Path(__file__).resolve().parents[1] / "app/src/main/python"
@@ -100,6 +103,29 @@ assert json.loads(script_runner.run(json.dumps({{'source': "print('again')"}})))
                 self.assertEqual(0, completed.returncode, completed.stderr)
 
 class ScriptRunnerTests(unittest.TestCase):
+
+    def test_cancelled_input_releases_worker_and_never_runs_script_tail(self):
+        control = Control()
+        waiting = threading.Event()
+        values = queue.Queue()
+        class Bridge:
+            def request(self, prompt, output):
+                waiting.set()
+                return values.get(timeout=3)
+        with ThreadPoolExecutor(max_workers=1) as worker:
+            script = worker.submit(script_runner.run, json.dumps({
+                'source': "print('before')\ninput('value=')\nprint('must not run')"}), Bridge(), control)
+            try:
+                self.assertTrue(waiting.wait(2))
+            finally:
+                control.cancelled = True
+                values.put('')
+            result = json.loads(script.result(timeout=3))
+            self.assertEqual('Calculation cancelled', result['error'])
+            self.assertEqual('before\n', result['output'])
+            calculation = worker.submit(calc_engine.dispatch, json.dumps({
+                'tree': {'kind': 'number', 'value': '2'}}))
+            self.assertEqual('2', json.loads(calculation.result(timeout=3))['exact'])
 
     def test_scripts_receive_input_and_saved_function_definitions(self):
         with self.subTest(scenario='input_prompt_and_float_conversion'):

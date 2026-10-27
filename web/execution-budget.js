@@ -1,3 +1,4 @@
+// Shared contract cases: tests/fixtures/execution_budget.json (Kotlin / Python / JS).
 export function bootstrapWork(request){
   const number=(node,depth=0)=>{
     if(!node||depth>8)return 0;
@@ -19,6 +20,8 @@ export function bootstrapWork(request){
   return visit(request.tree);
 }
 
+export const EXECUTION_RESPONSE_GRACE_MILLIS=5000;
+
 export function executionTimeoutMillis(request){
-  return request.removeComputationLimit===true?Infinity:(60+bootstrapWork(request).seconds)*1000;
+  return request.removeComputationLimit===true?Infinity:(60+bootstrapWork(request).seconds)*1000+EXECUTION_RESPONSE_GRACE_MILLIS;
 }

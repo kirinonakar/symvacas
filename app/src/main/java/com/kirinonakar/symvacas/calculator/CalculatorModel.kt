@@ -149,7 +149,14 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
         internal set
     var shift by mutableStateOf(false)
     var alpha by mutableStateOf(false)
-    var mode by mutableStateOf(prefs.getString("mode","Scientific/CAS")?.let{if(it=="Scientific"||it=="CAS")"Scientific/CAS" else it} ?: "Scientific/CAS")
+    private var currentMode by mutableStateOf(prefs.getString("mode","Scientific/CAS")?.let{if(it=="Scientific"||it=="CAS")"Scientific/CAS" else it} ?: "Scientific/CAS")
+    var mode:String
+        get()=currentMode
+        set(value) {
+            // All navigation paths must release the shared worker, including input().
+            if(currentMode=="Python"&&value!="Python"&&pythonJob?.isActive==true)stopPython()
+            currentMode=value
+        }
     var angle by mutableStateOf(prefs.getString("angle","DEG") ?: "DEG")
     var theme by mutableStateOf(prefs.getString("theme","System") ?: "System")
     var language by mutableStateOf(prefs.getString("language","en")?.takeIf { it in setOf("en", "ko") } ?: "en")

@@ -31,5 +31,5 @@ internal object CalculatorPythonActions {
         }
     }
     fun CalculatorModel.performSubmitPythonInput(value:String) {pythonInputSubmit?.invoke(value);pythonInputSubmit=null;pythonInputPrompt=null}
-    fun CalculatorModel.performStopPython() {pythonJob?.cancel();engine.cancel();pythonBusy=false;pythonInputPrompt=null;pythonInputSubmit=null;pythonState.pythonHasRun=true;pythonState.pythonError="Execution stopped"}
+    fun CalculatorModel.performStopPython() {pythonJob?.cancel();pythonJob=null;pythonBusy=false;pythonInputPrompt=null;pythonInputSubmit=null;pythonState.pythonHasRun=true;pythonState.pythonError="Execution stopped"}
 }

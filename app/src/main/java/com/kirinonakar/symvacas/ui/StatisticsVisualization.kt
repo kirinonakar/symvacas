@@ -65,9 +65,14 @@ private fun plotNumber(value:Double)=String.format(Locale.ROOT,"%.4g",value)
     val xlabel=when(kind){"scree"->componentLabel;"histogram"->tr(plot.getString("statistic"));"distribution"->tr("Value");"qq"->tr("Theoretical normal quantiles");else->names.getOrElse(xAxis){""}}
     val ylabel=when(kind){"scree"->"%";"histogram"->drawsLabel;"distribution"->tr("Count");"qq"->tr("Ordered sample values");else->names.getOrElse(yAxis){""}}
     val histogram=kind in listOf("histogram","distribution")
-    val markers=if(kind=="histogram")plot.getJSONArray("interval").numbers()+plot.getDouble("estimate") else emptyList()
-    val histogramLow=if(histogram)(plot.getJSONArray("edges").numbers()+markers).minOrNull()!! else 0.0
-    val histogramHigh=if(histogram)(plot.getJSONArray("edges").numbers()+markers).maxOrNull()!! else 1.0
+    val histogramData=if(histogram)readStatisticsHistogramData(plot) else null
+    if(histogram&&histogramData==null) {
+        Text(tr("Plot data is unavailable or invalid."),color=c.danger)
+        return
+    }
+    val markers=histogramData?.markers.orEmpty()
+    val histogramLow=histogramData?.low ?: 0.0
+    val histogramHigh=histogramData?.high ?: 1.0
     val histogramPadding=(histogramHigh-histogramLow).takeIf {it>0}?.times(.025) ?: .025
     val zeroReference=kind=="histogram"&&plot.has("groupLabels")&&histogramLow-histogramPadding<=0&&histogramHigh+histogramPadding>=0
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(6.dp)) {
@@ -80,8 +85,8 @@ private fun plotNumber(value:Double)=String.format(Locale.ROOT,"%.4g",value)
         }
         ExportableGraphCanvas(Modifier.fillMaxWidth().height(280.dp).background(c.display).semantics {contentDescription=title},c.display,exports) {
             val left=54.dp.toPx();val top=22.dp.toPx();val w=size.width-left-18.dp.toPx();val h=size.height-top-54.dp.toPx()
-            val counts=plot.optJSONArray("counts")?.numbers().orEmpty()
-            val edges=plot.optJSONArray("edges")?.numbers().orEmpty()
+            val counts=histogramData?.counts.orEmpty()
+            val edges=histogramData?.edges.orEmpty()
             val xy=points.map {it[xAxis] to if(yAxis<0)0.0 else it[yAxis]}
             var xmin=0.0;var xmax=1.0;var ymin=0.0;var ymax=1.0
             when(kind) {

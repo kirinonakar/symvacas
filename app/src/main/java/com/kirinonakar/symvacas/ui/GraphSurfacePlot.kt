@@ -154,13 +154,18 @@ internal class GraphSurfaceViewState(val rotation:MutableFloatState,val elevatio
     val surfaceColor=remember(colorHex) {runCatching {Color(android.graphics.Color.parseColor(colorHex))}.getOrDefault(Color(0xFF007B68))}
     val colors=if((m.graphData?.optJSONArray("surfaces")?.length() ?: 1)>1)c.curves else listOf(surfaceColor)
     val latest by rememberUpdatedState(SurfaceSceneRequest(m.graphData,SurfaceBounds(m.xMin,m.xMax,m.yMin,m.yMax,range.first,range.second),rotation,elevationDeg,renderMode,m.surfaceOpacity,m.graphKind=="surface"&&m.surfaceColorMode=="rainbow",colors,List(5){m.isGraphVisible(it)},m.graphSource,m.graphKind))
+    var invalidData by remember {mutableStateOf(false)}
     val scene by produceState<SurfaceScene?>(null) {
         val builder=SurfaceSceneBuilder()
         snapshotFlow {latest}.conflate().collect {request->
-            val next=withContext(Dispatchers.Default){builder.build(request)}
-            if(latest.source==request.source&&latest.kind==request.kind)value=next
+            val next=withContext(Dispatchers.Default){prepareSurfaceScene(builder,request)}
+            if(latest.source==request.source&&latest.kind==request.kind) {
+                invalidData=next==null;value=next
+                if(next==null)exports.capture=null
+            }
         }
     }
+    if(invalidData)Text(tr("Plot data is unavailable or invalid."),color=c.danger)
     val shown=scene ?: return
     val groups=shown.groups;val prepared=shown.prepared;val projection=shown.projection;val faces=shown.faces;val batch=shown.batches;val wireEdges=shown.edges;val spaceCurves=shown.curves
     val bounds=shown.request.bounds;val xmin=bounds.xmin;val xmax=bounds.xmax;val ymin=bounds.ymin;val ymax=bounds.ymax;val zmin=bounds.zmin;val zmax=bounds.zmax

@@ -7,7 +7,7 @@ test('SEM bootstrap survives the ordinary deadline, keeps a bounded deadline and
   const {engine,workers,tick}=runtime(t);workers[0].message({type:'ready'});
   const request={tree:parse('sem([[1,2,3,4,5,6]],[1,1,1,2,2,2],[[1,2]],[],complete,[],configural,ml,[],0,20,7)')};
   const result=engine.execute(request);tick(60001);assert.equal(workers[0].terminated,false);
-  tick(719998);assert.equal(workers[0].terminated,false);tick(1);
+  tick(724998);assert.equal(workers[0].terminated,false);tick(1);
   assert.equal((await result).ok,false);assert.equal(workers[0].terminated,true);
   workers[1].message({type:'ready'});const next=engine.execute(request);engine.cancel();assert.equal((await next).error,'계산이 중지되었습니다.');
 });
@@ -75,7 +75,7 @@ test('a runtime error settles a calculation without treating it as cold startup'
   tick(240000);assert.equal(workers.length,1);
 });
 
-test('calculations can finish after 20 seconds and the next request expires at 60 seconds',async t=>{
+test('calculations can finish after 20 seconds and the next request expires after response grace',async t=>{
   const {engine,workers,tick}=runtime(t);
   workers[0].message({type:'ready'});
   const slow=engine.execute({action:'evaluate'});
@@ -83,13 +83,25 @@ test('calculations can finish after 20 seconds and the next request expires at 6
   workers[0].message({type:'result',id:workers[0].request.id,result:{ok:true,exact:'2'}});
   assert.equal((await slow).exact,'2');
   const stalled=engine.execute({action:'evaluate'});
-  tick(59999);assert.equal(workers.length,1);assert.ok(engine.pending);
+  tick(64999);assert.equal(workers.length,1);assert.ok(engine.pending);
   tick(1);assert.equal(workers[0].terminated,true);assert.equal(workers.length,2);
   assert.deepEqual(await stalled,{ok:false,error:'계산 시간이 60초를 초과했습니다.'});
   workers[1].message({type:'ready'});
   const next=engine.execute({action:'evaluate'});
   workers[1].message({type:'result',id:workers[1].request.id,result:{ok:true}});
   assert.equal((await next).ok,true);
+});
+
+test('engine limit details arriving during response grace reach the caller',async t=>{
+  const {engine,workers,tick}=runtime(t);
+  workers[0].message({type:'ready'});
+  const result=engine.execute({action:'evaluate'});
+  tick(64000);
+  assert.equal(workers[0].terminated,false);
+  const response={ok:false,error:'Computation limit reached. Reduce expression complexity.'};
+  workers[0].message({type:'result',id:workers[0].request.id,result:response});
+  assert.deepEqual(await result,response);
+  tick(1000);assert.equal(workers.length,1,'a delivered response clears the fallback timer');
 });
 
 test('background previews leave editing unlocked and foreground work waits for them',async t=>{
@@ -210,7 +222,7 @@ test('Python input pauses the deadline and resumes with the remaining execution 
   tick(60000);assert.equal(workers.length,1);assert.ok(engine.pending);
   answer('');await Promise.resolve();
   assert.deepEqual(workers[0].request,{type:'input',id,inputId:1,value:''});
-  tick(54999);assert.equal(workers.length,1);
+  tick(59999);assert.equal(workers.length,1);
   tick(1);assert.equal(workers.length,2);
   assert.match((await result).error,/60/);
 });
@@ -238,7 +250,7 @@ test('unlimited requests survive the execution deadline and can still be cancell
   engine.cancel();
   assert.equal((await result).ok,false);assert.equal(workers[0].terminated,true);
   workers[1].message({type:'ready'});
-  const limited=engine.execute({});tick(60000);
+  const limited=engine.execute({});tick(65000);
   assert.equal((await limited).ok,false);assert.equal(workers[1].terminated,true);
 });
 

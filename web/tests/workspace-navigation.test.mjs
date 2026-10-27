@@ -71,6 +71,14 @@ test('statistics shortcuts switch workspace, reopen each section, scroll and foc
     assert.equal(document.activeElement,section.querySelector(':scope > summary'));
     assert.deepEqual([...document.querySelectorAll('[aria-current="location"]')],[button]);
   }
+  const instrument=document.querySelector('.instrument');
+  instrument.scrollIntoView=options=>scrolls.push({id:'instrument',options});
+  const data=document.getElementById('statistics-data').value;
+  document.querySelector('[data-workspace-target="statistics"]').click();
+  assert.deepEqual(scrolls.at(-1),{id:'instrument',options:{block:'start'}},'clicking the active statistics mode returns to the page start');
+  assert.equal(document.querySelector('[aria-current="location"]'),null,'clear the previous section selection');
+  assert.equal(document.getElementById('statistics-data').value,data);
+  assert.equal(document.getElementById('statistics-advanced').open,true,'returning to the top preserves expanded analyses');
   changeMode('python');
   assert.equal(document.querySelector('[aria-current="location"]'),null);
   assert.equal(document.querySelectorAll('.workspace-navigation-section').length,7,'shortcuts remain available in other workspaces');

@@ -12,9 +12,12 @@ function nextMessage(worker,predicate) {
 }
 
 for(const interactive of [true,false])test(`production WASM Python input (JSPI ${interactive?'enabled':'disabled'})`,{timeout:60000},async t=>{
-  // V8 flags cannot be supplied through Worker.execArgv. Use an isolated Node
-  // process so enabled/disabled runtimes cannot change each other's V8 flags.
-  const worker=fork(new URL('./worker-bridge.mjs',import.meta.url),[],{execArgv:[interactive?'--experimental-wasm-jspi':'--no-experimental-wasm-jspi']});
+  // Keep the missing-capability case deterministic even when Node exposes JSPI
+  // with --no-experimental-wasm-jspi. The adapter hides the APIs before import.
+  const worker=fork(new URL('./worker-bridge.mjs',import.meta.url),[],{
+    execArgv:[interactive?'--experimental-wasm-jspi':'--no-experimental-wasm-jspi'],
+    env:{...process.env,SYMVACAS_TEST_DISABLE_JSPI:interactive?'0':'1'},
+  });
   worker.postMessage=data=>worker.send(data);
   t.after(()=>worker.kill());
   await nextMessage(worker,data=>data.type==='ready');

@@ -1,4 +1,4 @@
-import {executionTimeoutMillis} from './execution-budget.js';
+import {executionTimeoutMillis,EXECUTION_RESPONSE_GRACE_MILLIS} from './execution-budget.js';
 const EXECUTION_TIMEOUT_ERROR = '계산 시간이 60초를 초과했습니다.';
 const PREVIEW_TIMEOUT_MILLIS = 3000;
 
@@ -93,7 +93,7 @@ export class EngineClient extends EventTarget {
     const boundedPreview=background&&preview;
     // Cooperatively stop ordinary previews first; only stalled work needs a restart.
     if (boundedPreview) request={...request,budget:Math.min(2,request.budget??2)};
-    const remaining=boundedPreview?PREVIEW_TIMEOUT_MILLIS:executionTimeoutMillis(request),timeoutError=boundedPreview?'미리보기 계산 시간이 초과되었습니다.':remaining>60000?'계산 시간이 허용 시간을 초과했습니다.':EXECUTION_TIMEOUT_ERROR;
+    const remaining=boundedPreview?PREVIEW_TIMEOUT_MILLIS:executionTimeoutMillis(request),timeoutError=boundedPreview?'미리보기 계산 시간이 초과되었습니다.':remaining>60000+EXECUTION_RESPONSE_GRACE_MILLIS?'계산 시간이 허용 시간을 초과했습니다.':EXECUTION_TIMEOUT_ERROR;
     this.pending = {id,resolve,promise,background,onInput,context,remaining,timeoutError,started:Date.now(),timer:Number.isFinite(remaining)?setTimeout(() => this.restart(timeoutError,boundedPreview),remaining):null};
     this.emit('activity',true);
     if (!background) this.emit('busy',true);

@@ -7,33 +7,10 @@ import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import org.json.JSONObject
 import java.util.concurrent.Executors
-import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.*
 import kotlin.coroutines.resume
-
-/** Polled by Python without acquiring its GIL on the Android main thread. */
-class ExecutionControl {
-    private val cancelled = AtomicBoolean(false)
-    val started = AtomicBoolean(false)
-    fun isCancelled(): Boolean = cancelled.get()
-    fun cancel(): Boolean = cancelled.compareAndSet(false, true)
-}
-
-class ScriptInputBridge(private val reply: Messenger, private val id: Int, private val control: ExecutionControl) {
-    private val values = LinkedBlockingQueue<String>()
-    fun request(prompt: String, output: String): String {
-        if(control.isCancelled())return ""
-        reply.send(Message.obtain(null, 3, id, 0).apply {
-            data = Bundle().apply { putString("prompt", prompt); putString("output", output) }
-        })
-        return values.take()
-    }
-    fun submit(value: String) { values.put(value) }
-    fun cancel() { values.offer("") }
-}
 
 class EngineService : Service() {
     private val worker = Executors.newSingleThreadExecutor()
@@ -64,10 +41,16 @@ class EngineService : Service() {
                 val result = try {
                     control.started.set(true)
                     check(!control.isCancelled()) { "Calculation cancelled" }
+                    // The execution deadline gets its full allowance after queueing.
+                    reply.send(Message.obtain(null, 4, id, 0))
                     if (!Python.isStarted()) Python.start(AndroidPlatform(this))
                     val module=if(JSONObject(payload).optString("action")=="python") "script_runner" else "calc_engine"
                     if (module == "script_runner") {
-                        val bridge = ScriptInputBridge(reply, id, control)
+                        val bridge = ScriptInputBridge(control) { prompt, output ->
+                            reply.send(Message.obtain(null, 3, id, 0).apply {
+                                data=Bundle().apply {putString("prompt",prompt);putString("output",output)}
+                            })
+                        }
                         inputBridges[id] = bridge
                         try { Python.getInstance().getModule(module).callAttr("run", payload, bridge, control).toString() }
                         finally { inputBridges.remove(id) }
@@ -114,11 +97,13 @@ class EngineClient(private val context: Context) {
     private val handler = Handler(Looper.getMainLooper())
     companion object {
         private val counter = AtomicInteger()
-        private const val EXECUTION_TIMEOUT_MS = 60_000L
+        private const val EXECUTION_TIMEOUT_MS = 60_000L+EXECUTION_RESPONSE_GRACE_MILLIS
     }
     private var closed = false
     private val incoming = Messenger(Handler(Looper.getMainLooper()) { msg ->
-        if (msg.what == 3) {
+        if (msg.what == 4) {
+            if(pending[msg.arg1]?.isActive==true)startTimeout(msg.arg1)
+        } else if (msg.what == 3) {
             timeouts.remove(msg.arg1)?.let(handler::removeCallbacks)
             val id = msg.arg1
             inputHandlers[id]?.invoke(msg.data.getString("prompt") ?: "", msg.data.getString("output") ?: "") { value ->
