@@ -14,6 +14,7 @@ use std::{
 
 const SKILL: &str = include_str!("../../skills/symvacas/SKILL.md");
 const HELP: &str = "SymvaCAS Windows CLI
+  symvacas-cli --version                   Print application version (Android versionName)
   symvacas-cli status                      Check embedded Python
   symvacas-cli install                     Install Python beside the executable
   symvacas-cli eval EXPRESSION [options]    Calculator syntax / LaTeX -> JSON result
@@ -179,6 +180,10 @@ pub fn run() -> Result<bool> {
     let root = runtime::home()?;
     let engine = Arc::new(Engine::default());
     let result = match command {
+        "--version" | "-V" => {
+            println!("SymvaCAS {}", env!("CARGO_PKG_VERSION"));
+            return Ok(true);
+        }
         "help" | "--help" | "-h" => {
             println!("{HELP}");
             return Ok(true);

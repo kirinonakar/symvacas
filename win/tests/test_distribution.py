@@ -2,6 +2,8 @@ import importlib.util
 import pathlib
 import unittest
 import zipfile
+import json
+import runpy
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("desktop_prepare", ROOT / "scripts/prepare.py")
@@ -25,6 +27,15 @@ class DistributionTests(unittest.TestCase):
         client = (dist / "engine-client.js").read_text(encoding="utf-8")
         self.assertIn("new NativeWorker()", client)
         self.assertNotIn("new Worker(", client)
+
+    def test_desktop_version_reads_android_even_when_web_version_is_stale(self):
+        version=runpy.run_path(str(ROOT/"scripts/sync_version.py"))["android_version"](ROOT.parent)
+        self.assertEqual((ROOT/"dist/app-version.js").read_text(encoding="utf-8"),'export const appVersion = "'+version+'";\n')
+        package=json.loads((ROOT/"package.json").read_text(encoding="utf-8"))
+        self.assertEqual(package["version"],version)
+        self.assertEqual(package["scripts"]["predev"],"python scripts/sync_version.py")
+        self.assertEqual(package["scripts"]["prebuild"],"python scripts/sync_version.py")
+        self.assertEqual(json.loads((ROOT/"src-tauri/tauri.conf.json").read_text())["version"],version)
 
     def test_engine_contains_all_shared_modules_and_desktop_bridge(self):
         with zipfile.ZipFile(ROOT / "src-tauri/generated/engine.zip") as archive:

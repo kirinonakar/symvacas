@@ -15,6 +15,8 @@ npm run build
 
 `release/SymvaCAS/`에 `symvacas.exe`, `symvacas-cli.exe`, `skills/symvacas/`와 문서를 묶습니다. **폴더 전체**를 쓰기 가능한 위치에 복사하세요. `symvacas.exe`는 GUI, `symvacas-cli.exe`는 콘솔/MCP용입니다. 개발 실행 시에는 실제 개발 EXE가 있는 `src-tauri/target/debug/python_embeded`에 설치됩니다.
 
+앱 버전은 Android의 `app/build.gradle.kts`에 있는 **`versionName` 하나를 기준으로 사용**합니다. `npm run dev`·`npm run build` 실행 시 Tauri가 설정을 읽기 전에 npm·Cargo·Tauri 버전과 잠금 파일을 자동 동기화합니다. 앱 정보·실행 파일 버전·CLI `--version`·MCP `serverInfo.version`도 같은 버전입니다. 예를 들어 Android를 `1.6.5`로 올리면 다음 Windows 빌드도 `1.6.5`가 됩니다. 웹을 별도로 빌드할 필요는 없습니다. Cargo를 직접 실행하려면 먼저 `npm run prepare:app`을 실행하세요. 버전이 다르면 직접 Cargo 빌드는 오류로 중단됩니다.
+
 ## Python 설치
 
 앱의 **Python / MCP → Python 의존성 설치**를 누르면 실행 파일 폴더의 **`python_embeded`**에 CPython 3.14.10 x64, SymPy 1.14.0, mpmath 1.3.0, pip 26.2.2를 설치합니다. 다운로드 URL/버전/SHA-256은 `runtime-lock.json`에 고정되어 있습니다. 다운로드 후 해시를 검사하고 임시 폴더에서 import 검사까지 성공한 경우에만 설치를 전환합니다. 실패하면 기존 폴더를 유지하며, 불완전한 기존 설치를 교체할 때는 백업 폴더를 남깁니다. 다른 앱 인스턴스의 동시 설치는 차단됩니다.

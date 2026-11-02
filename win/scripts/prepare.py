@@ -10,6 +10,9 @@ PROJECT = ROOT.parent
 
 
 def prepare():
+    # npm predev/prebuild also run this before Tauri reads its config/metadata.
+    import runpy
+    version = runpy.run_path(str(ROOT / "scripts/sync_version.py"))["sync_versions"](PROJECT)
     dist = ROOT / "dist"
     dist.mkdir(exist_ok=True)
     excluded = {"worker.js", "engine-bootstrap.js", "engine-fetch.js", "assets.js", "sw.js"}
@@ -21,6 +24,8 @@ def prepare():
     for path in (ROOT / "frontend").iterdir():
         if path.is_file() and path.name != "headless-requests.js":
             shutil.copyfile(path, dist / path.name)
+    # Read Android directly: web/app-version.js may be from an older web build.
+    (dist / "app-version.js").write_text('export const appVersion = "' + version + '";\n', encoding="utf-8")
     client = (dist / "engine-client.js").read_text(encoding="utf-8")
     client = "import {NativeWorker} from './native-worker.js';\n" + client
     client = client.replace("new Worker(new URL('./worker.js',import.meta.url),{type:'module'})", "new NativeWorker()")
@@ -75,7 +80,6 @@ def prepare():
     parser += "\nconst desktopRequests=(()=>{const {equationCommand,csvRows,statisticsDetectedColumns,statisticsKindForColumns,statisticsDatasetSource}=desktopWorkspace;const {statisticsRequest}=desktopStatistics;" + module(ROOT / "frontend/headless-requests.js") + "\nreturn {statisticsInput,equationInput,datasetInput};})();"
     (generated / "parser.js").write_text(parser, encoding="utf-8")
     # Build a bilingual function index from the same help shipped with the web app.
-    import runpy
     runpy.run_path(str(ROOT / "scripts/catalog_index.py"))["build_catalog"](PROJECT / "web", generated / "catalog-index.json")
     icons = ROOT / "src-tauri/icons"
     icons.mkdir(exist_ok=True)

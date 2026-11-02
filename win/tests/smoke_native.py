@@ -6,6 +6,7 @@ import queue
 import subprocess
 import threading
 import time
+import re
 
 
 def main():
@@ -15,6 +16,10 @@ def main():
     args = parser.parse_args()
     cli = args.cli.resolve()
     checks = 0
+    android=(pathlib.Path(__file__).resolve().parents[2]/"app/build.gradle.kts").read_text(encoding="utf-8")
+    expected_version=re.search(r'versionName\s*=\s*"([^"]+)"',android).group(1)
+    assert subprocess.check_output([str(cli),"--version"],text=True,encoding="utf-8").strip()==f"SymvaCAS {expected_version}"
+    checks+=1
 
     def run(*command, source=None, success=True):
         nonlocal checks
@@ -61,6 +66,7 @@ def main():
     try:
         init = request({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"smoke","version":"1"}}})
         assert init["result"]["protocolVersion"] == "2025-11-25"
+        assert init["result"]["serverInfo"]["version"] == expected_version
         proc.stdin.write('{"jsonrpc":"2.0","method":"notifications/initialized"}\n');proc.stdin.flush()
         listed = request({"jsonrpc":"2.0","id":2,"method":"tools/list"})
         assert {t["name"] for t in listed["result"]["tools"]} == {"evaluate","engine_request","python","runtime_status","search_catalog","statistics","solve_equations","list_statistics_datasets","get_statistics_dataset","save_statistics_dataset","get_usage"}

@@ -132,7 +132,7 @@ pub fn install(root: &Path, progress: impl Fn(&str)) -> Result<Value> {
         let manifest: Value = serde_json::from_str(LOCK).map_err(|e| e.to_string())?;
         let client = reqwest::blocking::Client::builder()
             .timeout(Duration::from_secs(180))
-            .user_agent("SymvaCAS-Windows/0.1")
+            .user_agent(concat!("SymvaCAS-Windows/", env!("CARGO_PKG_VERSION")))
             .build()
             .map_err(|e| e.to_string())?;
         progress("Downloading and verifying embedded CPython…");

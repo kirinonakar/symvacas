@@ -1,11 +1,13 @@
 {
   "name": "symvacas-windows",
-  "version": "0.1.0",
+  "version": "1.6.5",
   "private": true,
   "type": "module",
   "scripts": {
     "prepare:app": "python scripts/prepare.py",
+    "predev": "python scripts/sync_version.py",
     "dev": "tauri dev",
+    "prebuild": "python scripts/sync_version.py",
     "build": "tauri build --no-bundle && python scripts/package.py",
     "test": "python scripts/prepare.py && node --test tests/*.test.mjs && python -m unittest discover -s tests -p test_*.py -v",
     "check": "python scripts/prepare.py && cargo check --manifest-path src-tauri/Cargo.toml --all-targets"
