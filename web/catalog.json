@@ -367,6 +367,8 @@
     "levene([],[])",
     "bartlett([],[])",
     "mcnemar([],exact)",
+    "mantelhaenszel([],uncorrected,0.95)",
+    "breslowday([],uncorrected,0.95)",
     "twowayanova([],1)",
     "ancova([],0.95,1)",
     "repeatedanova([])",

@@ -42,6 +42,7 @@ from calc_meta_moderators import calculate as meta_moderators
 from calc_robust_statistics import calculate as robust_statistics
 from calc_parametric_survival import calculate as parametric_survival
 from calc_design_power import calculate as design_power
+from calc_stratified_tables import calculate as stratified_tables
 
 
 def dunn(engine, name, a):
@@ -50,6 +51,8 @@ def dunn(engine, name, a):
 
 # Function names, argument limits and handlers share one registry.
 _ANALYSES = {
+    'mantelhaenszel': (1, 3, stratified_tables),
+    'breslowday': (1, 3, stratified_tables),
     'scheffe': (1, 1, extended_posthoc),
     'dunnett': (1, 2, extended_posthoc),
     'conover': (1, 2, dunn),

@@ -12,6 +12,12 @@ DATE_HELP = (
 # compact function descriptions in catalog.py. Keep numerical contracts in forms
 # and definitions rather than repeating their implementation in this text.
 FORM_HELP = {
+    'mantelhaenszel': (
+        'Choose the data layout, stratum and group columns, and two group values. For counts, select event/no-event or event/total columns; for individual data, select the outcome column and values. Set continuity correction and confidence level.',
+        '자료 형태·층·그룹 열과 비교할 두 그룹 값을 선택합니다. 집계 자료는 사건·미발생 수 또는 전체 수, 개별 자료는 결과 열·사건 값을 지정하세요. 연속성 보정·신뢰수준을 선택합니다.'),
+    'breslowday': (
+        'Choose the data layout, stratum and group columns, and outcome counts or individual outcomes. Set Tarone adjustment and confidence level. Requires at least two strata where both groups and outcomes are present.',
+        '자료 형태·층·그룹 열과 사건·미발생 수 또는 개별 결과를 지정합니다. Tarone 보정·신뢰수준을 선택하세요. 두 그룹과 두 결과가 모두 있는 층이 2개 이상 필요합니다.'),
     'normaltest': (
         'Select one numeric sample column with at least 8 finite observations and variation. K² combines skewness and kurtosis z scores; its p value uses chi-square(2). For n ≤ 20 the kurtosis approximation may be inaccurate. Review the Q–Q plot alongside the test result.',
         '유한 관측값 8개 이상이며 변동이 있는 숫자 표본 열을 선택하세요. K²는 왜도·첨도의 z값을 결합하며 p값은 자유도 2의 χ² 근사를 사용합니다. n ≤ 20에서는 첨도 근사가 부정확할 수 있습니다. Q–Q plot과 검정 결과를 함께 해석하세요.'),

@@ -86,7 +86,7 @@ specs.extend(EXTENSION_SPECS)
 menus = [
     ('general', 'Correlation', '상관분석', ['pearson','spearman','kendall']),
     ('preparation', 'Data preparation', '데이터 준비', ['impute']),
-    ('general', 'Categorical data', '범주형 자료', ['propztest','propztest2','mcnemar']),
+    ('general', 'Categorical data', '범주형 자료', ['propztest','propztest2','mcnemar','mantelhaenszel','breslowday']),
     ('general', 'Reliability & agreement', '신뢰도·일치도', ['cronbach','omega','icc','cohenkappa','blandaltman']),
     ('tests', 'Distribution & variance', '분포·분산 검정', ['shapiro','normaltest','kstest','levene','bartlett']),
     ('tests', 'Post-hoc comparisons', '사후비교', ['tukey','gameshowell','scheffe','dunnett','dunn','conover']),

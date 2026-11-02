@@ -838,6 +838,12 @@ Example: propztest2(60,100,45,100)
 `mcnemar` — 2×2 빈도표로 대응 이항 결과를 비교합니다. 방법: exact / corrected / asymptotic.
 Example: mcnemar([[20,8],[2,15]],exact)
 
+`mantelhaenszel` — 층을 보정한 두 그룹의 이항 결과 비교. 층별 행: [A 사건 수,A 미발생 수,B 사건 수,B 미발생 수]. uncorrected·corrected, 신뢰수준(기본 .95).
+Example: mantelhaenszel([[16,2,144,36],[40,20,30,30],[60,120,4,16]],uncorrected,0.95)
+
+`breslowday` — 층별 오즈비 동질성 검정. 층별 행: [A 사건 수,A 미발생 수,B 사건 수,B 미발생 수]. uncorrected·tarone, 신뢰수준(기본 .95). 비교 가능한 층이 2개 이상 필요합니다.
+Example: breslowday([[16,2,144,36],[40,20,30,30],[60,120,4,16]],uncorrected,0.95)
+
 ### 신뢰도·일치도
 
 `cronbach` — Cronbach α로 내적 일관성을 평가합니다. 행=대상, 열=문항; 원점수·표준화 α, 문항-총점 상관, 문항 삭제 시 α. 역문항은 먼저 역코딩하세요.

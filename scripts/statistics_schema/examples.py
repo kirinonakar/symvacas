@@ -38,6 +38,14 @@ def add_example_rows(schema):
             item['ordinalExampleCuts']=[2,3,4]
             item['multiGroupExampleIds']=['1','2']
     comparison_examples(schema,LOGISTIC_COMPARE_ROWS)
+    for item in schema:
+        if item['id'] not in ('mantelhaenszel','breslowday'): continue
+        tables=[[16,2,144,36],[40,20,30,30],[60,120,4,16]]
+        counts=[[stratum,group,str(events),str(other),str(events+other)]
+                for stratum,row in zip(('mild','moderate','severe'),tables)
+                for group,events,other in [('A',*row[:2]),('B',*row[2:])]]
+        item['tableExampleRows']=item['exampleRows']
+        item['exampleRows']=counts
     meta=next(item for item in schema if item['id']=='metaanalysis')
     meta['binaryExampleRows']=[[str(v) for v in row] for row in [[12,100,20,100],[8,80,15,90],[25,150,40,160],[4,60,10,65]]]
     meta['continuousExampleRows']=[[str(v) for v in row] for row in [[12,3,50,10,2.5,48],[15,4,60,12,3.5,55],[9,2,40,8,2.2,42],[11,3.2,65,9.5,3,62]]]

@@ -22,6 +22,8 @@
     "chi2independence": "categorical",
     "fisherexact": "categorical",
     "mcnemar": "categorical",
+    "mantelhaenszel": "stratified",
+    "breslowday": "homogeneity",
     "wilcoxon": "rank",
     "mannwhitney": "rank",
     "kruskal": "rank",
@@ -116,6 +118,14 @@
     "impute": "imputation"
   },
   "guides": {
+    "stratified": {
+      "en": "A pooled OR above 1 indicates higher event odds in Group A than Group B. Read its confidence interval and p value together.\n\nIf odds ratios differ across strata, the pooled value may be misleading; inspect stratum results and the Breslow–Day test.",
+      "ko": "통합 오즈비가 1보다 크면 그룹 A의 사건 오즈가 그룹 B보다 큽니다. 신뢰구간과 p값을 함께 확인하세요.\n\n층 간 오즈비가 다르면 통합값만으로 해석하기 어려우므로 층별 결과와 Breslow–Day 검정을 함께 봅니다."
+    },
+    "homogeneity": {
+      "en": "A p value below the chosen significance level indicates evidence that odds ratios differ across strata.\n\nA nonsignificant result does not establish homogeneity. Check stratum counts and any excluded strata.",
+      "ko": "p값이 정한 유의수준보다 작으면 층 간 오즈비가 다르다는 증거입니다.\n\n유의하지 않다는 것만으로 동질성을 확정하지는 않습니다. 층별 빈도와 제외된 층도 확인하세요."
+    },
     "default": {
       "en": "Read estimates in their original units and check which samples or reference categories are compared.\n\nUse intervals to assess estimation uncertainty and diagnostics to review the model fit.",
       "ko": "추정값의 단위와 비교한 표본·기준 범주를 먼저 확인하세요.\n\n구간으로 추정의 불확실성을, 진단 결과로 모형의 적합 상태를 확인합니다."

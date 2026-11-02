@@ -843,6 +843,696 @@
     ]
   },
   {
+    "id": "mantelhaenszel",
+    "label": "Mantel–Haenszel test",
+    "ko": "Mantel–Haenszel 검정",
+    "input": "table",
+    "suffix": ",uncorrected,0.95",
+    "example": "mantelhaenszel([[16,2,144,36],[40,20,30,30],[60,120,4,16]],uncorrected,0.95)",
+    "help": "Compare two groups on a binary outcome, controlling for strata. Rows: [A events,A no events,B events,B no events]. Options: uncorrected / corrected, confidence level (default .95).",
+    "helpKo": "층을 보정한 두 그룹의 이항 결과 비교. 층별 행: [A 사건 수,A 미발생 수,B 사건 수,B 미발생 수]. uncorrected·corrected, 신뢰수준(기본 .95).",
+    "section": "general",
+    "group": "Categorical data",
+    "groupKo": "범주형 자료",
+    "controls": [
+      {
+        "key": "layout",
+        "label": "Input data layout",
+        "ko": "입력 자료 형태",
+        "type": "choice",
+        "default": "counts",
+        "choices": [
+          {
+            "id": "counts",
+            "label": "Grouped counts",
+            "ko": "집계 자료 (그룹별 빈도)"
+          },
+          {
+            "id": "observations",
+            "label": "Individual observations",
+            "ko": "개별 관측 자료 (환자별 결과)"
+          },
+          {
+            "id": "tables",
+            "label": "One count table per stratum",
+            "ko": "층별 빈도표 (한 행에 두 그룹)"
+          }
+        ]
+      },
+      {
+        "key": "groupA",
+        "label": "Group A value (numerator)",
+        "ko": "그룹 A 값 (오즈비 분자)",
+        "type": "text",
+        "default": "A"
+      },
+      {
+        "key": "groupB",
+        "label": "Group B value (reference)",
+        "ko": "그룹 B 값 (비교 기준)",
+        "type": "text",
+        "default": "B"
+      },
+      {
+        "key": "stratum",
+        "label": "Stratum column",
+        "ko": "층 구분 열 (예: 중증도)",
+        "type": "column",
+        "default": 0,
+        "when": {
+          "layout": [
+            "counts"
+          ]
+        }
+      },
+      {
+        "key": "group",
+        "label": "Treatment / group column",
+        "ko": "치료군 / 그룹 열",
+        "type": "column",
+        "default": 1,
+        "when": {
+          "layout": [
+            "counts"
+          ]
+        }
+      },
+      {
+        "key": "events",
+        "label": "Event count column",
+        "ko": "사건 수 열 (예: 개선 수)",
+        "type": "column",
+        "default": 2,
+        "when": {
+          "layout": [
+            "counts"
+          ]
+        }
+      },
+      {
+        "key": "countType",
+        "label": "Count columns",
+        "ko": "집계 빈도 구성",
+        "type": "choice",
+        "default": "failures",
+        "choices": [
+          {
+            "id": "failures",
+            "label": "Event / no-event counts",
+            "ko": "사건 수 / 미발생 수"
+          },
+          {
+            "id": "total",
+            "label": "Event / total counts",
+            "ko": "사건 수 / 전체 수"
+          }
+        ],
+        "when": {
+          "layout": [
+            "counts"
+          ]
+        }
+      },
+      {
+        "key": "nonEvents",
+        "label": "No-event count column",
+        "ko": "미발생 수 열 (예: 미개선 수)",
+        "type": "column",
+        "default": 3,
+        "when": {
+          "layout": [
+            "counts"
+          ],
+          "countType": [
+            "failures"
+          ]
+        }
+      },
+      {
+        "key": "total",
+        "label": "Total count column",
+        "ko": "전체 수 열",
+        "type": "column",
+        "default": 4,
+        "when": {
+          "layout": [
+            "counts"
+          ],
+          "countType": [
+            "total"
+          ]
+        }
+      },
+      {
+        "key": "patientStratum",
+        "label": "Stratum column",
+        "ko": "층 구분 열 (예: 중증도)",
+        "type": "column",
+        "default": 1,
+        "when": {
+          "layout": [
+            "observations"
+          ]
+        }
+      },
+      {
+        "key": "patientGroup",
+        "label": "Treatment / group column",
+        "ko": "치료군 / 그룹 열",
+        "type": "column",
+        "default": 2,
+        "when": {
+          "layout": [
+            "observations"
+          ]
+        }
+      },
+      {
+        "key": "outcome",
+        "label": "Outcome column",
+        "ko": "결과 열 (예: 개선 여부)",
+        "type": "column",
+        "default": 3,
+        "when": {
+          "layout": [
+            "observations"
+          ]
+        }
+      },
+      {
+        "key": "eventValue",
+        "label": "Event value",
+        "ko": "사건 값 (예: 개선 = 1)",
+        "type": "text",
+        "default": "1",
+        "when": {
+          "layout": [
+            "observations"
+          ]
+        }
+      },
+      {
+        "key": "nonEventValue",
+        "label": "No-event value",
+        "ko": "미발생 값 (예: 미개선 = 0)",
+        "type": "text",
+        "default": "0",
+        "when": {
+          "layout": [
+            "observations"
+          ]
+        }
+      },
+      {
+        "key": "a",
+        "label": "Group A: event count",
+        "ko": "그룹 A: 사건 수 (개선 수)",
+        "type": "column",
+        "default": 0,
+        "when": {
+          "layout": [
+            "tables"
+          ]
+        }
+      },
+      {
+        "key": "b",
+        "label": "Group A: no-event count",
+        "ko": "그룹 A: 미발생 수 (미개선 수)",
+        "type": "column",
+        "default": 1,
+        "when": {
+          "layout": [
+            "tables"
+          ]
+        }
+      },
+      {
+        "key": "c",
+        "label": "Group B: event count",
+        "ko": "그룹 B: 사건 수 (개선 수)",
+        "type": "column",
+        "default": 2,
+        "when": {
+          "layout": [
+            "tables"
+          ]
+        }
+      },
+      {
+        "key": "d",
+        "label": "Group B: no-event count",
+        "ko": "그룹 B: 미발생 수 (미개선 수)",
+        "type": "column",
+        "default": 3,
+        "when": {
+          "layout": [
+            "tables"
+          ]
+        }
+      },
+      {
+        "key": "method",
+        "label": "Continuity correction",
+        "ko": "연속성 보정",
+        "type": "choice",
+        "default": "uncorrected",
+        "choices": [
+          {
+            "id": "uncorrected",
+            "label": "None",
+            "ko": "없음"
+          },
+          {
+            "id": "corrected",
+            "label": "Corrected",
+            "ko": "보정"
+          }
+        ]
+      },
+      {
+        "key": "level",
+        "label": "Confidence level",
+        "ko": "신뢰수준",
+        "type": "number",
+        "default": "0.95"
+      }
+    ],
+    "formHelp": "Model\nTests whether the common odds ratio is 1 after controlling for strata.\n\nWhen to use\nUse to compare binary outcomes between two groups while adjusting for severity, age group or another stratifying variable.\n\nParameters\nChoose the data layout, stratum and group columns, and two group values. For counts, select event/no-event or event/total columns; for individual data, select the outcome column and values. Set continuity correction and confidence level.",
+    "expressionHelp": "Model\nTests whether the common odds ratio is 1 after controlling for strata.\n\nWhen to use\nUse to compare binary outcomes between two groups while adjusting for severity, age group or another stratifying variable.\n\nParameters\nCompare two groups on a binary outcome, controlling for strata. Rows: [A events,A no events,B events,B no events]. Options: uncorrected / corrected, confidence level (default .95).",
+    "formHelpKo": "모델 설명\n층을 보정한 두 그룹의 공통 오즈비가 1인지 검정합니다.\n\n사용 시점\n중증도·연령대 등을 보정해 두 그룹의 이항 결과를 비교할 때 사용합니다.\n\n파라미터 설명\n자료 형태·층·그룹 열과 비교할 두 그룹 값을 선택합니다. 집계 자료는 사건·미발생 수 또는 전체 수, 개별 자료는 결과 열·사건 값을 지정하세요. 연속성 보정·신뢰수준을 선택합니다.",
+    "expressionHelpKo": "모델 설명\n층을 보정한 두 그룹의 공통 오즈비가 1인지 검정합니다.\n\n사용 시점\n중증도·연령대 등을 보정해 두 그룹의 이항 결과를 비교할 때 사용합니다.\n\n파라미터 설명\n층을 보정한 두 그룹의 이항 결과 비교. 층별 행: [A 사건 수,A 미발생 수,B 사건 수,B 미발생 수]. uncorrected·corrected, 신뢰수준(기본 .95).",
+    "exampleRows": [
+      [
+        "mild",
+        "A",
+        "16",
+        "2",
+        "18"
+      ],
+      [
+        "mild",
+        "B",
+        "144",
+        "36",
+        "180"
+      ],
+      [
+        "moderate",
+        "A",
+        "40",
+        "20",
+        "60"
+      ],
+      [
+        "moderate",
+        "B",
+        "30",
+        "30",
+        "60"
+      ],
+      [
+        "severe",
+        "A",
+        "60",
+        "120",
+        "180"
+      ],
+      [
+        "severe",
+        "B",
+        "4",
+        "16",
+        "20"
+      ]
+    ],
+    "tableExampleRows": [
+      [
+        "16",
+        "2",
+        "144",
+        "36"
+      ],
+      [
+        "40",
+        "20",
+        "30",
+        "30"
+      ],
+      [
+        "60",
+        "120",
+        "4",
+        "16"
+      ]
+    ]
+  },
+  {
+    "id": "breslowday",
+    "label": "Breslow–Day test",
+    "ko": "Breslow–Day 검정",
+    "input": "table",
+    "suffix": ",uncorrected,0.95",
+    "example": "breslowday([[16,2,144,36],[40,20,30,30],[60,120,4,16]],uncorrected,0.95)",
+    "help": "Test whether odds ratios are equal across strata. Rows: [A events,A no events,B events,B no events]. Options: uncorrected / tarone, confidence level (default .95). Requires at least two informative strata.",
+    "helpKo": "층별 오즈비 동질성 검정. 층별 행: [A 사건 수,A 미발생 수,B 사건 수,B 미발생 수]. uncorrected·tarone, 신뢰수준(기본 .95). 비교 가능한 층이 2개 이상 필요합니다.",
+    "section": "general",
+    "group": "Categorical data",
+    "groupKo": "범주형 자료",
+    "controls": [
+      {
+        "key": "layout",
+        "label": "Input data layout",
+        "ko": "입력 자료 형태",
+        "type": "choice",
+        "default": "counts",
+        "choices": [
+          {
+            "id": "counts",
+            "label": "Grouped counts",
+            "ko": "집계 자료 (그룹별 빈도)"
+          },
+          {
+            "id": "observations",
+            "label": "Individual observations",
+            "ko": "개별 관측 자료 (환자별 결과)"
+          },
+          {
+            "id": "tables",
+            "label": "One count table per stratum",
+            "ko": "층별 빈도표 (한 행에 두 그룹)"
+          }
+        ]
+      },
+      {
+        "key": "groupA",
+        "label": "Group A value (numerator)",
+        "ko": "그룹 A 값 (오즈비 분자)",
+        "type": "text",
+        "default": "A"
+      },
+      {
+        "key": "groupB",
+        "label": "Group B value (reference)",
+        "ko": "그룹 B 값 (비교 기준)",
+        "type": "text",
+        "default": "B"
+      },
+      {
+        "key": "stratum",
+        "label": "Stratum column",
+        "ko": "층 구분 열 (예: 중증도)",
+        "type": "column",
+        "default": 0,
+        "when": {
+          "layout": [
+            "counts"
+          ]
+        }
+      },
+      {
+        "key": "group",
+        "label": "Treatment / group column",
+        "ko": "치료군 / 그룹 열",
+        "type": "column",
+        "default": 1,
+        "when": {
+          "layout": [
+            "counts"
+          ]
+        }
+      },
+      {
+        "key": "events",
+        "label": "Event count column",
+        "ko": "사건 수 열 (예: 개선 수)",
+        "type": "column",
+        "default": 2,
+        "when": {
+          "layout": [
+            "counts"
+          ]
+        }
+      },
+      {
+        "key": "countType",
+        "label": "Count columns",
+        "ko": "집계 빈도 구성",
+        "type": "choice",
+        "default": "failures",
+        "choices": [
+          {
+            "id": "failures",
+            "label": "Event / no-event counts",
+            "ko": "사건 수 / 미발생 수"
+          },
+          {
+            "id": "total",
+            "label": "Event / total counts",
+            "ko": "사건 수 / 전체 수"
+          }
+        ],
+        "when": {
+          "layout": [
+            "counts"
+          ]
+        }
+      },
+      {
+        "key": "nonEvents",
+        "label": "No-event count column",
+        "ko": "미발생 수 열 (예: 미개선 수)",
+        "type": "column",
+        "default": 3,
+        "when": {
+          "layout": [
+            "counts"
+          ],
+          "countType": [
+            "failures"
+          ]
+        }
+      },
+      {
+        "key": "total",
+        "label": "Total count column",
+        "ko": "전체 수 열",
+        "type": "column",
+        "default": 4,
+        "when": {
+          "layout": [
+            "counts"
+          ],
+          "countType": [
+            "total"
+          ]
+        }
+      },
+      {
+        "key": "patientStratum",
+        "label": "Stratum column",
+        "ko": "층 구분 열 (예: 중증도)",
+        "type": "column",
+        "default": 1,
+        "when": {
+          "layout": [
+            "observations"
+          ]
+        }
+      },
+      {
+        "key": "patientGroup",
+        "label": "Treatment / group column",
+        "ko": "치료군 / 그룹 열",
+        "type": "column",
+        "default": 2,
+        "when": {
+          "layout": [
+            "observations"
+          ]
+        }
+      },
+      {
+        "key": "outcome",
+        "label": "Outcome column",
+        "ko": "결과 열 (예: 개선 여부)",
+        "type": "column",
+        "default": 3,
+        "when": {
+          "layout": [
+            "observations"
+          ]
+        }
+      },
+      {
+        "key": "eventValue",
+        "label": "Event value",
+        "ko": "사건 값 (예: 개선 = 1)",
+        "type": "text",
+        "default": "1",
+        "when": {
+          "layout": [
+            "observations"
+          ]
+        }
+      },
+      {
+        "key": "nonEventValue",
+        "label": "No-event value",
+        "ko": "미발생 값 (예: 미개선 = 0)",
+        "type": "text",
+        "default": "0",
+        "when": {
+          "layout": [
+            "observations"
+          ]
+        }
+      },
+      {
+        "key": "a",
+        "label": "Group A: event count",
+        "ko": "그룹 A: 사건 수 (개선 수)",
+        "type": "column",
+        "default": 0,
+        "when": {
+          "layout": [
+            "tables"
+          ]
+        }
+      },
+      {
+        "key": "b",
+        "label": "Group A: no-event count",
+        "ko": "그룹 A: 미발생 수 (미개선 수)",
+        "type": "column",
+        "default": 1,
+        "when": {
+          "layout": [
+            "tables"
+          ]
+        }
+      },
+      {
+        "key": "c",
+        "label": "Group B: event count",
+        "ko": "그룹 B: 사건 수 (개선 수)",
+        "type": "column",
+        "default": 2,
+        "when": {
+          "layout": [
+            "tables"
+          ]
+        }
+      },
+      {
+        "key": "d",
+        "label": "Group B: no-event count",
+        "ko": "그룹 B: 미발생 수 (미개선 수)",
+        "type": "column",
+        "default": 3,
+        "when": {
+          "layout": [
+            "tables"
+          ]
+        }
+      },
+      {
+        "key": "method",
+        "label": "Homogeneity statistic",
+        "ko": "동질성 통계량",
+        "type": "choice",
+        "default": "uncorrected",
+        "choices": [
+          {
+            "id": "uncorrected",
+            "label": "Breslow–Day",
+            "ko": "Breslow–Day"
+          },
+          {
+            "id": "tarone",
+            "label": "Tarone adjusted",
+            "ko": "Tarone 보정"
+          }
+        ]
+      },
+      {
+        "key": "level",
+        "label": "Confidence level",
+        "ko": "신뢰수준",
+        "type": "number",
+        "default": "0.95"
+      }
+    ],
+    "formHelp": "Model\nTests whether the two-group odds ratio is the same across strata.\n\nWhen to use\nUse to check stratum-specific effect differences before interpreting a pooled odds ratio.\n\nParameters\nChoose the data layout, stratum and group columns, and outcome counts or individual outcomes. Set Tarone adjustment and confidence level. Requires at least two strata where both groups and outcomes are present.",
+    "expressionHelp": "Model\nTests whether the two-group odds ratio is the same across strata.\n\nWhen to use\nUse to check stratum-specific effect differences before interpreting a pooled odds ratio.\n\nParameters\nTest whether odds ratios are equal across strata. Rows: [A events,A no events,B events,B no events]. Options: uncorrected / tarone, confidence level (default .95). Requires at least two informative strata.",
+    "formHelpKo": "모델 설명\n층마다 두 그룹의 오즈비가 같은지 검정합니다.\n\n사용 시점\n통합 오즈비를 해석하기 전에 층별 효과 차이를 확인할 때 사용합니다.\n\n파라미터 설명\n자료 형태·층·그룹 열과 사건·미발생 수 또는 개별 결과를 지정합니다. Tarone 보정·신뢰수준을 선택하세요. 두 그룹과 두 결과가 모두 있는 층이 2개 이상 필요합니다.",
+    "expressionHelpKo": "모델 설명\n층마다 두 그룹의 오즈비가 같은지 검정합니다.\n\n사용 시점\n통합 오즈비를 해석하기 전에 층별 효과 차이를 확인할 때 사용합니다.\n\n파라미터 설명\n층별 오즈비 동질성 검정. 층별 행: [A 사건 수,A 미발생 수,B 사건 수,B 미발생 수]. uncorrected·tarone, 신뢰수준(기본 .95). 비교 가능한 층이 2개 이상 필요합니다.",
+    "exampleRows": [
+      [
+        "mild",
+        "A",
+        "16",
+        "2",
+        "18"
+      ],
+      [
+        "mild",
+        "B",
+        "144",
+        "36",
+        "180"
+      ],
+      [
+        "moderate",
+        "A",
+        "40",
+        "20",
+        "60"
+      ],
+      [
+        "moderate",
+        "B",
+        "30",
+        "30",
+        "60"
+      ],
+      [
+        "severe",
+        "A",
+        "60",
+        "120",
+        "180"
+      ],
+      [
+        "severe",
+        "B",
+        "4",
+        "16",
+        "20"
+      ]
+    ],
+    "tableExampleRows": [
+      [
+        "16",
+        "2",
+        "144",
+        "36"
+      ],
+      [
+        "40",
+        "20",
+        "30",
+        "30"
+      ],
+      [
+        "60",
+        "120",
+        "4",
+        "16"
+      ]
+    ]
+  },
+  {
     "id": "cronbach",
     "label": "Cronbach α reliability",
     "ko": "Cronbach α 신뢰도",

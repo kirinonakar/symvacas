@@ -64,3 +64,7 @@ button[data-run="probability"]{background:var(--accent);color:var(--panel);paddi
 .editable-table .table-column-header { width: 100%; min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: inherit; font: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .statistics-icon-action,.python-icon-action{flex:0 0 42px;width:42px;min-width:42px;padding:8px;display:inline-flex;align-items:center;justify-content:center}.statistics-icon-action svg,.python-icon-action svg{display:block;width:20px;height:20px;fill:currentColor}
 .python-tools-toolbar{align-items:center}.python-tools-toolbar select{width:88px}
+
+/* Keep parenthetical field notes together when wrapping captions. */
+.statistics-field-caption{display:block;min-width:0}
+.statistics-caption-note{display:inline-block;max-width:100%;vertical-align:bottom}

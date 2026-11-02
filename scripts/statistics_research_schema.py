@@ -25,11 +25,41 @@ SPECS = [
 ]
 
 
+STRATIFIED_DATA = '[[16,2,144,36],[40,20,30,30],[60,120,4,16]]'
+SPECS.extend([
+    ('mantelhaenszel','Mantel–Haenszel test','Mantel–Haenszel 검정','table',',uncorrected,0.95',STRATIFIED_DATA,
+     'Compare two groups on a binary outcome, controlling for strata. Rows: [A events,A no events,B events,B no events]. Options: uncorrected / corrected, confidence level (default .95).',
+     '층을 보정한 두 그룹의 이항 결과 비교. 층별 행: [A 사건 수,A 미발생 수,B 사건 수,B 미발생 수]. uncorrected·corrected, 신뢰수준(기본 .95).'),
+    ('breslowday','Breslow–Day test','Breslow–Day 검정','table',',uncorrected,0.95',STRATIFIED_DATA,
+     'Test whether odds ratios are equal across strata. Rows: [A events,A no events,B events,B no events]. Options: uncorrected / tarone, confidence level (default .95). Requires at least two informative strata.',
+     '층별 오즈비 동질성 검정. 층별 행: [A 사건 수,A 미발생 수,B 사건 수,B 미발생 수]. uncorrected·tarone, 신뢰수준(기본 .95). 비교 가능한 층이 2개 이상 필요합니다.'),
+])
+
+
+def stratified_fields(field,col):
+    layouts=[('counts','Grouped counts','집계 자료 (그룹별 빈도)'),('observations','Individual observations','개별 관측 자료 (환자별 결과)'),('tables','One count table per stratum','층별 빈도표 (한 행에 두 그룹)')]
+    fields=[field('layout','Input data layout','입력 자료 형태','choice','counts',layouts),
+            field('groupA','Group A value (numerator)','그룹 A 값 (오즈비 분자)','text','A'),field('groupB','Group B value (reference)','그룹 B 값 (비교 기준)','text','B')]
+    for key,en,ko,default in [('stratum','Stratum column','층 구분 열 (예: 중증도)',0),('group','Treatment / group column','치료군 / 그룹 열',1),('events','Event count column','사건 수 열 (예: 개선 수)',2)]:
+        fields.append(dict(col(key,en,ko,default),when={'layout':['counts']}))
+    fields += [field('countType','Count columns','집계 빈도 구성','choice','failures',[('failures','Event / no-event counts','사건 수 / 미발생 수'),('total','Event / total counts','사건 수 / 전체 수')],when={'layout':['counts']}),
+               dict(col('nonEvents','No-event count column','미발생 수 열 (예: 미개선 수)',3),when={'layout':['counts'],'countType':['failures']}),
+               dict(col('total','Total count column','전체 수 열',4),when={'layout':['counts'],'countType':['total']})]
+    for key,en,ko,default in [('patientStratum','Stratum column','층 구분 열 (예: 중증도)',1),('patientGroup','Treatment / group column','치료군 / 그룹 열',2),('outcome','Outcome column','결과 열 (예: 개선 여부)',3)]:
+        fields.append(dict(col(key,en,ko,default),when={'layout':['observations']}))
+    fields += [field('eventValue','Event value','사건 값 (예: 개선 = 1)','text','1',when={'layout':['observations']}),field('nonEventValue','No-event value','미발생 값 (예: 미개선 = 0)','text','0',when={'layout':['observations']})]
+    for key,en,ko,i in [('a','Group A: event count','그룹 A: 사건 수 (개선 수)',0),('b','Group A: no-event count','그룹 A: 미발생 수 (미개선 수)',1),('c','Group B: event count','그룹 B: 사건 수 (개선 수)',2),('d','Group B: no-event count','그룹 B: 미발생 수 (미개선 수)',3)]:
+        fields.append(dict(col(key,en,ko,i),when={'layout':['tables']}))
+    return fields
+
+
 def forms(field, col, multi, two_fields, matching_fields):
     bounds=[field('lower','Lower equivalence bound','동등성 하한','number','-0.5'),field('upper','Upper equivalence bound','동등성 상한','number','0.5')]
     alpha=[field('alpha','Significance level α','유의수준 α','number','0.05')]
     level=[field('level','Confidence level','신뢰수준','number','0.95')]
     return {
+        'mantelhaenszel':stratified_fields(field,col)+[field('method','Continuity correction','연속성 보정','choice','uncorrected',[('uncorrected','None','없음'),('corrected','Corrected','보정')])]+level,
+        'breslowday':stratified_fields(field,col)+[field('method','Homogeneity statistic','동질성 통계량','choice','uncorrected',[('uncorrected','Breslow–Day','Breslow–Day'),('tarone','Tarone adjusted','Tarone 보정')])]+level,
         'metaanalysis':[field('layout','Input data','입력 자료','choice','effects',[('effects','Effect estimate / SE','효과 추정값 / SE'),('binary','Binary events / patients','이진 사건 수 / 환자 수'),('continuous','Continuous mean / SD / n','연속형 평균 / SD / n')]),
                         dict(col('effect','Effect estimate column','효과 추정값 열',0),when={'layout':['effects']}),dict(col('se','Standard error column (SE)','표준오차 열 (SE)',1),when={'layout':['effects']}),
                         dict(col('eventsA','Events A','A 사건 수 열',0),when={'layout':['binary']}),dict(col('totalA','Total patients A','A 전체 환자 수 열',1),when={'layout':['binary']}),

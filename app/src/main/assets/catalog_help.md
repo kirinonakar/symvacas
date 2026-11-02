@@ -838,6 +838,12 @@ Example: propztest2(60,100,45,100)
 `mcnemar` — Compare paired binary outcomes from a 2×2 count table. Method: exact / corrected / asymptotic.
 Example: mcnemar([[20,8],[2,15]],exact)
 
+`mantelhaenszel` — Compare two groups on a binary outcome, controlling for strata. Rows: [A events,A no events,B events,B no events]. Options: uncorrected / corrected, confidence level (default .95).
+Example: mantelhaenszel([[16,2,144,36],[40,20,30,30],[60,120,4,16]],uncorrected,0.95)
+
+`breslowday` — Test whether odds ratios are equal across strata. Rows: [A events,A no events,B events,B no events]. Options: uncorrected / tarone, confidence level (default .95). Requires at least two informative strata.
+Example: breslowday([[16,2,144,36],[40,20,30,30],[60,120,4,16]],uncorrected,0.95)
+
 ### Reliability & agreement
 
 `cronbach` — Internal consistency using raw and standardized Cronbach α, item-total correlations and α after item deletion. Rows: subjects; columns: items. Reverse-code items first.

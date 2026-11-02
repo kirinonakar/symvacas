@@ -14,6 +14,7 @@ TITLES.update({'mode':'Mode', 'skewness':'Skewness', 'kurtosis':'Excess kurtosis
 TITLES['logisticcompare']='Nested logistic model comparison'
 TITLES['modelcompare']='Model Comparison'
 TITLES['normaltest']='D’Agostino–Pearson'
+TITLES.update({'mantelhaenszel':'Mantel–Haenszel test','breslowday':'Breslow–Day test'})
 TITLES.update({'scheffe':'Scheffé post-hoc test','dunnett':'Dunnett control comparisons','conover':'Conover–Iman post-hoc test'})
 TITLES.update({'propztest':'One-sample proportion z test', 'propztest2':'Two-sample proportion z test',
                'ancova':'ANCOVA', 'mancova':'MANCOVA', 'glm':'Generalized linear model (GLM)',
@@ -70,6 +71,9 @@ def statistics_report(name, value, precision, labels=None):
 
     def add(title, columns, rows):
         if rows and columns:
+            if name in ('mantelhaenszel','breslowday'):
+                count_keys=['Group A: event count','Group A: no-event count','Group B: event count','Group B: no-event count']
+                columns=[table_labels.get('count:'+str(count_keys.index(key)+1),key) if key in count_keys else key for key in columns]
             formatted = [[cell(v) for v in row] for row in rows]
             section = {'title': title, 'columns': columns, 'rows': formatted[:100], 'totalRows': len(rows)}
             if len(rows) > 100: section['copyRows'] = formatted
@@ -195,6 +199,7 @@ def statistics_report(name, value, precision, labels=None):
                 intervals=[]; expanded=[]
                 for row_index, raw in enumerate(v):
                     row=dict(raw)
+                    if name in ('mantelhaenszel','breslowday') and 'Stratum' in row: row['Stratum']=table_labels.get('stratum:'+str(row['Stratum']),str(row['Stratum']))
                     if name=='metaanalysis' and title in ('Studies','Excluded studies'): row['Study']=table_labels.get('study:'+str(row['Study']),str(row['Study']))
                     if name in ('cfa','sem') and title=='Latent R²' and row.get('Role')=='Exogenous (R² not applicable)': row['R²']='Not applicable'
                     bounds=row.pop('CI95',None)
@@ -420,8 +425,13 @@ def statistics_report(name, value, precision, labels=None):
     if name=='logisticcompare':priority=['LRT χ²','LRT p','ΔAIC (B − A)','ΔBIC (B − A)']
     if name=='modelcompare':priority=['F','LRT χ²','Difference χ²','p','ΔR² (B − A)','ΔAUC (B − A)','ΔC-index (B − A)','ΔRMSE (B − A)','ΔAIC (B − A)']
     if name=='normaltest': priority=['K²','p value','n']
+    if name in ('mantelhaenszel','breslowday'): priority=['χ²','df','p value','Pooled odds ratio']
     highlights=[{'label':('χ² p' if name in ('cfa','sem') else 'p value') if key=='p' and name in ('cfa','sem','mcnemar') else key,'value':cell(value[key])} for key in priority if isinstance(value,dict) and key in value and finite(value[key]) is not None][:4]
     report = {'analysis': name, 'title': report_title, 'sections': sections,'highlights':highlights,'plots':plots}
+    if name in ('mantelhaenszel','breslowday'):
+        group_a,group_b=(table_labels.get('group:'+str(i),'Group '+letter) for i,letter in [(1,'A'),(2,'B')])
+        event=table_labels.get('outcome:event','Event');non_event=table_labels.get('outcome:nonevent','No event')
+        report['context']=f'OR = ({group_a}: {event} / {non_event}) / ({group_b}: {event} / {non_event})'
     if name=='pearson':
         report['notes']=['Independent paired observations; the Pearson p value assumes a bivariate normal population under the null hypothesis of zero correlation.']
     if name in ('spearman','kendall'):

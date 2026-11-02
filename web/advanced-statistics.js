@@ -13,6 +13,20 @@ import {getLanguage,t} from './i18n.js';
 import {renderSurvivalReport} from './survival-report.js';
 import {statisticsResultMarkdown} from './statistics-markdown.js';
 
+function fieldCaption(text){
+  const caption=document.createElement('span');caption.className='statistics-field-caption';caption.translate=false;
+  let depth=0,start=0,plain=0;
+  for(let i=0;i<text.length;i++){
+    if(text[i]==='('||text[i]==='（'){if(depth===0)start=i;depth++;}
+    else if((text[i]===')'||text[i]==='）')&&depth>0&&--depth===0){
+      caption.append(document.createTextNode(text.slice(plain,start)));
+      const note=document.createElement('span');note.className='statistics-caption-note';note.textContent=text.slice(start,i+1);caption.append(note);plain=i+1;
+    }
+  }
+  caption.append(document.createTextNode(text.slice(plain)));
+  return caption;
+}
+
 export function advancedStatisticsReservedColumns(definition,settings,key,count){
   const opts=Object.fromEntries(definition.controls.map(field=>[field.key,settings[field.key]??field.default]));
   const id=definition.id;
@@ -467,6 +481,15 @@ export function advancedStatisticsRows(source,columnLimit){
 }
 
 export function advancedStatisticsExampleRows(definition,settings={}){
+  if(['mantelhaenszel','breslowday'].includes(definition.id)){
+    if(settings.layout==='tables')return definition.tableExampleRows;
+    if(settings.layout==='observations'){
+      const patients=[];
+      for(const [stratum,group,events,other] of definition.exampleRows)for(const [outcome,n] of [['1',events],['0',other]])for(let i=0;i<Number(n);i++)patients.push([String(patients.length+1),stratum,group,outcome]);
+      return patients;
+    }
+    return definition.exampleRows;
+  }
   if(['metaanalysis','metaregression','metasubgroup'].includes(definition.id)&&settings.layout==='binary')return definition.binaryExampleRows.map(row=>row.map(String));
   if(['metaanalysis','metaregression','metasubgroup'].includes(definition.id)&&settings.layout==='continuous')return definition.continuousExampleRows.map(row=>row.map(String));
   let rows=definition.id==='modelcompare'?(definition.exampleRowsByFamily?.[settings.family||'linear']||definition.exampleRows):definition.exampleRows;
@@ -627,7 +650,7 @@ export function createAdvancedStatistics({state,persist,data,columnLimit,copy,cl
             persist();
           };
           if(field.type==='columns'){
-            const group=element('fieldset'),legend=element('legend',caption);group.append(legend);group.className='form-row statistics-form-columns';
+            const group=element('fieldset'),legend=element('legend');legend.append(fieldCaption(caption));group.append(legend);group.className='form-row statistics-form-columns';
             const reserved=advancedStatisticsReservedColumns(definition,opts,field.key,count);
             const columns=value==='auto'?Array.from({length:count},(_,i)=>i).filter(i=>!reserved.includes(i)):String(value).split(',').filter(Boolean).map(Number);
             const store=element('input');store.type='hidden';store.id=id;store.value=String(value);group.append(store);
@@ -638,7 +661,7 @@ export function createAdvancedStatistics({state,persist,data,columnLimit,copy,cl
             form.append(group);
           }else{
             const typing=['number','text'].includes(field.type);
-            const label=element('label',caption),control=typing&&focused?.id===id?focused:element(typing?'input':'select');control.id=id;
+            const label=element('label'),control=typing&&focused?.id===id?focused:element(typing?'input':'select');label.append(fieldCaption(caption));control.id=id;
             if(typing){if(control.value!==String(value))control.value=value;control.oninput=()=>changed(control.value);}
             else{
               const choices=field.type==='column'?labels.map((name,i)=>({id:String(i),label:name,ko:name})):field.type==='dataset'?Object.keys(state.datasets).map(name=>({id:name,label:name,ko:name})):field.type==='group'?[...new Set(currentRows().map(row=>String(row[Number(opts.group)]??'').trim()).filter(Boolean))].map(name=>({id:name,label:name,ko:name})):field.choices.filter(choice=>!choice.when||Object.entries(choice.when).every(([key,values])=>values.includes(opts[key])));

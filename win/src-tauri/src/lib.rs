@@ -13,6 +13,11 @@ use tauri::{ipc::Channel, State};
 use tauri_plugin_dialog::DialogExt;
 
 #[tauri::command]
+fn set_window_theme(window: tauri::Window, theme: tauri::Theme) -> runtime::Result<()> {
+    window.set_theme(Some(theme)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn sync_statistics_datasets(
     base: Value,
     changes: Value,
@@ -133,6 +138,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(Arc::new(engine::Engine::default()))
         .invoke_handler(tauri::generate_handler![
+            set_window_theme,
             sync_statistics_datasets,
             python_status,
             install_python,

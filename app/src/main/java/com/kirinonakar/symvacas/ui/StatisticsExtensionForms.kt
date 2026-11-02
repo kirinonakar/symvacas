@@ -1,6 +1,6 @@
 package com.kirinonakar.symvacas.ui
 
-internal val extensionAnalysisIds=setOf("omega","bayesttest","bayesanova","metaregression","metasubgroup","designpower","designsize","yuen","trimmedanova","winsorcor","robustreg","parametricsurvival")
+internal val extensionAnalysisIds=setOf("mantelhaenszel","breslowday","omega","bayesttest","bayesanova","metaregression","metasubgroup","designpower","designsize","yuen","trimmedanova","winsorcor","robustreg","parametricsurvival")
 
 internal data class ExtensionStatisticsPlan(val expression:String,val labels:Map<String,String>)
 
@@ -25,6 +25,7 @@ internal fun extensionStatisticsPlan(id:String,rows:List<List<String>>,opts:Map<
         return plan
     }
     val expression=when(id) {
+        "mantelhaenszel","breslowday"->{val plan=stratifiedStatisticsData(rows,opts,columnLabels);labels.putAll(plan.labels);"$id(${table(plan.tables)},${opts["method"]},${opts["level"]})"}
         "omega"->{val indices=multi("columns");featureLabels(indices);"omega(${table(complete(indices))},${opts["mode"]})"}
         "designpower","designsize"->{
             require(listOf("effect","size","alpha").all {opts[it].orEmpty().isNotBlank()}){"Enter all study design parameters"}

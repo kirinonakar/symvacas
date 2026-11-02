@@ -60,6 +60,19 @@ internal fun advancedStatisticsRows(data:String,columnLimit:Int?=null,removeComp
 }
 
 internal fun advancedStatisticsExampleRows(definition:JSONObject,settings:JSONObject=JSONObject()):List<List<String>> {
+    if(definition.getString("id") in listOf("mantelhaenszel","breslowday")) {
+        if(settings.optString("layout")=="observations") {
+            val counts=definition.getJSONArray("exampleRows");val patients=mutableListOf<List<String>>()
+            for(i in 0 until counts.length()) {
+                val row=counts.getJSONArray(i)
+                for((outcome,at) in listOf("1" to 2,"0" to 3))repeat(row.getString(at).toInt()){patients.add(listOf((patients.size+1).toString(),row.getString(0),row.getString(1),outcome))}
+            }
+            return patients
+        }
+        val key=if(settings.optString("layout")=="tables")"tableExampleRows" else "exampleRows"
+        val rows=definition.getJSONArray(key)
+        return List(rows.length()){i->rows.getJSONArray(i).let {row->List(row.length()){row.getString(it)}}}
+    }
     if(definition.getString("id") in listOf("metaanalysis","metaregression","metasubgroup")&&settings.optString("layout") in listOf("binary","continuous")) {
         val rows=definition.getJSONArray(if(settings.optString("layout")=="binary")"binaryExampleRows" else "continuousExampleRows")
         return List(rows.length()){i->rows.getJSONArray(i).let {row->List(row.length()){row.getString(it)}}}

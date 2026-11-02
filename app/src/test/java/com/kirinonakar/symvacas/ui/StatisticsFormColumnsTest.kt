@@ -8,6 +8,20 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StatisticsFormColumnsTest {
+    @Test fun stratifiedCountTestsPreserveColumnRolesAndOptions() {
+        for(id in listOf("mantelhaenszel","breslowday")) {
+            val d=definition(id)
+            val example=advancedStatisticsExampleRows(d,JSONObject())
+            assertEquals(d.getString("example"),guidedStatisticsCommand(d,example))
+            val rows=listOf(listOf("ignored","22","8","18","12"))
+            val method=if(id=="breslowday")"tarone" else "corrected"
+            val settings=JSONObject().put("layout","tables").put("a","4").put("b","3").put("c","2").put("d","1").put("method",method).put("level","0.99")
+            val command=guidedStatisticsCommand(d,rows,settings)
+            assertEquals("$id([[12,18,8,22]],$method,0.99)",command)
+            assertEquals(id,com.kirinonakar.symvacas.math.statisticsRequest(command).tree.value)
+            assertTrue(runCatching {guidedStatisticsCommand(d,rows,settings.put("b","4"))}.isFailure)
+        }
+    }
     @Test fun modelComparisonFormsKeepOptionNamesAndFamiliesIntactInRequests() {
         val d=definition("modelcompare")
         val families=d.getJSONObject("exampleRowsByFamily")

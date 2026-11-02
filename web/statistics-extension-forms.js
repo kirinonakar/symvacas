@@ -1,6 +1,7 @@
 import {statisticsComparisonData} from './statistics-comparison-data.js';
+import {stratifiedStatisticsData} from './statistics-stratified-data.js';
 
-export const extensionAnalysisIds=new Set(['omega','bayesttest','bayesanova','metaregression','metasubgroup','designpower','designsize','yuen','trimmedanova','winsorcor','robustreg','parametricsurvival']);
+export const extensionAnalysisIds=new Set(['mantelhaenszel','breslowday','omega','bayesttest','bayesanova','metaregression','metasubgroup','designpower','designsize','yuen','trimmedanova','winsorcor','robustreg','parametricsurvival']);
 
 export function extensionStatisticsPlan(id,rows,opts,columnLabels=[]){
   const n=Math.max(0,...rows.map(row=>row.length)),labels={};
@@ -21,7 +22,10 @@ export function extensionStatisticsPlan(id,rows,opts,columnLabels=[]){
     plan.labels.forEach((at,i)=>{labels[`sample:${i+1}`]=opts.grouping==='groups'?at:columnLabels[Number(at)]||`Sample ${i+1}`;});return plan;
   };
   let expression;
-  if(id==='omega'){
+  if(id==='mantelhaenszel'||id==='breslowday'){
+    const plan=stratifiedStatisticsData(rows,opts,columnLabels);Object.assign(labels,plan.labels);
+    expression=`${id}(${table(plan.tables)},${opts.method},${opts.level})`;
+  }else if(id==='omega'){
     const indices=multi('columns');featureLabels(indices);expression=`omega(${table(complete(indices))},${opts.mode})`;
   }else if(id==='designpower'||id==='designsize'){
     if(['effect','size','alpha'].some(key=>!String(opts[key]??'').trim()))throw new Error('Enter all study design parameters');

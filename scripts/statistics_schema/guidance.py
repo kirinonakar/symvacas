@@ -4,6 +4,8 @@ from .catalog import catalog_description
 # These clarify the inferential target where the compact catalog name alone is
 # insufficient. Estimation and exploratory methods retain their actual purpose.
 PURPOSES = {
+    'mantelhaenszel': ('Tests whether the common odds ratio is 1 after controlling for strata.', '층을 보정한 두 그룹의 공통 오즈비가 1인지 검정합니다.'),
+    'breslowday': ('Tests whether the two-group odds ratio is the same across strata.', '층마다 두 그룹의 오즈비가 같은지 검정합니다.'),
     'pearson': ('Measures linear association and tests whether population correlation is zero.', '선형 연관성을 측정하고 모집단 상관계수가 0인지 검정합니다.'),
     'spearman': ('Measures monotonic rank association and tests for zero rank correlation.', '단조 관계의 순위 상관을 측정하고 순위 상관이 0인지 검정합니다.'),
     'kendall': ('Measures concordance of ranks with tie correction and tests for zero association.', '동순위를 보정한 순위 일치도를 측정하고 연관성이 0인지 검정합니다.'),
@@ -32,6 +34,8 @@ PURPOSES = {
 }
 
 USE_CASES = {
+    'mantelhaenszel': ('Use to compare binary outcomes between two groups while adjusting for severity, age group or another stratifying variable.', '중증도·연령대 등을 보정해 두 그룹의 이항 결과를 비교할 때 사용합니다.'),
+    'breslowday': ('Use to check stratum-specific effect differences before interpreting a pooled odds ratio.', '통합 오즈비를 해석하기 전에 층별 효과 차이를 확인할 때 사용합니다.'),
     'pearson': ('Use for the linear relationship between two numeric variables.', '두 숫자 변수의 선형 관계를 확인할 때 사용합니다.'),
     'spearman': ('Use for ordered data or monotonic relationships that need not be linear.', '순서형 자료 또는 선형이 아닌 단조 관계를 확인할 때 사용합니다.'),
     'kendall': ('Use to compare rankings, including data with tied ranks.', '동순위가 있는 자료를 포함해 두 순위의 연관성을 확인할 때 사용합니다.'),
