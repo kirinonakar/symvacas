@@ -5,4 +5,17 @@
 .desktop-settings pre { white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
 .desktop-install-log { max-height: 12rem; overflow: auto; }
 .desktop-install-log:empty { display: none; }
+.desktop-document-dialog[open] { display: flex; flex-direction: column; box-sizing: border-box; width: min(56rem, calc(100vw - 32px)); max-width: none; height: min(85vh, 52rem); max-height: calc(100vh - 32px); }
+.desktop-document-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.desktop-document-header h2 { margin: 0; font-size: 1.2rem; }
+.desktop-document-header button { flex-shrink: 0; }
+.desktop-document-body { flex: 1; min-height: 0; overflow: auto; padding: 0 8px; line-height: 1.65; overflow-wrap: anywhere; user-select: text; }
+.desktop-document-body h1 { font-size: 1.5rem; }
+.desktop-document-body h2 { font-size: 1.2rem; }
+.desktop-document-body h3 { font-size: 1.05rem; }
+.desktop-document-body pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; background: var(--bar); border-radius: 6px; }
+.desktop-document-body li { margin: 5px 0; }
+.desktop-document-table { overflow-x: auto; }
+.desktop-document-body table { width: 100%; border-collapse: collapse; }
+.desktop-document-body th, .desktop-document-body td { padding: 6px 10px; border: 1px solid var(--line); text-align: left; }
 @media (max-width: 700px) { .header-actions { flex-wrap: wrap; justify-content: flex-end; } }

@@ -1,7 +1,10 @@
 import {createDesktopSettings} from './desktop-settings.js';
 import {syncDesktopTheme} from './desktop-theme.js';
+import {createDesktopDocuments} from './desktop-documents.js';
 
 const desktop=createDesktopSettings();
+const documents=createDesktopDocuments();
+window.addEventListener('pagehide',()=>documents.dispose(),{once:true});
 const stopThemeSync=syncDesktopTheme();
 window.addEventListener('pagehide',stopThemeSync,{once:true});
 try {

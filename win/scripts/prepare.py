@@ -56,6 +56,7 @@ def prepare():
     (dist / "engine-ui.js").write_text(engine_ui, encoding="utf-8")
     shutil.copyfile(ROOT / "README.md", dist / "README.md")
     shutil.copyfile(ROOT / "THIRD_PARTY.md", dist / "THIRD_PARTY.md")
+    shutil.copyfile(ROOT / "MCP_GUIDE.md", dist / "MCP_GUIDE.md")
     generated = ROOT / "src-tauri/generated"
     generated.mkdir(parents=True, exist_ok=True)
     archive = io.BytesIO()
