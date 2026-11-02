@@ -4,7 +4,7 @@
   <img src="app/src/main/ic_launcher-playstore.png" alt="SymvaCAS" width="100" height="100" />
 </p>
 
-**SymvaCAS** is an all-in-one scientific calculator, computer algebra system (CAS), graphing tool, and advanced statistical analysis platform for **Android and the web**. Powered by a shared Python/SymPy engine, it offers symbolic mathematics, step-by-step solutions, interactive 2D/3D graphing, and comprehensive statistical analysis—all running locally on your device.
+**SymvaCAS** is an all-in-one scientific calculator, computer algebra system (CAS), graphing tool, and advanced statistical analysis platform for **Android, Windows and the web**. Powered by a shared Python/SymPy engine, it offers symbolic mathematics, step-by-step solutions, interactive 2D/3D graphing, and comprehensive statistical analysis—all running locally on your device.
 
 [**Download Android**](https://github.com/kirinonakar/symvacas/releases) · [**Open web version**](https://kirinonakar.github.io/symvacas/)
 
@@ -109,6 +109,12 @@ python web/build.py --output build/web
 ```
 
 Upload the complete contents of `build/web/`. Serve `.wasm` as `application/wasm` and `.js`/`.mjs` as JavaScript; missing assets must not return an HTML fallback. Hosting under a path such as `/symvacas/` is supported.
+
+### Windows (Tauri)
+
+The [Windows version](win/README.md) reuses the web UI with native embedded CPython instead of WASM. Build with `cd win`, `npm ci`, then `npm run build`; the portable application is created in `win/release/SymvaCAS/`.
+
+Use **Python / MCP → Install Python dependencies** to install Python, SymPy, mpmath and pip into **`python_embeded` beside the executable**. Windows also includes a headless CLI, stdio MCP server and an agent skill. See the Windows guide for setup and commands.
 
 ## Storage and platform behavior
 

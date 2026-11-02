@@ -1,0 +1,8 @@
+.desktop-settings { display: grid; gap: .8rem; max-width: 52rem; }
+.desktop-settings p, .desktop-settings h3 { margin: 0; }
+.desktop-settings textarea { box-sizing: border-box; width: 100%; font-family: Consolas, monospace; }
+.desktop-path { overflow-wrap: anywhere; user-select: text; }
+.desktop-settings pre { white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
+.desktop-install-log { max-height: 12rem; overflow: auto; }
+.desktop-install-log:empty { display: none; }
+@media (max-width: 700px) { .header-actions { flex-wrap: wrap; justify-content: flex-end; } }
