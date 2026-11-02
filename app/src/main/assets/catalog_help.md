@@ -1097,7 +1097,7 @@ Example: sarima([12,15,14,18,13,17,16,21,15,19,18,24,17,22,20,27,19,24,23,30,21,
 
 ### Survival analysis
 
-`survivalanalysis` — Kaplan–Meier curves, log-rank and optional Cox regression. Columns: time, event (1=event, 0=censored), group, optional predictors; Cox 0/1.
+`survivalanalysis(data,coxEnabled,ties,entryColumn,phCheck)` — Kaplan–Meier curves, log-rank and optional Cox regression. Positional order: survivalanalysis(data,coxEnabled,ties,entryColumn,phCheck). Defaults after data: 0,efron,-1,1 (Cox is OFF). To fit Cox without delayed entry: survivalanalysis(data,1,efron,-1,1). Numeric flags are 0/1; ties is the symbol efron/breslow. entryColumn is zero-based: -1 means none, 2 means the third column is entry time, NOT the group index. Rows with -1: [time,event,group,predictors...]; with 2: [time,event,entry,group,predictors...]. event: 1=event, 0=censored. Keep earlier option placeholders when setting a later option; phCheck is last and only used with Cox on. The first encountered group is the Cox reference group.
 Example: survivalanalysis([[1,1,1],[2,1,2],[3,0,1],[4,1,2],[5,1,1],[6,0,2],[7,1,2],[8,1,1]],0,efron,-1,1)
 
 `kaplanmeier` — Estimate survival with censoring. Columns: time, event (1=event, 0=censored); set confidence level.
@@ -1106,7 +1106,7 @@ Example: kaplanmeier([[1,1],[2,0],[3,1],[4,1],[5,0],[6,1]],0.95)
 `logrank` — Compare survival between two groups. Input: two time/event tables, or current-data columns time, event, group.
 Example: logrank([[1,1],[3,1],[4,0],[6,1]],[[2,0],[4,1],[5,1],[7,0]])
 
-`cox` — Relate predictors to event hazard under proportional hazards. Columns: time, event 0/1, predictors. Ties: efron / breslow; optional entry-time column and PH check.
+`cox(data,ties,entryColumn,phCheck)` — Cox proportional-hazards regression. Positional order: cox(data,ties,entryColumn,phCheck); defaults after data: efron,-1,1. Unlike survivalanalysis, there is NO Cox on/off argument: cox(data,1,...) is invalid. Use cox(data,efron,-1,1). Rows: [time,event,predictors...], event 1=event/0=censored. entryColumn is a zero-based entry-time column index (-1=none, otherwise an existing column >=2), excluded from predictors. For entryColumn=2 use [time,event,entry,predictors...]. phCheck: 1=PH check, 0=skip. This function has no automatic group encoding: group IDs supplied here are predictors; use survivalanalysis for group/reference encoding.
 Example: cox([[1,1,0],[2,1,1],[3,0,0],[4,1,1],[5,1,0],[6,0,1],[7,1,1],[8,1,0]],efron,-1,1)
 
 `parametricsurvival` — Weibull, exponential or lognormal AFT survival model. Rows: positive time, event 0/1, optional predictors and delayed entry. Reports time ratios, event-time quantiles and survival probabilities.

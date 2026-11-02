@@ -31,6 +31,16 @@ def main():
         hit=catalog['results'][0]
         assert hit['name']=='ttest2' and hit['signature'] and hit['descriptionKo'] and hit['examples'],hit
         assert run('catalog','회귀')['total']>0
+        survival_rows=[[1,1,1],[2,1,2],[3,0,1],[4,1,2],[5,1,1],[6,0,2],[7,1,2],[8,1,1]]
+        survival_catalog=run('catalog','survivalanalysis')['results'][0]
+        assert survival_catalog['signature']=='survivalanalysis(data,coxEnabled,ties,entryColumn,phCheck)'
+        assert survival_catalog['arguments'][1]['name']=='coxEnabled'
+        cox_catalog=run('catalog','cox')['results'][0]
+        assert cox_catalog['signature']=='cox(data,ties,entryColumn,phCheck)'
+        cox_fit=run('stats','survivalanalysis(data,1,efron,-1,1)','--data','-',source=json.dumps(survival_rows))
+        assert 'error' not in cox_fit['survival']['cox'] and cox_fit['survival']['ph'],cox_fit
+        swapped=run('stats','survivalanalysis(data,efron,1,-1,1)','--data','-',source=json.dumps(survival_rows),success=False)
+        assert 'argument 2 (coxEnabled)' in swapped['error'] and survival_catalog['signature'] in swapped['error']
         found=run('stats',hit['examples'][0]['expression'])
         assert found['ok'] and found.get('statisticsReport'),found
         assert run('dataset','list')['datasets']==[]
@@ -84,6 +94,13 @@ def main():
             assert '## Statistics' in request('resources/read',{'uri':'symvacas://guide'})['contents'][0]['text']
             discovered=tool('search_catalog',{'query':'regression','limit':3})
             assert discovered['results'][0]['signature']
+            survival_help=tool('search_catalog',{'query':'survivalanalysis'})['results'][0]
+            assert survival_help['arguments'][3]['name']=='entryColumn'
+            assert 'search_catalog' in tool('get_usage',{'section':'statistics'})['text']
+            suite=tool('statistics',{'expression':'survivalanalysis(data,1,efron,-1,1)','datasets':{'data':survival_rows}})
+            assert 'error' not in suite['survival']['cox'] and suite['survival']['ph'],suite
+            wrong=tool('statistics',{'expression':'cox(data,1,efron,-1,1)','datasets':{'data':survival_rows}},success=False)
+            assert cox_catalog['signature'] in wrong['error'] and 'no coxEnabled flag' in wrong['error']
             assert {item['name'] for item in tool('list_statistics_datasets',{})['datasets']}=={'cohort','trial'}
             assert tool('get_statistics_dataset',{'name':'cohort'})['source'].splitlines()==['8','10']
             assert tool('save_statistics_dataset',{'name':'control','data':[2,3,4,5,6]})['ok']

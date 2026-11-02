@@ -1097,7 +1097,7 @@ Example: sarima([12,15,14,18,13,17,16,21,15,19,18,24,17,22,20,27,19,24,23,30,21,
 
 ### 생존분석
 
-`survivalanalysis` — Kaplan–Meier 곡선·로그순위·선택적 Cox 회귀. 열: 시간·사건(1=발생, 0=중도절단)·그룹·선택적 설명변수; Cox 0/1.
+`survivalanalysis(data,coxEnabled,ties,entryColumn,phCheck)` — Kaplan–Meier 곡선·로그순위·선택적 Cox 회귀. 위치 인수 순서: survivalanalysis(data,coxEnabled,ties,entryColumn,phCheck). 데이터 뒤 기본값은 0,efron,-1,1이며 Cox는 기본 꺼짐입니다. 진입시간 없이 Cox 실행: survivalanalysis(data,1,efron,-1,1). 실행·검정 여부는 숫자 0/1, ties는 efron/breslow 기호입니다. entryColumn은 0부터 세는 열 번호로 -1=없음, 2=세 번째 열이 진입시간이며 그룹 열 번호가 아닙니다. -1일 때 행: [시간,사건,그룹,설명변수...], 2일 때: [시간,사건,진입시간,그룹,설명변수...]. 사건 1=발생, 0=중도절단. 뒤 옵션을 지정할 때 앞 옵션 자리도 채우세요. 마지막 phCheck는 Cox 실행 시에만 적용되며 첫 등장 그룹이 Cox 기준 그룹입니다.
 Example: survivalanalysis([[1,1,1],[2,1,2],[3,0,1],[4,1,2],[5,1,1],[6,0,2],[7,1,2],[8,1,1]],0,efron,-1,1)
 
 `kaplanmeier` — 중도절단을 반영한 생존확률 추정. 열: 시간·사건(1=발생, 0=중도절단); 신뢰수준 지정.
@@ -1106,7 +1106,7 @@ Example: kaplanmeier([[1,1],[2,0],[3,1],[4,1],[5,0],[6,1]],0.95)
 `logrank` — 두 그룹의 생존 비교. 입력: 두 시간·사건 표 또는 현재 데이터의 시간·사건·그룹 열.
 Example: logrank([[1,1],[3,1],[4,0],[6,1]],[[2,0],[4,1],[5,1],[7,0]])
 
-`cox` — 비례위험 가정으로 설명변수와 사건 위험의 관계를 분석합니다. 열: 시간·사건 0/1·설명변수. 동률 efron/breslow; 진입시간 열·PH 검정 선택.
+`cox(data,ties,entryColumn,phCheck)` — Cox 비례위험 회귀. 위치 인수 순서: cox(data,ties,entryColumn,phCheck), 데이터 뒤 기본값: efron,-1,1. survivalanalysis와 달리 Cox 실행 여부 인수가 없으므로 cox(data,1,...)은 잘못된 호출입니다. cox(data,efron,-1,1)을 사용하세요. 행: [시간,사건,설명변수...], 사건 1=발생/0=중도절단. entryColumn은 0부터 세는 진입시간 열 번호(-1=없음, 그 외 2 이상인 실제 열)이며 설명변수에서 제외됩니다. entryColumn=2일 때 [시간,사건,진입시간,설명변수...]입니다. phCheck: 1=PH 검정, 0=생략. 자동 그룹 인코딩이 없으므로 그룹 ID도 설명변수로 취급합니다. 그룹·기준 그룹 인코딩에는 survivalanalysis를 사용하세요.
 Example: cox([[1,1,0],[2,1,1],[3,0,0],[4,1,1],[5,1,0],[6,0,1],[7,1,1],[8,1,0]],efron,-1,1)
 
 `parametricsurvival` — Weibull·지수·로그정규 AFT 생존모형. 행: 양수 시간·사건 0/1·선택적 설명변수·지연 진입. 시간비·사건시간 분위수·생존확률 제공.

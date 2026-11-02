@@ -11,6 +11,7 @@ from calc_advanced_common import convert
 from calc_rank_correlation import calculate as rank_correlation
 from calc_advanced_inference import calculate as inference
 from calc_advanced_survival import calculate as survival
+from calc_survival_contract import usage as survival_usage
 from calc_advanced_longitudinal import calculate as longitudinal
 from calc_advanced_glmm import calculate as glmm
 from calc_advanced_regression import calculate as regression
@@ -140,7 +141,7 @@ def advanced(engine, name, a):
     """Entry point shared by calculator expressions and Python catalog."""
     engine.note = ''
     low, high, _ = _ANALYSES[name]
-    require(low <= len(a) <= high, name + ' argument count mismatch')
+    require(low <= len(a) <= high, name + ' argument count mismatch' + ('. '+survival_usage(name) if name in ('cox','survivalanalysis') else ''))
     with mp.workdps(25):
         result = calculate(engine, name, a)
     engine.note = engine.note.strip()

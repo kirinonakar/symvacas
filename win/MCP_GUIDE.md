@@ -2,46 +2,42 @@
 
 ## Overview
 
-SymvaCAS runs symbolic mathematics, statistical analyses and equation solvers locally. These MCP instructions, tool schemas and examples are sufficient on their own: no agent skill needs to be installed or activated.
+SymvaCAS runs symbolic mathematics, statistical analyses and equation solvers locally. No skill needs to be installed or activated. This guide explains tools and common data/result handling; mathematical function details live in the searchable catalog.
 
-Suggested workflow:
+Workflow:
 
-1. Call `search_catalog` to find a function's exact signature and examples. English and Korean queries work.
-2. For existing data, call `list_statistics_datasets`, then `get_statistics_dataset` if you need to inspect its columns or values. Register new reusable data with `save_statistics_dataset`.
-3. Call `statistics` for analyses, `solve_equations` for equations/systems, or `evaluate` for general calculator expressions.
-4. Inspect `ok`/`error` and the report or explanation fields. Do not interpret a failed or unevaluated computation as a successful answer.
+1. Call `search_catalog` to find the appropriate function, exact signature and examples. English and Korean queries work.
+2. Inspect available data with `list_statistics_datasets` and `get_statistics_dataset`; register new reusable data with `save_statistics_dataset` when requested.
+3. Call `statistics` for analyses, `solve_equations` for equations/systems or `evaluate` for general expressions.
+4. Inspect `ok`/`error`, reports, restrictions and warnings. A successful outer result can still contain a failed subanalysis: inspect nested errors before claiming that every requested model succeeded.
 
-`get_usage` returns this guide or a selected section (`catalog`, `datasets`, `statistics`, `equations`, `runtime`). The same guide is the resource `symvacas://guide`. Neither route requires Python to be installed. All JSON examples below are **tool arguments**, not JSON-RPC envelopes.
+`get_usage` returns this guide or a section: `catalog`, `datasets`, `statistics`, `equations`, `runtime`, `overview`, `all`. The complete guide is also the resource `symvacas://guide`. Neither route requires Python. JSON examples below are tool arguments, not JSON-RPC envelopes.
 
-Default angle: **RAD**. Computation precision: 30 significant digits (configurable 3–200); display digits: 10. Saved GUI angle/history/variables/functions are independent of headless calculations. Saved **statistics datasets are shared**. Plot fields are numeric data, not rendered image files.
+Defaults: **RAD**, 30 significant computation digits (3–200 configurable), 10 display digits. GUI angle/history/variables/functions are independent of headless calculations. Saved statistics datasets are shared. Plot fields are numeric data, not rendered images.
 
 ## Catalog
 
-Tool: `search_catalog`.
+Tool: `search_catalog`. Search names, categories, English/Korean descriptions and examples. Empty query lists available functions. Use `category` to narrow results, `limit` (1–100, default 10) and `offset` to page through them; responses include `categories`, `total`, `hasMore`, `nextOffset`.
 
 ```json
-{"query":"ttest2","limit":5}
+{"query":"survival","limit":5}
 ```
 
-```json
-{"query":"회귀","limit":5}
-```
+Results contain `name`, `signature`, `description`, `descriptionKo`, `category`, `templates` and `examples[].expression`. Where provided, `arguments` gives explicit positions, names, defaults, allowed values and descriptions, while `rowLayouts` describes data-column order.
 
-Search matches names, categories, bilingual descriptions and examples. Results contain `name`, `signature`, `category`, `description`, `descriptionKo`, `templates` and `examples[].expression`. Use the signature for the argument order and an example expression as a starting point; templates may contain empty arguments and must be completed. Overloads can have different signatures. Do not guess that all t-test functions take their data first: for example `ttest2(delta,A,B)` starts with the null mean difference.
-
-An empty query lists functions. Use returned `categories` with `category` to narrow results. `limit` is 1–100 (default 10); `nextOffset` and `hasMore` support pagination.
+Before calling a function, read its full signature, argument positions and data layout from these results. Do not guess optional argument order or copy options between similarly named functions. Templates can contain empty arguments and must be completed. Use the examples to construct an actual calculator expression. Function-specific rules belong in the catalog, not in this guide.
 
 ## Datasets
 
 Tools: `list_statistics_datasets` (arguments `{}`), `get_statistics_dataset`, `save_statistics_dataset`.
 
-Read a registered dataset:
+Get a registered record:
 
 ```json
 {"name":"cohort"}
 ```
 
-Register a vector (`save_statistics_dataset`):
+Register a vector:
 
 ```json
 {"name":"cohort","data":[1,2,3,4,5]}
@@ -50,77 +46,41 @@ Register a vector (`save_statistics_dataset`):
 Register a table with headers:
 
 ```json
-{"name":"trial","csv":"x,y\n1,3\n2,5\n3,7\n4,9\n5,11"}
+{"name":"trial","csv":"x,y\n1,3\n2,5\n3,7\n4,9"}
 ```
 
-Supply **either** `data` (vector or row-major table) **or** `csv` (CSV/TSV text), not both. Decimal strings preserve input digits. Use parser-compatible names such as `cohort`, `control`, `trial`; names with spaces cannot be referenced as expression symbols. Existing names are protected: an intentional replacement requires `replace:true` after inspecting the existing data. A successful save returns a name/type summary; use `get_statistics_dataset` for full source.
+Supply either `data` (vector or row-major table) or `csv` (CSV/TSV), not both. Decimal strings preserve input digits. Choose names that parse as one calculator symbol; names with spaces cannot be referenced as expression symbols. Existing names require an intentional `replace:true`. Save returns a summary; get returns full source and kind.
 
-Data persists in `data/statistics-datasets.json` beside the application executable and is shared across GUI/CLI/MCP processes. Do not edit this file directly. Open the updated GUI once to import older GUI-only saved datasets; reopen the GUI to view data changed externally. Concurrent edits of the same saved record are rejected. GUI deletion of a saved dataset removes the shared record.
+Data persists in `data/statistics-datasets.json` beside the executable and is shared across GUI/CLI/MCP. Do not edit it directly. Open the updated GUI once to import older GUI-only saved datasets; reopen it to view external changes. Concurrent edits to the same record are rejected. Deleting a saved record in the GUI removes it from the shared registry.
 
-Registered vectors are referenced directly: `mean(cohort)`, `ttest2(0,cohort,control)`, `regression(trial,linear)`. Statistics CSV parsing follows the GUI's header/column and complete-row conventions. Inspect missing values and columns before choosing an analysis. A one-off `statistics.datasets` value overrides a saved name only for that request; it does not modify the registry.
+Reference a saved name directly in the calculator expression obtained from the catalog. Registered CSV parsing follows GUI header/column and complete-row conventions. Inspect missing values and column meanings before choosing an analysis. One-off `statistics.datasets` values override matching saved names for one request without changing the registry.
 
 ## Statistics
 
-Tool: `statistics`. Search the catalog for supported descriptive, t-test, ANOVA, correlation, regression, Bayesian, SEM, survival or other advanced functions and their assumptions.
+Tool: `statistics`. Obtain the function's expression, positional option order, defaults and row layout through `search_catalog`. Put the completed calculator expression in `expression`; optionally supply a `datasets` object mapping referenced names to vectors or row-major tables. Tool schemas contain example argument objects for the API format, not an exhaustive mathematical function reference.
 
-One-off independent-samples Welch t test:
+Named data cells may be finite JSON numbers, exact decimal strings, calculator cell expressions or `null` (NA). Each analysis applies its own missing-data policy. Inline arrays and named datasets follow the GUI Statistics request path, avoiding the ordinary formula AST limit for large samples. Normal dataset bounds are 5000 rows and 101 columns.
 
-```json
-{"expression":"ttest2(0,a,b)","datasets":{"a":[1,2,3,4,5],"b":[2,4,6,8,10]}}
-```
+Common optional settings: `angle` (`RAD`/`DEG`/`GRAD`), `precision`, `displayDigits`, `removeComputationLimit` (default false). Inspect function-specific meanings and assumptions in the catalog.
 
-Descriptive report from registered data:
-
-```json
-{"expression":"stats(cohort)"}
-```
-
-Linear regression with a row-major table (x then y):
-
-```json
-{"expression":"regression(data,linear)","datasets":{"data":[[1,3],[2,5],[3,7],[4,9],[5,11]]}}
-```
-
-`expression` accepts calculator syntax and LaTeX. Inline arrays and named datasets use the same Statistics request builder as the GUI, avoiding the ordinary formula AST limit for large samples. Named `datasets` values are vectors or row-major tables of finite JSON numbers, decimal strings, calculator cell expressions, or `null` (NA). Each analysis enforces its own missing-data policy. Normal dataset bounds are 5000 rows and 101 columns; limits still apply unless explicitly disabled.
-
-Optional settings: `angle` (`RAD`/`DEG`/`GRAD`), `precision`, `displayDigits`, `removeComputationLimit` (default false). Returned fields depend on the analysis: `exact`, `decimal`, `statisticsReport`, `statisticsCopyReport`, `regression`, and plot/diagnostic data. Preserve confidence levels, test direction, model assumptions and warnings when explaining a result. `variance`, `stdev`, `covariance` default to sample values; a final `0` selects population values.
+Depending on the analysis, responses can include `exact`, `decimal`, `statisticsReport`, `statisticsCopyReport`, `regression`, `survival` and plot/diagnostic data. Inspect subreports for nested errors and unavailable diagnostics. A requested diagnostic is not necessarily an estimable or passed diagnostic. Preserve confidence levels, test directions, assumptions, restrictions and warnings when interpreting the output.
 
 ## Equations
 
-Tool: `solve_equations`. The default `method` is `solve` and `steps` is true.
-
-Exact roots:
-
-```json
-{"equations":"x^2-5*x+6=0","variables":"x"}
-```
-
-System of equations:
+Tool: `solve_equations`. The input schema describes solver methods and controls; use `search_catalog` when you need the mathematical syntax of a solver or initial-condition expression.
 
 ```json
 {"equations":["x+y=3","x-y=1"],"variables":["x","y"]}
 ```
 
-Numeric root:
+`equations` accepts one string, a newline-separated system or an array of strings. `variables` accepts a symbol, comma-separated list or string array; differential methods also accept a dependent function. Choose `method`, `initialGuess`, `independentVariable`, `initialConditions`, `hint` as described by the tool schema and catalog. Standard precision and angle settings apply. `steps` defaults to true; set it false to omit explanation requests.
 
-```json
-{"equations":"cos(x)=x","variables":"x","method":"nsolve","initialGuess":0.5}
-```
-
-ODE:
-
-```json
-{"equations":"diff(y(x),x)=y(x)","variables":"y(x)","method":"dsolve","independentVariable":"x"}
-```
-
-`equations` can be one string, a newline-separated system or an array of strings. `variables` can be a symbol, comma-separated list or string array. Differential methods accept one dependent function such as `y(x)` or `u(x,y)`. Available methods: `solve`, `nsolve`, `dsolve`, `pdsolve`. For `nsolve`, `initialGuess` is a scalar for one root, an array for a system, or a string such as `"0,1"` for bounds. For `dsolve`, `initialConditions` is a calculator-syntax condition argument; for `pdsolve`, `hint` is optional. Find exact formats through `search_catalog`.
-
-Responses contain `exact`/`decimal` plus available `equationSteps`/`solutionSteps`. Inspect domain restrictions and whether the engine returned a derivation, a summary or an unevaluated answer. Set `steps:false` to omit explanation requests. Standard precision and angle settings also apply.
+Responses contain `exact`/`decimal` and available `equationSteps`/`solutionSteps`. Review domain restrictions and whether the result is a derivation, summary or unevaluated answer.
 
 ## Runtime
 
-`runtime_status` checks the local Python installation. If dependencies are missing, the user can install them with **Python / MCP → Install Python dependencies** in the GUI or `symvacas-cli.exe install`. The server uses embedded Python beside the executable (`python_embeded`), never a system interpreter. Catalog search, usage help and data registration do not require Python.
+`runtime_status` checks Python. Missing dependencies can be installed through **Python / MCP → Install Python dependencies** or CLI `symvacas-cli.exe install`. The server uses `python_embeded` beside the executable, never a system interpreter. Catalog/help/data registration work without Python.
 
-Calculations normally have a 65-second outer deadline plus an allowance for SEM bootstrap work. `removeComputationLimit:true` removes that deadline when intended by the user; MCP cancellation remains available. Engine errors appear as `ok:false`/`error` and MCP `isError:true`.
+Calculations normally have a 65-second outer deadline plus an allowance for expensive resampling work. `removeComputationLimit:true` removes the deadline when intended by the user; MCP cancellation remains available. Failures have `ok:false`/`error` and MCP `isError:true`.
 
-`engine_request` accepts lower-level structured calculator AST requests (including graphs, probability and programmer mode). Prefer the dedicated tools for ordinary work. `python` executes unrestricted current-user Python code and requires a user-authorized script task; it is unnecessary for ordinary statistics and equations. Python `input()` needs pre-entered `inputs` in headless mode.
+`engine_request` accepts lower-level structured calculator AST requests, including graphs/probability/programmer mode. Prefer dedicated tools for ordinary work. `python` runs unrestricted current-user code and requires a user-authorized script task. Supply all headless `input()` values in `inputs`.

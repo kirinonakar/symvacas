@@ -130,4 +130,10 @@ def build_definitions():
         definitions[id_]['helpKo'] += DATE_HELP[1]
     definitions['cramerv'].update(label='Phi / Cramér’s V',ko='Phi / Cramér의 V')
     definitions['phi']['hidden']=True
+    # The same dependency-free contracts drive engine validation and agent help.
+    import runpy
+    from pathlib import Path
+    contracts=runpy.run_path(str(Path(__file__).resolve().parents[2]/'app/src/main/python/calc_survival_contract.py'))['CONTRACTS']
+    for name, contract in contracts.items():
+        definitions[name].update(contract)
     return schema

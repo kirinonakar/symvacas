@@ -39,6 +39,6 @@ def render_catalog_help(existing, schema, korean=False):
         if group != previous_group:
             text += '### ' + (item['groupKo'] if korean else item['group']) + '\n\n'
             previous_group = group
-        text+=f"`{item['id']}` — {catalog_description(item, korean)}\nExample: {item['example']}\n\n"
+        text+=f"`{item.get('signature',item['id'])}` — {catalog_description(item, korean)}\nExample: {item['example']}\n\n"
     text = enrich_help(text, korean)
     return text.rstrip() + '\n'

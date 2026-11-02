@@ -5,8 +5,9 @@ import statistics
 import mpmath as mp
 from calc_shared import MathError, require
 from calc_statistics import _chisq_sf
+from calc_survival_contract import CONTRACTS, usage
 from calc_advanced_common import (
-    dot, inference, integer, inverse, newton, number, option,
+    dot, inference, integer, inverse, newton, number,
     standardized_design, table,
 )
 
@@ -16,6 +17,31 @@ def survival(rows, entry=-1):
     if entry >= 0:
         require(entry < len(rows[0]), 'Entry column is out of range')
         require(all(0 <= r[entry] < r[0] for r in rows), 'Entry time must be nonnegative and earlier than the exit time')
+
+
+def cox_options(name, a):
+    """Validate positional options before data fitting so swapped flags name their slot."""
+    contract = CONTRACTS[name]
+    require(1 <= len(a) <= len(contract['arguments']), usage(name))
+    values = {}
+    for item in contract['arguments'][1:]:
+        position = item['position']
+        value = a[position-1] if len(a) >= position else item['default']
+        prefix = f"{name}: argument {position} ({item['name']})"
+        if item['type'] == 'symbol':
+            value = str(value)
+            require(value in item['allowed'], prefix+' must be efron or breslow. '+usage(name))
+        else:
+            try:
+                value = integer(value, -1 if item['name']=='entryColumn' else 0, 19 if item['name']=='entryColumn' else 1, capacity=item['name']=='entryColumn')
+            except MathError:
+                raise MathError(prefix+' has an invalid integer option. '+usage(name)) from None
+            if 'allowed' in item:
+                require(value in item['allowed'], prefix+' must be '+str(item['allowed'])+'. '+usage(name))
+            elif item['name']=='entryColumn':
+                require(value == -1 or value >= 2, prefix+' cannot use time/event columns 0 or 1. '+usage(name))
+        values[item['name']] = value
+    return values
 
 
 def calculate(engine, name, a):
@@ -50,10 +76,10 @@ def calculate(engine, name, a):
         chi=(observed-expected)**2/var
         return {'chi2':chi,'df':1,'p':float(_chisq_sf(chi,1)),'observed group 1':observed,'expected group 1':expected}
     if name=='cox':
+        options=cox_options(name,a)
         rows=table(a[0],3,3)
-        ties=option(a,1,'efron'); require(ties in ('breslow','efron'),'Cox ties: breslow or efron')
-        entry=integer(a[2],-1,19,capacity=True) if len(a)>2 else -1
-        check=integer(a[3],0,1) if len(a)>3 else 1
+        ties,entry,check=options['ties'],options['entryColumn'],options['phCheck']
+        require(entry < len(rows[0]), 'cox: entryColumn is outside the data table. '+usage(name))
         survival(rows,entry)
         columns=[j for j in range(len(rows[0])) if j not in (0,1) and j!=entry]
         require(columns,'Choose at least one predictor')
@@ -131,10 +157,10 @@ def survival_analysis(engine,a):
     truncation, tied-event handling and the proportional-hazards check follow
     the Cox options. Subtest failures preserve valid KM curves.
     """
-    rows=table(a[0],2,3); fit=integer(a[1],0,1) if len(a)>1 else 0
-    ties=option(a,2,'efron'); require(ties in ('breslow','efron'),'Cox ties: breslow or efron')
-    entry=integer(a[3],-1,19,capacity=True) if len(a)>3 else -1; require(entry in (-1,2),'Entry time follows the event column')
-    check=integer(a[4],0,1) if len(a)>4 else 1
+    options=cox_options('survivalanalysis',a)
+    rows=table(a[0],2,3)
+    fit,ties,entry,check=options['coxEnabled'],options['ties'],options['entryColumn'],options['phCheck']
+    require(entry<0 or len(rows[0])>=4, 'survivalanalysis: entryColumn=2 requires rows [time,event,entry,group,predictors...]. '+usage('survivalanalysis'))
     survival(rows,entry)
     base=3 if entry>=0 else 2
     ids=list(dict.fromkeys(r[base] for r in rows))

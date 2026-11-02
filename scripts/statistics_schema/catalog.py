@@ -243,18 +243,12 @@ DESCRIPTIONS = {
     'sarima': (
         'Seasonal ARIMA forecast. Enter a complete, equally spaced series spanning at least two seasons; set [p,d,q], seasonal [P,D,Q,s], horizon and level. Optional dates; reports conditional prediction intervals and residual checks.',
         '계절 ARIMA 예측. 두 주기 이상의 등간격 완전 시계열에 [p,d,q]·계절 [P,D,Q,s]·예측 길이·수준 지정. 날짜 입력·조건부 예측구간·잔차 진단 제공.'),
-    'survivalanalysis': (
-        'Kaplan–Meier curves, log-rank and optional Cox regression. Columns: time, event (1=event, 0=censored), group, optional predictors; Cox 0/1.',
-        'Kaplan–Meier 곡선·로그순위·선택적 Cox 회귀. 열: 시간·사건(1=발생, 0=중도절단)·그룹·선택적 설명변수; Cox 0/1.'),
     'kaplanmeier': (
         'Estimate survival with censoring. Columns: time, event (1=event, 0=censored); set confidence level.',
         '중도절단을 반영한 생존확률 추정. 열: 시간·사건(1=발생, 0=중도절단); 신뢰수준 지정.'),
     'logrank': (
         'Compare survival between two groups. Input: two time/event tables, or current-data columns time, event, group.',
         '두 그룹의 생존 비교. 입력: 두 시간·사건 표 또는 현재 데이터의 시간·사건·그룹 열.'),
-    'cox': (
-        'Relate predictors to event hazard under proportional hazards. Columns: time, event 0/1, predictors. Ties: efron / breslow; optional entry-time column and PH check.',
-        '비례위험 가정으로 설명변수와 사건 위험의 관계를 분석합니다. 열: 시간·사건 0/1·설명변수. 동률 efron/breslow; 진입시간 열·PH 검정 선택.'),
     'parametricsurvival': (
         'Weibull, exponential or lognormal AFT survival model. Rows: positive time, event 0/1, optional predictors and delayed entry. Reports time ratios, event-time quantiles and survival probabilities.',
         'Weibull·지수·로그정규 AFT 생존모형. 행: 양수 시간·사건 0/1·선택적 설명변수·지연 진입. 시간비·사건시간 분위수·생존확률 제공.'),
@@ -275,6 +269,8 @@ DESCRIPTIONS = {
 
 def catalog_description(item, korean=False):
     """Use dedicated catalog copy, with schema help as a fallback for new analyses."""
+    if 'signature' in item and 'arguments' in item:
+        return item['descriptionKo' if korean else 'description']
     descriptions = DESCRIPTIONS.get(item['id'])
     if descriptions:
         return descriptions[int(bool(korean))]

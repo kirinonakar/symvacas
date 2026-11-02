@@ -137,4 +137,24 @@ mod tests {
         );
         assert!(search(&json!({"limit":0})).is_err());
     }
+
+    #[test]
+    fn cox_options_have_distinct_full_signatures_and_positioned_arguments() {
+        let suite = search(&json!({"query":"survivalanalysis"})).unwrap()["results"][0].clone();
+        assert_eq!(
+            suite["signature"],
+            "survivalanalysis(data,coxEnabled,ties,entryColumn,phCheck)"
+        );
+        assert_eq!(suite["arguments"][1]["name"], "coxEnabled");
+        assert_eq!(suite["arguments"][1]["default"], 0);
+        assert_eq!(suite["arguments"][3]["allowed"], json!([-1, 2]));
+        let cox = search(&json!({"query":"cox"})).unwrap()["results"][0].clone();
+        assert_eq!(cox["signature"], "cox(data,ties,entryColumn,phCheck)");
+        assert_eq!(cox["arguments"][1]["name"], "ties");
+        assert_eq!(cox["arguments"][3]["name"], "phCheck");
+        assert_eq!(
+            cox["rowLayouts"][0]["columns"],
+            json!(["time", "event", "predictors..."])
+        );
+    }
 }

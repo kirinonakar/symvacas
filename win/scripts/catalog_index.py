@@ -24,6 +24,8 @@ def help_entries(path):
 
 
 def build_catalog(web, output):
+    import runpy
+    contracts=runpy.run_path(str(web.parent / "app/src/main/python/calc_survival_contract.py"))["CONTRACTS"]
     english = help_entries(web / "catalog_help.md")
     translated_entries = help_entries(web / "catalog_help_ko.md")
     korean = {(item["category"], item["signature"]): item for item in translated_entries}
@@ -50,6 +52,10 @@ def build_catalog(web, output):
         words = set(re.findall(r"\w+", entry["signature"].lower()))
         entry["templates"] = sorted(choices, key=lambda item: -len(words & set(re.findall(r"\w+", item["template"].lower()))))[:3]
         entry["templateCount"] = len(choices)
+        if entry['name'] in contracts:
+            contract=contracts[entry['name']]
+            for key in ('signature','minimumArguments','arguments','rowLayouts'):
+                entry[key]=contract[key]
     covered = {entry["name"] for entry in english}
     for name, items in templates.items():
         if name not in covered:
