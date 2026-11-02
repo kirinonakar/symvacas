@@ -305,4 +305,7 @@ export function translateDOM(root=document.body) {
   const description=document.querySelector('meta[name="description"]');
   if(description)description.content=t('SymvaCAS WebAssembly 과학·CAS·그래프·Python 계산기');
 }
-export function applyTheme(choice,systemDark=false){document.documentElement.dataset.theme=choice==='dark'||choice==='system'&&systemDark?'dark':'light';}
+export function applyTheme(choice,systemDark=false){
+  document.documentElement.dataset.themeChoice=choice;
+  document.documentElement.dataset.theme=choice==='dark'||choice==='system'&&systemDark?'dark':'light';
+}
