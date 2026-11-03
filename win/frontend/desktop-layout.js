@@ -62,8 +62,10 @@ export function createDesktopLayout(doc=document,storage,mountCalculatorPanel) {
         if(child.id==='statistics-summary')analysis=true;
         (analysis||child.id==='statistics-error'?right:left).append(child);
       }
-      const actions=doc.createElement('div');actions.className='form-row';
-      actions.append(left.querySelector('#statistics-collapse-all'));right.prepend(actions);
+      const actions=doc.createElement('div');actions.id='desktop-statistics-actions';actions.className='form-row';
+      actions.append(left.querySelector('#statistics-collapse-all'));
+      const results=doc.createElement('div');results.id='desktop-statistics-results';results.tabIndex=0;
+      results.append(...right.children);right.append(actions,results);
       const toolbar=left.querySelector('#dataset-list').closest('.form-row');
       toolbar.classList.add('desktop-dataset-toolbar');
       const transfers=doc.createElement('div');transfers.className='desktop-dataset-transfers';
