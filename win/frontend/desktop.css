@@ -69,6 +69,8 @@
 #settings-dialog .graph-color-settings label { margin: 16px 0; }
 #settings-dialog .graph-color-settings .hsl-slider { padding: 0; }
 .desktop-preferences-actions, .desktop-preferences-page .form-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.desktop-preferences-reset { display: grid; justify-items: start; gap: 6px; margin-top: 28px; }
+.desktop-preferences-page .desktop-preferences-reset .hint { margin: 0; }
 #settings-dialog .form-row button { min-height: 30px; }
 #settings-dialog .desktop-preferences-danger { color: var(--danger); }
 .desktop-preferences-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 20px; background: var(--bg); border-top: 1px solid var(--line); }

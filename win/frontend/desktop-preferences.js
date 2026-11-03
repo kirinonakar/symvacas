@@ -82,6 +82,14 @@ export function createDesktopPreferences(doc=document) {
     const backupButtons=[...data.children].filter(child=>child.tagName==='BUTTON');
     if(backupButtons.length>=2){const actions=node('div','','desktop-preferences-actions');backupButtons[0].before(actions);actions.append(...backupButtons.slice(0,2));}
     for(const button of backupButtons.slice(2))button.classList.add('desktop-preferences-danger');
+    const [, ,deleteData,resetSettings]=backupButtons;
+    const transferActions=data.querySelector(':scope > .form-row');
+    if(deleteData&&transferActions)transferActions.append(deleteData);
+    const resetNote=resetSettings?.previousElementSibling;
+    if(resetNote?.tagName==='P'){
+      const reset=node('div','','desktop-preferences-reset');
+      resetNote.before(reset);reset.append(resetNote,resetSettings);
+    }
     shell.append(nav,pages);body.replaceChildren(shell);
     if(!footer){
       footer=node('div','','desktop-preferences-footer');const close=node('button');close.type='button';close.onclick=()=>dialog.close();footer.append(node('span'),close);dialog.append(footer);
