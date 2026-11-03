@@ -1,14 +1,14 @@
 # SymvaCAS Windows
 
-웹 버전 UI와 공통 Python 계산 엔진을 사용하는 Tauri 2 Windows 앱입니다. 계산에 WASM/Pyodide를 사용하지 않습니다. 공통 UI를 복사하고 Windows 전용 레이아웃과 네이티브 연결을 추가해 빌드합니다.
+A Tauri 2 Windows app that uses the web version UI together with the shared Python calculation engine. Calculations do not use WASM/Pyodide. The build copies the shared UI and adds the Windows-specific layout and native integrations.
 
-Windows에서는 창 전체 너비를 사용합니다. 그래프는 왼쪽에 수식·범위·매개변수, 오른쪽에 그래프를 표시하고, 통계는 왼쪽에 데이터셋, 오른쪽에 분석 메뉴·결과를 표시합니다. 통계의 왼쪽 패널은 창 높이에 맞추고 긴 데이터는 직접 입력란이나 표 안에서만 스크롤합니다. 그래프의 좌우 패널과 통계의 오른쪽 분석 패널은 독립적으로 스크롤할 수 있습니다. 가운데 구분선을 드래그하거나 포커스 후 ←/→ 키로 너비를 조절합니다(Shift: 크게 조절, Enter 또는 두 번 클릭: 기본 비율). 조절한 비율은 모드별로 저장합니다. 좁은 창에서는 세로 배치로 전환하며, 넓은 창의 왼쪽 위 ☰ 버튼으로 사이드바를 접고 펼칠 수 있습니다.
+On Windows the app uses the full window width. The graph view shows formulas, ranges, and parameters on the left and the graph on the right, while statistics shows the dataset on the left and the analysis menu and results on the right. In statistics the left panel matches the window height, and long data scrolls only inside the direct-input field or the table. The graph's left and right panels and the statistics right analysis panel scroll independently. Drag the center divider, or focus it and use the ←/→ keys, to adjust the width (Shift: larger steps, Enter or double-click: default ratio). The adjusted ratios are saved per mode. Narrow windows switch to a vertical layout, and in wide windows the ☰ button at the top left collapses and expands the sidebar.
 
-계산기 오른쪽에는 **기록 / 함수** 탭이 있습니다. 기록 검색·즐겨찾기·다시 사용과 함수 검색·삽입·최근 사용·사용자 함수를 기존 목록과 공유합니다. 패널의 ✕ 버튼으로 접고 상단 **기록 / 함수** 버튼으로 다시 펼칩니다. 선택한 탭과 접기 상태는 저장하며, 좁은 창에서는 상단 기록·함수 목록 버튼으로 기존 팝업을 사용합니다.
+To the right of the calculator there are **History / Functions** tabs. History search, favorites, and reuse, along with function search, insertion, recent use, and user functions, share the existing lists. Collapse the panel with its ✕ button and expand it again with the **History / Functions** button at the top. The selected tab and the collapsed state are saved, and in narrow windows the top History and Function list buttons open the existing popups.
 
-## 빌드
+## Build
 
-Windows x64, Rust MSVC 도구 체인, Visual Studio C++ Build Tools, Node.js 22+, 빌드용 Python 3.10+, WebView2 Runtime이 필요합니다. 실행할 PC에는 시스템 Python이나 Node.js가 필요하지 않습니다.
+Requirements: Windows x64, the Rust MSVC toolchain, Visual Studio C++ Build Tools, Node.js 22+, Python 3.10+ for building, and the WebView2 Runtime. The target PC does not need a system Python or Node.js.
 
 ```powershell
 cd win
@@ -17,21 +17,21 @@ npm run dev
 npm run build
 ```
 
-`release/SymvaCAS/`에 `symvacas.exe`, `symvacas-cli.exe`, `skills/symvacas/`와 문서를 묶습니다. **폴더 전체**를 쓰기 가능한 위치에 복사하세요. `symvacas.exe`는 GUI, `symvacas-cli.exe`는 콘솔/MCP용입니다. 개발 실행 시에는 실제 개발 EXE가 있는 `src-tauri/target/debug/python_embeded`에 설치됩니다.
+`release/SymvaCAS/` bundles `symvacas.exe`, `symvacas-cli.exe`, `skills/symvacas/`, and the documentation. Copy the **entire folder** to a writable location. `symvacas.exe` is the GUI and `symvacas-cli.exe` is for console/MCP use. Development runs install into `src-tauri/target/debug/python_embeded`, next to the actual development EXE.
 
-앱 버전은 Android의 `app/build.gradle.kts`에 있는 **`versionName` 하나를 기준으로 사용**합니다. `npm run dev`·`npm run build` 실행 시 Tauri가 설정을 읽기 전에 npm·Cargo·Tauri 버전과 잠금 파일을 자동 동기화합니다. 앱 정보·실행 파일 버전·CLI `--version`·MCP `serverInfo.version`도 같은 버전입니다. 예를 들어 Android를 `1.6.5`로 올리면 다음 Windows 빌드도 `1.6.5`가 됩니다. 웹을 별도로 빌드할 필요는 없습니다. Cargo를 직접 실행하려면 먼저 `npm run prepare:app`을 실행하세요. 버전이 다르면 직접 Cargo 빌드는 오류로 중단됩니다.
+The app version is **based on the single `versionName` in Android's `app/build.gradle.kts`**. When `npm run dev` or `npm run build` runs, the npm, Cargo, and Tauri versions and the lock files are synchronized automatically before Tauri reads its configuration. The app info, executable version, CLI `--version`, and MCP `serverInfo.version` use that same version. For example, bumping Android to `1.6.5` makes the next Windows build `1.6.5` as well. The web version does not need to be built separately. To run Cargo directly, run `npm run prepare:app` first. If the versions differ, a direct Cargo build aborts with an error.
 
-## Python 설치
+## Python Installation
 
-앱의 **Python / MCP → Python 의존성 설치**를 누르면 실행 파일 폴더의 **`python_embeded`**에 CPython 3.14.10 x64, SymPy 1.14.0, mpmath 1.3.0, pip 26.2.2를 설치합니다. 다운로드 URL/버전/SHA-256은 `runtime-lock.json`에 고정되어 있습니다. 다운로드 후 해시를 검사하고 임시 폴더에서 import 검사까지 성공한 경우에만 설치를 전환합니다. 실패하면 기존 폴더를 유지하며, 불완전한 기존 설치를 교체할 때는 백업 폴더를 남깁니다. 다른 앱 인스턴스의 동시 설치는 차단됩니다.
+Pressing **Python / MCP → Install Python dependencies** in the app installs CPython 3.14.10 x64, SymPy 1.14.0, mpmath 1.3.0, and pip 26.2.2 into **`python_embeded`** in the executable folder. The download URLs, versions, and SHA-256 hashes are pinned in `runtime-lock.json`. After downloading, the hashes are verified, and the installation is only switched over if the import check in a temporary folder also succeeds. On failure the existing folder is kept, and an incomplete existing installation is replaced only after leaving a backup folder behind. Concurrent installs from another app instance are blocked.
 
-최초 설치에는 인터넷과 실행 파일 폴더 쓰기 권한이 필요합니다. Program Files 등 쓰기 권한이 없는 위치에서는 앱 폴더를 사용자 소유 폴더로 옮겨주세요. 이후 계산은 오프라인으로 작동합니다. 환율 새로 고침에는 인터넷이 필요합니다. 추가 패키지는 필요할 때 다음처럼 로컬 Python에 설치할 수 있습니다.
+The first install requires internet access and write permission on the executable folder. In locations without write permission, such as Program Files, move the app folder to a user-owned folder. After that, calculations work offline. Refreshing exchange rates requires internet access. Additional packages can be installed into the local Python when needed:
 
 ```powershell
 .\python_embeded\python.exe -m pip install PACKAGE
 ```
 
-계산용 Python 프로세스는 유지되며 중지 시 종료하고 새로 시작합니다. Python `input()` 대기 중에는 실행 시간 제한을 일시 중지합니다. Python 스크립트는 현재 사용자 권한으로 실행됩니다.
+The calculation Python process stays alive; stopping it terminates the process and starts a new one. While Python is waiting on `input()`, the execution time limit is paused. Python scripts run with the current user's privileges.
 
 ## CLI
 
@@ -41,7 +41,7 @@ npm run build
 .\symvacas-cli.exe eval '1/3+1/6'
 .\symvacas-cli.exe eval 'solve(x^2-5*x+6=0,x)'
 .\symvacas-cli.exe eval 'sin(30)' --angle DEG --precision 50
-.\symvacas-cli.exe catalog '회귀' --limit 5
+.\symvacas-cli.exe catalog 'regression' --limit 5
 .\symvacas-cli.exe catalog ttest2
 .\symvacas-cli.exe solve 'x^2-5*x+6=0'
 .\symvacas-cli.exe solve 'x+y=3' 'x-y=1' --variables x,y
@@ -57,23 +57,23 @@ npm run build
 .\symvacas-cli.exe --help
 ```
 
-출력은 공통 계산 엔진 JSON입니다. 실패 시 종료 코드는 1입니다. CLI/MCP 기본 각도는 RAD이며 GUI 설정과 독립적입니다. 웹 파서를 실행 파일 안에 포함하므로 LaTeX·암시적 곱셈·계산기 문법도 동일하게 처리합니다. `request`는 AST·변수·함수를 포함한 웹 엔진 요청 JSON을 받습니다. `-`를 파일명으로 지정하면 stdin을 사용합니다.
+The output is shared-engine JSON. The exit code is 1 on failure. The CLI/MCP default angle is RAD, independent of the GUI setting. Because the web parser is embedded in the executable, LaTeX, implicit multiplication, and calculator syntax are handled identically. `request` accepts a web engine request JSON including the AST, variables, and functions. Passing `-` as the filename reads from stdin.
 
-`catalog`는 함수명·범주·한/영 설명·예제를 검색하고 함수 시그니처와 실행 가능한 예제를 반환합니다. `--category`, `--limit 1..100`, `--offset`으로 결과를 좁힐 수 있습니다. Python을 설치하지 않아도 검색할 수 있습니다.
+`catalog` searches function names, categories, Korean/English descriptions, and examples, and returns function signatures and runnable examples. Narrow the results with `--category`, `--limit 1..100`, and `--offset`. Searching works even without Python installed.
 
-`stats`는 기술통계·검정·ANOVA·회귀·고급 통계 카탈로그 수식을 실행합니다. `--data` JSON은 `{"a":[1,2,3],"b":[2,4,6]}`처럼 이름 있는 데이터셋이나, `data`라는 이름으로 사용하는 벡터/행렬입니다. 큰 데이터셋도 웹 통계 경로로 분리해 전달합니다. 정확한 소수는 JSON 문자열로 지정하세요. 결과에 제공되는 `statisticsReport`, `regression`, `statisticsCopyReport`를 그대로 반환합니다.
+`stats` runs descriptive statistics, tests, ANOVA, regression, and advanced statistics catalog formulas. `--data` JSON can be a named dataset such as `{"a":[1,2,3],"b":[2,4,6]}`, or a vector/matrix used under the name `data`. Large datasets are passed separately through the web statistics path. Specify exact decimals as JSON strings. `statisticsReport`, `regression`, and `statisticsCopyReport` are returned from the result as-is.
 
-`solve`는 기본적으로 기호해와 가능한 단계별 풀이를 반환합니다. 연립방정식은 인수를 여러 개 주거나 stdin에 한 줄씩 입력하고 `--variables x,y`로 미지수를 지정하세요. `--method nsolve --guess 0.5`는 수치해, `--method dsolve --variables 'y(x)' --independent x`는 상미분방정식, `pdsolve`는 편미분방정식에 사용합니다. `--initial`은 ODE 초기조건, `--hint`는 PDE 힌트, `--no-steps`는 풀이 설명 해제입니다. 함수별 인수는 `catalog solve`, `catalog dsolve` 등으로 확인하세요.
+`solve` returns symbolic solutions and, when available, step-by-step solutions by default. For systems of equations, pass multiple arguments or enter one equation per line on stdin and name the unknowns with `--variables x,y`. `--method nsolve --guess 0.5` selects a numeric solution, `--method dsolve --variables 'y(x)' --independent x` handles ODEs, and `pdsolve` handles PDEs. `--initial` sets ODE initial conditions, `--hint` supplies a PDE hint, and `--no-steps` disables solution explanations. Check per-function arguments with `catalog solve`, `catalog dsolve`, and so on.
 
-### 공유 통계 데이터
+### Shared statistics data
 
-`dataset save NAME FILE`은 CSV/TSV 또는 JSON 벡터/행렬을 등록합니다. JSON 확장자가 아닌 stdin 등에는 `--format json`을 지정하세요. 기존 이름을 바꾸려면 `--replace`를 명시해야 합니다. `dataset list`·`show`로 등록 데이터를 확인하고 `stats 'mean(cohort)'`·`eval 'mean(cohort)'`처럼 이름으로 계산합니다. 분석에 사용하는 이름은 `cohort`처럼 수식에서 하나의 기호로 인식되는 이름을 권장합니다.
+`dataset save NAME FILE` registers a CSV/TSV file or a JSON vector/matrix. For stdin and other input without a JSON extension, specify `--format json`. Renaming an existing name requires an explicit `--replace`. Inspect registered data with `dataset list` and `show`, and calculate by name using `stats 'mean(cohort)'` or `eval 'mean(cohort)'`. For analysis, prefer names that the expression parser reads as a single symbol, such as `cohort`.
 
-등록 데이터는 실행 파일 옆 `data/statistics-datasets.json`에 저장하며 **Windows GUI의 저장 데이터·CLI·MCP가 공유**합니다. 업데이트 후 GUI를 한 번 열면 기존 저장 데이터가 공유 레지스트리로 옮겨집니다. 외부에서 변경한 데이터는 GUI를 다시 열면 표시되며, 같은 데이터를 동시에 수정하면 충돌을 알리고 덮어쓰지 않습니다. `stats --data`의 일회성 데이터는 등록 데이터를 변경하지 않고 같은 이름을 해당 요청에서만 대체합니다. GUI 기록·일반 변수·사용자 함수는 별도로 유지됩니다. 배포 폴더를 옮길 때 `data` 폴더도 함께 복사하세요.
+Registered data is stored in `data/statistics-datasets.json` next to the executable and is **shared by the Windows GUI's saved data, the CLI, and MCP**. After an update, opening the GUI once moves existing saved data into the shared registry. Data changed externally appears when the GUI is reopened, and editing the same data simultaneously reports a conflict instead of overwriting it. One-off `stats --data` data does not modify the registry and only replaces the same name for that request. GUI history, general variables, and user functions are kept separately. When moving the distribution folder, copy the `data` folder along with it.
 
 ## MCP / Skill
 
-앱의 **Python / MCP**에서 실제 설치 경로가 반영된 MCP 설정을 복사하거나 `.\symvacas-cli.exe mcp-config`를 실행하세요.
+In the app's **Python / MCP**, copy the MCP configuration that reflects the actual install path, or run `.\symvacas-cli.exe mcp-config`.
 
 ```json
 {
@@ -86,13 +86,13 @@ npm run build
 }
 ```
 
-stdio MCP 서버는 GUI 없이 실행됩니다. `search_catalog`에서 함수와 예제를 찾고 `statistics`·`solve_equations`로 분석과 방정식을 실행할 수 있습니다. 데이터 등록·조회 도구는 `save_statistics_dataset`, `list_statistics_datasets`, `get_statistics_dataset`이며 등록한 이름을 분석식에서 바로 사용합니다. 기존 `evaluate`, `engine_request`, `python`, `runtime_status`도 제공합니다. MCP 2024-11-05, 2025-03-26, 2025-06-18, 2025-11-25 초기화 프로토콜과 요청 취소를 지원합니다. stdout에는 JSON-RPC 메시지만 기록합니다. Python 도구에는 로컬 코드 실행 권한이 있습니다.
+The stdio MCP server runs without the GUI. Use `search_catalog` to find functions and examples, and `statistics` and `solve_equations` to run analyses and equations. The dataset tools are `save_statistics_dataset`, `list_statistics_datasets`, and `get_statistics_dataset`, and registered names can be used directly in analysis expressions. The existing `evaluate`, `engine_request`, `python`, and `runtime_status` tools are also provided. MCP initialization protocols 2024-11-05, 2025-03-26, 2025-06-18, and 2025-11-25 and request cancellation are supported. Only JSON-RPC messages are written to stdout. The Python tool has permission to execute local code.
 
-**MCP만 등록해도 skill 없이 사용할 수 있습니다.** 서버 초기화의 `instructions`에 도구 선택과 분석 흐름을 전달하고, 각 도구 설명·입력 스키마에 형식과 JSON 예제를 포함합니다. `get_usage` 도구는 `overview`, `catalog`, `datasets`, `statistics`, `equations`, `runtime`, `all` 중 원하는 설명을 반환합니다. 전체 [MCP 사용 가이드](MCP_GUIDE.md)는 `symvacas://guide` 리소스로도 제공합니다. Python을 설치하기 전에도 사용법·함수 검색·데이터 등록은 가능합니다.
+**Registering only MCP is enough; no skill is required.** Tool selection and analysis workflows are delivered in the server initialization `instructions`, and each tool description and input schema includes formats and JSON examples. The `get_usage` tool returns the requested explanation for `overview`, `catalog`, `datasets`, `statistics`, `equations`, `runtime`, or `all`. The full [MCP usage guide](MCP_GUIDE.md) is also available as the `symvacas://guide` resource. Usage, function search, and data registration work even before Python is installed.
 
-`skills/symvacas` 폴더를 사용하는 에이전트의 skills 폴더에 복사하세요. Codex에서는 `%USERPROFILE%\.codex\skills\symvacas\SKILL.md`로 설치할 수 있습니다. MCP에서도 `symvacas://skill` 리소스로 읽을 수 있고 CLI의 `skill` 명령으로 출력할 수 있습니다.
+Copy the `skills/symvacas` folder into your agent's skills folder. For Codex, you can install it as `%USERPROFILE%\.codex\skills\symvacas\SKILL.md`. MCP can also read it as the `symvacas://skill` resource, and the CLI can print it with the `skill` command.
 
-## 검증
+## Verification
 
 ```powershell
 npm test
@@ -104,6 +104,6 @@ $env:SYMVACAS_TEST_HOME = (Resolve-Path release/SymvaCAS).Path
 cargo test --manifest-path src-tauri/Cargo.toml -- --include-ignored
 ```
 
-`smoke_native.py --install`은 실행 파일 옆에 실제 Python 의존성을 설치하고 CLI·Python input·MCP 계산을 검증합니다. `--include-ignored` 테스트는 해당 런타임으로 비동기 input 응답·취소·재시작도 검사합니다. GUI 수동 검증과는 별개입니다. 배포 후에는 첫 설치, 각 계산 탭, 중지, input 대화상자, 파일 저장/내보내기를 수동 확인하세요. 데이터·스크립트·그래프 내보내기는 Windows 저장 대화상자를 사용합니다.
+`smoke_native.py --install` installs the real Python dependencies next to the executable and verifies CLI, Python input, and MCP calculations. The `--include-ignored` tests additionally check asynchronous input responses, cancellation, and restarts against that runtime. This is separate from manual GUI verification. After a release, manually check the first install, each calculation tab, stop, the input dialog, and file save/export. Data, script, and graph exports use the Windows save dialog.
 
-기술 참고: [Tauri IPC](https://v2.tauri.app/develop/calling-rust/), [Python embeddable distribution](https://docs.python.org/3/using/windows.html#the-embeddable-package), [MCP stdio](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports).
+Technical references: [Tauri IPC](https://v2.tauri.app/develop/calling-rust/), [Python embeddable distribution](https://docs.python.org/3/using/windows.html#the-embeddable-package), [MCP stdio](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports).
