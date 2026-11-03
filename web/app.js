@@ -15,6 +15,7 @@ import {bindKeyPress} from './keypad.js';
 import {bindMathCopy} from './latex-output.js';
 import {graphColorsForTheme} from './graph-colors.js';
 import {createWorkspaceNavigation} from './workspace-navigation.js';
+import {createConversionControls} from './conversion-controls.js';
 
 let storageUnavailable=false;
 const saved=await readState({onError:()=>{storageUnavailable=true;}}),state=createAppState(saved,navigator.language),ui=createAppUI();
@@ -22,6 +23,8 @@ bindMathCopy(document,()=>state.copyAsLatex&&['scientific','graph','equation'].i
 setLanguage(state.language);
 if(storageUnavailable)ui.toast('브라우저 저장 공간을 사용할 수 없어 이번 세션에서만 보관합니다.');
 setComputationLimitsRemoved(state.removeComputationLimit);
+const conversions=createConversionControls();
+window.addEventListener('pagehide',()=>conversions.dispose(),{once:true});
 restoreFields(state);
 let calculator,graphs,workspaces,keypad,dialogs;
 const persistence=createPersistence({state,toast:ui.toast,
@@ -30,7 +33,7 @@ const persistence=createPersistence({state,toast:ui.toast,
 const {persist,schedulePersist}=persistence;
 const requestOptions=()=>({removeComputationLimit:state.removeComputationLimit,angle:value('angle'),precision:state.precision,displayDigits:state.digits,variables:state.variables,functions:state.functions,assumptions:state.assumptions,solutionSteps:value('mode')==='scientific'&&state.calcModeStepByStep});
 const engine=new EngineClient();
-const runtime=createEngineUI({engine,onChange:updateButtons,onReady:()=>calculator.resetPreview(),cancelPreview:()=>calculator.cancelPreview()});
+const runtime=createEngineUI({engine,onChange:updateButtons,onReady:()=>{calculator.resetPreview();workspaces?.loadConstantsIfNeeded();},cancelPreview:()=>calculator.cancelPreview()});
 graphs=createGraphWorkspace({execute:(request,settings)=>engine.execute(request,settings),options:requestOptions,onError:error,onClearError:()=>{$('answer').querySelector('.error')?.remove();},persist,isBusy:()=>runtime.busy,isReady:()=>engine.ready,saved:state.graph,getColors:()=>graphColorsForTheme(state.graphColors,document.documentElement.dataset.theme)});
 calculator=createCalculator({state,engine,isBusy:()=>runtime.busy,ui,persist,schedulePersist,requestOptions,error,changeMode,updateButtons,graphs,
   onFunctionsChanged:()=>workspaces.renderFunctions(),
@@ -76,6 +79,7 @@ function changeMode(mode) {
   calculator.refreshSizing();
   if(mode==='scientific')calculator.renderInputCursor();
   persist();
+  workspaces.loadConstantsIfNeeded();
 }
 function refreshDisplays(){calculator.renderResult();workspaces.render();graphs.render();}
 $('mode').onchange=()=>changeMode(value('mode'));$('angle').onchange=persist;

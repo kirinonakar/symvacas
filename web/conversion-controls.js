@@ -9,7 +9,7 @@ const extraNames={
   XCG:['Caribbean Guilder','카리브 길더'],ZWG:['Zimbabwean Gold','짐바브웨 골드']
 };
 
-export function createDesktopConversions(doc=document){
+export function createConversionControls(doc=document){
   const byId=id=>doc.getElementById(id),root=doc.documentElement;
   const fields=['currency-from','currency-to'].map(id=>{
     const input=byId(id),select=doc.createElement('select');select.id=id;select.setAttribute('translate','no');
@@ -19,15 +19,15 @@ export function createDesktopConversions(doc=document){
   const swaps=[];
   for(const kind of ['currency','unit']){
     const from=byId(`${kind}-from`).closest('label'),to=byId(`${kind}-to`).closest('label');
-    const swap=byId(kind==='unit'?'units-swap':'currency-swap'),pair=doc.createElement('div');pair.className='desktop-conversion-pair';
+    const swap=byId(kind==='unit'?'units-swap':'currency-swap'),pair=doc.createElement('div');pair.className='conversion-pair';
     const svg=doc.createElementNS('http://www.w3.org/2000/svg','svg');
     svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');svg.setAttribute('focusable','false');
     const path=doc.createElementNS(svg.namespaceURI,'path');path.setAttribute('d','M7 7h14v2H7v3L2 8l5-4v3zm10 8H3v2h14v3l5-4-5-4v3z');svg.append(path);
-    swap.type='button';swap.classList.add('desktop-conversion-swap');swap.replaceChildren(svg);
+    swap.type='button';swap.classList.add('conversion-swap');swap.replaceChildren(svg);
     from.before(pair);pair.append(from,swap,to);swaps.push({kind,swap});
   }
   const whole=byId('tip-whole').closest('label'),tipRow=whole.closest('.form-row');
-  const tipOptions=doc.createElement('div');tipOptions.className='form-row desktop-tip-options';
+  const tipOptions=doc.createElement('div');tipOptions.className='form-row tip-options';
   tipRow.after(tipOptions);tipOptions.append(whole);
   function labels(){
     const ko=root.lang.startsWith('ko'),names=new Intl.DisplayNames([ko?'ko':'en'],{type:'currency'});

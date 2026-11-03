@@ -43,9 +43,14 @@ val UnitGroups=linkedMapOf(
     Panel("Unit conversion","") {
         Choices(UnitGroups.keys.toList(),group,{group=it;from=UnitGroups[it]!![0];to=UnitGroups[it]!![1]},translate=false)
         Field(value,"Value or expression",Modifier.fillMaxWidth()) { value=it }
-        Text("From"); Choices(UnitGroups[group]!!,from,{from=it},translate=false,label=::unitLabel)
-        Text("To"); Choices(UnitGroups[group]!!,to,{to=it},translate=false,label=::unitLabel)
-        Row { Button(onClick={m.edit(Editor("convert($value,$from,$to)"));m.calculate()}) { Text("Convert") }; SmallAction("Swap",translate=false) { val temp=from;from=to;to=temp } }
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically) {
+            OutlinedTextField(from,{},Modifier.weight(1f),label={Text("From")},readOnly=true,singleLine=true)
+            ConversionSwapAction(if(isKorean())"단위 교체" else "Swap units") { val temp=from;from=to;to=temp }
+            OutlinedTextField(to,{},Modifier.weight(1f),label={Text("To")},readOnly=true,singleLine=true)
+        }
+        Text("from:"); Choices(UnitGroups[group]!!,from,{from=it},translate=false,label=::unitLabel)
+        Text("to:"); Choices(UnitGroups[group]!!,to,{to=it},translate=false,label=::unitLabel)
+        Button(onClick={m.edit(Editor("convert($value,$from,$to)"));m.calculate()}) { Text("Convert") }
         Display(m)
         Text("Units in expressions: qty(2,m) + qty(30,cm). Convert a derived quantity with convert(qty(1,kg)*qty(2,mps2),N).",fontSize=11.sp)
     }

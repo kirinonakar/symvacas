@@ -183,10 +183,12 @@ export function createAppDialogs({state,ui,persist,calculator,changeMode,pressKe
       const body=element('div');body.append(element('p',t(description)),control('Cancel',()=>$('dialog').close()),control('Confirm',async()=>{if(pending)return;pending=true;try{await action();}catch(exc){toast(exc.message);}finally{pending=false;}}));openDialog(title,body);
     };
     const transferNote=element('p',t('Transfer variables, saved statistics datasets and functions between Android and Web. Matching names are replaced; other data and settings are kept.'),'hint');transferNote.dataset.settingsNote='transfer';
-    content.append(element('h3',t('Data & reset')),transferNote,dataActions,
-      control('Delete all data',()=>confirmAction('Delete all data','Delete all variables, statistics data and functions? This cannot be undone.',()=>{persist();return reloadState(deleteDataState(state));})),
-      element('p',t('Reset history, settings, inputs, selections and expanded sections. Variables, saved statistics datasets and functions are preserved.'),'hint'),
-      control('Reset all settings',()=>confirmAction('Reset all settings','Reset history, settings, inputs, selections and expanded sections. Variables, saved statistics datasets and functions are preserved.',()=>{persist();return reloadState(resetSettingsState(state));})));
+    const deleteData=control('Delete all data',()=>confirmAction('Delete all data','Delete all variables, statistics data and functions? This cannot be undone.',()=>{persist();return reloadState(deleteDataState(state));}),'settings-danger');
+    dataActions.append(deleteData);
+    const reset=element('div','','settings-reset');
+    reset.append(element('p',t('Reset history, settings, inputs, selections and expanded sections. Variables, saved statistics datasets and functions are preserved.'),'hint'),
+      control('Reset all settings',()=>confirmAction('Reset all settings','Reset history, settings, inputs, selections and expanded sections. Variables, saved statistics datasets and functions are preserved.',()=>{persist();return reloadState(resetSettingsState(state));}),'settings-danger'));
+    content.append(element('h3',t('Data & reset')),transferNote,dataActions,reset);
     $('settings-body').replaceChildren(content);translateDOM($('settings-dialog'));
     // The Windows shell arranges these same live controls into desktop pages.
     $('settings-dialog').dispatchEvent(new Event('settingsrender'));

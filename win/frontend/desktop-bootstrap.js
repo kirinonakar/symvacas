@@ -4,14 +4,11 @@ import {createDesktopDocuments} from './desktop-documents.js';
 import {createDesktopLayout} from './desktop-layout.js';
 import {createDesktopPreferences} from './desktop-preferences.js';
 import {createDesktopAbout} from './desktop-about.js';
-import {createDesktopConversions} from './desktop-conversions.js';
 
 const desktop=createDesktopSettings();
 const documents=createDesktopDocuments();
 const preferences=createDesktopPreferences();
 const about=createDesktopAbout();
-const conversions=createDesktopConversions();
-window.addEventListener('pagehide',()=>conversions.dispose(),{once:true});
 window.addEventListener('pagehide',()=>about.dispose(),{once:true});
 window.addEventListener('pagehide',()=>preferences.dispose(),{once:true});
 window.addEventListener('pagehide',()=>documents.dispose(),{once:true});

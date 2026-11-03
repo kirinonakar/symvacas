@@ -89,23 +89,22 @@ private fun displayAmount(value:BigDecimal)=value.setScale(6,RoundingMode.HALF_E
     Panel("Currency converter","") {
         Choices(listOf("Online / cache","Manual"),if(manual)"Manual" else "Online / cache",{manual=it=="Manual"})
         Field(amount,"Amount",Modifier.fillMaxWidth()){amount=it}
-        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-            Column(Modifier.weight(1f)){
-                Field(from,"From (ISO code)",Modifier.fillMaxWidth()){from=it.uppercase().take(4);manualRate=""}
-                currencyName(from)?.let{Text(it,fontSize=12.sp,color=LocalInstrument.current.muted)}
-            }
-            Column(Modifier.weight(1f)){
-                Field(to,"To (ISO code)",Modifier.fillMaxWidth()){to=it.uppercase().take(4);manualRate=""}
-                currencyName(to)?.let{Text(it,fontSize=12.sp,color=LocalInstrument.current.muted)}
-            }
-        }
-        Choices(quickCurrencies,from,{from=it;manualRate=""})
-        Choices(quickCurrencies,to,{to=it;manualRate=""})
-        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
-            SmallAction("⇄ Swap currencies",fontSize=15.sp) {
+        Row(horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically){
+            Field(from,"From (ISO code)",Modifier.weight(1f)){from=it.uppercase().take(4);manualRate=""}
+            ConversionSwapAction(if(isKorean())"통화 교체" else "Swap currencies") {
                 val previous=from;from=to;to=previous
                 if(manual)manualRate=runCatching{Money.format(BigDecimal.ONE.divide(decimalInput(manualRate),MathContext.DECIMAL128))}.getOrDefault("")
             }
+            Field(to,"To (ISO code)",Modifier.weight(1f)){to=it.uppercase().take(4);manualRate=""}
+        }
+        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+            Text(currencyName(from).orEmpty(),Modifier.weight(1f),fontSize=12.sp,color=LocalInstrument.current.muted)
+            Spacer(Modifier.width(48.dp))
+            Text(currencyName(to).orEmpty(),Modifier.weight(1f),fontSize=12.sp,color=LocalInstrument.current.muted)
+        }
+        Text("from:"); Choices(quickCurrencies,from,{from=it;manualRate=""})
+        Text("to:"); Choices(quickCurrencies,to,{to=it;manualRate=""})
+        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
             FilterChip(selected=dropDecimals,onClick={dropDecimals=!dropDecimals},label={Text(tr("Drop decimals"),fontSize=13.sp)})
         }
         converted.getOrNull()?.let {value->

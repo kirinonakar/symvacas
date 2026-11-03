@@ -14,12 +14,14 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.*
 import com.kirinonakar.symvacas.ui.theme.LocalInstrument
+import com.kirinonakar.symvacas.R
 
 @Composable fun Panel(title: String,subtitle: String,scrollState: ScrollState?=null,content: @Composable ColumnScope.()->Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(scrollState ?: rememberScrollState()).padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
@@ -28,6 +30,12 @@ import com.kirinonakar.symvacas.ui.theme.LocalInstrument
 }
 @Composable fun Choices(values: List<String>,selected: String,choose: (String)->Unit,translate:Boolean=true,enabled:Boolean=true,label:(String)->String={it}) {
     Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)) { values.forEach { value->FilterChip(selected==value,onClick={choose(value)},label={Text(if(translate)tr(label(value)) else label(value),fontSize=12.sp)},enabled=enabled) } }
+}
+@Composable internal fun ConversionSwapAction(description:String,onClick:()->Unit) {
+    IconButton(onClick=onClick,modifier=Modifier.size(48.dp)) {
+        Icon(painterResource(R.drawable.ic_conversion_swap),contentDescription=description,
+            modifier=Modifier.size(24.dp),tint=LocalInstrument.current.accent)
+    }
 }
 /** Repeat relocation as the IME opens: requesting only on focus uses the old viewport. */
 internal fun Modifier.keepInputVisible(includeDescendants:Boolean=false,contentKey:Any?=null):Modifier=composed {

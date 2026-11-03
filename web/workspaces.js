@@ -46,6 +46,24 @@ export function createWorkspaces({state,engine,ui,persist,restoreSelect,requestO
   $('unit-category').onchange=()=>{const units=unitGroups[value('unit-category')]||null;for(const id of ['unit-from','unit-to']){for(const option of $(id).options)option.hidden=units?!units.includes(option.value):false;if(units&&!units.includes(value(id)))$(id).value=units[id==='unit-from'?0:1];}refreshWorkspaceMath();persist();};
   $('currency-swap').onclick=()=>{const from=value('currency-from');$('currency-from').value=value('currency-to');$('currency-to').value=from;const rate=Number(value('currency-rate'));if(rate>0)$('currency-rate').value=String(1/rate);refreshWorkspaceMath();persist();};
   $('constants-search').oninput=()=>{const query=value('constants-search').toLowerCase();for(const row of $('constants-list').children)row.hidden=!row.dataset.search?.includes(query);};
+  let constantsLoaded=false,constantsLoading=false;
+  async function loadConstants(){
+    if(constantsLoading||!engine.ready||isBusy())return;
+    constantsLoading=true;
+    try{
+      const result=await engine.execute({...requestOptions(),action:'constants'},{context:'constants'});
+      if(!result.ok){error(result.error);return;}
+      $('constants-list').replaceChildren();
+      for(const c of result.constants){
+        const row=element('div','','list-row');row.dataset.search=`${c.symbol} ${c.name} ${c.unit}`.toLowerCase();
+        const text=element('div','','content');text.append(element('strong',`${c.symbol} · ${c.name}`),element('p',`${displayNumber(c.value.replace(/…$/,''),state.digits)} ${c.unit}`,'hint'));
+        row.append(text,control('사용',()=>{changeMode('scientific');insert(c.symbol);}));$('constants-list').append(row);
+      }
+      constantsLoaded=true;$('constants-search').oninput();
+    }catch(exc){error(exc.message||'Math ERROR');}
+    finally{constantsLoading=false;}
+  }
+  function loadConstantsIfNeeded(){if(value('mode')==='constants'&&!constantsLoaded)void loadConstants();}
   $('currency-fetch').onclick=async()=>{
     const from=value('currency-from').trim().toUpperCase(),to=value('currency-to').trim().toUpperCase();
     if(!/^[A-Z]{3}$/.test(from)||!/^[A-Z]{3}$/.test(to)){toast('3자리 통화 코드를 입력하세요.');return;}
@@ -72,7 +90,7 @@ export function createWorkspaces({state,engine,ui,persist,restoreSelect,requestO
         const result=await engine.execute({...requestOptions(),action:'programmer',base:Number(value('programmer-base')),width:Number(value('programmer-width')),signed:$('programmer-signed').checked,a:value('programmer-a'),b:value('programmer-b'),op:value('programmer-op')});if(result.ok)$('programmer-output').textContent=Object.entries(result.bases).map(([base,n])=>`${base.padEnd(4)} ${n}`).join('\n');showResult(result);return;
       }
       if(workspace==='constants') {
-        const result=await engine.execute({...requestOptions(),action:'constants'});if(!result.ok){error(result.error);return;}$('constants-list').replaceChildren();for(const c of result.constants){const row=element('div','','list-row');row.dataset.search=`${c.symbol} ${c.name} ${c.unit}`.toLowerCase();const text=element('div','','content');text.append(element('strong',`${c.symbol} · ${c.name}`),element('p',`${displayNumber(c.value.replace(/…$/,''),state.digits)} ${c.unit}`,'hint'));row.append(text,control('사용',()=>{changeMode('scientific');insert(c.symbol);}));$('constants-list').append(row);}return;
+        await loadConstants();return;
       }
       let source,advancedContext,statisticsContext='';
       if(workspace==='scientific'){await evaluate();return;}
@@ -99,6 +117,6 @@ export function createWorkspaces({state,engine,ui,persist,restoreSelect,requestO
     statistics.datasetsList();functions.render();equationControls();refreshWorkspaceMath();
   }
   function render(){refreshWorkspaceMath();statistics.render();probability.render();equationSteps.render();}
-  return {initialize,render,refreshMath:refreshWorkspaceMath,renderMatrix:matrix.render,renderFunctions:functions.render,equationSource,clearStatisticsResult:statistics.clearResult,
+  return {initialize,render,refreshMath:refreshWorkspaceMath,renderMatrix:matrix.render,renderFunctions:functions.render,equationSource,clearStatisticsResult:statistics.clearResult,loadConstantsIfNeeded,
     runStatisticsModelWorkflow:plan=>{if(isBusy()||!engine.ready)return;changeMode('statistics');statistics.prepareModelWorkflow(plan);return run('statistics-advanced');}};
 }
