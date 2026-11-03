@@ -129,13 +129,18 @@ fn integration_info() -> runtime::Result<Value> {
     let root = runtime::home()?;
     let cli = root.join("symvacas-cli.exe");
     Ok(
-        json!({"cli":cli,"skill":root.join("skills/symvacas/SKILL.md"),"mcp":{"mcpServers":{"symvacas":{"command":cli,"args":["mcp"]}}}}),
+        json!({"cli":cli,"skill":skill_folder(&root).join("SKILL.md"),"mcp":{"mcpServers":{"symvacas":{"command":cli,"args":["mcp"]}}}}),
     )
+}
+
+fn skill_folder(root: &std::path::Path) -> std::path::PathBuf {
+    // Explorer needs a native Windows path, rather than a mixed-separator path.
+    root.join("skills").join("symvacas")
 }
 
 #[tauri::command]
 fn open_skill_folder() -> runtime::Result<()> {
-    let folder = runtime::home()?.join("skills/symvacas");
+    let folder = skill_folder(&runtime::home()?);
     if !folder.is_dir() {
         return Err(format!("Skill folder not found: {}", folder.display()));
     }
@@ -166,4 +171,16 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("Cannot run SymvaCAS");
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    #[test]
+    fn skill_folder_uses_windows_separators_for_explorer() {
+        let root = std::path::Path::new(r"C:\앱 폴더\SymvaCAS");
+        assert_eq!(
+            super::skill_folder(root).as_os_str(),
+            std::ffi::OsStr::new(r"C:\앱 폴더\SymvaCAS\skills\symvacas")
+        );
+    }
 }

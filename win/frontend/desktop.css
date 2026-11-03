@@ -5,6 +5,9 @@
 .desktop-settings pre { white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
 .desktop-install-log { max-height: 12rem; overflow: auto; }
 .desktop-install-log:empty { display: none; }
+/* Leave room for Python import statements and snippet names in desktop tools. */
+.workspace[data-mode="python"] .python-tools-toolbar select { width: 200px; max-width: 100%; }
+.workspace[data-mode="python"] .python-tools-toolbar select:first-of-type { width: 320px; }
 /* The Python / MCP header stays outside the scrolling content. Match the
    content so the shared dialog returns to its usual layout for other popups. */
 #dialog:has(> #dialog-body > .desktop-settings)[open] { display: flex; flex-direction: column; height: min(720px, 85dvh); overflow: hidden; }
@@ -13,8 +16,6 @@
 #dialog:has(> #dialog-body > .desktop-settings) > #dialog-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 /* Windows preferences: fixed chrome, category navigation, one scrolling page. */
 #settings-dialog.desktop-preferences-dialog {
-  --bg: #f3f3f3; --panel: #fff; --bar: #eaeaea; --number: #fff;
-  --ink: #202020; --muted: #606060; --line: #d8d8d8;
   width: min(860px, calc(100vw - 32px)); max-width: none;
   height: min(660px, calc(100dvh - 48px)); max-height: none;
   padding: 0; overflow: hidden; border-radius: 8px; background: var(--panel);
