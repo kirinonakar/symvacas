@@ -8,6 +8,11 @@
 /* Leave room for Python import statements and snippet names in desktop tools. */
 .workspace[data-mode="python"] .python-tools-toolbar select { width: 200px; max-width: 100%; }
 .workspace[data-mode="python"] .python-tools-toolbar select:first-of-type { width: 320px; }
+#dialog:has(> #dialog-body > .about-content) { width: min(480px, calc(100vw - 32px)); }
+#dialog .about-content { font-size: 16px; gap: 16px; }
+#dialog .about-content :is(.hint, a) { font-size: 16px; line-height: 1.6; overflow-wrap: anywhere; }
+#dialog .about-content button { font-size: 15px; }
+#dialog .desktop-about-error { font-size: 14px; color: var(--danger); overflow-wrap: anywhere; }
 /* The Python / MCP header stays outside the scrolling content. Match the
    content so the shared dialog returns to its usual layout for other popups. */
 #dialog:has(> #dialog-body > .desktop-settings)[open] { display: flex; flex-direction: column; height: min(720px, 85dvh); overflow: hidden; }

@@ -152,6 +152,12 @@ fn open_skill_folder() -> runtime::Result<()> {
     Ok(())
 }
 
+#[tauri::command]
+fn open_project_website() -> runtime::Result<()> {
+    tauri_plugin_opener::open_url("https://github.com/kirinonakar/symvacas", None::<&str>)
+        .map_err(|e| e.to_string())
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -167,6 +173,7 @@ pub fn run() {
             native_cancel,
             integration_info,
             open_skill_folder,
+            open_project_website,
             save_export
         ])
         .run(tauri::generate_context!())
