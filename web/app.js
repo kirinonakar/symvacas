@@ -26,7 +26,7 @@ restoreFields(state);
 let calculator,graphs,workspaces,keypad,dialogs;
 const persistence=createPersistence({state,toast:ui.toast,
   snapshot:()=>({expression:calculator.draftSource(),graph:graphs.snapshot()}),
-  onPersist:({functionsChanged})=>{if(functionsChanged)workspaces.renderFunctions();calculator.schedulePreview();}});
+  onPersist:({functionsChanged})=>{if(functionsChanged)workspaces.renderFunctions();calculator.schedulePreview();dialogs?.refreshPanels();}});
 const {persist,schedulePersist}=persistence;
 const requestOptions=()=>({removeComputationLimit:state.removeComputationLimit,angle:value('angle'),precision:state.precision,displayDigits:state.digits,variables:state.variables,functions:state.functions,assumptions:state.assumptions,solutionSteps:value('mode')==='scientific'&&state.calcModeStepByStep});
 const engine=new EngineClient();
@@ -96,3 +96,6 @@ async function initialize() {
   if(location.protocol==='file:')error('WebAssembly는 정적 HTTP 서버가 필요합니다. python web/serve.py를 실행하고 http://localhost:8080을 여세요.');
 }
 await initialize();
+
+// The Windows shell reuses the same history and catalog controllers inline.
+export function mountCalculatorPanel(target,kind){return dialogs.mountCalculatorPanel(target,kind);}

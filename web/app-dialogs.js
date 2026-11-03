@@ -14,6 +14,7 @@ import {encodeData,decodeData,mergeData,resetSettingsState,deleteDataState} from
 export function createAppDialogs({state,ui,persist,calculator,changeMode,pressKey,refreshDisplays,renderMatrix,error,reloadState}) {
   const {toast,openDialog,pickFile}=ui;
   let catalog={},graphSettings=null;
+  const embeddedPanels=new Set();
   function clearableCatalogSearch(input){
     const holder=element('div','','catalog-search'),clear=control('✕',()=>{
       input.value='';input.dispatchEvent(new input.ownerDocument.defaultView.Event('input',{bubbles:true}));input.focus();
@@ -66,17 +67,23 @@ export function createAppDialogs({state,ui,persist,calculator,changeMode,pressKe
   renderDisplayShortcuts();
   function modeDialog(){const choices=element('div','','mode-choices');for(const option of $('mode').options)choices.append(control(option.textContent,()=>{changeMode(option.value);$('dialog').close();}));openDialog('Workspace',choices);}
   function matrixInsertDialog(){const content=element('div'),rows=element('input'),cols=element('input');for(const [input,name] of [[rows,'Rows / components'],[cols,'Column']]){input.type='number';input.min='1';input.max='9';input.value='2';const label=element('label',name);label.append(input);content.append(label);}content.append(control('Insert',()=>{const r=Number(rows.value),c=Number(cols.value);if(!Number.isInteger(r)||!Number.isInteger(c)||r<1||c<1||r>9||c>9)return;changeMode('scientific');calculator.insert(`[${Array.from({length:r},()=>`[${Array(c).fill('0').join(',')}]`).join(',')}]`);$('dialog').close();}));openDialog('Matrix',content);}
-  function historyDialog() {
+  function historyContent(inline=false) {
     const content=element('div','','history-content'),search=element('input'),actions=element('div','','history-actions');search.placeholder='수식 또는 결과 검색';search.setAttribute('aria-label','기록 검색');const list=element('div','','history-scroll');let favorites=false;
     const filter=control('즐겨찾기만',()=>{favorites=!favorites;setText(filter,favorites?'전체 기록':'즐겨찾기만');render();});
-    function render(){list.replaceChildren();for(const item of state.history.filter(h=>(!favorites||h.star)&&`${h.source} ${h.exact}`.toLowerCase().includes(search.value.toLowerCase()))){const row=element('div','','list-row');const text=element('div','','content');text.append(element('code',item.source),element('div',`= ${item.exact}`));row.append(text,control(item.star?'★':'☆',()=>{item.star=!item.star;persist();render();}),control('사용',()=>{changeMode('scientific');$('expression').value=item.source;calculator.preview();$('dialog').close();}));list.append(row);}if(!list.childElementCount)list.append(element('p','기록이 없습니다.','hint'));}
-    search.oninput=render;actions.append(filter,control('기록 삭제',()=>{state.history=state.history.filter(item=>item.star);calculator.clearHistorySelection();persist();render();}));content.append(search,actions,list);render();openDialog('History',content);
+    let signature='';
+    const snapshot=()=>JSON.stringify(state.history.map(item=>[item.source,item.exact,item.star]));
+    function render(){signature=snapshot();list.replaceChildren();for(const item of state.history.filter(h=>(!favorites||h.star)&&`${h.source} ${h.exact}`.toLowerCase().includes(search.value.toLowerCase()))){const row=element('div','','list-row');const text=element('div','','content');text.append(element('code',item.source),element('div',`= ${item.exact}`));row.append(text,control(item.star?'★':'☆',()=>{item.star=!item.star;persist();render();}),control('사용',()=>{changeMode('scientific');calculator.replaceInput(item.source,{uncommit:true});if(!inline)$('dialog').close();}));list.append(row);}if(!list.childElementCount)list.append(element('p','기록이 없습니다.','hint'));}
+    search.oninput=render;actions.append(filter,control('기록 삭제',()=>{state.history=state.history.filter(item=>item.star);calculator.clearHistorySelection();persist();render();}));content.append(search,actions,list);render();
+    return {content,refresh(){if(signature!==snapshot()){render();translateDOM(content);}}};
   }
-  function catalogDialog() {
+  function historyDialog(){openDialog('History',historyContent().content);}
+  function catalogContent(inline=false) {
     const content=element('div','','catalog-content'),search=element('input'),tabs=element('div','','catalog-tabs'),list=element('div','','catalog-scroll');search.placeholder='함수 검색';search.setAttribute('aria-label','함수 검색');let category='Scientific';
     function entries(){if(search.value)return [...new Set([...Object.values(catalog).flat(),...custom()])].filter(s=>s.toLowerCase().includes(search.value.toLowerCase()));if(category==='Recent')return state.recent;if(category==='Favorites')return state.favorites;if(category==='Custom')return custom();return catalog[category]||[];}
     function custom(){return Object.entries(state.functions).map(([name,f])=>`${name}(${','.repeat(Math.max(0,f.parameters.length-1))})`);}
-    function render(){list.replaceChildren();tabs.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.category===category));for(const source of entries()){
+    let signature='';
+    const snapshot=()=>JSON.stringify([state.recent,state.favorites,custom()]);
+    function render(){signature=snapshot();list.replaceChildren();tabs.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.category===category));for(const source of entries()){
       const row=element('div','','catalog-entry');row.append(control(source,()=>{
         state.recent=[source,...state.recent.filter(s=>s!==source)].slice(0,50);persist();
         if(value('mode')==='python'){
@@ -85,13 +92,19 @@ export function createAppDialogs({state,ui,persist,calculator,changeMode,pressKe
           if(!draft.includes('import symvacas_catalog as calc'))draft='import symvacas_catalog as calc\nfrom symvacas_catalog import x, y, z, t, pi\n'+draft;
           field.value=draft;field.focus();persist();
         }else{changeMode('scientific');calculator.insert(source,source==='rnd()'?source.length:source.includes('[]')?source.indexOf('[]')+1:source.indexOf('(')+1);}
-        $('dialog').close();
+        if(!inline)$('dialog').close();
       }),control(state.favorites.includes(source)?'★':'☆',()=>{state.favorites=state.favorites.includes(source)?state.favorites.filter(s=>s!==source):[...state.favorites,source];persist();render();}));list.append(row);
     }}
     for(const name of ['Recent','Favorites','Custom',...Object.keys(catalog)]){const tab=control(name,()=>{category=name;render();});tab.dataset.category=name;tabs.append(tab);}
     const tools=element('div','','catalog-tools');tools.append(clearableCatalogSearch(search),control('Help',catalogHelpDialog));
     search.oninput=()=>{list.scrollTop=0;render();};content.append(tools,tabs,list,element('p','빈 인수에 값을 입력하세요. 예: diff(sin(x^2),x), normcdf(-1.96,1.96)','hint'));
-    render();openDialog('Catalog',content);
+    render();return {content,refresh(){if(signature!==snapshot()){render();translateDOM(content);}}};
+  }
+  function catalogDialog(){openDialog('Catalog',catalogContent().content);}
+  function mountCalculatorPanel(target,kind){
+    const panel=kind==='history'?historyContent(true):catalogContent(true);
+    target.replaceChildren(panel.content);translateDOM(target);embeddedPanels.add(panel);
+    return ()=>embeddedPanels.delete(panel);
   }
   const helpDocuments={};
   async function catalogHelpDialog(){
@@ -187,5 +200,6 @@ export function createAppDialogs({state,ui,persist,calculator,changeMode,pressKe
   async function initialize() {
     try{const response=await fetch('./catalog.json');if(!response.ok)throw new Error('Catalog load failed');catalog=await response.json();}catch(exc){toast('Catalog가 없습니다. 빌드 스크립트를 실행해 주세요.');}
   }
-  return {initialize,mode:modeDialog,variables:variablesDialog,matrixInsert:matrixInsertDialog};
+  return {initialize,mode:modeDialog,variables:variablesDialog,matrixInsert:matrixInsertDialog,
+    mountCalculatorPanel,refreshPanels(){for(const panel of embeddedPanels)panel.refresh();}};
 }
