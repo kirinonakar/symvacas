@@ -288,6 +288,9 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
     require(0 <= selected < size, "Select a function")
     action = request.get("analysis", "root")
     require(action in ("root","yintercept","intersection","intersectionangle","minimum","maximum","inflection","derivative","tangent","tangentangle","integral","arclength","asymptotes"), "Unknown graph analysis")
+    # Graph results and coordinates are serialized as binary64 floats. Extra
+    # quadrature digits cannot reach the UI and can exhaust the graph budget.
+    integration_precision = min(engine.precision, 30)
     require(action != "asymptotes" or kind == "cartesian", "Asymptotes require a Cartesian function")
     require(not pair_analysis or kind == "cartesian", "Intersections need two Cartesian functions")
     if pair_analysis: require(0 <= other < size and other != selected, "Select two different functions")
@@ -427,7 +430,7 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
             return {"analysis":action,"points":points,"count":len(points),"truncated":len(positions)>80}
         if action == "arclength":
             slope = s.diff(expression, x)
-            result = numeric_integral(s.sqrt(1+slope**2), x, a, b, engine.precision)
+            result = numeric_integral(s.sqrt(1+slope**2), x, a, b, integration_precision)
             require(result.is_real and result.is_finite, "Numerical convergence failed")
             return {"analysis":action,"points":[],"value":float(result)}
         if action == "integral":
@@ -446,7 +449,7 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
                     # cancelling integrals, after checking for domain breaks.
                     exact = primitive.xreplace({value:s.Rational(value) for value in primitive.atoms(s.Float)})
                     result = (exact.subs(x,s.Rational(b))-exact.subs(x,s.Rational(a))).evalf(engine.precision,strict=True)
-            if result is None: result = numeric_integral(expression, x, a, b, engine.precision)
+            if result is None: result = numeric_integral(expression, x, a, b, integration_precision)
             require(result.is_real and result.is_finite, "Numerical convergence failed")
             return {"analysis":action,"points":[],"value":float(result),"integralFill":integral_fill(expression,x,a,b)}
         if action in ("root", "intersection"):
@@ -505,11 +508,11 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
         return tangent_point(current[0], current[1], slope, direction)
     elif action == "integral":
         integrand = radius**2/2 if kind == "polar" else second*dfirst
-        result = numeric_integral(integrand, variable, a, b, engine.precision)
+        result = numeric_integral(integrand, variable, a, b, integration_precision)
         require(result.is_real and result.is_finite, "Numerical convergence failed")
         return {"analysis":action,"points":[],"value":float(result)}
     else:
-        result = numeric_integral(s.sqrt(dfirst**2+dsecond**2), variable, a, b, engine.precision)
+        result = numeric_integral(s.sqrt(dfirst**2+dsecond**2), variable, a, b, integration_precision)
         require(result.is_real and result.is_finite, "Numerical convergence failed")
         return {"analysis":action,"points":[],"value":float(result)}
     found = [item for item in points if item is not None]

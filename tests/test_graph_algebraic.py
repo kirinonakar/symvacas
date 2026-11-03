@@ -24,6 +24,46 @@ cubic_square = equation(binary("+", binary("^", x, number(3)), binary("^", y, nu
 
 
 class AlgebraicGraphTests(unittest.TestCase):
+    def analyze(self, tree, **options):
+        result = json.loads(calc_engine.dispatch(json.dumps({"action":"graphAnalysis", "graphKind":"cartesian",
+            "trees":[tree], "analysis":"integral", "a":-2, "b":2, **options})))
+        self.assertTrue(result["ok"], result)
+        return result
+
+    def test_reported_cubic_integral_crosses_both_real_root_boundaries(self):
+        fixed = equation(binary("+", binary("^", x, number(2)), binary("^", y, number(3))), number(5))
+        for tree, options in ((fixed, {}), (cubic, {"parameters":{"a":5}, "tracePoint":[0, 5**(1/3)]}),
+                              (fixed, {"precision":200})):
+            with self.subTest(options=options):
+                result = self.analyze(tree, a=-5.40870734662824, b=3.42472954496697, **options)
+                self.assertAlmostEqual(-1.63515434562877992019, result["value"], delta=1e-12)
+                self.assertTrue(result["implicit"])
+                self.assertTrue(result["integralFill"])
+                points = [point for polygon in result["integralFill"] for point in polygon if point[1] != 0]
+                self.assertTrue(any(px < -math.sqrt(5) and py < 0 for px, py in points))
+                self.assertTrue(any(px > math.sqrt(5) and py < 0 for px, py in points))
+                for px, py in points:
+                    self.assertAlmostEqual(5, px*px+py**3, delta=1e-9)
+
+    def test_odd_power_integrals_use_one_real_branch_without_a_trace_hint(self):
+        for degree in (3, 5, 7, 11):
+            for coefficient in (-2, 2):
+                with self.subTest(degree=degree, coefficient=coefficient):
+                    tree = equation(binary("+", binary("^", x, number(2)),
+                        binary("*", number(coefficient), binary("^", y, number(degree)))), number(0))
+                    result = self.analyze(tree, a=-1, b=1)
+                    expected = -math.copysign(abs(coefficient)**(-1/degree), coefficient)*2/(1+2/degree)
+                    self.assertAlmostEqual(expected, result["value"], delta=1e-12)
+
+    def test_cubic_real_branch_supports_negative_trace_points_and_derivatives(self):
+        for point in ([0, 5**(1/3)], [-4, -11**(1/3)]):
+            result = self.analyze(cubic, parameters={"a":5}, a=-4, b=-3, tracePoint=point)
+            self.assertLess(result["value"], 0)
+        tangent = self.analyze(cubic, parameters={"a":5}, analysis="tangent", a=-4, b=-4)
+        self.assertAlmostEqual(8/(3*11**(2/3)), tangent["value"], delta=1e-12)
+        derivative = self.analyze(cubic, parameters={"a":5}, selectedDerivativeOrder=1, a=-4, b=-3)
+        self.assertAlmostEqual(11**(1/3)-4**(1/3), derivative["value"], delta=1e-12)
+
     def graph(self, *trees, **options):
         result = json.loads(calc_engine.dispatch(json.dumps({"action":"graph", "graphKind":"cartesian",
             "trees":trees, "angle":"RAD", "min":-10, "max":10, "yMin":-5, "yMax":5,

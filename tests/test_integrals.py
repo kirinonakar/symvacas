@@ -8,12 +8,36 @@ sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/"app/src/main/
 import sympy as s
 import calc_engine
 from calc_integrals import rational_trig_primitive
+from calc_shared import numeric_integral
 
 def node(kind,value="",*args):
     return {"kind":kind,"value":str(value),"args":list(args)}
 
 def evaluate(tree,**options):
     return json.loads(calc_engine.dispatch(json.dumps({"tree":tree,**options})))
+
+
+class PiecewiseNumericIntegralTests(unittest.TestCase):
+    def test_quadrature_splits_root_cusps_and_disjoint_domains(self):
+        x = s.Symbol("x", real=True)
+        root = s.Piecewise((x**s.Rational(1, 3), x >= 0), (-(-x)**s.Rational(1, 3), True))
+        self.assertAlmostEqual(48.75, float(numeric_integral(root, x, -8, 27, 30)), delta=1e-12)
+        base = 5-x**2
+        curve = s.Piecewise((base**s.Rational(1, 3), base >= 0), (-(-base)**s.Rational(1, 3), True))
+        result = numeric_integral(curve, x, -3, 3, 50)
+        self.assertTrue(result.is_real and result.is_finite)
+        self.assertAlmostEqual(4.65378418486832451445, float(result), delta=1e-12)
+
+    def test_piecewise_preserves_cancellation_small_values_and_complex_parts(self):
+        x = s.Symbol("x", real=True)
+        tiny = s.Rational(1, 10**100)
+        expression = s.Piecewise((x, x < 0), (x+tiny, True))
+        self.assertEqual(s.Float(tiny, 30), numeric_integral(expression, x, -1, 1, 30))
+        complex_curve = s.Piecewise((s.I*x, x < 0), (2*s.I*x, True))
+        self.assertEqual(0, numeric_integral(complex_curve, x, -1, 1, 30)-s.I/2)
+        constant = s.Piecewise((s.Float(1), x < 0), (s.Integer(1), True))
+        self.assertEqual(0, numeric_integral(constant, x, -1, 1, 30)-2)
+
 
 class RationalTrigIntegralTests(unittest.TestCase):
     def test_primitives_differentiate_to_original_integrands(self):

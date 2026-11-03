@@ -182,6 +182,19 @@ def cartesian_curve(expression, x, y):
 
 @lru_cache(maxsize=64)
 def cartesian_branches(residual, y):
+    # A binomial odd power has exactly one real branch. SymPy's solve returns
+    # principal complex radicals, whose real branch changes when the base
+    # crosses zero. Piecewise keeps graph analysis on the plotted real curve
+    # and permits ordinary derivatives without differentiating sign/Abs.
+    try:
+        polynomial = s.Poly(residual, y)
+        degree = polynomial.degree()
+        if degree > 1 and degree % 2 == 1 and all(power[0] in (0, degree) for power, _ in polynomial.terms()):
+            base = -polynomial.nth(0)/polynomial.LC()
+            if base.is_real is not False:
+                exponent = s.Rational(1, degree)
+                return (s.Piecewise((base**exponent, base >= 0), (-(-base)**exponent, True)),)
+    except (s.PolynomialError, TypeError): pass
     try:
         return tuple(branch for branch in s.solve(residual, y) if isinstance(branch, s.Expr) and not branch.has(y))
     except (NotImplementedError, ValueError, TypeError): return ()

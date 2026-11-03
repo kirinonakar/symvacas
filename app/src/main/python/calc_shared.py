@@ -125,6 +125,40 @@ def coordinates(value):
 def numeric_integral(expression, variable, lower, upper, precision):
     """Use exact polynomial antiderivatives; otherwise use adaptive quadrature."""
     lower, upper = s.sympify(lower), s.sympify(upper)
+    # Odd roots of squares can simplify to Abs(x)**(p/q), with a cusp at zero.
+    branched = expression.rewrite(s.Abs, s.Piecewise) if expression.has(s.Abs) else expression
+    if branched.has(s.Piecewise) and (lower < upper) is s.true:
+        # Split real branches at their exact boundaries before quadrature.
+        # Interior root cusps otherwise exhaust evalf's accuracy budget even
+        # though each one-sided integral converges quickly.
+        try:
+            # Inexact boundary roots can sit just outside a branch and produce
+            # tiny imaginary terms. Preserve stored floats exactly as rationals
+            # so the split and the integrand share the same algebraic roots.
+            exact = branched.xreplace({value: s.Rational(value) for value in branched.atoms(s.Float)})
+            start = lower.xreplace({value: s.Rational(value) for value in lower.atoms(s.Float)})
+            end = upper.xreplace({value: s.Rational(value) for value in upper.atoms(s.Float)})
+            exact = s.piecewise_fold(exact)
+            domain = s.Interval(start, end)
+            pairs = exact.as_expr_set_pairs(domain=domain) if isinstance(exact, s.Piecewise) else [(exact, domain)]
+        except (NotImplementedError, ValueError, TypeError):
+            pairs = None
+        if pairs is not None:
+            pieces = [(body, interval) for body, domain in pairs
+                      for interval in (domain.args if isinstance(domain, s.Union) else (domain,))
+                      if not isinstance(interval, s.FiniteSet)]
+            if all(isinstance(interval, s.Interval) for _, interval in pieces):
+                # Retain the branch guards during quadrature: an abscissa
+                # rounded across an algebraic endpoint must still evaluate
+                # the real branch. Polynomial bodies keep exact cancellation.
+                values = []
+                for body, interval in pieces:
+                    if interval.start.is_finite and interval.end.is_finite and body.is_polynomial(variable):
+                        primitive = s.Poly(body, variable).integrate()
+                        values.append(primitive.eval(interval.end)-primitive.eval(interval.start))
+                    else:
+                        values.append(s.Integral(exact, (variable, interval.start, interval.end)).evalf(precision, strict=True))
+                return s.Add(*values).evalf(precision, strict=True)
     if lower.is_finite and upper.is_finite and expression.is_polynomial(variable):
         # Strict quadrature cannot establish relative accuracy for an integral
         # that cancels to zero. Keep the stored float values exactly as rationals
