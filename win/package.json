@@ -1,6 +1,6 @@
 {
   "name": "symvacas-windows",
-  "version": "1.6.7",
+  "version": "1.6.8",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,7 +14,6 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4",
-    "fake-indexeddb": "^6.2.7",
-    "jsdom": "^26.1.0"
+    "fake-indexeddb": "^6.2.7"
   }
 }

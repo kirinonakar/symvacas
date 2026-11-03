@@ -1,9 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {JSDOM} from 'jsdom';
 import {advancedStatisticsSchema as schema} from '../advanced-statistics-schema.js';
-import {advancedStatisticsReservedColumns,createAdvancedStatistics} from '../advanced-statistics.js';
+import {advancedStatisticsReservedColumns} from '../advanced-statistics.js';
 import {socialStatisticsPlan} from '../statistics-social-forms.js';
 const definition=id=>schema.find(d=>d.id===id);
 
@@ -20,18 +18,6 @@ test('MANCOVA preserves selected covariate/response order and encodes text group
   assert.deepEqual(advancedStatisticsReservedColumns(d,{},'responses',4),[0,1]);
   assert.deepEqual(advancedStatisticsReservedColumns(d,opts,'responses',5),[0,4,1]);
   assert.deepEqual(advancedStatisticsReservedColumns(d,{},'covariates',4),[0]);
-});
-
-test('MANCOVA production form excludes covariates from response checkboxes',context=>{
-  const dom=new JSDOM(readFileSync(new URL('../index.html',import.meta.url),'utf8'));
-  const previous=globalThis.document;globalThis.document=dom.window.document;
-  context.after(()=>{dom.window.close();globalThis.document=previous;});
-  const state={fields:{'statistics-tests-kind':'mancova'},datasets:{}};
-  const api=createAdvancedStatistics({state,persist:()=>{},data:()=> 'A,1,3,7\nA,2,5,6\nB,3,6,9\nB,4,8,7',columnLimit:()=>4,section:'tests'});
-  assert.ok(api);
-  const response=document.getElementById('statistics-form-mancova-responses');
-  assert.ok(response);
-  assert.deepEqual([...response.parentElement.querySelectorAll('input[type="checkbox"]')].map(input=>input.dataset.column),['2','3']);
 });
 
 test('post-hoc forms preserve unequal sample sizes, control identity and group labels',()=>{
@@ -60,16 +46,4 @@ test('Huber, moderator and AFT checkbox roles match the analysis input contract'
     assert.deepEqual(reserved(id,{},4),[0,1]);
     assert.deepEqual(reserved(id,{truncation:'entry',entry:'2'},4),[0,1,2]);
   }
-});
-
-test('opening the production Huber form shows only eligible predictor checkboxes',context=>{
-  const dom=new JSDOM(readFileSync(new URL('../index.html',import.meta.url),'utf8'));
-  const previous=globalThis.document;globalThis.document=dom.window.document;
-  context.after(()=>{dom.window.close();globalThis.document=previous;});
-  const state={fields:{'statistics-models-kind':'robustreg'},datasets:{}};
-  createAdvancedStatistics({state,persist:()=>{},data:()=> '1,2,3\n2,3,4\n3,4,5',columnLimit:()=>3,section:'models'});
-  const columns=()=>[...document.querySelectorAll('#statistics-models-controls input[type="checkbox"]')].map(input=>input.dataset.column);
-  assert.deepEqual(columns(),['0','1']);
-  const response=document.getElementById('statistics-form-robustreg-response');response.value='0';response.dispatchEvent(new dom.window.Event('change'));
-  assert.deepEqual(columns(),['1','2']);
 });

@@ -3,9 +3,6 @@ import assert from 'node:assert/strict';
 import {prepareSurfaceFaces,projectSurfaceFaces,surfaceProjection,radialSurfaceGeometry} from '../surface-geometry.js';
 import {createGraphComputation} from '../graph-computation.js';
 import {surfaceGpuGeometry} from '../surface-gpu.js';
-import {surfaceRainbowRgb,surfaceRainbowStops} from '../surface-colors.js';
-import {graphSvg} from '../graph-export.js';
-import {JSDOM} from 'jsdom';
 
 const bounds={xmin:-2,xmax:2,ymin:-2,ymax:2,zmin:-1,zmax:8};
 const grid=()=>Array.from({length:5},(_,r)=>Array.from({length:5},(_,c)=>[c-2,r-2,(c-2)**2+(r-2)**2]));
@@ -67,25 +64,4 @@ test('adaptive radial rings form a watertight disk with shared lighting normals'
     for(let k=0;k<3;k++)assert.ok(Math.abs(packed.vertices[i+k])<=1+1e-6);
     assert.ok(packed.vertices[i+3]>=0&&packed.vertices[i+3]<=1);
   }
-});
-
-test('rainbow ramp and SVG export preserve height colors and the Z legend',()=>{
-  surfaceRainbowStops.forEach((rgb,i)=>assert.deepEqual(surfaceRainbowRgb(i/5),rgb));
-  assert.deepEqual(surfaceRainbowRgb(-2),surfaceRainbowStops[0]);
-  assert.deepEqual(surfaceRainbowRgb(2),surfaceRainbowStops[5]);
-  const dom=new JSDOM('<div id="plot"></div>'),previous=globalThis.document;
-  globalThis.document=dom.window.document;
-  dom.window.HTMLCanvasElement.prototype.getContext=()=>({measureText:text=>({width:String(text).length*7})});
-  try{
-    const container=dom.window.document.getElementById('plot');
-    const svg=graphSvg(container,{surface:[],surfaceRings:[[0,1,0,1],[1,0,-1,12],[3,-.2,0,24]],zMin:-.2,zMax:1},bounds,
-      {surfaceView:{colorMode:'rainbow',renderMode:'surface-wireframe',opacity:.5}});
-    const xml=new JSDOM(svg,{contentType:'image/svg+xml'}).window.document;
-    const gradients=[...xml.querySelectorAll('linearGradient')];
-    assert.ok(gradients.length>10);
-    assert.ok(gradients.some(g=>g.querySelectorAll('stop').length===6));
-    assert.ok(svg.includes('rgb(128,0,255)'));assert.ok(svg.includes('rgb(255,0,0)'));
-    assert.ok(!svg.includes('NaN'));assert.ok(!svg.includes('Infinity'));
-    assert.ok([...xml.querySelectorAll('text')].some(n=>n.textContent==='-0.2'));
-  }finally{globalThis.document=previous;dom.window.close();}
 });

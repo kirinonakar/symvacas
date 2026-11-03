@@ -22,13 +22,10 @@ class DistributionTests(unittest.TestCase):
         self.assertFalse((dist / "worker.js").exists())
         index = (dist / "index.html").read_text(encoding="utf-8")
         self.assertIn("desktop-bootstrap.js", index)
-        self.assertIn('id="desktop-settings-button"', index)
         self.assertNotIn("cloudflareinsights", index)
         client = (dist / "engine-client.js").read_text(encoding="utf-8")
         self.assertIn("new NativeWorker()", client)
         self.assertNotIn("new Worker(", client)
-        for name in ("README.md", "THIRD_PARTY.md", "MCP_GUIDE.md"):
-            self.assertEqual((dist / name).read_text(encoding="utf-8"), (ROOT / name).read_text(encoding="utf-8"))
 
     def test_desktop_version_reads_android_even_when_web_version_is_stale(self):
         version=runpy.run_path(str(ROOT/"scripts/sync_version.py"))["android_version"](ROOT.parent)

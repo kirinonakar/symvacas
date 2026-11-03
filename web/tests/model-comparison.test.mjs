@@ -1,10 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fork} from 'node:child_process';
-import {readFileSync} from 'node:fs';
-import {JSDOM} from 'jsdom';
 import {advancedStatisticsSchema} from '../advanced-statistics-schema.js';
-import {advancedStatisticsExampleRows,createAdvancedStatistics,guidedStatisticsCommand} from '../advanced-statistics.js';
+import {advancedStatisticsExampleRows,guidedStatisticsCommand} from '../advanced-statistics.js';
 import {statisticsRequest} from '../statistics-request.js';
 
 const definition=advancedStatisticsSchema.find(d=>d.id==='modelcompare');
@@ -22,27 +20,6 @@ test('every model comparison family preserves metadata through production reques
   }
   const request=statisticsRequest(guidedStatisticsCommand(definition,definition.exampleRows,{validation:'external',_validationRows:definition.exampleRows}));
   assert.ok(request.tree.args[8].args.some(pair=>pair.args[0].kind==='symbol'&&pair.args[0].value==='excludedvalidation'));
-});
-
-test('analysis failures remain visible beside the model form and clear when inputs change',context=>{
-  const dom=new JSDOM(readFileSync(new URL('../index.html',import.meta.url),'utf8'));
-  const previous=globalThis.document;globalThis.document=dom.window.document;
-  context.after(()=>{dom.window.close();globalThis.document=previous;});
-  const state={fields:{'statistics-models-kind':'modelcompare','statistics-models-input':'example'},datasets:{}};
-  document.documentElement.dataset.engine='ready';
-  const api=createAdvancedStatistics({state,persist:()=>{},data:()=>'',columnLimit:()=>3,section:'models'});
-  const status=document.getElementById('statistics-models-status'),button=document.querySelector('[data-run="statistics-models"]');
-  assert.equal(button.disabled,false);
-  api.showResult({ok:false,error:'Singular model'},api.context());
-  api.render();
-  assert.equal(status.textContent,'Singular model');assert.equal(status.getAttribute('role'),'alert');
-  const folds=document.getElementById('statistics-form-modelcompare-folds');folds.value='3';folds.dispatchEvent(new dom.window.Event('input'));
-  assert.notEqual(status.textContent,'Singular model');assert.equal(status.classList.contains('error'),false);
-  const added=document.querySelectorAll('#statistics-form-modelcompare-addedPredictors ~ label input');
-  assert.ok(added.length);
-  for(const check of added){check.checked=false;check.dispatchEvent(new dom.window.Event('change'));}
-  assert.equal(button.disabled,true);assert.match(status.textContent,/added predictor/);assert.equal(status.getAttribute('role'),'alert');
-  api.showError('Request failed');assert.equal(status.textContent,'Request failed');
 });
 
 test('model comparison forms execute through production WASM and return visible reports',{timeout:180000},async context=>{

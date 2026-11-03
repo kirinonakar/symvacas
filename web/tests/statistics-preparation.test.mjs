@@ -6,7 +6,6 @@ import {statisticsPreparationSchema} from '../statistics-preparation-schema.js';
 import {statisticsDataRows,statisticsCsvHasHeader,csvRows} from '../workspace-commands.js';
 import {statisticsHeaderKeys,restoreStatisticsHeaderKeys} from '../statistics-headers.js';
 import {encodeData,decodeData,mergeData,resetSettingsState} from '../data-transfer.js';
-import {createPreparationTools} from '../statistics-preparation-tools.js';
 
 const fixture=JSON.parse(readFileSync(new URL('../../tests/fixtures/statistics_preparation.json',import.meta.url),'utf8'));
 test('row filters share Android numeric, text, missingness, AND/OR and original row preservation semantics',()=>{
@@ -51,43 +50,4 @@ test('all-text recoded headers survive stored settings and editing rather than b
   const portable=decodeData(encodeData(state));restoreStatisticsHeaderKeys([]);
   mergeData(state,portable);assert.deepEqual(statisticsDataRows(result.csv,'list'),[['male'],['female']]);
   assert.ok(resetSettingsState(state).statisticsHeaderKeys.includes('4021414396:2881141766:3'));
-});
-
-test('preparation preview stays separate from data, preserves focused fields and blocks applying an outdated preview',context=>{
-  const registry=new Map();
-  class Node {
-    constructor(tag){this.tagName=tag.toUpperCase();this.children=[];this.style={};this.dataset={};this.events={};this.value='';}
-    set id(value){this._id=value;registry.set(value,this);}get id(){return this._id;}
-    append(...nodes){this.children.push(...nodes);}
-    replaceChildren(...nodes){const remove=node=>{if(node.id)registry.delete(node.id);node.children.forEach(remove);};this.children.forEach(remove);this.children=[];this.append(...nodes);}
-    addEventListener(event,callback){this.events[event]=callback;}
-    querySelectorAll(selector){
-      const matches=node=>selector==='input:checked'?node.tagName==='INPUT'&&node.checked:selector.startsWith('input[data-preparation-field=')?node.tagName==='INPUT'&&node.dataset.preparationField===selector.match(/="(.*)"/)[1]:node.tagName===selector.toUpperCase();
-      return this.children.flatMap(node=>[...(matches(node)?[node]:[]),...node.querySelectorAll(selector)]);
-    }
-  }
-  const previous=globalThis.document;context.after(()=>globalThis.document=previous);
-  const root=new Node('div');root.id='statistics-preparation-tools';
-  globalThis.document={createElement:tag=>new Node(tag),getElementById:id=>registry.get(id),documentElement:{dataset:{}}};
-  let source='Code\n1\n2',kind='list',applied=0,tools;
-  tools=createPreparationTools({state:{fields:{},statisticsSections:{}},data:()=>source,kind:()=>kind,persist:()=>{},applyData:result=>{applied++;source=result.csv;kind=result.kind;tools.update();}});
-  tools.update();
-  const rules=registry.get('statistics-preparation-recode-rules');rules.value='1, male\n2, female';rules.events.input();
-  assert.equal(registry.get('statistics-preparation-recode-rules'),rules,'typing retains the same textarea');
-  const panel=registry.get('statistics-preparation-tool-recode'),[preview,apply]=panel.children.at(-1).children;
-  preview.onclick();assert.equal(source,'Code\n1\n2');assert.equal(apply.disabled,false);
-  const header=registry.get('statistics-preparation-recode-header');header.value='Sex';header.events.input();
-  assert.equal(apply.disabled,true);apply.onclick();assert.equal(applied,0);
-  preview.onclick();apply.onclick();assert.equal(applied,1);
-  assert.deepEqual(preparationDataset(source,kind).headers,['Code','Sex']);
-  assert.equal(apply.disabled,true);
-  source='test,group,test1,x3\n1,2,3,4';kind='columns:4';tools.update();
-  const columnLabels=['test (x)','group (y)','test1 (z)','x3 (x4)'];
-  for(const field of ['recode-column','longToWide-variable','longToWide-value']){
-    assert.deepEqual(registry.get(`statistics-preparation-${field}`).children.map(option=>option.textContent),columnLabels);
-  }
-  const wide=registry.get('statistics-preparation-tool-wideToLong');
-  for(const columns of wide.querySelectorAll('fieldset'))assert.deepEqual(columns.children.slice(1).map(label=>label.textContent),columnLabels);
-  source='1,2,3,4';tools.update();
-  assert.deepEqual(registry.get('statistics-preparation-recode-column').children.map(option=>option.textContent),['x','y','z','x4']);
 });

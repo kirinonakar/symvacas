@@ -1,6 +1,6 @@
 [package]
 name = "symvacas-windows"
-version = "1.6.7"
+version = "1.6.8"
 description = "SymvaCAS Windows desktop, CLI and MCP server"
 edition = "2021"
 default-run = "symvacas"

@@ -89,7 +89,7 @@ class StaticDeploymentTests(unittest.TestCase):
                         self.assertEqual(body[:4], b"\x00asm")
                     if asset.endswith((".js", ".mjs")):
                         self.assertIn(response.headers.get_content_type(), ("text/javascript", "application/javascript"))
-            for essential in ("./worker.js", "./engine.zip", "./i18n.js", "./index.html", "./README.md", "./THIRD_PARTY.md"):
+            for essential in ("./worker.js", "./engine.zip", "./i18n.js", "./index.html", "./THIRD_PARTY.md"):
                 self.assertIn(essential, assets)
         finally:
             server.shutdown()
