@@ -90,7 +90,7 @@ The stdio MCP server runs without the GUI. Use `search_catalog` to find function
 
 **Registering only MCP is enough; no skill is required.** Tool selection and analysis workflows are delivered in the server initialization `instructions`, and each tool description and input schema includes formats and JSON examples. The `get_usage` tool returns the requested explanation for `overview`, `catalog`, `datasets`, `statistics`, `equations`, `runtime`, or `all`. The full [MCP usage guide](MCP_GUIDE.md) is also available as the `symvacas://guide` resource. Usage, function search, and data registration work even before Python is installed.
 
-Copy the `skills/symvacas` folder into your agent's skills folder. For Codex, you can install it as `%USERPROFILE%\.codex\skills\symvacas\SKILL.md`. MCP can also read it as the `symvacas://skill` resource, and the CLI can print it with the `skill` command.
+Use **Python / MCP → Open Skill folder** to open the bundled `skills/symvacas` folder in Windows Explorer, then copy it into your agent's skills folder. For Codex, you can install it as `%USERPROFILE%\.codex\skills\symvacas\SKILL.md`. MCP can also read it as the `symvacas://skill` resource, and the CLI can print it with the `skill` command.
 
 ## Verification
 

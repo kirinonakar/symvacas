@@ -167,8 +167,9 @@ export function createAppDialogs({state,ui,persist,calculator,changeMode,pressKe
     for(const [key,label,min,max] of [['precision','내부 유효 숫자',3,200],['digits','표시 소수 자릿수',2,200]]){const input=element('input');input.type='number';input.min=min;input.max=max;input.value=state[key];input.dataset.setting=key;input.onchange=()=>{state[key]=Math.max(min,Math.min(max,Math.trunc(Number(input.value))||min));state.digits=Math.min(state.precision,state.digits);input.value=state[key];$('digits-indicator').textContent=`≤ ${state.digits} digits`;persist();refreshDisplays();};const holder=element('label',label);holder.append(input);content.append(holder);}
     for(const [key,label,min,max] of [['inputFont','Input font',10,42],['outputFont','Output font',10,48]]){const input=element('input');input.type='range';input.min=min;input.max=max;input.value=state[key];input.dataset.setting=key;input.oninput=()=>{state[key]=Number(input.value);calculator.applyFonts();persist();};const holder=element('label',label);holder.append(input);content.append(holder);}
     for(const [key,label] of [['copyAsLatex','Copy as LaTeX'],['removeComputationLimit','Remove computation limit'],['autoCloseBrackets','Bracket auto-close'],['calcModeStepByStep','Calc mode step by step'],['wordWrap','Input word wrap'],['persistHistory','Save history locally'],['haptics','Key vibration'],['sound','Key sound']]){const input=element('input');input.type='checkbox';input.checked=state[key];input.dataset.setting=key;input.onchange=()=>{state[key]=input.checked;if(key==='removeComputationLimit'){setComputationLimitsRemoved(input.checked);calculator.preview();refreshDisplays();}if(key==='wordWrap'){calculator.applyWordWrap();calculator.preview();}if(key==='calcModeStepByStep')calculator.renderResult();persist();};const holder=element('label',label,'check');holder.append(input);content.append(holder);}
-    content.append(element('p',t('Disables app time, workload, input size and exponent limits. Result size and precision settings stay unchanged; manual cancellation remains available.'),'hint'));
-    content.append(element('p','계산 기록, 변수, 함수, 작업 내용은 이 브라우저에 저장됩니다. 전체 백업에는 Python 코드도 포함됩니다.','hint'),control('전체 백업 내보내기',()=>{persist();downloadFile('symvacas-backup.json',JSON.stringify(state,null,2),'application/json');}),control('백업 가져오기',()=>pickFile('.json',async file=>{
+    const limitsNote=element('p',t('Disables app time, workload, input size and exponent limits. Result size and precision settings stay unchanged; manual cancellation remains available.'),'hint');limitsNote.dataset.settingsNote='limits';content.append(limitsNote);
+    const storageNote=element('p','계산 기록, 변수, 함수, 작업 내용은 이 브라우저에 저장됩니다. 전체 백업에는 Python 코드도 포함됩니다.','hint');storageNote.dataset.settingsNote='storage';
+    content.append(storageNote,control('전체 백업 내보내기',()=>{persist();downloadFile('symvacas-backup.json',JSON.stringify(state,null,2),'application/json');}),control('백업 가져오기',()=>pickFile('.json',async file=>{
       const backup=JSON.parse(await file.text());
       if(!backup||typeof backup!=='object'||!backup.fields||!backup.variables||!backup.functions)throw new Error('SymvaCAS 웹 백업 파일이 아닙니다.');
       // All restored names and math are still validated by the parser/engine.
@@ -181,11 +182,15 @@ export function createAppDialogs({state,ui,persist,calculator,changeMode,pressKe
       let pending=false;
       const body=element('div');body.append(element('p',t(description)),control('Cancel',()=>$('dialog').close()),control('Confirm',async()=>{if(pending)return;pending=true;try{await action();}catch(exc){toast(exc.message);}finally{pending=false;}}));openDialog(title,body);
     };
-    content.append(element('h3',t('Data & reset')),element('p',t('Transfer variables, saved statistics datasets and functions between Android and Web. Matching names are replaced; other data and settings are kept.'),'hint'),dataActions,
+    const transferNote=element('p',t('Transfer variables, saved statistics datasets and functions between Android and Web. Matching names are replaced; other data and settings are kept.'),'hint');transferNote.dataset.settingsNote='transfer';
+    content.append(element('h3',t('Data & reset')),transferNote,dataActions,
       control('Delete all data',()=>confirmAction('Delete all data','Delete all variables, statistics data and functions? This cannot be undone.',()=>{persist();return reloadState(deleteDataState(state));})),
       element('p',t('Reset history, settings, inputs, selections and expanded sections. Variables, saved statistics datasets and functions are preserved.'),'hint'),
       control('Reset all settings',()=>confirmAction('Reset all settings','Reset history, settings, inputs, selections and expanded sections. Variables, saved statistics datasets and functions are preserved.',()=>{persist();return reloadState(resetSettingsState(state));})));
-    $('settings-body').replaceChildren(content);translateDOM($('settings-dialog'));$('settings-dialog').showModal();
+    $('settings-body').replaceChildren(content);translateDOM($('settings-dialog'));
+    // The Windows shell arranges these same live controls into desktop pages.
+    $('settings-dialog').dispatchEvent(new Event('settingsrender'));
+    if(!$('settings-dialog').open)$('settings-dialog').showModal();
   }
   $('settings-close').onclick=()=>$('settings-dialog').close();
   $('history-button').onclick=historyDialog;$('catalog-button').onclick=catalogDialog;$('variables-button').onclick=variablesDialog;$('settings-button').onclick=settingsDialog;

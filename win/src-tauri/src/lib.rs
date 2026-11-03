@@ -133,6 +133,20 @@ fn integration_info() -> runtime::Result<Value> {
     )
 }
 
+#[tauri::command]
+fn open_skill_folder() -> runtime::Result<()> {
+    let folder = runtime::home()?.join("skills/symvacas");
+    if !folder.is_dir() {
+        return Err(format!("Skill folder not found: {}", folder.display()));
+    }
+    let windows = std::env::var_os("SystemRoot").ok_or("Cannot locate Windows folder")?;
+    std::process::Command::new(std::path::PathBuf::from(windows).join("explorer.exe"))
+        .arg(folder)
+        .spawn()
+        .map_err(|e| format!("Cannot open Skill folder: {e}"))?;
+    Ok(())
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -147,6 +161,7 @@ pub fn run() {
             native_input,
             native_cancel,
             integration_info,
+            open_skill_folder,
             save_export
         ])
         .run(tauri::generate_context!())

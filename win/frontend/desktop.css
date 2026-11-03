@@ -1,10 +1,79 @@
 .desktop-settings { display: grid; gap: .8rem; max-width: 52rem; }
 .desktop-settings p, .desktop-settings h3 { margin: 0; }
-.desktop-settings textarea { box-sizing: border-box; width: 100%; font-family: Consolas, monospace; }
+.desktop-settings .desktop-mcp-config { margin: 0; padding: 10px 12px; max-height: none; overflow: visible; font-size: 12px; line-height: 1.45; }
 .desktop-path { overflow-wrap: anywhere; user-select: text; }
 .desktop-settings pre { white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
 .desktop-install-log { max-height: 12rem; overflow: auto; }
 .desktop-install-log:empty { display: none; }
+/* The Python / MCP header stays outside the scrolling content. Match the
+   content so the shared dialog returns to its usual layout for other popups. */
+#dialog:has(> #dialog-body > .desktop-settings)[open] { display: flex; flex-direction: column; height: min(720px, 85dvh); overflow: hidden; }
+#dialog:has(> #dialog-body > .desktop-settings) > .dialog-heading { flex: none; }
+#dialog:has(> #dialog-body > .desktop-settings) #dialog-close { flex: none; }
+#dialog:has(> #dialog-body > .desktop-settings) > #dialog-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+/* Windows preferences: fixed chrome, category navigation, one scrolling page. */
+#settings-dialog.desktop-preferences-dialog {
+  --bg: #f3f3f3; --panel: #fff; --bar: #eaeaea; --number: #fff;
+  --ink: #202020; --muted: #606060; --line: #d8d8d8;
+  width: min(860px, calc(100vw - 32px)); max-width: none;
+  height: min(660px, calc(100dvh - 48px)); max-height: none;
+  padding: 0; overflow: hidden; border-radius: 8px; background: var(--panel);
+  font-family: "Segoe UI Variable", "Segoe UI", "Malgun Gothic", sans-serif;
+  font-size: 13px; box-shadow: 0 16px 60px #0003;
+}
+:root[data-theme="dark"] #settings-dialog.desktop-preferences-dialog {
+  --bg: #202020; --panel: #292929; --bar: #353535; --number: #222;
+  --ink: #f3f3f3; --muted: #bcbcbc; --line: #454545;
+}
+#settings-dialog.desktop-preferences-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+#settings-dialog .dialog-heading { margin: 0; padding: 12px 16px 12px 20px; border-bottom: 1px solid var(--line); background: var(--bg); }
+#settings-dialog .dialog-heading h2 { font-size: 16px; font-weight: 600; }
+#settings-dialog #settings-close { min-width: 30px; padding: 5px; border: 0; background: transparent; }
+#settings-dialog #settings-body { min-height: 0; overflow: hidden; }
+.desktop-preferences-shell { display: grid; grid-template-columns: 176px minmax(0, 1fr); height: 100%; min-height: 0; }
+.desktop-preferences-nav { display: flex; flex-direction: column; gap: 4px; overflow: auto; padding: 12px 8px; background: var(--bg); border-right: 1px solid var(--line); }
+#settings-dialog .desktop-preferences-nav button { position: relative; flex: none; width: 100%; padding: 10px 14px; text-align: left; border: 0; background: transparent; font-weight: 400; }
+#settings-dialog .desktop-preferences-nav button:hover { background: var(--bar); }
+#settings-dialog .desktop-preferences-nav [aria-selected="true"] { background: var(--bar); font-weight: 600; }
+.desktop-preferences-nav [aria-selected="true"]::before { content: ""; position: absolute; left: 3px; top: 10px; bottom: 10px; width: 3px; border-radius: 2px; background: var(--accent); }
+.desktop-preferences-pages { min-width: 0; min-height: 0; }
+.desktop-preferences-page { height: 100%; overflow: auto; padding: 22px 24px; scrollbar-gutter: stable; overscroll-behavior: contain; }
+.desktop-preferences-page > h3 { margin: 0 0 4px; font-size: 20px; font-weight: 600; }
+.desktop-preferences-description { margin: 0 0 22px; font-size: 12px; color: var(--muted); }
+#settings-dialog .preferences { display: block; margin: 0; padding: 0; border: 0; }
+#settings-dialog .preferences label, .desktop-preferences-page > label:not(.check) { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(120px, 200px); align-items: center; gap: 10px 20px; margin: 0; padding: 14px 0; border-bottom: 1px solid var(--line); color: var(--ink); font-size: 13px; }
+#settings-dialog :is(input, select, button) { font-size: 13px; }
+#settings-dialog :is(select, input[type="number"]) { height: 32px; padding: 4px 8px; border-radius: 4px; }
+#settings-dialog .preferences select { width: 100%; font-size: 13px; padding: 4px 24px 4px 8px; }
+#settings-dialog input[type="number"] { width: 100%; }
+#settings-dialog input[type="range"] { padding: 0; accent-color: var(--accent); }
+.desktop-preferences-value, .desktop-preferences-range { grid-column: 2; justify-self: end; font-size: 12px; color: var(--muted); }
+.desktop-preferences-range { margin-top: -6px; }
+#settings-dialog .check { display: flex; flex-direction: row; gap: 10px; min-height: 48px; margin: 0; padding: 12px 0; color: var(--ink); border-bottom: 1px solid var(--line); }
+#settings-dialog input[type="checkbox"] { width: 16px; height: 16px; flex: none; margin: 0; accent-color: var(--accent); }
+#settings-dialog button { min-height: 30px; padding: 5px 12px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink); background: var(--number); font-weight: 400; }
+#settings-dialog button:hover { background: var(--bar); }
+#settings-dialog :is(button, input, select):focus-visible { outline-offset: 1px; }
+.desktop-preferences-page > button { margin: 12px 8px 0 0; }
+.desktop-preferences-page .hint { margin: 12px 0; line-height: 1.6; }
+.desktop-preferences-page > h3:not(:first-child) { margin-top: 24px; font-size: 15px; }
+.desktop-preferences-page .graph-color-settings { margin: 0; padding: 0; border: 0; }
+.desktop-preferences-page .graph-color-settings > h3 { display: none; }
+#settings-dialog .graph-color-choices button { padding: 8px 0; }
+#settings-dialog .graph-color-settings label { margin: 16px 0; }
+#settings-dialog .graph-color-settings .hsl-slider { padding: 0; }
+.desktop-preferences-actions, .desktop-preferences-page .form-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+#settings-dialog .form-row button { min-height: 30px; }
+#settings-dialog .desktop-preferences-danger { color: var(--danger); }
+.desktop-preferences-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 20px; background: var(--bg); border-top: 1px solid var(--line); }
+.desktop-preferences-footer span { color: var(--muted); font-size: 12px; }
+.desktop-preferences-footer button { min-width: 88px; }
+@media (max-width: 650px) {
+  .desktop-preferences-shell { grid-template-columns: 132px minmax(0, 1fr); }
+  .desktop-preferences-page { padding: 18px 16px; }
+  #settings-dialog .preferences label, .desktop-preferences-page > label:not(.check) { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .desktop-preferences-value, .desktop-preferences-range { grid-column: 1; }
+}
 .desktop-document-dialog[open] { display: flex; flex-direction: column; box-sizing: border-box; width: min(56rem, calc(100vw - 32px)); max-width: none; height: min(85vh, 52rem); max-height: calc(100vh - 32px); }
 .desktop-document-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .desktop-document-header h2 { margin: 0; font-size: 1.2rem; }

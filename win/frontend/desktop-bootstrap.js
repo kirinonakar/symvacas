@@ -2,9 +2,12 @@ import {createDesktopSettings} from './desktop-settings.js';
 import {syncDesktopTheme} from './desktop-theme.js';
 import {createDesktopDocuments} from './desktop-documents.js';
 import {createDesktopLayout} from './desktop-layout.js';
+import {createDesktopPreferences} from './desktop-preferences.js';
 
 const desktop=createDesktopSettings();
 const documents=createDesktopDocuments();
+const preferences=createDesktopPreferences();
+window.addEventListener('pagehide',()=>preferences.dispose(),{once:true});
 window.addEventListener('pagehide',()=>documents.dispose(),{once:true});
 const stopThemeSync=syncDesktopTheme();
 window.addEventListener('pagehide',stopThemeSync,{once:true});
