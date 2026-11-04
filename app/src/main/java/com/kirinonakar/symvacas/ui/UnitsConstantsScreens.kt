@@ -48,8 +48,8 @@ val UnitGroups=linkedMapOf(
             ConversionSwapAction(if(isKorean())"단위 교체" else "Swap units") { val temp=from;from=to;to=temp }
             OutlinedTextField(to,{},Modifier.weight(1f),label={Text("To")},readOnly=true,singleLine=true)
         }
-        Text("from:"); Choices(UnitGroups[group]!!,from,{from=it},translate=false,label=::unitLabel)
-        Text("to:"); Choices(UnitGroups[group]!!,to,{to=it},translate=false,label=::unitLabel)
+        ConversionChoices("from:",UnitGroups[group]!!,from,{from=it},translate=false,label=::unitLabel)
+        ConversionChoices("to:",UnitGroups[group]!!,to,{to=it},translate=false,label=::unitLabel)
         Button(onClick={m.edit(Editor("convert($value,$from,$to)"));m.calculate()}) { Text("Convert") }
         Display(m)
         Text("Units in expressions: qty(2,m) + qty(30,cm). Convert a derived quantity with convert(qty(1,kg)*qty(2,mps2),N).",fontSize=11.sp)

@@ -31,6 +31,14 @@ import com.kirinonakar.symvacas.R
 @Composable fun Choices(values: List<String>,selected: String,choose: (String)->Unit,translate:Boolean=true,enabled:Boolean=true,label:(String)->String={it}) {
     Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)) { values.forEach { value->FilterChip(selected==value,onClick={choose(value)},label={Text(if(translate)tr(label(value)) else label(value),fontSize=12.sp)},enabled=enabled) } }
 }
+@Composable internal fun ConversionChoices(title:String,values:List<String>,selected:String,choose:(String)->Unit,translate:Boolean=true,label:(String)->String={it}) {
+    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically) {
+        Text(title,Modifier.widthIn(min=44.dp),maxLines=1,softWrap=false)
+        Box(Modifier.weight(1f)) {
+            Choices(values,selected,choose,translate=translate,label=label)
+        }
+    }
+}
 @Composable internal fun ConversionSwapAction(description:String,onClick:()->Unit) {
     IconButton(onClick=onClick,modifier=Modifier.size(48.dp)) {
         Icon(painterResource(R.drawable.ic_conversion_swap),contentDescription=description,

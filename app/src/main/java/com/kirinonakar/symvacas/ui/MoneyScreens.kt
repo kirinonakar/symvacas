@@ -102,8 +102,8 @@ private fun displayAmount(value:BigDecimal)=value.setScale(6,RoundingMode.HALF_E
             Spacer(Modifier.width(48.dp))
             Text(currencyName(to).orEmpty(),Modifier.weight(1f),fontSize=12.sp,color=LocalInstrument.current.muted)
         }
-        Text("from:"); Choices(quickCurrencies,from,{from=it;manualRate=""})
-        Text("to:"); Choices(quickCurrencies,to,{to=it;manualRate=""})
+        ConversionChoices("from:",quickCurrencies,from,{from=it;manualRate=""})
+        ConversionChoices("to:",quickCurrencies,to,{to=it;manualRate=""})
         Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
             FilterChip(selected=dropDecimals,onClick={dropDecimals=!dropDecimals},label={Text(tr("Drop decimals"),fontSize=13.sp)})
         }
