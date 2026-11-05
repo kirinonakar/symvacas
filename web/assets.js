@@ -1,4 +1,4 @@
-self.SYMVACAS_CACHE = 'symvacas-static-35a4af168c7717f3';
+self.SYMVACAS_CACHE = 'symvacas-static-21399202fb5c1249';
 self.SYMVACAS_ASSETS = [
   "./",
   "./advanced-statistics-schema.js",
@@ -15,6 +15,7 @@ self.SYMVACAS_ASSETS = [
   "./calc-session.js",
   "./calculation-tape.js",
   "./calculator-keypad.js",
+  "./calculator-panel.js",
   "./calculator.css",
   "./calculator.js",
   "./catalog-help.js",
@@ -129,6 +130,8 @@ self.SYMVACAS_ASSETS = [
   "./unit-groups.js",
   "./worker.js",
   "./workspace-commands.js",
+  "./workspace-layout.css",
+  "./workspace-layout.js",
   "./workspace-navigation.css",
   "./workspace-navigation.js",
   "./workspaces.js",

@@ -4,7 +4,7 @@ const minimums={graph:[280,320],statistics:[300,320]};
 
 // Run after the shared app has bound its controls and built section navigation.
 // Moving the existing nodes preserves editor state, analysis handlers and results.
-export function createDesktopLayout(doc=document,storage,mountCalculatorPanel) {
+export function createWorkspaceLayout(doc=document,storage,mountCalculatorPanel) {
   const view=doc.defaultView,root=doc.documentElement;
   let saved={};
   try{storage??=view.localStorage;saved=JSON.parse(storage.getItem(storageKey))||{};}catch{}
@@ -28,7 +28,7 @@ export function createDesktopLayout(doc=document,storage,mountCalculatorPanel) {
   }
   toggle.onclick=()=>{state.collapsed=!state.collapsed;sidebar();persist();};
   sidebar();
-  const calculatorPanel=createDesktopCalculatorPanel({document:doc,state,persist,mount:mountCalculatorPanel});
+  const calculatorPanel=createCalculatorPanel({document:doc,state,persist,mount:mountCalculatorPanel});
   cleanups.push(()=>calculatorPanel.dispose());
 
   for(const mode of Object.keys(defaults)) {
@@ -153,5 +153,5 @@ export function createDesktopLayout(doc=document,storage,mountCalculatorPanel) {
   observer.observe(root,{attributes:true,attributeFilter:['lang','data-workspace']});
   return {dispose(){observer.disconnect();for(const cleanup of cleanups)cleanup();toggle.onclick=null;}};
 }
-import {createDesktopCalculatorPanel} from './desktop-calculator-panel.js';
+import {createCalculatorPanel} from './calculator-panel.js';
 

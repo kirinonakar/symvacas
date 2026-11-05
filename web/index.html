@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="calculator.css">
   <link rel="stylesheet" href="workspace-navigation.css">
+  <link rel="stylesheet" href="workspace-layout.css">
   <script type="module" src="bootstrap.js"></script>
 </head>
 <body>
@@ -320,7 +321,7 @@ print(calc.integrate(x**2, x, 0, 1))</textarea></label>
   <footer>SymvaCAS · MIT · <a href="README.md">Web guide</a> · <a href="THIRD_PARTY.md">Open-source licenses</a><span id="offline-status"></span></footer>
 </div>
 <dialog id="dialog"><div class="dialog-heading"><h2 id="dialog-title"></h2><button id="dialog-close" aria-label="Close" data-i18narialabel="닫기">✕</button></div><div id="dialog-body"></div></dialog>
-<dialog id="settings-dialog"><div class="dialog-heading"><h2>Setup</h2><button id="settings-close" aria-label="Close" data-i18narialabel="닫기">✕</button></div><div class="preferences"><label for="language">Language<select id="language"><option value="en">English</option><option value="ko">한국어</option></select></label><label for="theme">Theme<select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div><button id="variables-button">RCL / STO</button><div id="settings-body"></div></dialog>
+<dialog id="settings-dialog"><div class="dialog-heading"><h2>Setup</h2><button id="settings-close" aria-label="Close" data-i18narialabel="닫기">✕</button></div><div id="settings-content"><div class="preferences"><label for="language">Language<select id="language"><option value="en">English</option><option value="ko">한국어</option></select></label><label for="theme">Theme<select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div><button id="variables-button">RCL / STO</button><div id="settings-body"></div></div></dialog>
 <input id="file-input" type="file" hidden="">
 <div id="toast" role="status" hidden=""></div>
 

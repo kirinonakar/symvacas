@@ -1,4 +1,4 @@
-export function createDesktopCalculatorPanel({document:doc,state,persist,mount}){
+export function createCalculatorPanel({document:doc,state,persist,mount}){
   const root=doc.documentElement,view=doc.defaultView;
   const local=(en,ko)=>root.lang.startsWith('ko')?ko:en;
   const node=(tag,id)=>{const item=doc.createElement(tag);item.id=id;return item;};

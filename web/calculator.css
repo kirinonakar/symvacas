@@ -35,6 +35,13 @@ math{font-family:"SymvaCAS Math","Cambria Math",math;font-weight:400;font-synthe
 .catalog-dialog[open],.history-dialog[open]{display:flex;flex-direction:column;overflow:hidden;height:min(720px,85dvh)}
 .catalog-dialog .dialog-heading,.history-dialog .dialog-heading{flex:none}
 .catalog-dialog #dialog-body,.history-dialog #dialog-body{display:flex;flex:1;min-height:0;overflow:hidden}
+/* Keep the web settings heading and close button outside the scrolling controls. */
+#settings-dialog:not(.desktop-preferences-dialog)[open]{display:flex;flex-direction:column;overflow:hidden;height:min(720px,85dvh)}
+#settings-dialog:not(.desktop-preferences-dialog)>.dialog-heading{flex:none}
+#settings-dialog:not(.desktop-preferences-dialog) #settings-close{flex:none}
+#settings-dialog:not(.desktop-preferences-dialog)>#settings-content{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:4px}
+/* Windows arranges the same controls in its own three-row preferences grid. */
+#settings-dialog.desktop-preferences-dialog>#settings-content{display:contents}
 .history-content{display:flex;flex-direction:column;gap:8px;width:100%;min-height:0;overflow:hidden}
 .history-content>input,.history-actions{flex:none}
 .history-actions{display:flex;gap:8px}

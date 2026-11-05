@@ -27,6 +27,18 @@ class DistributionTests(unittest.TestCase):
         self.assertIn("new NativeWorker()", client)
         self.assertNotIn("new Worker(", client)
 
+    def test_windows_and_web_ship_the_same_responsive_workspace_layout(self):
+        dist, web = ROOT / "dist", ROOT.parent / "web"
+        for name in ("workspace-layout.js", "calculator-panel.js", "workspace-layout.css"):
+            self.assertEqual((dist / name).read_bytes(), (web / name).read_bytes(), name)
+        for directory in (dist, web):
+            index = (directory / "index.html").read_text(encoding="utf-8")
+            self.assertIn('href="workspace-layout.css"', index)
+        for directory, bootstrap in ((dist, "desktop-bootstrap.js"), (web, "bootstrap.js")):
+            source = (directory / bootstrap).read_text(encoding="utf-8")
+            self.assertIn("from './workspace-layout.js'", source)
+            self.assertIn("createWorkspaceLayout(document,undefined,mountCalculatorPanel)", source)
+
     def test_desktop_version_reads_android_even_when_web_version_is_stale(self):
         version=runpy.run_path(str(ROOT/"scripts/sync_version.py"))["android_version"](ROOT.parent)
         self.assertEqual((ROOT/"dist/app-version.js").read_text(encoding="utf-8"),'export const appVersion = "'+version+'";\n')

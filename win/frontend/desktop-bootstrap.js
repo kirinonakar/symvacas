@@ -1,7 +1,7 @@
 import {createDesktopSettings} from './desktop-settings.js';
 import {syncDesktopTheme} from './desktop-theme.js';
 import {createDesktopDocuments} from './desktop-documents.js';
-import {createDesktopLayout} from './desktop-layout.js';
+import {createWorkspaceLayout} from './workspace-layout.js';
 import {createDesktopPreferences} from './desktop-preferences.js';
 import {createDesktopAbout} from './desktop-about.js';
 
@@ -16,7 +16,7 @@ const stopThemeSync=syncDesktopTheme();
 window.addEventListener('pagehide',stopThemeSync,{once:true});
 try {
   const {mountCalculatorPanel}=await import('./app.js');
-  const layout=createDesktopLayout(document,undefined,mountCalculatorPanel);
+  const layout=createWorkspaceLayout(document,undefined,mountCalculatorPanel);
   window.addEventListener('pagehide',()=>layout.dispose(),{once:true});
   await desktop.initialize();
 } catch(error) {

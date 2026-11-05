@@ -1,0 +1,112 @@
+/* Shared Windows/web layout fills the window and adapts to its available width. */
+:root .instrument { max-width: none; width: 100%; margin: 0; box-shadow: none; }
+.instrument > header > h1 { margin-right: auto; }
+#desktop-sidebar-toggle { display: none; flex: none; padding: 5px 9px; font-size: 18px; color: var(--ink); }
+.desktop-pane { min-width: 0; }
+.desktop-splitter { display: none; }
+#statistics-collapse-all { position: static; }
+#desktop-statistics-results > details.statistics-section > summary { color: var(--accent); font-size: 16px; font-weight: 700; }
+.desktop-resizing, .desktop-resizing * { cursor: col-resize !important; user-select: none !important; }
+#desktop-workspace-shell { grid-area: main; min-width: 0; min-height: 0; }
+#desktop-workspace-shell > main { min-width: 0; min-height: 0; }
+:root[data-workspace="scientific"] #desktop-workspace-shell,
+:root[data-workspace="scientific"] #desktop-workspace-shell > main { height: 100%; }
+#desktop-calculator-panel, #desktop-calculator-toggle { display: none; }
+/* The calculator shows its own caret; native focus rings frame the input area. */
+:root[data-workspace="scientific"] :is(#expression-preview, #expression, #calculation-tape):focus { outline: none; }
+
+@media (min-width: 900px) {
+  :root:is([data-workspace="graph"], [data-workspace="statistics"]) body { height: 100dvh; overflow: hidden; }
+  :root:is([data-workspace="graph"], [data-workspace="statistics"]) .instrument {
+    height: 100dvh; min-height: 0; display: grid; overflow: hidden;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 44px 48px auto minmax(0, 1fr);
+    grid-template-areas: "header" "mode" "runtime" "main";
+  }
+  :root:is([data-workspace="graph"], [data-workspace="statistics"]) .instrument > header { grid-area: header; }
+  :root:is([data-workspace="graph"], [data-workspace="statistics"]) .mode-bar { grid-area: mode; }
+  :root:is([data-workspace="graph"], [data-workspace="statistics"]) .runtime-bar { grid-area: runtime; }
+  :root:is([data-workspace="graph"], [data-workspace="statistics"]) main { grid-area: main; min-height: 0; overflow: hidden; }
+  :root:is([data-workspace="graph"], [data-workspace="statistics"]) .instrument > footer { display: none; }
+  .desktop-split {
+    display: grid; height: 100%; min-height: 0; padding: 0;
+    grid-template-columns: minmax(280px, calc(var(--desktop-split-ratio, .36) * (100% - 12px))) 12px minmax(320px, 1fr);
+  }
+  .desktop-split[data-mode="statistics"] { grid-template-columns: minmax(300px, calc(var(--desktop-split-ratio, .5) * (100% - 12px))) 12px minmax(320px, 1fr); }
+  .desktop-split > .desktop-pane { height: 100%; min-height: 0; overflow: auto; padding: 20px; overscroll-behavior: contain; scrollbar-gutter: stable; }
+  .desktop-splitter { display: block; position: relative; cursor: col-resize; touch-action: none; background: var(--panel); }
+  .desktop-splitter::before { content: ""; position: absolute; inset: 0 5px; background: var(--line); }
+  .desktop-splitter::after { content: ""; position: absolute; top: calc(50% - 22px); left: 3px; width: 6px; height: 44px; border-radius: 4px; background: var(--muted); }
+  .desktop-splitter:hover::before, .desktop-splitter.dragging::before, .desktop-splitter:focus-visible::before { background: var(--accent); }
+  .desktop-splitter:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .desktop-input-pane .graph-source-editor { height: 150px; }
+  .desktop-input-pane .graph-surface-appearance, .desktop-input-pane .graph-surface-camera { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .desktop-input-pane .graph-surface-density { grid-column: 1 / -1; }
+  .desktop-output-pane > .graph-toolbar { margin-top: 0; }
+  #desktop-statistics-results > .statistics-section:first-of-type { margin-top: 0; }
+  .desktop-output-pane .statistics-result-scroll { width: 100%; }
+  .desktop-output-pane .statistics-result-report table { min-width: 100%; }
+  #desktop-statistics-output { display: flex; flex-direction: column; overflow: hidden; padding: 0; scrollbar-gutter: auto; }
+  #desktop-statistics-actions { flex: none; margin: 0; padding: 12px 20px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  #desktop-statistics-results { flex: 1; min-height: 0; overflow: auto; padding: 20px; overscroll-behavior: contain; scrollbar-gutter: stable; }
+  :root:is([data-workspace="graph"], [data-workspace="statistics"]) #desktop-workspace-shell,
+  :root:is([data-workspace="graph"], [data-workspace="statistics"]) #desktop-workspace-shell > main { height: 100%; }
+
+  /* Size the dataset editor from the space left by the actual toolbars. Only
+     the textarea or table owns scrolling, even after changing pane widths. */
+  #desktop-statistics-input { display: flex; flex-direction: column; gap: 8px; padding: 16px; overflow: hidden; scrollbar-gutter: auto; }
+  #desktop-statistics-input > .form-row { flex: none; gap: 6px; margin: 0; }
+  #desktop-statistics-input label { margin-bottom: 0; gap: 4px; font-size: 12px; }
+  #desktop-statistics-input > .form-row :is(input, select) { padding: 6px 8px; }
+  #desktop-statistics-input :is(#statistics-kind, #statistics-columns) { height: 36px; min-height: 36px; font-size: 13px; line-height: 1.4; }
+  #desktop-statistics-input #statistics-columns-auto-label { flex: 0 0 auto; align-self: flex-end; min-width: 0; height: 36px; padding: 0; gap: 6px; align-items: center; white-space: nowrap; }
+  #desktop-statistics-input #statistics-columns-auto { flex: none; margin: 0; padding: 0; }
+  #desktop-statistics-input > .form-row button { height: 42px; min-height: 42px; padding: 5px 8px; font-size: 12px; white-space: nowrap; }
+  #desktop-statistics-input .statistics-icon-action { flex: 0 0 42px; width: 42px; min-width: 42px; height: 42px; }
+  #desktop-statistics-input .desktop-dataset-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .desktop-dataset-toolbar > label { grid-column: 1 / -1; }
+  .desktop-dataset-transfers { display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; grid-column: 1 / -1; min-width: 0; }
+  .desktop-dataset-transfers > input { flex: 1 1 8rem; width: 0; min-width: 4rem; height: 42px; }
+  .desktop-dataset-transfers > button:not(.statistics-icon-action) { display: block; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  #statistics-editor-expand { display: none; }
+  #desktop-statistics-input #statistics-editor { display: flex; flex: 1; flex-direction: column; min-height: 0; margin: 0; overflow: hidden; }
+  #desktop-statistics-input .statistics-direct-input { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+  #desktop-statistics-input .statistics-direct-input > label { flex: none; margin-bottom: 6px; }
+  #desktop-statistics-input #statistics-editor .line-numbered { flex: 1; height: auto; min-height: 0; }
+  #desktop-statistics-input #statistics-editor #statistics-grid { flex: 1; min-height: 0; max-height: none; overflow: auto; }
+  #statistics-grid .editable-table thead th { height: 28px; padding: 2px 4px; line-height: 20px; }
+  #statistics-grid .editable-table thead button { height: 22px; min-height: 0; }
+
+  :root[data-workspace="scientific"] #desktop-workspace-shell { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, min(32%, 360px)); grid-template-rows: minmax(0, 1fr); overflow: hidden; }
+  :root[data-workspace="scientific"] #desktop-workspace-shell > main { grid-area: auto; }
+  :root[data-workspace="scientific"][data-desktop-calculator="collapsed"] #desktop-workspace-shell { grid-template-columns: minmax(0, 1fr); }
+  :root[data-workspace="scientific"] #desktop-calculator-toggle { display: block; }
+  :root[data-workspace="scientific"] #desktop-calculator-panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; padding: 12px; border-left: 1px solid var(--line); background: var(--panel); }
+  #desktop-calculator-panel-bar { display: flex; flex: none; align-items: center; gap: 8px; margin-bottom: 12px; }
+  #desktop-calculator-tabs { display: flex; flex: 1; min-width: 0; gap: 4px; }
+  #desktop-calculator-tabs button { flex: 1; padding: 8px; }
+  #desktop-calculator-tabs [aria-selected="true"] { background: var(--bar); color: var(--accent); }
+  #desktop-calculator-close { flex: none; padding: 6px; }
+  #desktop-calculator-panel > [role="tabpanel"] { display: flex; flex: 1; min-width: 0; min-height: 0; overflow: hidden; }
+  #desktop-calculator-panel :is(.history-content, .catalog-content) { flex: 1; min-width: 0; }
+  #desktop-calculator-panel :is(.history-scroll, .catalog-scroll) { scrollbar-gutter: stable; }
+  #desktop-calculator-panel .history-actions { flex-wrap: wrap; }
+  #desktop-calculator-panel .catalog-tabs { flex-wrap: wrap; overflow: auto; max-height: 8rem; }
+  #desktop-calculator-panel .catalog-tabs button { padding: 5px 8px; font-size: 12px; }
+  #desktop-calculator-panel .catalog-entry button:first-child { min-width: 0; overflow-wrap: anywhere; }
+  #desktop-calculator-panel .catalog-entry button:last-child { flex: none; }
+}
+
+@media (min-width: 1100px) and (min-height: 593px) {
+  #desktop-sidebar-toggle { display: block; }
+  :root:is([data-workspace="graph"], [data-workspace="statistics"]) .instrument {
+    grid-template-columns: 224px minmax(0, 1fr);
+    grid-template-areas: "sidebar header" "sidebar mode" "sidebar runtime" "sidebar main";
+  }
+  :root[data-desktop-sidebar="collapsed"] .instrument { grid-template-columns: 0 minmax(0, 1fr); }
+}
+
+@media (max-width: 899px) {
+  .desktop-split > .desktop-pane { padding: 0; }
+}
+@media (max-width: 700px) { .header-actions { flex-wrap: wrap; justify-content: flex-end; } }

@@ -101,5 +101,5 @@ async function initialize() {
 }
 await initialize();
 
-// The Windows shell reuses the same history and catalog controllers inline.
+// Both shells reuse the live history and catalog controllers inline.
 export function mountCalculatorPanel(target,kind){return dialogs.mountCalculatorPanel(target,kind);}
