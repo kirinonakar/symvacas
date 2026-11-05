@@ -3968,7 +3968,7 @@ dependencies = [
 
 [[package]]
 name = "symvacas-windows"
-version = "1.6.9"
+version = "1.7.0"
 dependencies = [
  "boa_engine",
  "fs2",

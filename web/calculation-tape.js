@@ -32,18 +32,26 @@ export function renderPreviousCalculations(container,entries,{decimal=false,digi
 
 // Keep the current input at the top of the viewport. Wheel/touch gestures can
 // browse older rows without focus/status updates interrupting the gesture.
-export function followTape(scroll,active,{schedule=setTimeout,cancel=clearTimeout,now=Date.now}={}){
-  let dragging=false,quietUntil=0,pending=false,timer=null;
+export function followTape(scroll,active,{schedule=setTimeout,cancel=clearTimeout,now=Date.now,
+  requestFrame=callback=>globalThis.requestAnimationFrame(callback),cancelFrame=id=>globalThis.cancelAnimationFrame(id)}={}){
+  let dragging=false,quietUntil=0,pending=false,timer=null,frame=null;
   function clear(){if(timer!==null)cancel(timer);timer=null;}
   function settle(){clear();if(pending&&!dragging)timer=schedule(()=>{timer=null;latest();},Math.max(0,quietUntil-now()));}
-  function latest(){
+  function align(){
     if(dragging||quietUntil>now()){pending=true;settle();return;}
     pending=false;clear();
     scroll.scrollTop=Math.max(0,scroll.scrollTop+active.getBoundingClientRect().top-scroll.getBoundingClientRect().top-scroll.clientTop);
+  }
+  function latest(){
+    align();
+    // Startup mounts the calculator inside its desktop shell after app.js has
+    // initialized. Reparenting can reset scrollTop; align again before painting
+    // with the final layout, while still respecting history-browsing gestures.
+    if(frame===null)frame=requestFrame(()=>{frame=null;align();});
   }
   scroll.addEventListener('pointerdown',()=>{dragging=true;clear();});
   for(const name of ['pointerup','pointercancel'])scroll.addEventListener(name,()=>{dragging=false;quietUntil=now()+160;settle();});
   scroll.addEventListener('wheel',()=>{quietUntil=now()+160;settle();},{passive:true});
   scroll.addEventListener('scroll',()=>{if(pending){quietUntil=now()+160;settle();}},{passive:true});
-  return {latest,dispose:clear};
+  return {latest,dispose(){clear();if(frame!==null)cancelFrame(frame);frame=null;}};
 }
