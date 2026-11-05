@@ -41,6 +41,7 @@ export function createWorkspaceLayout(doc=document,storage,mountCalculatorPanel)
     separator.setAttribute('role','separator');separator.setAttribute('aria-orientation','vertical');
     separator.setAttribute('aria-controls',`${left.id} ${right.id}`);
     const children=[...workspace.children];
+    let arrange=()=>{};
     if(mode==='graph') {
       for(const child of children) {
         const output=child.matches('.graph-toolbar:not(#graph-parameter-actions),.graph-plot-frame,#graph-formulas,#graph-status,#graph-trace');
@@ -56,20 +57,35 @@ export function createWorkspaceLayout(doc=document,storage,mountCalculatorPanel)
         observer.observe(analysis,{attributes:true,attributeFilter:['open','hidden']});
         visibility();cleanups.push(()=>observer.disconnect());
       }
+      const sections=children.filter(child=>child.matches('.graph-section'));
+      let compact=null;
+      arrange=()=>{
+        const next=view.innerWidth<900;
+        if(next===compact)return;
+        compact=next;
+        // Keep the same controls and open sections when crossing the breakpoint.
+        // Compact order: inputs, plot/results, range/rendering/analysis/table.
+        (compact?right:left).append(...sections);
+      };
     } else {
       let analysis=false;
       for(const child of children) {
         if(child.id==='statistics-summary')analysis=true;
         (analysis||child.id==='statistics-error'?right:left).append(child);
       }
-      const actions=doc.createElement('div');actions.id='desktop-statistics-actions';actions.className='form-row';
+      const actions=doc.createElement('div');actions.id='desktop-statistics-actions';
+      actions.dataset.mode='statistics';
       actions.append(left.querySelector('#statistics-collapse-all'));
+      doc.querySelector('.runtime-bar').append(actions);
       const results=doc.createElement('div');results.id='desktop-statistics-results';results.tabIndex=0;
-      results.append(...right.children);right.append(actions,results);
+      results.append(...right.children);right.append(results);
       const toolbar=left.querySelector('#dataset-list').closest('.form-row');
       toolbar.classList.add('desktop-dataset-toolbar');
       const transfers=doc.createElement('div');transfers.className='desktop-dataset-transfers';
       transfers.append(left.querySelector('#dataset-name'),left.querySelector('#dataset-save'),left.querySelector('#dataset-delete'),left.querySelector('#csv-open'),left.querySelector('#csv-save'));toolbar.append(transfers);
+      arrange=()=>{
+        actions.hidden=root.dataset.workspace!=='statistics';
+      };
     }
     workspace.classList.add('desktop-split');workspace.append(left,separator,right);
     let dragging=null;
@@ -79,6 +95,7 @@ export function createWorkspaceLayout(doc=document,storage,mountCalculatorPanel)
       return available>=minLeft+minRight?{available,min:minLeft/available,max:1-minRight/available}:null;
     }
     function update(){
+      arrange();
       const bounds=limits();
       const ratio=bounds?Math.max(bounds.min,Math.min(bounds.max,state[mode])):state[mode];
       workspace.style.setProperty('--desktop-split-ratio',String(ratio));

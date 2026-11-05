@@ -1,5 +1,5 @@
 // A small DOM/event harness for controller tests, without launching a browser.
-export function layoutFixture({width=1200,saved={}}={}) {
+export function layoutFixture({width=1200,saved={},mode='scientific'}={}) {
   const observers=[];
   class Events {
     listeners=new Map();
@@ -58,11 +58,12 @@ export function layoutFixture({width=1200,saved={}}={}) {
   const doc=new Node('document');doc.defaultView=view;doc.createElement=tag=>new Node(tag);
   doc.getElementById=id=>doc.querySelector('#'+id);
   const add=(parent,tag,id='',className='')=>{const node=new Node(tag);node.id=id;node.className=className;parent.append(node);return node;};
-  const root=add(doc,'html');root.lang='en';root.dataset.workspace='scientific';doc.documentElement=root;
+  const root=add(doc,'html');root.lang='en';root.dataset.workspace=mode;doc.documentElement=root;
   const instrument=add(add(root,'body'),'div','','instrument');
   add(instrument,'nav','workspace-navigation');
   const actions=add(add(instrument,'header'),'div','','header-actions');
   for(const id of ['history-button','catalog-button'])add(actions,'button',id);
+  add(instrument,'div','','mode-bar');add(instrument,'div','','runtime-bar');
   const main=add(instrument,'main');
   for(const mode of ['graph','statistics']){
     const workspace=add(main,'section','','workspace');workspace.dataset.mode=mode;
@@ -71,10 +72,14 @@ export function layoutFixture({width=1200,saved={}}={}) {
       add(workspace,'div','graph-parameter-actions','graph-toolbar');
       add(workspace,'div','','graph-toolbar');add(workspace,'div','','graph-plot-frame');
       for(const id of ['graph-formulas','graph-status','graph-trace'])add(workspace,'div',id);
-      const analysis=add(workspace,'details','graph-analysis');analysis.open=true;add(analysis,'div','graph-analysis-sliders');
+      add(workspace,'details','graph-ranges','graph-section').open=true;
+      add(workspace,'details','graph-surface-rendering','graph-section');
+      const analysis=add(workspace,'details','graph-analysis','graph-section');analysis.open=true;add(analysis,'div','graph-analysis-sliders');
+      add(workspace,'details','graph-coordinates','graph-section');
     }else{
       const toolbar=add(workspace,'div','','form-row');add(toolbar,'select','dataset-list');
-      for(const id of ['dataset-name','dataset-save','dataset-delete','csv-open','csv-save'])add(toolbar,'button',id);
+      add(toolbar,'input','dataset-name');
+      for(const id of ['dataset-save','dataset-delete','csv-open','csv-save'])add(toolbar,'button',id);
       const editor=add(workspace,'div','statistics-editor');add(editor,'textarea','statistics-data');add(editor,'div','statistics-grid');
       add(workspace,'button','statistics-collapse-all');
       add(workspace,'div','statistics-error');add(workspace,'div','statistics-summary');add(workspace,'details','statistics-models');

@@ -5,6 +5,12 @@
 .desktop-pane { min-width: 0; }
 .desktop-splitter { display: none; }
 #statistics-collapse-all { position: static; }
+#desktop-statistics-actions { display: flex; flex: none; order: 1; align-items: center; margin-left: auto; }
+#desktop-statistics-actions #statistics-collapse-all {
+  position: static; flex: none; height: 28px; min-height: 28px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--panel); font-size: 12px; white-space: nowrap;
+}
+:root[data-workspace="statistics"] .runtime-bar #status { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #desktop-statistics-results > details.statistics-section > summary { color: var(--accent); font-size: 16px; font-weight: 700; }
 .desktop-resizing, .desktop-resizing * { cursor: col-resize !important; user-select: none !important; }
 #desktop-workspace-shell { grid-area: main; min-width: 0; min-height: 0; }
@@ -15,19 +21,24 @@
 /* The calculator shows its own caret; native focus rings frame the input area. */
 :root[data-workspace="scientific"] :is(#expression-preview, #expression, #calculation-tape):focus { outline: none; }
 
+/* At every width, chrome stays above the workspace's own scrollport. */
+:root:is([data-workspace="graph"], [data-workspace="statistics"]) body { height: 100dvh; overflow: hidden; }
+:root:is([data-workspace="graph"], [data-workspace="statistics"]) .instrument {
+  height: 100dvh; min-height: 0; display: grid; overflow: hidden;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 44px 48px auto minmax(0, 1fr);
+  grid-template-areas: "header" "mode" "runtime" "main";
+}
+:root:is([data-workspace="graph"], [data-workspace="statistics"]) .instrument > header { grid-area: header; }
+:root:is([data-workspace="graph"], [data-workspace="statistics"]) .mode-bar { grid-area: mode; }
+:root:is([data-workspace="graph"], [data-workspace="statistics"]) .runtime-bar { grid-area: runtime; }
+:root:is([data-workspace="graph"], [data-workspace="statistics"]) main { grid-area: main; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+:root:is([data-workspace="graph"], [data-workspace="statistics"]) .instrument > footer { display: none; }
+:root:is([data-workspace="graph"], [data-workspace="statistics"]) #desktop-workspace-shell,
+:root:is([data-workspace="graph"], [data-workspace="statistics"]) #desktop-workspace-shell > main { height: 100%; }
+
 @media (min-width: 900px) {
-  :root:is([data-workspace="graph"], [data-workspace="statistics"]) body { height: 100dvh; overflow: hidden; }
-  :root:is([data-workspace="graph"], [data-workspace="statistics"]) .instrument {
-    height: 100dvh; min-height: 0; display: grid; overflow: hidden;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 44px 48px auto minmax(0, 1fr);
-    grid-template-areas: "header" "mode" "runtime" "main";
-  }
-  :root:is([data-workspace="graph"], [data-workspace="statistics"]) .instrument > header { grid-area: header; }
-  :root:is([data-workspace="graph"], [data-workspace="statistics"]) .mode-bar { grid-area: mode; }
-  :root:is([data-workspace="graph"], [data-workspace="statistics"]) .runtime-bar { grid-area: runtime; }
-  :root:is([data-workspace="graph"], [data-workspace="statistics"]) main { grid-area: main; min-height: 0; overflow: hidden; }
-  :root:is([data-workspace="graph"], [data-workspace="statistics"]) .instrument > footer { display: none; }
+  :root:is([data-workspace="graph"], [data-workspace="statistics"]) main { overflow: hidden; }
   .desktop-split {
     display: grid; height: 100%; min-height: 0; padding: 0;
     grid-template-columns: minmax(280px, calc(var(--desktop-split-ratio, .36) * (100% - 12px))) 12px minmax(320px, 1fr);
@@ -47,10 +58,7 @@
   .desktop-output-pane .statistics-result-scroll { width: 100%; }
   .desktop-output-pane .statistics-result-report table { min-width: 100%; }
   #desktop-statistics-output { display: flex; flex-direction: column; overflow: hidden; padding: 0; scrollbar-gutter: auto; }
-  #desktop-statistics-actions { flex: none; margin: 0; padding: 12px 20px; background: var(--panel); border-bottom: 1px solid var(--line); }
   #desktop-statistics-results { flex: 1; min-height: 0; overflow: auto; padding: 20px; overscroll-behavior: contain; scrollbar-gutter: stable; }
-  :root:is([data-workspace="graph"], [data-workspace="statistics"]) #desktop-workspace-shell,
-  :root:is([data-workspace="graph"], [data-workspace="statistics"]) #desktop-workspace-shell > main { height: 100%; }
 
   /* Size the dataset editor from the space left by the actual toolbars. Only
      the textarea or table owns scrolling, even after changing pane widths. */
@@ -108,5 +116,20 @@
 
 @media (max-width: 899px) {
   .desktop-split > .desktop-pane { padding: 0; }
+  :root:is([data-workspace="graph"], [data-workspace="statistics"]) .instrument {
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+  }
+  :root:is([data-workspace="graph"], [data-workspace="statistics"]) .instrument > header { height: auto; min-height: 44px; }
+  #desktop-statistics-input .desktop-dataset-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  #desktop-statistics-input .desktop-dataset-toolbar > label { min-width: 0; margin: 0; }
+  .desktop-dataset-transfers {
+    display: grid; grid-template-columns: 42px 42px minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center; gap: 6px; min-width: 0;
+  }
+  .desktop-dataset-transfers > input { grid-column: 1 / -1; width: 100%; min-width: 0; height: 42px; }
+  #desktop-statistics-input .desktop-dataset-transfers > button {
+    width: 100%; min-width: 0; height: 42px; min-height: 42px; margin: 0;
+    padding: 0 6px; font-size: 12px; line-height: 1.3; white-space: normal;
+  }
 }
 @media (max-width: 700px) { .header-actions { flex-wrap: wrap; justify-content: flex-end; } }

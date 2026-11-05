@@ -44,3 +44,43 @@ test('calculator tabs mount once, switch inline on wide screens, and retain comp
   f.root.lang='ko';f.mutate(f.root);assert.equal(f.find('desktop-tab-functions').textContent,'함수');
   assert.deepEqual(mounted,['history','functions']);layout.dispose();assert.deepEqual(disposed,['history','functions']);
 });
+
+for(const width of [320,600,899,900,1200])test(`graph section order follows the ${width}px layout without replacing controls`,()=>{
+  const f=layoutFixture({width,mode:'graph'}),ranges=f.find('graph-ranges'),analysis=f.find('graph-analysis');
+  const layout=createWorkspaceLayout(f.doc),input=f.find('desktop-graph-input'),output=f.find('desktop-graph-output');
+  const check=compact=>{
+    const pane=compact?output:input;
+    const sections=['graph-ranges','graph-surface-rendering','graph-analysis','graph-coordinates'].map(f.find);
+    for(const section of sections)assert.equal(section.parentElement,pane);
+    const positions=sections.map(section=>pane.children.indexOf(section));
+    assert.deepEqual(positions,[...positions].sort((a,b)=>a-b));
+    if(compact)assert.ok(output.children.indexOf(output.querySelector('.graph-plot-frame'))<positions[0]);
+    assert.equal(f.find('graph-ranges'),ranges);assert.equal(ranges.open,true);
+    assert.equal(f.find('graph-analysis'),analysis);assert.equal(analysis.open,true);
+    assert.equal(f.find('graph-source').value,'sin(x)');
+    assert.equal(f.find('graph-analysis-sliders').parentElement,output);
+  };
+  check(width<900);
+  for(const next of [1200,320,900,899]){f.view.innerWidth=next;f.view.dispatchEvent({type:'resize'});check(next<900);}
+  layout.dispose();
+});
+
+test('statistics collapse action stays in the runtime bar across mode and width changes',()=>{
+  const f=layoutFixture({width:375,mode:'statistics'}),collapse=f.find('statistics-collapse-all');let clicks=0;
+  collapse.onclick=()=>clicks++;
+  const layout=createWorkspaceLayout(f.doc),actions=f.find('desktop-statistics-actions');
+  const runtime=f.doc.querySelector('.runtime-bar');
+  assert.equal(actions.parentElement,runtime);
+  assert.equal(f.doc.querySelector('main').contains(collapse),false);
+  assert.equal(actions.hidden,false);collapse.onclick();assert.equal(clicks,1);
+  const transfers=f.find('dataset-name').parentElement;
+  assert.equal(transfers.className,'desktop-dataset-transfers');
+  assert.deepEqual(transfers.children.map(node=>node.id),['dataset-name','dataset-save','dataset-delete','csv-open','csv-save']);
+  f.view.innerWidth=900;f.view.dispatchEvent({type:'resize'});
+  assert.equal(actions.parentElement,runtime);
+  f.view.innerWidth=899;f.view.dispatchEvent({type:'resize'});
+  assert.equal(actions.parentElement,runtime);assert.equal(f.find('statistics-collapse-all'),collapse);
+  f.root.dataset.workspace='graph';f.mutate(f.root);assert.equal(actions.hidden,true);
+  f.root.dataset.workspace='statistics';f.mutate(f.root);assert.equal(actions.hidden,false);
+  layout.dispose();
+});
