@@ -175,7 +175,6 @@
   :root[data-workspace="scientific"][data-desktop-calculator="collapsed"] #desktop-workspace-shell { grid-template-columns: minmax(0, 1fr); }
   :root[data-workspace="scientific"] #desktop-calculator-toggle { display: block; }
   :root[data-workspace="scientific"] #desktop-calculator-panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; padding: 12px; border-left: 1px solid var(--line); background: var(--panel); }
-  :root[data-workspace="scientific"] #tape-history { display: none; }
   #desktop-calculator-panel-bar { display: flex; flex: none; align-items: center; gap: 8px; margin-bottom: 12px; }
   #desktop-calculator-tabs { display: flex; flex: 1; min-width: 0; gap: 4px; }
   #desktop-calculator-tabs button { flex: 1; padding: 8px; }
