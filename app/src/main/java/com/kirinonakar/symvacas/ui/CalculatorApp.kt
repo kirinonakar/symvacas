@@ -118,7 +118,7 @@ private val LocalCalculatorOverlay=staticCompositionLocalOf<(String)->Unit> { {}
                 else->ScientificWorkspace(m,screenExpanded,{screenExpanded=!screenExpanded},{overlay=it})
             }
         }}
-        if(m.mode !in listOf("Scientific/CAS","Equations","Probability","Units","Tip","Currency","Functions") && m.error.isNotBlank()) Text(m.error,Modifier.fillMaxWidth().padding(8.dp),fontSize=12.sp,color=c.danger)
+        if(m.mode !in listOf("Scientific/CAS","Equations","Probability","Units","Tip","Currency","Functions","Programmer") && m.error.isNotBlank()) Text(m.error,Modifier.fillMaxWidth().padding(8.dp),fontSize=12.sp,color=c.danger)
     }
     when(overlay) {
         "About"->AboutDialog {overlay=""}

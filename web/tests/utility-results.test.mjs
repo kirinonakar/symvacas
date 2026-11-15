@@ -43,5 +43,20 @@ test('utility cards copy the displayed precision and clear independently',()=>{
     assert.equal(units.hidden,false);
     assert.equal(currency.hidden,false);
     assert.equal(tip.hidden,false);
+
+    const programmer=nodes['programmer-result'],bits='1'+'0'.repeat(63);
+    const bases={DEC:'-9223372036854775808',HEX:'8000000000000000',OCT:'1000000000000000000000',BIN:bits};
+    cards.set('programmer',{width:64,signed:true,result:{bases}});
+    assert.equal(programmer.querySelector('.programmer-binary').querySelector('strong').textContent,
+      ['1000',...Array(15).fill('0000')].join(' '));
+    click(programmer,'Copy');
+    assert.equal(copied.at(-1),`DEC -9223372036854775808\nHEX 8000000000000000\nOCT 1000000000000000000000\nBIN ${bits}`);
+    click(programmer,'Clear');
+    assert.equal(programmer.hidden,true);
+    assert.equal(units.hidden,false);
+    cards.set('programmer',{error:'Invalid base'});
+    assert.equal(programmer.querySelector('.error').textContent,'Invalid base');
+    click(programmer,'Clear');
+    assert.equal(programmer.hidden,true);
   }finally{globalThis.document=previousDocument;}
 });

@@ -27,6 +27,9 @@ setComputationLimitsRemoved(state.removeComputationLimit);
 const conversions=createConversionControls();
 window.addEventListener('pagehide',()=>conversions.dispose(),{once:true});
 restoreFields(state);
+const angleUnits=['DEG','RAD','GRAD'],angleButton=$('angle');
+if(!angleUnits.includes(angleButton.value))angleButton.value=angleUnits[0];
+angleButton.textContent=angleButton.value;
 let calculator,graphs,workspaces,keypad,dialogs;
 const persistence=createPersistence({state,toast:ui.toast,
   snapshot:()=>({expression:calculator.draftSource(),graph:graphs.snapshot()}),
@@ -59,7 +62,6 @@ function error(message) {
   if(value('mode')==='statistics'){$('statistics-error').textContent=t(message||'Math ERROR');$('statistics-error').hidden=false;}
   calculator?.clearExplanations();
   if(value('mode')==='equation'){try{renderFormulas($('result-source'),workspaces.equationSource().split(/\r?\n/),{digits:state.digits});}catch{}}
-  else if(value('mode')==='programmer')setText($('programmer-output'),message);
   else if(value('mode')==='constants')setText($('constants-list'),message);
 }
 function changeMode(mode) {
@@ -67,7 +69,7 @@ function changeMode(mode) {
   setText($('mode-status'),$('mode').selectedOptions[0].textContent);
   workspaceNavigation.update(mode);
   const panel=$('answer').closest('.answer-panel'),actions=$('exact-toggle').parentElement;
-  panel.hidden=['graph','python','programmer','constants','probability','statistics',...utilityModes].includes(mode);actions.hidden=panel.hidden;
+  panel.hidden=['graph','python','constants','probability','statistics',...utilityModes].includes(mode);actions.hidden=panel.hidden;
   if(mode==='scientific'){$('tape-active').append(panel);$('calculator-display').append(actions);}
   else{panel.append(actions);document.querySelector('main').insertBefore(panel,document.querySelector('.keypad-workspace'));}
   if(mode==='scientific'){const edits=$('calculator-display').querySelector('.edit-actions');if($('stop').parentElement!==edits)edits.insertBefore($('stop'),edits.firstChild);}
@@ -83,7 +85,13 @@ function changeMode(mode) {
   workspaces.loadConstantsIfNeeded();
 }
 function refreshDisplays(){calculator.renderResult();workspaces.render();graphs.render();}
-$('mode').onchange=()=>changeMode(value('mode'));$('angle').onchange=persist;
+$('mode').onchange=()=>changeMode(value('mode'));
+angleButton.onclick=()=>{
+  const next=(angleUnits.indexOf(angleButton.value)+1)%angleUnits.length;
+  angleButton.value=angleUnits[next];
+  angleButton.textContent=angleButton.value;
+  persist();
+};
 $('digits-indicator').onclick=()=>{
   state.digits=({2:3,3:5,5:10})[state.digits]||2;
   state.precision=Math.max(state.precision,state.digits);

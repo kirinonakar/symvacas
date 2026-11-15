@@ -1289,6 +1289,7 @@ private val korean = mapOf(
     "Function call" to "함수 호출", "Test function" to "테스트", "Evaluate" to "계산",
     "Tax" to "세금", "Per person" to "1인당", "Calculating…" to "계산 중…",
     "Fraction" to "분수", "Decimal" to "소수",
+    "Bits" to "비트", "Signed" to "부호 있음", "Unsigned" to "부호 없음",
     "Enter a valid amount." to "올바른 금액을 입력하세요.",
     "Enter non-negative amounts and percentages" to "금액과 비율에 0 이상의 값을 입력하세요.",
     "People must be between 1 and 999" to "인원은 1명에서 999명 사이여야 합니다.",

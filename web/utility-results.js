@@ -4,7 +4,7 @@ import {displayText} from './display-format.js';
 import {tipBreakdown} from './money.js';
 import {latexResult,resultDisplayTree,resultMathDisplay,resultText} from './result-display.js';
 
-export const utilityModes=['units','tip','currency','functions'];
+export const utilityModes=['programmer','units','tip','currency','functions'];
 
 export function createUtilityResults({state,clipboard}) {
   const results=new Map();
@@ -33,7 +33,22 @@ export function createUtilityResults({state,clipboard}) {
     const {result,source,amount,from,to,rate,people}=snapshot;
     const format={digits:state.digits,decimal:mode!=='functions'||functionDecimal,notation:state.resultDisplayMode,grouping:mode==='currency',preserveSmallValues:true};
     let copyText;
-    if(mode==='tip'){
+    if(mode==='programmer'){
+      const {width,signed}=snapshot;
+      target.append(element('p',`${width} ${t('Bits').toLowerCase()} · ${t(signed?'Signed':'Unsigned')}`,'utility-detail'));
+      const values=['DEC','HEX','OCT','BIN'].map(base=>[base,result.bases[base]]);
+      const metrics=element('dl','','utility-metrics programmer-metrics');
+      for(const [base,digits] of values){
+        const binary=base==='BIN';
+        const card=element('div','',binary?'utility-metric programmer-binary':'utility-metric');
+        const shown=binary?digits.match(/.{1,4}/g).join(' '):digits;
+        const data=element('dd');
+        data.append(element('strong',shown));
+        card.append(element('dt',base),data);metrics.append(card);
+      }
+      target.append(metrics);
+      copyText=values.map(([base,digits])=>`${base} ${digits}`).join('\n');
+    }else if(mode==='tip'){
       const {tip,tax,total,share,extraShare,extraPeople,percent}=tipBreakdown(result);
       const splits=extraPeople?`${people-extraPeople} × ${share} + ${extraPeople} × ${extraShare}`:'';
       const metrics=[['Total',total],['Per person',extraPeople?`${share} · ${extraShare}`:share],['Tip amount',`${tip} (${percent}%)`],['Tax',tax]];

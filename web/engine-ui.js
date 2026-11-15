@@ -8,7 +8,7 @@ export function createEngineUI({engine,onChange,onReady,cancelPreview}) {
   const actions=new Map(['python','equation','statistics-summary','statistics','statistics-advanced','statistics-preparation','statistics-tests','statistics-models','regression'].map(context=>
     [context,document.querySelector(`[data-run="${context}"]`)]));
   const labels=new Map([...actions].map(([context])=>[context,context==='equation'?'Solve':context==='statistics-summary'?'Summarize':'Analyze']));
-  for(const [context,label] of Object.entries({units:'Convert',tip:'Calculate',currency:'Convert',functions:'Evaluate'})){
+  for(const [context,label] of Object.entries({programmer:'Calculate',units:'Convert',tip:'Calculate',currency:'Convert',functions:'Evaluate'})){
     actions.set(context,document.querySelector(`[data-run="${context}"]`));
     labels.set(context,label);
   }

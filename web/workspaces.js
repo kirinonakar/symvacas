@@ -82,7 +82,13 @@ export function createWorkspaces({state,engine,ui,persist,restoreSelect,requestO
     if(isBusy()||!engine.ready)return;
     try{
       const snapshot={};
-      if(workspace==='units'){
+      let input;
+      if(workspace==='programmer'){
+        const width=Number(value('programmer-width')),signed=$('programmer-signed').checked;
+        Object.assign(snapshot,{width,signed});
+        input={action:'programmer',width,signed,base:Number(value('programmer-base')),
+          a:value('programmer-a'),b:value('programmer-b'),op:value('programmer-op')};
+      }else if(workspace==='units'){
         const amount=value('unit-value'),from=value('unit-from'),to=value('unit-to');
         Object.assign(snapshot,{amount,from,to,source:`convert(${amount},${from},${to})`});
       }else if(workspace==='tip'){
@@ -95,12 +101,12 @@ export function createWorkspaces({state,engine,ui,persist,restoreSelect,requestO
         Object.assign(snapshot,{amount,from,to,rate,source:`(${amount})*(${rate})`});
       }else snapshot.source=value('function-call').trim();
       persist();
-      const tree=parse(latexInput(snapshot.source));
+      input??={tree:parse(latexInput(snapshot.source))};
       utilityResults.set(workspace,{});
-      const result=await engine.execute({...requestOptions(),tree,solutionSteps:false},{context:workspace});
+      const result=await engine.execute({...requestOptions(),...input,solutionSteps:false},{context:workspace});
       if(!result.ok){utilityResults.set(workspace,{error:result.error||'Math ERROR'});return;}
       utilityResults.set(workspace,{...snapshot,result});
-      recordUtilityResult(result,snapshot.source,workspace);
+      if(workspace!=='programmer')recordUtilityResult(result,snapshot.source,workspace);
     }catch(exc){utilityResults.set(workspace,{error:exc.message||'Math ERROR'});}
   }
 
@@ -115,9 +121,6 @@ export function createWorkspaces({state,engine,ui,persist,restoreSelect,requestO
       if(workspace==='python'){await python.run();return;}
       if(workspace==='probability'){await probability.run();return;}
       if(workspace==='regression'){await statistics.runRegression(requestOptions(),showStatisticsResult);return;}
-      if(workspace==='programmer') {
-        const result=await engine.execute({...requestOptions(),action:'programmer',base:Number(value('programmer-base')),width:Number(value('programmer-width')),signed:$('programmer-signed').checked,a:value('programmer-a'),b:value('programmer-b'),op:value('programmer-op')});if(result.ok)$('programmer-output').textContent=Object.entries(result.bases).map(([base,n])=>`${base.padEnd(4)} ${n}`).join('\n');showResult(result);return;
-      }
       if(workspace==='constants') {
         await loadConstants();return;
       }

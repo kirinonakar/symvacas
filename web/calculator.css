@@ -40,6 +40,11 @@ math{font-family:"SymvaCAS Math","Cambria Math",math;font-weight:400;font-synthe
 .utility-metric strong{font-size:clamp(16px,3vw,22px);font-variant-numeric:tabular-nums;color:var(--ink)}
 .utility-metric:first-child strong{color:var(--accent)}
 .utility-metrics+.utility-detail{margin-top:10px}
+.programmer-metrics{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));margin:10px 0 0}
+.programmer-metrics dd{min-width:0;margin:0}
+.programmer-metrics strong{font-family:ui-monospace,Consolas,monospace;font-size:clamp(15px,2.2vw,19px)}
+.programmer-binary{grid-column:1/-1}
+.programmer-binary strong{line-height:1.55;word-spacing:.25em}
 .function-test{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
 #functions-list .list-row{flex-wrap:wrap}
 #functions-list .list-row .content{flex-basis:200px}
@@ -128,7 +133,7 @@ input:disabled,select:disabled{opacity:.45;cursor:default}
 :root .header-actions button{font-size:11px;padding:6px 8px;white-space:nowrap}
 :root .mode-bar{height:48px;padding:0 8px;gap:6px}
 :root .mode-bar #mode-status{font-size:12px;font-weight:400;padding-left:30px;letter-spacing:0}
-:root .mode-bar #angle{font-size:11px;width:62px;padding-right:12px}
+:root .mode-bar #angle{font-size:11px;font-weight:400;width:62px;padding:8px 4px}
 :root[data-workspace="scientific"] .runtime-bar{min-width:0;padding:2px 14px;font-size:10px}
 :root[data-workspace="scientific"] #status{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 :root[data-workspace="scientific"][data-engine="ready"] .runtime-bar{display:none}

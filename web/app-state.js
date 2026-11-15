@@ -110,7 +110,7 @@ export function createPersistence({state,snapshot,onPersist,toast,saveState=writ
     clearTimeout(saveTimer);saveTimer=null;
     const functionsChanged=removeExpiredAnswerFunctions(state.functions,state.variables.Ans);
     for(const section of document.querySelectorAll('details.statistics-section[id],details.statistics-model-help[id]'))state.statisticsSections[section.id]=section.open;
-    for(const field of document.querySelectorAll('main input[id],main textarea[id],main select[id],.mode-bar select[id]'))state.fields[field.id]=field.type==='checkbox'?field.checked:field.value;
+    for(const field of document.querySelectorAll('main input[id],main textarea[id],main select[id],.mode-bar select[id],.mode-bar #angle'))state.fields[field.id]=field.type==='checkbox'?field.checked:field.value;
     const draft=snapshot();
     state.statisticsHeaderKeys=statisticsHeaderKeys();
     state.fields.expression=draft.expression;

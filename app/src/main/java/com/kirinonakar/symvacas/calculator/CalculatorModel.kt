@@ -1038,28 +1038,35 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
 
     internal val utilityResults = mutableStateMapOf<String, UtilityCalculation>()
 
-    internal fun calculateUtility(workspace:String,source:String,context:String,unit:String="") {
+    internal fun calculateUtility(workspace:String,source:String,context:String,unit:String="") =
+        runUtilityCalculation(workspace,context,unit) {
+            val converted=LatexInput.convert(source) ?: source
+            val tree=JSONObject(calculationTree(converted).json())
+            val priorAnswer=variables.optJSONObject("Ans")
+            val request=request(tree=tree,answer=priorAnswer).put("solutionSteps",false).put("equationSteps",false)
+            val response=engine.execute(request)
+            if(response.optBoolean("ok")) {
+                val next=JSONObject(variables.toString())
+                if(response.has("resultAst"))next.put("Ans",response.getJSONObject("resultAst")) else next.remove("Ans")
+                variables=next
+                lastAnswerResult=response
+                appendHistory(HistoryEntry(System.currentTimeMillis(),converted,response.optString("exact"),response.optString("decimal"),workspace,
+                    inputTree=tree.toString(),response=response.toString(),answer=priorAnswer?.toString().orEmpty()))
+                save()
+            }
+            response
+        }
+
+    private fun runUtilityCalculation(workspace:String,context:String,unit:String="",execute:suspend ()->JSONObject) {
         if(busy||storageReplaced)return
         val pending=UtilityCalculation(context,unit)
         utilityResults[workspace]=pending
         busy=true
         job=viewModelScope.launch(start=CoroutineStart.LAZY) {
             try {
-                val converted=LatexInput.convert(source) ?: source
-                val tree=JSONObject(calculationTree(converted).json())
-                val priorAnswer=variables.optJSONObject("Ans")
-                val request=request(tree=tree,answer=priorAnswer).put("solutionSteps",false).put("equationSteps",false)
-                val response=engine.execute(request)
-                if(response.optBoolean("ok")) {
-                    utilityResults[workspace]=pending.copy(response=response)
-                    val next=JSONObject(variables.toString())
-                    if(response.has("resultAst"))next.put("Ans",response.getJSONObject("resultAst")) else next.remove("Ans")
-                    variables=next
-                    lastAnswerResult=response
-                    appendHistory(HistoryEntry(System.currentTimeMillis(),converted,response.optString("exact"),response.optString("decimal"),workspace,
-                        inputTree=tree.toString(),response=response.toString(),answer=priorAnswer?.toString().orEmpty()))
-                    save()
-                } else utilityResults[workspace]=pending.copy(error=response.optString("error","Math ERROR"))
+                val response=execute()
+                utilityResults[workspace]=if(response.optBoolean("ok")) pending.copy(response=response)
+                    else pending.copy(error=response.optString("error").ifBlank { "Math ERROR" })
             } catch(e:CancellationException) {
                 if(utilityResults[workspace]===pending)utilityResults[workspace]=pending.copy(error="Calculation cancelled")
                 throw e
@@ -1124,14 +1131,11 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
     fun analyzeGraph(action:String,first:String,second:String,selected:Int,other:Int) =
         with(CalculatorGraphActions) { performAnalyzeGraph(action,first,second,selected,other) }
     fun clearGraphTangent() = with(CalculatorGraphActions) { performClearGraphTangent() }
-    fun program(a: String,b: String,base: Int,width: Int,signed: Boolean,op: String) {
-        if(busy) return
-        job=viewModelScope.launch {
-            busy=true; error=""
-            try { val r=engine.execute(request("programmer").put("a",a).put("b",b.ifBlank { "0" }).put("base",base).put("width",width).put("signed",signed).put("op",op)); if(r.optBoolean("ok")){result=r;dmsDisplay=false;dmsConversion=false} else error=r.optString("error") }
-            finally { busy=false }
+    fun program(a:String,b:String,base:Int,width:Int,signed:Boolean,op:String,context:String) =
+        runUtilityCalculation("Programmer",context) {
+            engine.execute(request("programmer").put("a",a).put("b",b.ifBlank { "0" })
+                .put("base",base).put("width",width).put("signed",signed).put("op",op))
         }
-    }
     fun loadConstants() {
         if(constants!=null) return
         viewModelScope.launch {
