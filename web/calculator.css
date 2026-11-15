@@ -67,6 +67,12 @@ math{font-family:"SymvaCAS Math","Cambria Math",math;font-weight:400;font-synthe
 .editable-table thead{position:sticky;top:0;z-index:2}
 .editable-table thead th{position:static}
 .editable-table tbody th{position:sticky;left:0;top:auto;z-index:1}
+/* Keep the grid lines on the sticky header as the data scrolls underneath. */
+#statistics-grid .editable-table{border-collapse:separate;border-spacing:0}
+#statistics-grid .editable-table thead{background:var(--bar)}
+#statistics-grid .editable-table :is(th,td:not(.table-row-spacer)){border-width:0 1px 1px 0}
+#statistics-grid .editable-table tr>:first-child:not(.table-row-spacer){border-left-width:1px}
+#statistics-grid .editable-table thead tr:first-child>th{border-top-width:1px}
 .editable-table input{display:block;width:100%;min-width:0;margin:0;padding:9px 10px;border:0;border-radius:0;background:transparent;text-align:right;box-shadow:none}
 .editable-table input:focus{outline:2px solid var(--accent);outline-offset:-2px;background:var(--bg)}
 .editable-table .table-row-action{text-align:center}
