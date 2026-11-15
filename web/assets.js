@@ -1,4 +1,4 @@
-self.SYMVACAS_CACHE = 'symvacas-static-2e2c71c9b8d72825';
+self.SYMVACAS_CACHE = 'symvacas-static-ee1d27be0331f594';
 self.SYMVACAS_ASSETS = [
   "./",
   "./advanced-statistics-schema.js",
@@ -128,6 +128,7 @@ self.SYMVACAS_ASSETS = [
   "./sw.js",
   "./THIRD_PARTY.md",
   "./unit-groups.js",
+  "./utility-results.js",
   "./worker.js",
   "./workspace-commands.js",
   "./workspace-layout.css",

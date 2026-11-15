@@ -5,12 +5,16 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.semantics.semantics
@@ -19,6 +23,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import com.kirinonakar.symvacas.R
 import com.kirinonakar.symvacas.calculator.CalculatorModel
@@ -241,54 +246,68 @@ import org.json.JSONArray
     var parameters by rememberSaveable{mutableStateOf("x")}
     var body by rememberSaveable{mutableStateOf("x^2+1")}
     var message by rememberSaveable{mutableStateOf("")}
+    var failure by rememberSaveable{mutableStateOf("")}
+    var call by rememberSaveable(stateSaver=TextFieldValue.Saver){mutableStateOf(TextFieldValue())}
+    var decimal by rememberSaveable{mutableStateOf(false)}
+    val callFocus=remember { FocusRequester() }
+    fun clearStatus(){message="";failure=""}
+    fun evaluateCall(){
+        val source=call.text.trim()
+        if(source.isNotEmpty()&&!m.busy)m.calculateUtility("Functions",source,source)
+    }
     fun write(uri:Uri) {
+        clearStatus()
         try {
             context.contentResolver.openOutputStream(uri,"wt")?.use {it.write(m.exportFunctions().toByteArray(Charsets.UTF_8))} ?: error("Could not open the selected file for writing")
             message="Exported ${m.functions.length()} function${if(m.functions.length()==1)"" else "s"}"
-        } catch(e:Exception) {m.error=e.message ?: "Could not save the functions file"}
+        } catch(e:Exception) {failure=e.message ?: "Could not save the functions file"}
     }
     val exportFile=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) {uri->if(uri!=null)write(uri)}
     val importFile=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) {uri->
         if(uri!=null)try {
+            clearStatus()
             val text=context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use {it.readText()} ?: error("Could not read the selected file")
             val summary=m.importFunctions(text)
-            if(summary.isNotEmpty())message=summary
-        } catch(e:Exception) {m.error=e.message ?: "Could not read the selected file"}
+            message=summary;failure=m.error
+        } catch(e:Exception) {failure=e.message ?: "Could not read the selected file"}
     }
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        // The editor stays fixed and only the saved list scrolls; on short screens the whole panel scrolls instead.
-        val scrollAll=maxHeight<480.dp
-        val panel=if(scrollAll) Modifier.fillMaxSize().verticalScroll(rememberScrollState()) else Modifier.fillMaxSize()
-        Column(panel.padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            Text(tr("Custom functions"),style=MaterialTheme.typography.titleLarge)
-            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Field(name,"Name",Modifier.weight(1f)){name=it;message=""};Field(parameters,"Parameters",Modifier.weight(2f)){parameters=it;message=""}}
-            Field(body,"Formula",Modifier.fillMaxWidth()){body=it;message=""}
-            val preview=runCatching{JSONObject(Parser(body,true).parse().json())}.getOrNull()
-            if(preview!=null)Box(Modifier.horizontalScroll(rememberScrollState())){MathNode(preview,m.inputFont)}
-            Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                Row(horizontalArrangement=Arrangement.spacedBy(0.dp)) {
-                    StatisticsIconAction("Save function",R.drawable.ic_statistics_save){m.define(name.trim(),parameters,body,showResult=false);message=if(m.error.isEmpty())"Saved ${name.trim()}($parameters)" else ""}
-                    StatisticsIconAction("Clear",R.drawable.ic_statistics_delete){name="";parameters="";body="";message="";m.error=""}
-                }
-                SmallAction("Export"){if(m.functions.length()==0)message="No custom functions to export" else exportFile.launch("symvacas-functions.json")}
-                SmallAction("Import"){importFile.launch(arrayOf("application/json","text/plain","application/octet-stream"))}
+    Panel("Custom functions","") {
+        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Field(name,"Name",Modifier.weight(1f)){name=it;clearStatus()};Field(parameters,"Parameters",Modifier.weight(2f)){parameters=it;clearStatus()}}
+        Field(body,"Formula",Modifier.fillMaxWidth()){body=it;clearStatus()}
+        val preview=runCatching{JSONObject(Parser(body,true).parse().json())}.getOrNull()
+        if(preview!=null)Box(Modifier.horizontalScroll(rememberScrollState())){MathNode(preview,m.inputFont)}
+        Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement=Arrangement.spacedBy(0.dp)) {
+                StatisticsIconAction("Save function",R.drawable.ic_statistics_save){m.define(name.trim(),parameters,body,showResult=false);failure=m.error;message=if(failure.isEmpty())"Saved ${name.trim()}($parameters)" else ""}
+                StatisticsIconAction("Clear",R.drawable.ic_statistics_delete){name="";parameters="";body="";clearStatus()}
             }
-            if(message.isNotEmpty())Text(message)
-            if(m.error.isNotEmpty())Text(m.error,color=MaterialTheme.colorScheme.error)
-            HorizontalDivider()
-            val list=if(scrollAll) Modifier.fillMaxWidth() else Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
-            Column(list,verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                m.functions.keys().asSequence().toList().sorted().forEach{key->
-                    val definition=m.functions.getJSONObject(key)
-                    val args=definition.getJSONArray("parameters")
-                    val params=(0 until args.length()).joinToString(","){args.getString(it)}
-                    Text("$key($params)",style=MaterialTheme.typography.titleMedium)
-                    Box(Modifier.horizontalScroll(rememberScrollState())){MathNode(definition.getJSONObject("body"),m.inputFont*.85f)}
-                    Row {
-                        SmallAction("Edit"){name=key;parameters=params;body=FunctionTransfer.storedSource(definition);message=""}
-                        SmallAction("Insert"){m.mode="Scientific/CAS";m.insert("$key(${",".repeat((args.length()-1).coerceAtLeast(0))})",key.length+1)}
-                        SmallAction("Delete"){m.removeVariable(key)}
-                    }
+            SmallAction("Export"){if(m.functions.length()==0)message="No custom functions to export" else exportFile.launch("symvacas-functions.json")}
+            SmallAction("Import"){importFile.launch(arrayOf("application/json","text/plain","application/octet-stream"))}
+        }
+        if(message.isNotEmpty())Text(message)
+        if(failure.isNotEmpty())Text(tr(failure),color=MaterialTheme.colorScheme.error)
+        HorizontalDivider()
+        OutlinedTextField(call,{call=it},Modifier.fillMaxWidth().focusRequester(callFocus).keepInputVisible(),
+            label={Text(tr("Function call"))},placeholder={Text("f(2)")},singleLine=true,
+            keyboardOptions=KeyboardOptions(imeAction=ImeAction.Go),keyboardActions=KeyboardActions(onGo={evaluateCall()}))
+        val result=m.utilityResults["Functions"]
+        CalculationButton("Evaluate",result?.pending==true,result ?: Unit,enabled=call.text.isNotBlank()&&!m.busy,
+            onCancel={m.cancel()},onClick=::evaluateCall)
+        UtilityMathResult(m,"Functions",decimal,onDecimalChange={decimal=it})
+        HorizontalDivider()
+        Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+            m.functions.keys().asSequence().toList().sorted().forEach{key->
+                val definition=m.functions.getJSONObject(key)
+                val args=definition.getJSONArray("parameters")
+                val params=(0 until args.length()).joinToString(","){args.getString(it)}
+                Text("$key($params)",style=MaterialTheme.typography.titleMedium)
+                Box(Modifier.horizontalScroll(rememberScrollState())){MathNode(definition.getJSONObject("body"),m.inputFont*.85f)}
+                val template="$key(${",".repeat((args.length()-1).coerceAtLeast(0))})"
+                Row(Modifier.horizontalScroll(rememberScrollState())) {
+                    SmallAction("Edit"){name=key;parameters=params;body=FunctionTransfer.storedSource(definition);clearStatus()}
+                    SmallAction("Test function"){call=TextFieldValue(template,TextRange(key.length+1));callFocus.requestFocus()}
+                    SmallAction("Insert"){m.mode="Scientific/CAS";m.insert(template,key.length+1)}
+                    SmallAction("Delete"){m.removeVariable(key)}
                 }
             }
         }

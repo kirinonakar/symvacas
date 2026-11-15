@@ -17,6 +17,7 @@ export function layoutFixture({width=1200,saved={},mode='scientific'}={}) {
     };
     constructor(tag){super();this.tagName=tag.toUpperCase();}
     append(...nodes){for(const node of nodes){node.remove();node.parentElement=this;this.children.push(node);}}
+    replaceChildren(...nodes){for(const child of [...this.children])child.remove();this.append(...nodes);}
     prepend(...nodes){const previous=[...this.children];this.append(...nodes,...previous);}
     before(...nodes){const parent=this.parentElement,previous=[...parent.children];parent.append(...previous.slice(0,previous.indexOf(this)),...nodes,...previous.slice(previous.indexOf(this)));}
     after(...nodes){const parent=this.parentElement,previous=[...parent.children],at=previous.indexOf(this)+1;parent.append(...previous.slice(0,at),...nodes,...previous.slice(at));}
@@ -29,6 +30,8 @@ export function layoutFixture({width=1200,saved={},mode='scientific'}={}) {
       if(excluded){if(this.matches(excluded[1]))return false;simple=simple.replace(excluded[0],'');}
       const mode=simple.match(/\[data-mode="([^"]+)"\]/);
       if(mode){if(this.dataset.mode!==mode[1])return false;simple=simple.replace(mode[0],'');}
+      const attribute=simple.match(/^\[([a-z-]+)="([^"]+)"\]$/);
+      if(attribute)return this.getAttribute(attribute[1])===attribute[2];
       if(simple.startsWith('#'))return this.id===simple.slice(1);
       if(simple.startsWith('.'))return this.classList.contains(simple.slice(1));
       return this.tagName===simple.toUpperCase();
@@ -56,6 +59,7 @@ export function layoutFixture({width=1200,saved={},mode='scientific'}={}) {
   const storage=new Map([['symvacas.desktop-layout.v1',JSON.stringify(saved)]]);
   view.localStorage={getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)};
   const doc=new Node('document');doc.defaultView=view;doc.createElement=tag=>new Node(tag);
+  doc.createElementNS=(_,tag)=>doc.createElement(tag);
   doc.getElementById=id=>doc.querySelector('#'+id);
   const add=(parent,tag,id='',className='')=>{const node=new Node(tag);node.id=id;node.className=className;parent.append(node);return node;};
   const root=add(doc,'html');root.lang='en';root.dataset.workspace=mode;doc.documentElement=root;

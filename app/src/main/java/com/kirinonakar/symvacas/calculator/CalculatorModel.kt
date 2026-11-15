@@ -11,6 +11,16 @@ import org.json.JSONObject
 
 private const val maxTapeEntries = 10
 private const val maxHistoryEntries = 500
+
+internal data class UtilityCalculation(
+    val context: String,
+    val unit: String = "",
+    val response: JSONObject? = null,
+    val error: String = ""
+) {
+    val pending get()=response==null&&error.isEmpty()
+}
+
 class CalculatorModel(application: Application) : AndroidViewModel(application) {
     internal var storageReplaced=false
         private set
@@ -886,7 +896,7 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
         appendHistory(HistoryEntry(System.currentTimeMillis(),source,response.optString("exact"),response.optString("decimal"),mode,inputTree=inputTree()?.toString() ?: "",response=response.toString(),answer=inputAnswer?.toString() ?: ""))
         save()
     }
-    fun request(action: String = "evaluate",tree:JSONObject?=null) = JSONObject().put("action",action).put("removeComputationLimit",removeComputationLimit).put("precision",precision).put("displayDigits",displayDigits).put("angle",angle).put("variables",JSONObject(variables.toString()).apply{inputAnswer?.let{put("Ans",it)}}).put("functions",functions).put("assumptions",assumptions).put("equationSteps",action=="evaluate" && mode=="Equations").put("solutionSteps",action=="evaluate" && (mode=="Equations" || (mode=="Scientific/CAS" && calcModeStepByStep))).apply {
+    fun request(action: String = "evaluate",tree:JSONObject?=null,answer:JSONObject?=inputAnswer) = JSONObject().put("action",action).put("removeComputationLimit",removeComputationLimit).put("precision",precision).put("displayDigits",displayDigits).put("angle",angle).put("variables",JSONObject(variables.toString()).apply{answer?.let{put("Ans",it)}}).put("functions",functions).put("assumptions",assumptions).put("equationSteps",action=="evaluate" && mode=="Equations").put("solutionSteps",action=="evaluate" && (mode=="Equations" || (mode=="Scientific/CAS" && calcModeStepByStep))).apply {
         if(tree!=null)put("tree",tree).put("statisticsDatasets",savedStatisticsDatasets(tree,dataSets,getJSONObject("variables"),functions,removeComputationLimit))
     }
     internal fun calculationTree(source:String):Expr {
@@ -1025,6 +1035,41 @@ class CalculatorModel(application: Application) : AndroidViewModel(application) 
     }
     fun calculateStatistics(source:String,statisticsTermLabels:Map<String,String> = emptyMap()) =
         with(CalculatorStatisticsActions) {performCalculateStatistics(source,statisticsTermLabels)}
+
+    internal val utilityResults = mutableStateMapOf<String, UtilityCalculation>()
+
+    internal fun calculateUtility(workspace:String,source:String,context:String,unit:String="") {
+        if(busy||storageReplaced)return
+        val pending=UtilityCalculation(context,unit)
+        utilityResults[workspace]=pending
+        busy=true
+        job=viewModelScope.launch(start=CoroutineStart.LAZY) {
+            try {
+                val converted=LatexInput.convert(source) ?: source
+                val tree=JSONObject(calculationTree(converted).json())
+                val priorAnswer=variables.optJSONObject("Ans")
+                val request=request(tree=tree,answer=priorAnswer).put("solutionSteps",false).put("equationSteps",false)
+                val response=engine.execute(request)
+                if(response.optBoolean("ok")) {
+                    utilityResults[workspace]=pending.copy(response=response)
+                    val next=JSONObject(variables.toString())
+                    if(response.has("resultAst"))next.put("Ans",response.getJSONObject("resultAst")) else next.remove("Ans")
+                    variables=next
+                    lastAnswerResult=response
+                    appendHistory(HistoryEntry(System.currentTimeMillis(),converted,response.optString("exact"),response.optString("decimal"),workspace,
+                        inputTree=tree.toString(),response=response.toString(),answer=priorAnswer?.toString().orEmpty()))
+                    save()
+                } else utilityResults[workspace]=pending.copy(error=response.optString("error","Math ERROR"))
+            } catch(e:CancellationException) {
+                if(utilityResults[workspace]===pending)utilityResults[workspace]=pending.copy(error="Calculation cancelled")
+                throw e
+            } catch(e:Exception) {
+                utilityResults[workspace]=pending.copy(error=e.message ?: "Math ERROR")
+            } finally {if(job==coroutineContext.job)busy=false}
+        }
+        job?.start()
+    }
+
     fun cancel() { inputVersion++;commitRequested=false;previewRunner?.cancel();job?.cancel(); graphJob?.cancel();animationJob?.cancel();graphAnimating=false;analysisJob?.cancel();regressionJob?.cancel();pythonJob?.cancel(); engine.cancel(); busy=false; graphBusy=false;regressionBusy=false;pythonBusy=false;pythonInputPrompt=null;pythonInputSubmit=null;previewBusy=false;error="Calculation cancelled" }
     fun transform(operation: String) { val source=editor.source.ifBlank { "Ans" }; edit(Editor("$operation($source)")); calculate() }
     fun store(name:String,source:String=editor.source.ifBlank { "Ans" },showResult:Boolean=true,finishInput:Boolean=false) =

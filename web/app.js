@@ -16,6 +16,7 @@ import {bindMathCopy} from './latex-output.js';
 import {graphColorsForTheme} from './graph-colors.js';
 import {createWorkspaceNavigation} from './workspace-navigation.js';
 import {createConversionControls} from './conversion-controls.js';
+import {utilityModes} from './utility-results.js';
 
 let storageUnavailable=false;
 const saved=await readState({onError:()=>{storageUnavailable=true;}}),state=createAppState(saved,navigator.language),ui=createAppUI();
@@ -42,7 +43,7 @@ calculator=createCalculator({state,engine,isBusy:()=>runtime.busy,ui,persist,sch
   pressKey:input=>keypad.press(input),modeDialog:()=>dialogs.mode(),variablesDialog:()=>dialogs.variables(),matrixInsertDialog:()=>dialogs.matrixInsert()});
 keypad=createCalculatorKeypad({state,persist,isCalcActive:()=>calculator.calcActive,isBusy:()=>runtime.busy,handleKey:calculator.handleKey,updateButtons});
 workspaces=createWorkspaces({state,engine,ui,persist,restoreSelect:id=>restoreSelect(state,id),requestOptions,isBusy:()=>runtime.busy,error,changeMode,
-  replaceInput:calculator.replaceInput,insert:calculator.insert,evaluate:calculator.evaluate,showResult:calculator.showResult,showStatisticsResult:calculator.showStatisticsResult,clearResult:calculator.clearResult,graphs});
+  replaceInput:calculator.replaceInput,insert:calculator.insert,evaluate:calculator.evaluate,showResult:calculator.showResult,showStatisticsResult:calculator.showStatisticsResult,recordUtilityResult:calculator.recordUtilityResult,clearResult:calculator.clearResult,graphs});
 dialogs=createAppDialogs({state,ui,persist,calculator,changeMode,pressKey:keypad.press,refreshDisplays,renderMatrix:workspaces.renderMatrix,error,
   reloadState:async next=>{if(!await persistence.replace(next))throw new Error('Could not save data');location.reload();}});
 const workspaceNavigation=createWorkspaceNavigation({changeMode});
@@ -66,7 +67,7 @@ function changeMode(mode) {
   setText($('mode-status'),$('mode').selectedOptions[0].textContent);
   workspaceNavigation.update(mode);
   const panel=$('answer').closest('.answer-panel'),actions=$('exact-toggle').parentElement;
-  panel.hidden=['graph','python','programmer','constants','probability','statistics'].includes(mode);actions.hidden=panel.hidden;
+  panel.hidden=['graph','python','programmer','constants','probability','statistics',...utilityModes].includes(mode);actions.hidden=panel.hidden;
   if(mode==='scientific'){$('tape-active').append(panel);$('calculator-display').append(actions);}
   else{panel.append(actions);document.querySelector('main').insertBefore(panel,document.querySelector('.keypad-workspace'));}
   if(mode==='scientific'){const edits=$('calculator-display').querySelector('.edit-actions');if($('stop').parentElement!==edits)edits.insertBefore($('stop'),edits.firstChild);}

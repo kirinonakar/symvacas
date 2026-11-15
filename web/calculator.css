@@ -25,6 +25,24 @@ math{font-family:"SymvaCAS Math","Cambria Math",math;font-weight:400;font-synthe
 .statistics-warning{padding:10px 12px;border-left:3px solid var(--danger);background:var(--panel);color:var(--danger);font-size:.85rem;white-space:normal;overflow-wrap:anywhere}
 .statistics-result-report .result-flow{font-size:14px}
 .statistics-result-report .result-part{padding:.12em 0}
+.utility-result{margin:16px 0;padding:clamp(12px,3vw,20px);min-width:0;background:var(--number);border:1px solid var(--line);border-inline-start:4px solid var(--accent);border-radius:8px;overflow-wrap:anywhere}
+.utility-result h3{font-size:17px}
+.utility-result .statistics-result-heading button{border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+.utility-value{display:flex;flex-wrap:wrap;align-items:baseline;gap:.25em .45em;min-width:0;font-size:clamp(24px,4vw,34px);color:var(--ink)}
+.utility-value .result-flow{min-width:0;max-width:100%;width:auto}
+.utility-unit{font:600 .62em system-ui,sans-serif;color:var(--accent);white-space:nowrap}
+.utility-detail{margin:5px 0;color:var(--muted);font-size:13px;line-height:1.5}
+.utility-display-modes{display:inline-flex;gap:3px;padding:3px;margin:0 0 6px;border-radius:7px;background:var(--bar)}
+.utility-display-modes button{padding:6px 10px;border-radius:5px;font-size:12px}
+.utility-display-modes button[aria-pressed="true"]{background:var(--panel);color:var(--accent);font-weight:700}
+.utility-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%, 128px),1fr));gap:8px}
+.utility-metric{display:grid;align-content:start;gap:4px;padding:10px 12px;border-radius:6px;background:var(--panel);font-size:12px;color:var(--muted)}
+.utility-metric strong{font-size:clamp(16px,3vw,22px);font-variant-numeric:tabular-nums;color:var(--ink)}
+.utility-metric:first-child strong{color:var(--accent)}
+.utility-metrics+.utility-detail{margin-top:10px}
+.function-test{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+#functions-list .list-row{flex-wrap:wrap}
+#functions-list .list-row .content{flex-basis:200px}
 .statistics-result-report table .result-flow{width:max-content;max-width:none;flex-wrap:nowrap}
 .statistics-result-report table .result-part{max-width:none;overflow:visible;padding:.12em 0}
 .statistics-result-details .statistics-interpretation{white-space:normal;overflow-wrap:anywhere}

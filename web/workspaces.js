@@ -7,7 +7,7 @@ import {statisticsRequest} from './statistics-request.js';
 import {renderFormulas} from './formula-preview.js';
 import {displayNumber} from './display-format.js';
 import {equationCommand,polynomialEquation} from './workspace-commands.js';
-import {tipCommand,moneyResult} from './money.js';
+import {tipCommand} from './money.js';
 import {unitGroups,unitLabel} from './unit-groups.js';
 import {createMatrixWorkspace} from './matrix-workspace.js';
 import {createStatisticsWorkspace} from './statistics-workspace.js';
@@ -15,8 +15,9 @@ import {createFunctionsWorkspace} from './functions-workspace.js';
 import {createPythonWorkspace} from './python-workspace.js';
 import {createProbabilityWorkspace} from './probability-workspace.js';
 import {createEquationSteps} from './equation-steps.js';
+import {createUtilityResults,utilityModes} from './utility-results.js';
 
-export function createWorkspaces({state,engine,ui,persist,restoreSelect,requestOptions,isBusy,error,changeMode,replaceInput,insert,evaluate,showResult,showStatisticsResult,clearResult,graphs}) {
+export function createWorkspaces({state,engine,ui,persist,restoreSelect,requestOptions,isBusy,error,changeMode,replaceInput,insert,evaluate,showResult,showStatisticsResult,recordUtilityResult,clearResult,graphs}) {
   const {toast}=ui;
   const refreshEquationInput=bindEquationInput($('equation-source'),$('equation-line-numbers'),persist);
   for(const id of ['equation-source','equation-a','equation-b','equation-c','equation-d','equation-variable','equation-extra','equation-initial'])bindMathPaste($(id),{multiline:id==='equation-source',onError:toast});
@@ -25,9 +26,10 @@ export function createWorkspaces({state,engine,ui,persist,restoreSelect,requestO
   const functions=createFunctionsWorkspace({state,ui,persist,refreshWorkspaceMath,changeMode,insert});
   const python=createPythonWorkspace({engine,ui,persist,requestOptions,error,run});
   const probability=createProbabilityWorkspace({state,engine,persist,requestOptions});
+  const utilityResults=createUtilityResults({state,clipboard:ui.clipboard});
+  for(const id of ['unit-value','function-call'])bindMathPaste($(id),{onError:toast});
   const equationSteps=createEquationSteps($('equation-steps'),$('equation-steps-body'),state,ui.clipboard);
   function equationSource(){return value('equation-form')==='general'?value('equation-source'):polynomialEquation(['equation-a','equation-b','equation-c','equation-d'].slice(0,Number(value('equation-form'))+1).map(value),value('equation-variable'));}
-  function tipExpression(){return tipCommand({bill:value('tip-amount'),percent:value('tip-percent'),fixed:value('tip-fixed'),tax:value('tip-tax'),people:value('tip-people'),method:value('tip-method'),whole:$('tip-whole').checked});}
   function tipMethodControls(){const fixed=value('tip-method')==='amount';$('tip-percent').disabled=fixed;$('tip-fixed').disabled=!fixed;}
   $('tip-method').onchange=tipMethodControls;tipMethodControls();
 
@@ -76,7 +78,34 @@ export function createWorkspaces({state,engine,ui,persist,restoreSelect,requestO
     }catch(exc){toast(`${t(exc.message)} ${getLanguage()==='ko'?'수동 환율을 사용할 수 있습니다.':'You can use a manual rate.'}`);}finally{button.disabled=false;}
   };
 
+  async function runUtility(workspace){
+    if(isBusy()||!engine.ready)return;
+    try{
+      const snapshot={};
+      if(workspace==='units'){
+        const amount=value('unit-value'),from=value('unit-from'),to=value('unit-to');
+        Object.assign(snapshot,{amount,from,to,source:`convert(${amount},${from},${to})`});
+      }else if(workspace==='tip'){
+        const people=value('tip-people');
+        const source=tipCommand({bill:value('tip-amount'),percent:value('tip-percent'),fixed:value('tip-fixed'),tax:value('tip-tax'),people,method:value('tip-method'),whole:$('tip-whole').checked});
+        Object.assign(snapshot,{people:Number(people),source});
+      }else if(workspace==='currency'){
+        const amount=value('currency-amount'),rate=value('currency-rate'),from=value('currency-from').trim().toUpperCase(),to=value('currency-to').trim().toUpperCase();
+        if(!/^[A-Z]{3}$/.test(from)||!/^[A-Z]{3}$/.test(to))throw new Error('3자리 통화 코드를 입력하세요.');
+        Object.assign(snapshot,{amount,from,to,rate,source:`(${amount})*(${rate})`});
+      }else snapshot.source=value('function-call').trim();
+      persist();
+      const tree=parse(latexInput(snapshot.source));
+      utilityResults.set(workspace,{});
+      const result=await engine.execute({...requestOptions(),tree,solutionSteps:false},{context:workspace});
+      if(!result.ok){utilityResults.set(workspace,{error:result.error||'Math ERROR'});return;}
+      utilityResults.set(workspace,{...snapshot,result});
+      recordUtilityResult(result,snapshot.source,workspace);
+    }catch(exc){utilityResults.set(workspace,{error:exc.message||'Math ERROR'});}
+  }
+
   async function run(workspace) {
+    if(utilityModes.includes(workspace)){await runUtility(workspace);return;}
     if(workspace==='equation')equationSteps.clear();
     try{
       statistics.clearAdvancedError(workspace);
@@ -99,16 +128,18 @@ export function createWorkspaces({state,engine,ui,persist,restoreSelect,requestO
       }else if(workspace==='statistics-summary'){source=statistics.summaryExpression();advancedContext={termLabels:statistics.summaryTermLabels()};}
       else if(workspace==='statistics'){source=statistics.expression();statisticsContext=statistics.analysisSummary();advancedContext={termLabels:statistics.analysisTermLabels()};}
       else if(['statistics-advanced','statistics-preparation','statistics-tests','statistics-general','statistics-models'].includes(workspace)){source=statistics.advancedExpression(workspace);advancedContext=statistics.advancedContext(workspace);}
-      else if(workspace==='units')source=`convert(${value('unit-value')},${value('unit-from')},${value('unit-to')})`;
-      else if(workspace==='tip')source=tipExpression();
-      else if(workspace==='currency'){source=`(${value('currency-amount')})*(${value('currency-rate')})`;}
       const expressionRequest=workspace.startsWith('statistics')?statisticsRequest(latexInput(source)):{tree:parse(latexInput(source))};
-      let result=await engine.execute({...requestOptions(),...expressionRequest,...(workspace==='equation'?{equationSteps:true,solutionSteps:true}:{}),...(advancedContext?.termLabels?{statisticsTermLabels:advancedContext.termLabels}:{})},{context:workspace});if(workspace==='tip'&&result.ok)result=moneyResult(result,Number(value('tip-people')));if(statisticsContext&&result.ok)result={...result,note:[statisticsContext,result.note].filter(Boolean).join('\n')};if(!result.ok&&statistics.showAdvancedError(result.error,workspace))return;(workspace.startsWith('statistics')?showStatisticsResult:showResult)(result,source,workspace==='equation'?equationSource():source,{decimalDisplay:workspace==='regression',statisticsTarget:workspace==='statistics'?'statistics-analysis-result':workspace.startsWith('statistics-')?workspace+'-result':''});
+      let result=await engine.execute({...requestOptions(),...expressionRequest,...(workspace==='equation'?{equationSteps:true,solutionSteps:true}:{}),...(advancedContext?.termLabels?{statisticsTermLabels:advancedContext.termLabels}:{})},{context:workspace});if(statisticsContext&&result.ok)result={...result,note:[statisticsContext,result.note].filter(Boolean).join('\n')};if(!result.ok&&statistics.showAdvancedError(result.error,workspace))return;(workspace.startsWith('statistics')?showStatisticsResult:showResult)(result,source,workspace==='equation'?equationSource():source,{decimalDisplay:workspace==='regression',statisticsTarget:workspace==='statistics'?'statistics-analysis-result':workspace.startsWith('statistics-')?workspace+'-result':''});
       if(workspace==='equation')equationSteps.show(result);
       if(advancedContext&&workspace!=='statistics-summary')statistics.showAdvancedResult(result,advancedContext,workspace);
     }catch(exc){const message=exc.message||'Math ERROR';if(!statistics.showAdvancedError(message,workspace))error(message);}
   }
   document.querySelectorAll('[data-run]').forEach(button=>button.onclick=()=>run(button.dataset.run));
+  $('function-call').addEventListener('keydown',event=>{
+    if(event.key!=='Enter'||event.isComposing)return;
+    event.preventDefault();
+    void runUtility('functions');
+  });
 
   function initialize() {
     const units='m km cm mm in inch ft yd mi m2 cm2 km2 ha acre m3 L mL galUS kg g mg lb oz K degC degF s sec min h hr day ms mps kph mph knot mps2 g0 Pa kPa bar atm N kN lbf J kJ cal kWh eV W kW Hz kHz MHz A amp ampere mA uA C coulomb mC uC V volt mV kV ohm Ω kohm kΩ Mohm MΩ S siemens mS F farad uF nF pF H henry mH uH Wb weber Vs T tesla mT uT mol mole mmol umol bit byte kB KiB MB MiB GB rad deg grad'.split(' ');
@@ -116,7 +147,7 @@ export function createWorkspaces({state,engine,ui,persist,restoreSelect,requestO
     for(const group of Object.keys(unitGroups)){const option=element('option',group==='Amount'?'amount':group);option.value=group;$('unit-category').append(option);}restoreSelect('unit-category');$('unit-category').onchange();
     statistics.datasetsList();functions.render();equationControls();refreshWorkspaceMath();
   }
-  function render(){refreshWorkspaceMath();statistics.render();probability.render();equationSteps.render();}
+  function render(){refreshWorkspaceMath();statistics.render();probability.render();equationSteps.render();utilityResults.render();}
   return {initialize,render,refreshMath:refreshWorkspaceMath,renderMatrix:matrix.render,renderFunctions:functions.render,equationSource,clearStatisticsResult:statistics.clearResult,loadConstantsIfNeeded,
     runStatisticsModelWorkflow:plan=>{if(isBusy()||!engine.ready)return;changeMode('statistics');statistics.prepareModelWorkflow(plan);return run('statistics-advanced');}};
 }

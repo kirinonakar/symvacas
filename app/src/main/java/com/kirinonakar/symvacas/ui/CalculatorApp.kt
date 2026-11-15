@@ -118,7 +118,7 @@ private val LocalCalculatorOverlay=staticCompositionLocalOf<(String)->Unit> { {}
                 else->ScientificWorkspace(m,screenExpanded,{screenExpanded=!screenExpanded},{overlay=it})
             }
         }}
-        if(m.mode !in listOf("Scientific/CAS","Equations","Probability") && m.error.isNotBlank()) Text(m.error,Modifier.fillMaxWidth().padding(8.dp),fontSize=12.sp,color=c.danger)
+        if(m.mode !in listOf("Scientific/CAS","Equations","Probability","Units","Tip","Currency","Functions") && m.error.isNotBlank()) Text(m.error,Modifier.fillMaxWidth().padding(8.dp),fontSize=12.sp,color=c.danger)
     }
     when(overlay) {
         "About"->AboutDialog {overlay=""}
@@ -417,14 +417,14 @@ internal fun largeHistoryTree(root:JSONObject?):Boolean {
     if(showCustom)DisplayShortcutsDialog(m){showCustom=false}
 }
 
-@Composable fun ResultMath(result:JSONObject,decimal:Boolean,size:Float,mixed:Boolean=false,displayMode:ResultDisplayMode=ResultDisplayMode.OFF,thousandsSeparator:Boolean=false,engineeringConversion:Boolean=false,engineeringShift:Int=0,dmsDisplay:Boolean=false,dmsConversion:Boolean=false,displayDigits:Int=10) {
+@Composable fun ResultMath(result:JSONObject,decimal:Boolean,size:Float,mixed:Boolean=false,displayMode:ResultDisplayMode=ResultDisplayMode.OFF,thousandsSeparator:Boolean=false,engineeringConversion:Boolean=false,engineeringShift:Int=0,dmsDisplay:Boolean=false,dmsConversion:Boolean=false,displayDigits:Int=10,preserveSmallValues:Boolean=false) {
     val guidance=result.optJSONObject("guidance")
     if(guidance?.optString("status")=="unresolved_equation") {
         Column {
             Text(tr(guidance.optString("message")),style=MaterialTheme.typography.bodyMedium)
             guidance.optJSONObject("knownRoots")?.let {roots->
                 Text(tr(if(roots.optBoolean("approximate"))"Numerical real roots (partial)" else "Known real roots (partial)"),style=MaterialTheme.typography.bodySmall)
-                ResultMath(roots,false,size,displayDigits=displayDigits)
+                ResultMath(roots,false,size,displayDigits=displayDigits,preserveSmallValues=preserveSmallValues)
             }
         }
         return
@@ -433,8 +433,8 @@ internal fun largeHistoryTree(root:JSONObject?):Boolean {
     val effectiveMode=if(engineeringConversion)ResultDisplayMode.ENGINEERING else displayMode
     val tree=ResultDisplayFormat.resultTree(result,decimal,mixed,engineeringConversion,dmsDisplay,dmsConversion)
     val shift=if(engineeringConversion)engineeringShift else 0
-    val displayTree=tree?.let{ResultDisplayFormat.formatTree(it,effectiveMode,thousandsSeparator,shift,engineeringConversion,displayDigits)}
-    if(displayTree!=null)WrappedMathResult(displayTree,size) else Text(ResultDisplayFormat.formatText(result.optString(if(useDecimal)"decimal" else "exact"),effectiveMode,thousandsSeparator,shift,engineeringConversion,displayDigits),fontSize=size.sp,color=LocalInstrument.current.ink,fontFamily=FontFamily.Serif)
+    val displayTree=tree?.let{ResultDisplayFormat.formatTree(it,effectiveMode,thousandsSeparator,shift,engineeringConversion,displayDigits,preserveSmallValues)}
+    if(displayTree!=null)WrappedMathResult(displayTree,size) else Text(ResultDisplayFormat.formatText(result.optString(if(useDecimal)"decimal" else "exact"),effectiveMode,thousandsSeparator,shift,engineeringConversion,preserveSmallValues=preserveSmallValues),fontSize=size.sp,color=LocalInstrument.current.ink,fontFamily=FontFamily.Serif)
 }
 private fun domainText(result:JSONObject?):String {
     val conditions=result?.optJSONArray("conditions") ?: return ""

@@ -8,7 +8,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.unit.*
 import com.kirinonakar.symvacas.calculator.CalculatorModel
-import com.kirinonakar.symvacas.math.Editor
 import com.kirinonakar.symvacas.ui.theme.LocalInstrument
 
 val UnitGroups=linkedMapOf(
@@ -50,8 +49,11 @@ val UnitGroups=linkedMapOf(
         }
         ConversionChoices("from:",UnitGroups[group]!!,from,{from=it},translate=false,label=::unitLabel)
         ConversionChoices("to:",UnitGroups[group]!!,to,{to=it},translate=false,label=::unitLabel)
-        Button(onClick={m.edit(Editor("convert($value,$from,$to)"));m.calculate()}) { Text("Convert") }
-        Display(m)
+        val result=m.utilityResults["Units"]
+        CalculationButton("Convert",result?.pending==true,result ?: Unit,enabled=!m.busy,onCancel={m.cancel()}) {
+            m.calculateUtility("Units","convert($value,$from,$to)","$value $from → $to",to)
+        }
+        UtilityMathResult(m,"Units",decimal=true)
         Text("Units in expressions: qty(2,m) + qty(30,cm). Convert a derived quantity with convert(qty(1,kg)*qty(2,mps2),N).",fontSize=11.sp)
     }
 }

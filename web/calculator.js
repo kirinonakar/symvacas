@@ -39,6 +39,20 @@ export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist
   let calculationPreviewTimer=null,calculationPreviewKey=null,calculationPreviewRevision=0;
   let failedCalculationPreviewKey=null;
   const undoStack=()=>calcSession?.undo||expressionUndo;
+  function recordResult(result,source,mode,previousAnswer) {
+    if(result.resultAst&&!result.assignment)state.variables.Ans=result.resultAst;
+    if(removeExpiredAnswerFunctions(state.functions,state.variables.Ans))onFunctionsChanged();
+    if(!source)return;
+    const entry={source,exact:result.exact||'',decimal:result.decimal||'',resultAst:result.resultAst,inputAns:previousAnswer,calcValues:result.calcValues,display:{tree:result.tree,decimalTree:result.decimalTree,approximate:result.approximate},time:Date.now(),star:false,mode};
+    state.history.unshift(entry);state.history=state.history.slice(0,500);
+    for(const older of state.history.slice(11))delete older.display;
+    return entry;
+  }
+  function recordUtilityResult(result,source,mode) {
+    recordResult(result,source,mode,state.variables.Ans);
+    if(value('mode')==='scientific')renderTape();
+    persist();
+  }
   function showResult(result,source='',displaySource=source,{decimalDisplay=false}={}) {
     if(!result.ok){error(result.error||'계산 오류');return;}
     if(decimalDisplay){decimal=true;$('exact-toggle').textContent='≈ Decimal';}
@@ -46,10 +60,9 @@ export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist
     engineeringConversion=false;engineeringShift=0;syncEngineering();
     lastResult=result;lastResultSource=displaySource;
     committed=true;$('commit-indicator').textContent='=';
-    if(result.resultAst&&!result.assignment) state.variables.Ans=result.resultAst;
-    if(removeExpiredAnswerFunctions(state.functions,state.variables.Ans))onFunctionsChanged();
+    const entry=recordResult(result,source,value('mode'),previousAnswer);
+    if(entry)activeHistoryEntry=entry;
     renderResult();
-    if(source){activeHistoryEntry={source,exact:result.exact||'',decimal:result.decimal||'',resultAst:result.resultAst,inputAns:previousAnswer,calcValues:result.calcValues,display:{tree:result.tree,decimalTree:result.decimalTree,approximate:result.approximate},time:Date.now(),star:false,mode:value('mode')};state.history.unshift(activeHistoryEntry);state.history=state.history.slice(0,500);for(const entry of state.history.slice(11))delete entry.display;}
     renderTape();tapeFollow.latest();
     persist();
   }
@@ -523,7 +536,7 @@ export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist
     cursorResizeObserver?.disconnect();
     document.fonts?.removeEventListener('loadingdone',renderInputCursor);
   }
-  return {handleKey,insert,evaluate,showResult,showStatisticsResult,clearResult,renderResult,renderTape,renderNotation,preview,renderInputCursor,applyFonts,applyWordWrap,replaceInput,updateResultSource,
+  return {handleKey,insert,evaluate,showResult,showStatisticsResult,recordUtilityResult,clearResult,renderResult,renderTape,renderNotation,preview,renderInputCursor,applyFonts,applyWordWrap,replaceInput,updateResultSource,
     clearExplanations:()=>{solutionSteps.clear();displayedStepResult=null;$('result-guidance').replaceChildren();},
     cancelPreview:cancelCalculationPreview,schedulePreview:scheduleCalculationPreview,
     resetPreview:()=>{calculationPreviewKey=null;scheduleCalculationPreview();},

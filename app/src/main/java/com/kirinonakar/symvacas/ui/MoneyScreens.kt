@@ -35,6 +35,7 @@ private fun displayAmount(value:BigDecimal)=value.setScale(6,RoundingMode.HALF_E
     var tax by rememberSaveable{mutableStateOf("0")}
     var people by rememberSaveable{mutableStateOf("1")}
     var whole by rememberSaveable{mutableStateOf(true)}
+    var cleared by rememberSaveable(bill,percent,tipAmount,tipIsAmount,tax,people,whole){mutableStateOf(false)}
     val places=2
     val result=runCatching{
         if(tipIsAmount)Money.tipFromAmount(decimalInput(bill),decimalInput(tipAmount),decimalInput(tax),people.toInt(),places,whole)
@@ -56,17 +57,46 @@ private fun displayAmount(value:BigDecimal)=value.setScale(6,RoundingMode.HALF_E
             Text(if(isKorean())"1인당 금액을 정수로 보정" else "Whole amounts per person",Modifier.weight(1f))
             Switch(whole,{whole=it})
         }
-        result.getOrNull()?.let {r->
+        if(cleared) Button(onClick={cleared=false}) { Text(tr("Calculate")) }
+        else result.getOrNull()?.let {r->
             val implied=runCatching{
                 if(tipIsAmount||whole)Money.impliedTipPercent(decimalInput(bill),r.tip)?.setScale(2,RoundingMode.HALF_UP)?.stripTrailingZeros()
                 else decimalInput(percent).stripTrailingZeros()
             }.getOrNull()
-            Text("${if(isKorean())"합계" else "Total"}  ${Money.format(r.total)}",style=MaterialTheme.typography.headlineMedium)
-            Text("${if(isKorean())"팁" else "Tip"}  ${Money.format(r.tip)}${if(implied!=null)"   ·   ${Money.format(implied)}%" else ""}   ·   ${if(isKorean())"세금" else "Tax"}  ${Money.format(r.tax)}")
-            HorizontalDivider()
-            Text("${if(isKorean())"1인당" else "Per person"}  ${Money.format(r.share)}",style=MaterialTheme.typography.titleLarge)
-            if(r.extraPeople>0)Text(if(isKorean())"${r.extraPeople}명은 ${Money.format(r.extraShare)}, 나머지는 ${Money.format(r.share)}씩 냅니다. 합계가 정확히 일치하도록 나눴습니다." else "${r.extraPeople} ${if(r.extraPeople==1)"person pays" else "people pay"} ${Money.format(r.extraShare)}; the others pay ${Money.format(r.share)}. This keeps the split equal to the total.",fontSize=12.sp)
-        } ?: Text(if(isKorean())"0 이상인 금액과 정수 인원수를 입력하세요." else "Enter valid non-negative amounts and a whole number of people.",color=LocalInstrument.current.danger)
+            val total=Money.format(r.total)
+            val share=Money.format(r.share)
+            val extraShare=Money.format(r.extraShare)
+            val split=if(r.extraPeople>0)"${people.toInt()-r.extraPeople} × $share + ${r.extraPeople} × $extraShare" else ""
+            val perPerson=if(split.isEmpty())share else "$share · $extraShare"
+            val tipName=tr("Tip amount")
+            val tip=Money.format(r.tip)+(implied?.let { " (${Money.format(it)}%)" } ?: "")
+            val taxAmount=Money.format(r.tax)
+            val summary=listOf("${tr("Total")} $total","${tr("Per person")} $perPerson","$tipName $tip","${tr("Tax")} $taxAmount",split)
+                .filter(String::isNotEmpty).joinToString("\n")
+            UtilityResultCard(summary,{cleared=true}) {
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    TipMetric(tr("Total"),total,Modifier.weight(1f),primary=true)
+                    TipMetric(tr("Per person"),perPerson,Modifier.weight(1f))
+                }
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    TipMetric(tipName,tip,Modifier.weight(1f))
+                    TipMetric(tr("Tax"),taxAmount,Modifier.weight(1f))
+                }
+                if(split.isNotEmpty()) UtilityResultDetail(split)
+            }
+        } ?: UtilityResultCard(null,{cleared=true}) {
+            Text(if(isKorean())"0 이상인 금액과 정수 인원수를 입력하세요." else "Enter valid non-negative amounts and a whole number of people.",color=LocalInstrument.current.danger)
+        }
+    }
+}
+
+@Composable private fun TipMetric(label:String,value:String,modifier:Modifier,primary:Boolean=false) {
+    val c=LocalInstrument.current
+    Surface(modifier,shape=MaterialTheme.shapes.small,color=c.body) {
+        Column(Modifier.padding(10.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+            UtilityResultDetail(label)
+            Text(value,style=MaterialTheme.typography.titleMedium,color=if(primary)c.accent else c.ink)
+        }
     }
 }
 
@@ -86,6 +116,7 @@ private fun displayAmount(value:BigDecimal)=value.setScale(6,RoundingMode.HALF_E
     }
     val rate=runCatching{if(manual)decimalInput(manualRate).also{require(it.signum()>0)} else table?.rate(from,to,m.precision.coerceAtLeast(16)) ?: error("No cached rates")}
     val converted=runCatching{decimalInput(amount).multiply(rate.getOrThrow(),MathContext(m.precision.coerceAtLeast(16),RoundingMode.HALF_EVEN))}
+    var cleared by rememberSaveable(amount,from,to,manual,manualRate,dropDecimals){mutableStateOf(false)}
     Panel("Currency converter","") {
         Choices(listOf("Online / cache","Manual"),if(manual)"Manual" else "Online / cache",{manual=it=="Manual"})
         Field(amount,"Amount",Modifier.fillMaxWidth()){amount=it}
@@ -107,12 +138,27 @@ private fun displayAmount(value:BigDecimal)=value.setScale(6,RoundingMode.HALF_E
         Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
             FilterChip(selected=dropDecimals,onClick={dropDecimals=!dropDecimals},label={Text(tr("Drop decimals"),fontSize=13.sp)})
         }
-        converted.getOrNull()?.let {value->
-            val shown=if(dropDecimals)value.setScale(0,RoundingMode.DOWN) else displayAmount(value.round(MathContext(m.precision,RoundingMode.HALF_EVEN)))
-            Text("≈ ${Money.format(shown)} $to",style=MaterialTheme.typography.headlineMedium)
-            Text("1 $from = ${Money.format(displayAmount(rate.getOrThrow().round(MathContext(minOf(m.precision,12)))))} $to",fontSize=13.sp)
-        } ?: Text(if(isKorean()) {if(manual)"0보다 큰 환율을 입력하세요." else if(table==null)"저장된 환율 또는 직접 입력한 환율이 필요합니다." else "통화 코드를 확인하세요."} else if(manual)"Enter a positive conversion rate." else if(table==null)"A saved rate or manual rate is needed." else "Check the currency codes.",color=LocalInstrument.current.muted)
         if(manual)Field(manualRate,"1 $from = ? $to",Modifier.fillMaxWidth()){manualRate=it}
+        if(cleared) Button(onClick={cleared=false}) { Text(tr("Convert")) }
+        else converted.getOrNull()?.let {value->
+            val shown=if(dropDecimals)value.setScale(0,RoundingMode.DOWN) else displayAmount(value.round(MathContext(m.precision,RoundingMode.HALF_EVEN)))
+            val convertedAmount="${Money.format(shown)} $to"
+            val exchange="1 $from = ${Money.format(displayAmount(rate.getOrThrow().round(MathContext(minOf(m.precision,12)))))} $to"
+            UtilityResultCard("$convertedAmount\n$exchange",{cleared=true}) {
+                UtilityResultDetail("$amount $from → $to")
+                Text("≈ $convertedAmount",style=MaterialTheme.typography.headlineMedium,color=LocalInstrument.current.accent)
+                UtilityResultDetail(exchange)
+            }
+        } ?: UtilityResultCard(null,{cleared=true}) {
+            val message=when {
+                rate.isSuccess->tr("Enter a valid amount.")
+                manual->if(isKorean())"0보다 큰 환율을 입력하세요." else "Enter a positive conversion rate."
+                table==null && m.exchangeBusy->if(isKorean())"환율 갱신 중…" else "Updating rates…"
+                table==null->if(isKorean())"저장된 환율 또는 직접 입력한 환율이 필요합니다." else "A saved rate or manual rate is needed."
+                else->if(isKorean())"통화 코드를 확인하세요." else "Check the currency codes."
+            }
+            UtilityResultDetail(message)
+        }
         HorizontalDivider()
         if(manual)Text(if(isKorean())"직접 입력한 환율 · 온라인 시세 아님" else "Manual rate · not an online quote",fontSize=12.sp)
         else {
