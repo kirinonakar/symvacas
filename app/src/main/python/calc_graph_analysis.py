@@ -20,10 +20,20 @@ from calc_graph_common import (
 from calc_graph_shading import integral_fill
 
 
-def interval_extrema(expression, variable, lower, upper, action, coordinates=(), conditions=()):
-    """Return graph coordinates from the shared exact extrema search."""
+def _interval_extrema_candidates(expression, variable, lower, upper, action, coordinates=(), conditions=()):
+    # Preserve the stored slider values exactly so repeated stationary points
+    # can be substituted and compared without floating-point rounding.
+    def exact(expr):
+        return expr.xreplace({value:s.Rational(value) for value in expr.atoms(s.Float)})
+
     interval=s.Interval(s.Rational(lower),s.Rational(upper))
-    return [float(at) for at,_ in extrema_candidates(expression,variable,interval,action,coordinates,conditions)]
+    return extrema_candidates(exact(expression),variable,interval,action,
+                              tuple(map(exact,coordinates)),tuple(map(exact,conditions)))
+
+
+def interval_extrema(expression, variable, lower, upper, action, coordinates=(), conditions=()):
+    """Return graph positions from the shared exact extrema search."""
+    return [float(at) for at,_ in _interval_extrema_candidates(expression,variable,lower,upper,action,coordinates,conditions)]
 
 
 def polynomial_real_roots(expression, variable):
@@ -402,6 +412,12 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
             return implicit_analysis(engine,request,curves,x,y,numeric,zeroes,root_positions,tangent_point)
         expressions = [function for function,_ in curves]
         expression = expressions[selected]
+        if action in ("minimum", "maximum"):
+            guards=[substitute_parameters(c,sliders) for c in extrema_conditions]
+            extrema = _interval_extrema_candidates(expression,x,a,b,action,conditions=guards)
+            points = [[float(at),float(height)] for at,height in extrema]
+            points = [point for point in points if math.isfinite(point[1])]
+            return {"analysis":action,"points":points,"count":len(points),"truncated":False}
         target = expression-expressions[other] if action == "intersection" else expression
         if action == "intersection": require(target != 0, "The curves coincide; intersections are not isolated")
         if action == "root": require(expression != 0, "The curve lies on the x axis; roots are not isolated")
@@ -452,11 +468,7 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
             if result is None: result = numeric_integral(expression, x, a, b, integration_precision)
             require(result.is_real and result.is_finite, "Numerical convergence failed")
             return {"analysis":action,"points":[],"value":float(result),"integralFill":integral_fill(expression,x,a,b)}
-        if action in ("root", "intersection"):
-            positions = root_positions(target,x)
-        else:
-            guards=[substitute_parameters(c,sliders) for c in extrema_conditions]
-            positions = interval_extrema(expression,x,a,b,action,conditions=guards)
+        positions = root_positions(target,x)
         points = [[at,value(at)] for at in positions if value(at) is not None][:80]
         return {"analysis":action,"points":points,"count":len(points),"truncated":len(positions)>80}
     variable = engine.symbol(request.get("variable","t")); engine.bindings[str(variable)] = variable

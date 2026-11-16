@@ -1,5 +1,6 @@
 """Attained extrema contracts shared by calculator, Python catalog and graph."""
 import json
+import math
 import unittest
 from pathlib import Path
 import sys
@@ -50,6 +51,29 @@ class ExtremaTests(unittest.TestCase):
         self.assertFalse(self.calc(pole,'maximum')['ok'])
         self.assertFalse(self.graph(pole,action='maximum')['ok'])
         self.assertEqual('1',self.calc(binary('/',x,x))['exact'])
+
+    def test_slider_cosine_returns_every_attained_extremum(self):
+        amplitude=node('symbol','a')
+        frequency=node('symbol','b')
+        expression=binary('+',binary('*',amplitude,call('cos',binary('*',frequency,x))),number(3))
+        cases=[('maximum',1.1,3.7,10,0,range(-4,5)),
+               ('maximum',1,-2.7,30,0,range(-3,4)),
+               ('maximum',-1.1,3.7,10,.5,range(-5,5)),
+               ('minimum',1.1,3.7,10,.5,range(-5,5)),
+               ('maximum',1,51,10,0,range(-64,65))]
+        for action,amplitude,frequency,precision,offset,periods in cases:
+            with self.subTest(action=action,amplitude=amplitude,frequency=frequency):
+                result=self.graph(expression,action=action,a=-8,b=8,precision=precision,
+                                  parameters={'a':amplitude,'b':frequency})
+                self.assertTrue(result['ok'],result)
+                self.assertFalse(result['truncated'])
+                self.assertEqual(len(periods),result['count'])
+                self.assertEqual(len(periods),len(result['points']))
+                height=3+abs(amplitude)*(1 if action=='maximum' else -1)
+                for period,(at,value) in zip(periods,result['points']):
+                    self.assertAlmostEqual(math.tau*(period+offset)/abs(frequency),at,places=8)
+                    self.assertAlmostEqual(height,value,places=8)
+                    self.assertEqual(result['points'][0][1],value)
 
     def test_open_and_half_open_intervals_distinguish_bounds_from_extrema(self):
         for mode,min_ok,max_ok in [('closed',True,True),('open',False,False),
