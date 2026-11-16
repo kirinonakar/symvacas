@@ -126,7 +126,19 @@ import kotlin.math.*
                 {halfGraphHeight=!halfGraphHeight},{viewportDragging=it})
             Column(Modifier.fillMaxWidth()) {
                 if(m.graphKind !in listOf("surface","space"))GraphFormulas(m.graphKind,sources,selected,derivativeSelected,derivativeExpression,shadeSources,{i->m.clearGraphTangent();tangentPositionOpen=false;selected=i;selectedDerivativeOrder=0;if(other==selected)other=(i+1)%sources.size},{m.toggleGraphDerivative(selected)},removeSource,m.displayDigits,c.curves,secondDerivativeSelected,secondDerivativeExpression,{m.toggleGraphDerivative(selected,2)},selectedDerivativeOrder,{order->m.clearGraphTangent();tangentPositionOpen=false;selectedDerivativeOrder=order},isVisible=m::isGraphVisible,onVisibility=m::toggleGraphVisibility)
-                if(m.graphKind !in listOf("surface","space"))Text(if(m.graphBusy&&!m.graphAnimating) {if(isKorean())"그래프 계산 중…" else "Sampling locally…"} else m.trace?.let { "Trace ≈ x: ${graphDisplayNumber(it.first,m.displayDigits)}   y: ${graphDisplayNumber(it.second,m.displayDigits)}" } ?: if(isKorean()) {if(m.graphKind=="differential")"방향장 · 해를 눌러 추적 · 드래그/확대로 탐색" else "눌러 추적 · 드래그하여 이동 · 두 손가락으로 확대"} else if(m.graphKind=="differential")"Direction field · tap a solution to trace · drag/pinch to explore" else "Tap to trace · drag to pan · pinch to zoom",Modifier.padding(horizontal=14.dp,vertical=5.dp),fontSize=11.sp,color=c.muted)
+                if (m.graphKind !in listOf("surface", "space")) {
+                    val trace = m.trace
+                    val korean = isKorean()
+                    val differential = m.graphKind == "differential"
+                    val traceText = when {
+                        trace != null -> "Trace ≈ x: ${graphDisplayNumber(trace.first, m.displayDigits)}   y: ${graphDisplayNumber(trace.second, m.displayDigits)}"
+                        korean && differential -> "방향장 · 해를 눌러 추적 · 드래그/확대로 탐색"
+                        korean -> "눌러 추적 · 드래그하여 이동 · 두 손가락으로 확대"
+                        differential -> "Direction field · tap a solution to trace · drag/pinch to explore"
+                        else -> "Tap to trace · drag to pan · pinch to zoom"
+                    }
+                    Text(traceText, Modifier.padding(horizontal = 14.dp, vertical = 5.dp), fontSize = 11.sp, color = c.muted)
+                }
             }
             if(showTable && m.graphKind !in listOf("surface","space")) Box(Modifier.bringIntoViewRequester(tableRequester)) {GraphValueTable(curves,selected,{if(selectedDerivativeOrder!=0){selectedDerivativeOrder=0;m.clearGraphTangent()};m.trace=it},m.graphKind,m.displayDigits)}
             if(analysis && m.graphKind in listOf("cartesian","parametric","polar"))
