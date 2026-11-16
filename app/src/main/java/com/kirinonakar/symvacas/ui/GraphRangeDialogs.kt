@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.*
 import com.kirinonakar.symvacas.calculator.CalculatorModel
 import com.kirinonakar.symvacas.calculator.graphRangeAxes
 import com.kirinonakar.symvacas.math.SurfaceMesh
+import com.kirinonakar.symvacas.math.graphRangeNumber
 import kotlin.math.*
 
 // Graph axis ranges and individual parameter-range dialogs.
@@ -32,29 +33,29 @@ import kotlin.math.*
     var autoZ by remember {mutableStateOf(m.zMin==null || m.zMax==null)}
     AlertDialog(onDismissRequest={onDismiss()},title={Text(tr("Graph range"))},text={Column(Modifier.verticalScroll(rememberScrollState())) {
                 key(resetRevision) {
-                RangeAxisEditor(if(m.graphKind=="sequence")"n" else "x",xmin,xmax,xmin.toDoubleOrNull() ?: m.xMin,xmax.toDoubleOrNull() ?: m.xMax,m.displayDigits,{xmin=it},{xmax=it})
-                RangeAxisEditor("y",ymin,ymax,ymin.toDoubleOrNull() ?: m.yMin,ymax.toDoubleOrNull() ?: m.yMax,m.displayDigits,{ymin=it},{ymax=it},logarithmic=m.yLog&&m.graphKind !in listOf("surface","space"))
+                RangeAxisEditor(if(m.graphKind=="sequence")"n" else "x",xmin,xmax,m.xMin,m.xMax,m.displayDigits,{xmin=it},{xmax=it})
+                RangeAxisEditor("y",ymin,ymax,m.yMin,m.yMax,m.displayDigits,{ymin=it},{ymax=it},logarithmic=m.yLog&&m.graphKind !in listOf("surface","space"))
                 if(m.graphKind in listOf("surface","space")) {
                     Row(verticalAlignment=Alignment.CenterVertically) {Checkbox(autoZ,{autoZ=it});Text(tr("Automatic z range"))}
-                    if(!autoZ)RangeAxisEditor("z",zmin,zmax,zmin.toDoubleOrNull() ?: -1.0,zmax.toDoubleOrNull() ?: 1.0,m.displayDigits,{zmin=it},{zmax=it})
+                    if(!autoZ)RangeAxisEditor("z",zmin,zmax,-1.0,1.0,m.displayDigits,{zmin=it},{zmax=it})
                 }
-                if("t" in rangeAxes)RangeAxisEditor("t",tmin,tmax,tmin.toDoubleOrNull() ?: m.parameterMin,tmax.toDoubleOrNull() ?: m.parameterMax,m.displayDigits,{tmin=it},{tmax=it})
-                if("u" in rangeAxes)RangeAxisEditor("u",umin,umax,umin.toDoubleOrNull() ?: m.graphState.surfaceUMin,umax.toDoubleOrNull() ?: m.graphState.surfaceUMax,m.displayDigits,{umin=it},{umax=it})
-                if("v" in rangeAxes)RangeAxisEditor("v",vmin,vmax,vmin.toDoubleOrNull() ?: m.graphState.surfaceVMin,vmax.toDoubleOrNull() ?: m.graphState.surfaceVMax,m.displayDigits,{vmin=it},{vmax=it})
-                if("theta" in rangeAxes)RangeAxisEditor("θ",thetaMin,thetaMax,thetaMin.toDoubleOrNull() ?: m.thetaMin,thetaMax.toDoubleOrNull() ?: m.thetaMax,m.displayDigits,{thetaMin=it},{thetaMax=it})
+                if("t" in rangeAxes)RangeAxisEditor("t",tmin,tmax,m.parameterMin,m.parameterMax,m.displayDigits,{tmin=it},{tmax=it})
+                if("u" in rangeAxes)RangeAxisEditor("u",umin,umax,m.graphState.surfaceUMin,m.graphState.surfaceUMax,m.displayDigits,{umin=it},{umax=it})
+                if("v" in rangeAxes)RangeAxisEditor("v",vmin,vmax,m.graphState.surfaceVMin,m.graphState.surfaceVMax,m.displayDigits,{vmin=it},{vmax=it})
+                if("theta" in rangeAxes)RangeAxisEditor("θ",thetaMin,thetaMax,m.thetaMin,m.thetaMax,m.displayDigits,{thetaMin=it},{thetaMax=it})
                 }
         }},confirmButton={TextButton(onClick={
-                    val values=listOf(xmin,xmax,ymin,ymax).map {it.toDoubleOrNull()}
-                    val uv=listOf(umin,umax,vmin,vmax).map {it.toDoubleOrNull()}
+                    val values=listOf(xmin,xmax,ymin,ymax).map(::graphRangeNumber)
+                    val uv=listOf(umin,umax,vmin,vmax).map(::graphRangeNumber)
                     if("u" in rangeAxes && (uv.any {it==null || !it.isFinite()} || uv[0]!!>=uv[1]!! || uv[2]!!>=uv[3]!!)) {
                         m.error="Enter finite increasing u and v ranges"
                         return@TextButton
                     }
-                    val ta=tmin.toDoubleOrNull();val tb=tmax.toDoubleOrNull()
-                    val za=zmin.toDoubleOrNull();val zb=zmax.toDoubleOrNull()
+                    val ta=graphRangeNumber(tmin);val tb=graphRangeNumber(tmax)
+                    val za=graphRangeNumber(zmin);val zb=graphRangeNumber(zmax)
                     val usesT="t" in rangeAxes
                     val usesTheta="theta" in rangeAxes
-                    val pa=thetaMin.toDoubleOrNull();val pb=thetaMax.toDoubleOrNull()
+                    val pa=graphRangeNumber(thetaMin);val pb=graphRangeNumber(thetaMax)
                     val usesZ=m.graphKind in listOf("surface","space")&&!autoZ
                     if(values.any {it==null||!it.isFinite()} || values[0]!!>=values[1]!! || values[2]!!>=values[3]!! || (m.yLog&&m.graphKind !in listOf("surface","space")&&(values[2]!!<=0)) || (usesT&&(ta==null||tb==null||!ta.isFinite()||!tb.isFinite()||ta>=tb)) || (usesTheta&&(pa==null||pb==null||!pa.isFinite()||!pb.isFinite()||pa>=pb)) || (usesZ&&(za==null||zb==null||!za.isFinite()||!zb.isFinite()||za>=zb))) m.error="Enter finite increasing ranges" else {
                         m.xMin=values[0]!!;m.xMax=values[1]!!;m.yMin=values[2]!!;m.yMax=values[3]!!
@@ -102,7 +103,7 @@ import kotlin.math.*
                     }
                     key(resetRevision){RangeAxisEditor(name,low,high,spec.min,spec.max,m.displayDigits,{low=it},{high=it})}
             }},confirmButton={TextButton(onClick={
-                        val start=low.toDoubleOrNull();val end=high.toDoubleOrNull()
+                    val start=graphRangeNumber(low);val end=graphRangeNumber(high)
                         if(start==null||end==null||!start.isFinite()||!end.isFinite()||start>=end||abs(start)>1e9||abs(end)>1e9)m.error="Enter finite values with minimum < maximum"
                         else {
                             if(start!=spec.min||end!=spec.max)m.setGraphParameterRange(name,start,end) else m.error=""

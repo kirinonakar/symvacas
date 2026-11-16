@@ -15,6 +15,7 @@ export function createGraphComputation({
   densityControls,
   execute,
   expressions,
+  fieldRange,
   isBusy,
   isReady,
   kind,
@@ -104,16 +105,20 @@ export function createGraphComputation({
     const token=++state.analysisRevision;
     try{
       const fixedIntercept=action==='yintercept'&&kind()==='cartesian'&&planarTreeKind(graphInputTree(expressions()[analysisTarget()?.source]||'0'))==='cartesian';
-      const trees=expressions().map(s=>graphInputTree(s,kind())),a=fixedIntercept?0:point??numeric('graph-analysis-a'),b=fixedIntercept||['derivative','tangent','tangentangle'].includes(action)?a:numeric('graph-analysis-b'),view=state.bounds||currentBounds(),source=value('graph-source'),graphKind=kind();
-      if(!Number.isFinite(a)||!Number.isFinite(b)||!fixedIntercept&&!['derivative','tangent','tangentangle'].includes(action)&&a>=b)throw new Error('Enter finite values with a < b');
+      const singled=fixedIntercept||['derivative','tangent','tangentangle'].includes(action);
+      const first=fixedIntercept?{value:0}:point===null?fieldRange($('graph-analysis-a')):{value:point};
+      const second=singled?first:fieldRange($('graph-analysis-b'));
+      const a=first?.value,b=second?.value;
+      if(!Number.isFinite(a)||!Number.isFinite(b)||!singled&&!first.tree&&!second.tree&&a>=b)throw new Error('Enter finite values with a < b');
+      const trees=expressions().map(s=>graphInputTree(s,kind())),view=state.bounds||currentBounds(),source=value('graph-source'),graphKind=kind();
       const currentParameters={...state.parameters};
       const target=analysisTarget(),other=otherTarget();
       if(!target||target.source>=trees.length||['intersection','intersectionangle'].includes(action)&&(!other||other.source>=trees.length||JSON.stringify(target)===JSON.stringify(other)))throw new Error('Select two different functions');
       const rowKind=graphKind==='cartesian'?planarTreeKind(trees[target.source]):graphKind;
       const tracePoint=state.trace||(graphKind==='cartesian'&&['derivative','tangent','tangentangle'].includes(action)&&(state.selectedDerivativeOrder!==0||state.result?.implicitCurves?.[selectedPlotIndex()])?curvePointAtX(state.result?.curves?.[selectedPlotIndex()]||[],a,null,{yLog:!!state.yLog}):null);
-      const response=await execute({...options(),angle:'RAD',action:'graphAnalysis',graphKind,trees,analysis:action,a,b,selected:target.source,selectedDerivativeOrder:target.order,other:other?.source??0,otherDerivativeOrder:other?.order??0,variable:rowKind==='cartesian'?'x':'t',parameters:currentParameters,tracePoint,xMin:view.xmin,xMax:view.xmax,yMin:view.ymin,yMax:view.ymax});
+      const response=await execute({...options(),angle:'RAD',action:'graphAnalysis',graphKind,trees,analysis:action,a:first.tree??a,b:second.tree??b,selected:target.source,selectedDerivativeOrder:target.order,other:other?.source??0,otherDerivativeOrder:other?.order??0,variable:rowKind==='cartesian'?'x':'t',parameters:currentParameters,tracePoint,xMin:view.xmin,xMax:view.xmax,yMin:view.ymin,yMax:view.ymax});
       if(token!==state.analysisRevision||source!==value('graph-source')||graphKind!==kind()||JSON.stringify(currentParameters)!==JSON.stringify(state.parameters))return;if(!response.ok){onError(response.error);return;}
-      state.analysis=response;$('graph-status').textContent='';state.integral=action==='integral'&&rowKind==='cartesian'?[a,b]:null;state.trace=response.points?.[0]||state.trace;$('graph-analysis-action').value=action;analysisControls();render();
+      state.analysis=response;$('graph-status').textContent='';state.integral=action==='integral'&&rowKind==='cartesian'?(response.interval??[a,b]):null;state.trace=response.points?.[0]||state.trace;$('graph-analysis-action').value=action;analysisControls();render();persist();
     }catch(error){if(token===state.analysisRevision)onError(error.message);}finally{flush();}
   }
   return {makeRequest,queue,requestParameters,flush,run,analyze};

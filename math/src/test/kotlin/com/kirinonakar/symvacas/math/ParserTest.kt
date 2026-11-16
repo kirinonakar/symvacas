@@ -5,6 +5,17 @@ import org.junit.Test
 
 class ParserTest {
     private fun p(s: String) = Parser(s).parse()
+    @Test fun graphRangesAcceptConstantExpressions() {
+        assertEquals(Math.PI / 3 + 1, graphRangeNumber("pi/3+1")!!, 1e-14)
+        assertEquals(-2 * Math.PI, graphRangeNumber("−2π")!!, 1e-14)
+        assertEquals(9.0, graphRangeNumber("(sqrt(4)+1)^2")!!, 1e-14)
+        assertEquals(2.0, graphRangeNumber("log(100)")!!, 1e-14)
+        assertNull(parseGraphRangeInput("1e-8")!!.tree)
+        assertNotNull(parseGraphRangeInput("pi/3+1")!!.tree)
+        for (source in listOf("", "x+1", "pi/", "1/0", "sqrt(-1)", "log(10,0)", "(1,2)")) {
+            assertNull(source, parseGraphRangeInput(source))
+        }
+    }
     @Test fun adjacentCoordinatesAreProductsAndOtherIdentifiersStayWhole() {
         fun shape(tree:Expr):String = "${tree.kind}:${tree.value}[${tree.args.joinToString(",") {shape(it)}}]"
         for(source in listOf("xy","xz","yz","xyz","yx","zx","zy","zyx","xx","yy","zz","xxyzz")) {

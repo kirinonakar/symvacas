@@ -1,6 +1,7 @@
 // Full-precision numeric fields, paired sliders, and range-track interaction.
 import {displayNumber} from './display-format.js';
 import {hasImplicitSurface,graphExpressions,graphInputTree,planarTreeKind} from './graph-input.js';
+import {parseGraphRangeInput} from './graph-range-input.js';
 
 export function createGraphRangeControls({
   $,
@@ -18,17 +19,27 @@ export function createGraphRangeControls({
   const sliderIds=rangeIds.filter(id=>id!=='graph-t0');
   const rangePairs=[['graph-u-min','graph-u-max'],['graph-v-min','graph-v-max'],['graph-theta-min','graph-theta-max'],['graph-parameter-min','graph-parameter-max'],['graph-min','graph-max'],['graph-ymin','graph-ymax'],['graph-xmin','graph-xmax'],['graph-zmin','graph-zmax'],['graph-analysis-a','graph-analysis-b']];
   const pairedSliders=new Map();
+  const expressionIds=new Set(sliderIds),parsedFields=new WeakMap();
 
   const isLog=id=>state.yLog&&!['surface','space'].includes(value('graph-kind'))&&['graph-ymin','graph-ymax'].includes(id);
   const coordinate=(id,number)=>isLog(id)?Math.log10(number):number;
   const rawValue=(id,number)=>isLog(id)?10**number:number;
-  function fieldNumber(input){return input.value.trim()===''?NaN:Number(input.dataset.displayValue===input.value?input.dataset.fullValue:input.value);}
+  function fieldRange(input){
+    const source=input.dataset.displayValue===input.value?input.dataset.fullValue:input.value;
+    if(!expressionIds.has(input.id))return {value:source.trim()===''?NaN:Number(source)};
+    const cached=parsedFields.get(input);
+    if(cached?.source===source)return cached.result;
+    const result=parseGraphRangeInput(source);
+    parsedFields.set(input,{source,result});
+    return result;
+  }
+  function fieldNumber(input){return fieldRange(input)?.value??NaN;}
 
   function numeric(id){return fieldNumber($(id));}
 
   function displayField(input,number){input.dataset.fullValue=String(number);input.value=displayNumber(number,options().displayDigits);input.dataset.displayValue=input.value;}
 
-  function editField(input){input.onblur=()=>{const number=fieldNumber(input);if(Number.isFinite(number)&&!input.hasAttribute('aria-invalid'))displayField(input,number);};}
+  function editField(input){input.onblur=()=>{const range=fieldRange(input);if(Number.isFinite(range?.value)&&!range.tree&&!input.hasAttribute('aria-invalid'))displayField(input,range.value);};}
 
   function analysisRange(){
     let type=value('graph-kind');
@@ -54,9 +65,17 @@ export function createGraphRangeControls({
     syncRangePair(pair);
   }
 
-  function showNumber(id,number){const input=$(id);if(!Number.isFinite(number))return;displayField(input,number);const output=$(id+'-value');if(output)output.textContent=displayNumber(number,options().displayDigits);const slider=$(id+'-slider');if(slider){const at=coordinate(id,number);if(at<Number(slider.min))slider.min=String(at);if(at>Number(slider.max))slider.max=String(at);slider.value=String(at);slider.setAttribute('aria-valuetext',displayNumber(number,options().displayDigits));}const pair=pairedSliders.get(id);if(pair)syncRangePair(pair);}
+  function syncNumber(id,number){const output=$(id+'-value');if(output)output.textContent=displayNumber(number,options().displayDigits);const slider=$(id+'-slider');if(slider){const at=coordinate(id,number);if(at<Number(slider.min))slider.min=String(at);if(at>Number(slider.max))slider.max=String(at);slider.value=String(at);slider.setAttribute('aria-valuetext',displayNumber(number,options().displayDigits));}const pair=pairedSliders.get(id);if(pair)syncRangePair(pair);}
+  function showNumber(id,number){if(Number.isFinite(number)){displayField($(id),number);syncNumber(id,number);}}
 
-  function renderRangeNumbers(){for(const id of rangeIds){if(value(id)!==''&&document.activeElement!==$(id))showNumber(id,numeric(id));}}
+  function renderRangeNumbers(){
+    for(const id of rangeIds){
+      const input=$(id),range=fieldRange(input);
+      if(!Number.isFinite(range?.value))continue;
+      if(range.tree)syncNumber(id,range.value);
+      else if(document.activeElement!==input)showNumber(id,range.value);
+    }
+  }
 
   function bindRangeTrackClick(track){
     track.addEventListener('click',event=>{
@@ -97,5 +116,5 @@ export function createGraphRangeControls({
     }
 
   }
-  return {fieldNumber,numeric,displayField,editField,analysisRange,syncRangePair,resetRangeDomain,showNumber,renderRangeNumbers,bindRangeTrackClick,rangeIds,sliderIds,rangePairs,pairedSliders,initializeRanges};
+  return {fieldRange,fieldNumber,numeric,displayField,editField,analysisRange,syncRangePair,resetRangeDomain,showNumber,renderRangeNumbers,bindRangeTrackClick,rangeIds,sliderIds,rangePairs,pairedSliders,initializeRanges};
 }

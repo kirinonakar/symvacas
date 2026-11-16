@@ -26,7 +26,8 @@ def _interval_extrema_candidates(expression, variable, lower, upper, action, coo
     def exact(expr):
         return expr.xreplace({value:s.Rational(value) for value in expr.atoms(s.Float)})
 
-    interval=s.Interval(s.Rational(lower),s.Rational(upper))
+    lower,upper = (exact(value) if isinstance(value,s.Expr) else s.Rational(value) for value in (lower,upper))
+    interval=s.Interval(lower,upper)
     return extrema_candidates(exact(expression),variable,interval,action,
                               tuple(map(exact,coordinates)),tuple(map(exact,conditions)))
 
@@ -202,6 +203,14 @@ def implicit_analysis(engine, request, curves, x, y, numeric, zeroes, root_posit
 
 
 def graph_analysis(engine, request, _expressions=None, _derivative_primitive=None):
+    bound_trees = {key:request[key] for key in ('a','b') if isinstance(request.get(key),dict)}
+    if bound_trees:
+        from calc_evaluator import Engine
+        bound_engine = Engine({"angle":"RAD","precision":max(17,engine.precision)})
+        bounds = {key:bound_engine.build(tree) for key,tree in bound_trees.items()}
+        require(all(isinstance(value,s.Expr) and value.is_number and value.is_real is True and value.is_finite is True
+                    for value in bounds.values()), "Invalid analysis range")
+        request = {**request, **bounds}
     bind_graph_parameters(engine,request)
     kind = request.get("graphKind","cartesian")
     if kind == "cartesian" and _expressions is None:
@@ -305,7 +314,11 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
     require(not pair_analysis or kind == "cartesian", "Intersections need two Cartesian functions")
     if pair_analysis: require(0 <= other < size and other != selected, "Select two different functions")
     fixed_intercept = action == "yintercept" and kind == "cartesian"
-    a = 0.0 if fixed_intercept else float(request.get("a", -10)); b = a if fixed_intercept else float(request.get("b", 10))
+    lower = 0.0 if fixed_intercept else request.get("a",-10)
+    upper = lower if fixed_intercept else request.get("b",10)
+    a,b = float(lower),float(upper)
+    exact_lower = lower if isinstance(lower,s.Expr) else a
+    exact_upper = upper if isinstance(upper,s.Expr) else b
     singled = action in ("derivative", "tangent", "tangentangle") or fixed_intercept
     require(math.isfinite(a) and math.isfinite(b) and (singled or a < b) and within_limit(abs(b-a),1e9), "Invalid analysis range")
     def numeric(expr, variable):
@@ -414,7 +427,7 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
         expression = expressions[selected]
         if action in ("minimum", "maximum"):
             guards=[substitute_parameters(c,sliders) for c in extrema_conditions]
-            extrema = _interval_extrema_candidates(expression,x,a,b,action,conditions=guards)
+            extrema = _interval_extrema_candidates(expression,x,exact_lower,exact_upper,action,conditions=guards)
             points = [[float(at),float(height)] for at,height in extrema]
             points = [point for point in points if math.isfinite(point[1])]
             return {"analysis":action,"points":points,"count":len(points),"truncated":False}
@@ -456,18 +469,20 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
                 primitive = substitute_parameters(_derivative_primitive,sliders)
                 continuous = primitive_continuous = None
                 try:
-                    continuous = (s.Interval.open(a,b)-continuous_domain(expression,x,s.S.Reals)).is_empty
-                    primitive_continuous = (s.Interval(a,b)-continuous_domain(primitive,x,s.S.Reals)).is_empty
+                    continuous = (s.Interval.open(exact_lower,exact_upper)-continuous_domain(expression,x,s.S.Reals)).is_empty
+                    primitive_continuous = (s.Interval(exact_lower,exact_upper)-continuous_domain(primitive,x,s.S.Reals)).is_empty
                 except (NotImplementedError, ValueError, TypeError): pass
                 require(continuous is not False, "Integral crosses a discontinuity; choose a continuous interval")
                 if continuous is True and primitive_continuous is True:
                     # The stored primitive avoids relative-accuracy failure for
                     # cancelling integrals, after checking for domain breaks.
                     exact = primitive.xreplace({value:s.Rational(value) for value in primitive.atoms(s.Float)})
-                    result = (exact.subs(x,s.Rational(b))-exact.subs(x,s.Rational(a))).evalf(engine.precision,strict=True)
-            if result is None: result = numeric_integral(expression, x, a, b, integration_precision)
+                    start = exact_lower if isinstance(exact_lower,s.Expr) else s.Rational(a)
+                    end = exact_upper if isinstance(exact_upper,s.Expr) else s.Rational(b)
+                    result = (exact.subs(x,end)-exact.subs(x,start)).evalf(engine.precision,strict=True)
+            if result is None: result = numeric_integral(expression, x, exact_lower, exact_upper, integration_precision)
             require(result.is_real and result.is_finite, "Numerical convergence failed")
-            return {"analysis":action,"points":[],"value":float(result),"integralFill":integral_fill(expression,x,a,b)}
+            return {"analysis":action,"points":[],"value":float(result),"interval":[a,b],"integralFill":integral_fill(expression,x,a,b)}
         positions = root_positions(target,x)
         points = [[at,value(at)] for at in positions if value(at) is not None][:80]
         return {"analysis":action,"points":points,"count":len(points),"truncated":len(positions)>80}
@@ -501,7 +516,7 @@ def graph_analysis(engine, request, _expressions=None, _derivative_primitive=Non
     elif action in ("minimum", "maximum"):
         target = radius if kind == "polar" else second
         guards=[substitute_parameters(c,sliders) for c in engine.conditions]
-        positions = interval_extrema(target,variable,a,b,action,(first,second),guards)
+        positions = interval_extrema(target,variable,exact_lower,exact_upper,action,(first,second),guards)
         points = [point(at) for at in positions]
     elif action == "inflection":
         curvature = dfirst*s.diff(dsecond, variable)-dsecond*s.diff(dfirst, variable)

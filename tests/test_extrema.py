@@ -75,6 +75,21 @@ class ExtremaTests(unittest.TestCase):
                     self.assertAlmostEqual(height,value,places=8)
                     self.assertEqual(result['points'][0][1],value)
 
+    def test_analysis_expression_bounds_keep_exact_endpoints(self):
+        pi=node('symbol','pi')
+        lower=binary('+',binary('/',pi,number(3)),number(1))
+        upper=binary('*',number(2),pi)
+        result=self.graph(call('cos',x),action='maximum',a=lower,b=upper)
+        self.assertTrue(result['ok'],result)
+        self.assertEqual([[math.tau,1.0]],result['points'])
+
+        result=self.graph(x,action='integral',a=0,b=lower)
+        self.assertTrue(result['ok'],result)
+        self.assertAlmostEqual((math.pi/3+1)**2/2,result['value'])
+        self.assertAlmostEqual(math.pi/3+1,result['interval'][1])
+
+        self.assertFalse(self.graph(x,a=lower,b=x)['ok'])
+
     def test_open_and_half_open_intervals_distinguish_bounds_from_extrema(self):
         for mode,min_ok,max_ok in [('closed',True,True),('open',False,False),
                                     ('leftopen',False,True),('rightopen',True,False)]:

@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.*
 import com.kirinonakar.symvacas.calculator.CalculatorModel
+import com.kirinonakar.symvacas.math.graphRangeNumber
 import kotlin.math.*
 import com.kirinonakar.symvacas.ui.theme.InstrumentColors
 
@@ -60,11 +61,12 @@ internal class GraphAnalysisUiState(
         val sliderMax=if(analysisKind=="cartesian")m.xMax else if(analysisKind=="polar")m.thetaMax else m.parameterMax
         val sliderSpan=sliderMax-sliderMin
         if(sliderMin.isFinite() && sliderMax.isFinite() && sliderSpan.isFinite() && sliderSpan>0.0) {
-            val low=((first.toDoubleOrNull()?.takeIf(Double::isFinite) ?: sliderMin)-sliderMin).div(sliderSpan).coerceIn(0.0,1.0).toFloat()
-            val high=((second.toDoubleOrNull()?.takeIf(Double::isFinite) ?: sliderMax)-sliderMin).div(sliderSpan).coerceIn(0.0,1.0).toFloat()
-            CompactRangeSlider(low.coerceAtMost(high)..high.coerceAtLeast(low),{range->
-                    first=(sliderMin+range.start*sliderSpan).toString()
-                    second=(sliderMin+range.endInclusive*sliderSpan).toString()
+            val low=((remember(first) {graphRangeNumber(first)} ?: sliderMin)-sliderMin).div(sliderSpan).coerceIn(0.0,1.0).toFloat()
+            val high=((remember(second) {graphRangeNumber(second)} ?: sliderMax)-sliderMin).div(sliderSpan).coerceIn(0.0,1.0).toFloat()
+            val range=low.coerceAtMost(high)..high.coerceAtLeast(low)
+            CompactRangeSlider(range,{updated->
+                    if(updated.start!=range.start)first=(sliderMin+updated.start*sliderSpan).toString()
+                    if(updated.endInclusive!=range.endInclusive)second=(sliderMin+updated.endInclusive*sliderSpan).toString()
                 },Modifier.fillMaxWidth())
         }
         CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
@@ -104,7 +106,7 @@ internal class GraphAnalysisUiState(
             Text(if(isKorean())"접선 위치 (${if(analysisKind=="cartesian")"x" else if(analysisKind=="polar")"θ" else "t"})" else "Tangent position (${if(analysisKind=="cartesian")"x" else if(analysisKind=="polar")"θ" else "t"})",fontSize=12.sp,color=c.muted)
             GraphNumberField(pointAt,if(analysisKind=="cartesian")"x" else if(analysisKind=="polar")"θ" else "t",m.displayDigits,Modifier.fillMaxWidth()) {pointAt=it}
             if(sliderMin.isFinite() && sliderMax.isFinite() && sliderSpan.isFinite() && sliderSpan>0.0) {
-                val position=((pointAt.toDoubleOrNull()?.takeIf(Double::isFinite) ?: sliderMin)-sliderMin).div(sliderSpan).coerceIn(0.0,1.0).toFloat()
+                val position=((remember(pointAt) {graphRangeNumber(pointAt)} ?: sliderMin)-sliderMin).div(sliderSpan).coerceIn(0.0,1.0).toFloat()
                 CompactSlider(position,{pointAt=(sliderMin+it*sliderSpan).toString()},Modifier.fillMaxWidth(),onValueChangeFinished={
                         m.analyzeGraph(tangentAction,pointAt,pointAt,analysisCurveKey,other)
                 })

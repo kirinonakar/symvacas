@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.*
+import com.kirinonakar.symvacas.math.graphRangeNumber
 import com.kirinonakar.symvacas.ui.theme.LocalInstrument
 import kotlin.math.*
 
@@ -101,24 +102,27 @@ import kotlin.math.*
         val start=if(logarithmic)(low-span/2).coerceAtLeast(-300.0) else low-span/2;val end=if(logarithmic)(high+span/2).coerceAtMost(300.0) else high+span/2
         return if(start.isFinite()&&end.isFinite()&&(end-start).isFinite()&&end>start)start to end else null
     }
-    var bounds by remember(axis,logarithmic) {mutableStateOf(sliderBounds(initialMin,initialMax) ?: (-10.0 to 10.0))}
+    val minimumValue=remember(minimum) {graphRangeNumber(minimum)}
+    val maximumValue=remember(maximum) {graphRangeNumber(maximum)}
+    var bounds by remember(axis,logarithmic) {mutableStateOf(sliderBounds(minimumValue ?: initialMin,maximumValue ?: initialMax) ?: (-10.0 to 10.0))}
     val range=bounds.second-bounds.first
     Text("$axis range",fontSize=12.sp,color=LocalInstrument.current.muted)
     Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
         GraphNumberField(minimum,"$axis min",displayDigits,Modifier.weight(1f)){
             onMin(it)
-            sliderBounds(it.toDoubleOrNull(),maximum.toDoubleOrNull())?.let {next->bounds=next}
+            sliderBounds(graphRangeNumber(it),maximumValue)?.let {next->bounds=next}
         }
         GraphNumberField(maximum,"$axis max",displayDigits,Modifier.weight(1f)){
             onMax(it)
-            sliderBounds(minimum.toDoubleOrNull(),it.toDoubleOrNull())?.let {next->bounds=next}
+            sliderBounds(minimumValue,graphRangeNumber(it))?.let {next->bounds=next}
         }
     }
-    val low=(((minimum.toDoubleOrNull()?.let {scale.coordinate(it)}?.takeIf(Double::isFinite) ?: bounds.first)-bounds.first)/range).coerceIn(0.0,1.0).toFloat()
-    val high=(((maximum.toDoubleOrNull()?.let {scale.coordinate(it)}?.takeIf(Double::isFinite) ?: bounds.second)-bounds.first)/range).coerceIn(0.0,1.0).toFloat()
-    CompactRangeSlider(value=low.coerceAtMost(high)..high.coerceAtLeast(low),onValueChange={selected->
-            onMin(scale.value(bounds.first+selected.start*range).toString())
-            onMax(scale.value(bounds.first+selected.endInclusive*range).toString())
+    val low=(((minimumValue?.let {scale.coordinate(it)}?.takeIf(Double::isFinite) ?: bounds.first)-bounds.first)/range).coerceIn(0.0,1.0).toFloat()
+    val high=(((maximumValue?.let {scale.coordinate(it)}?.takeIf(Double::isFinite) ?: bounds.second)-bounds.first)/range).coerceIn(0.0,1.0).toFloat()
+    val sliderRange=low.coerceAtMost(high)..high.coerceAtLeast(low)
+    CompactRangeSlider(value=sliderRange,onValueChange={selected->
+            if(selected.start!=sliderRange.start)onMin(scale.value(bounds.first+selected.start*range).toString())
+            if(selected.endInclusive!=sliderRange.endInclusive)onMax(scale.value(bounds.first+selected.endInclusive*range).toString())
         },modifier=Modifier.fillMaxWidth())
 }
 

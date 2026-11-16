@@ -139,7 +139,7 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
   }
   formulaStrip.addEventListener('wheel',scrollFormulas,{passive:false});
   $('graph-source').addEventListener('scroll',syncInputLineScroll);
-  const {fieldNumber,numeric,displayField,editField,analysisRange,syncRangePair,resetRangeDomain,showNumber,renderRangeNumbers,bindRangeTrackClick,rangeIds,sliderIds,rangePairs,pairedSliders,initializeRanges}=createGraphRangeControls({
+  const {fieldRange,fieldNumber,numeric,displayField,editField,analysisRange,syncRangePair,resetRangeDomain,showNumber,renderRangeNumbers,bindRangeTrackClick,rangeIds,sliderIds,rangePairs,pairedSliders,initializeRanges}=createGraphRangeControls({
     $,
     analysisControls,
     currentBounds,
@@ -195,7 +195,7 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
   }
   const yLog=()=>graphState.yLog&&!['surface','space'].includes(kind());
   const transformView=(bounds,previous,current,zx=1,zy=zx)=>transformBounds(bounds,previous,current,zx,zy,yLog());
-  function ensurePositiveY(){if(yLog()){const view=currentBounds(),[min,max]=positiveYRange(view.ymin,view.ymax);showNumber('graph-ymin',min);showNumber('graph-ymax',max);}}
+  function ensurePositiveY(){if(yLog()){const view=currentBounds(),[min,max]=positiveYRange(view.ymin,view.ymax);if(min!==view.ymin)showNumber('graph-ymin',min);if(max!==view.ymax)showNumber('graph-ymax',max);}}
   function yScaleControls(){const button=$('graph-y-scale');button.hidden=['surface','space'].includes(kind());setText(button,yLog()?'y: log10':'y: linear');button.setAttribute('aria-pressed',String(yLog()));}
   function currentBounds(){return {xmin:numeric(['cartesian','implicit','surface'].includes(kind())?'graph-min':'graph-xmin'),xmax:numeric(['cartesian','implicit','surface'].includes(kind())?'graph-max':'graph-xmax'),ymin:numeric('graph-ymin'),ymax:numeric('graph-ymax')};}
   function writeBounds(next){showNumber(['cartesian','implicit','surface'].includes(kind())?'graph-min':'graph-xmin',next.xmin);showNumber(['cartesian','implicit','surface'].includes(kind())?'graph-max':'graph-xmax',next.xmax);showNumber('graph-ymin',next.ymin);showNumber('graph-ymax',next.ymax);for(const pair of new Set(pairedSliders.values()))resetRangeDomain(pair);analysisControls();}
@@ -215,6 +215,7 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
     densityControls,
     execute,
     expressions,
+    fieldRange,
     isBusy,
     isReady,
     kind,
@@ -453,7 +454,7 @@ export function createGraphWorkspace({execute,options,onError:reportError,onClea
   bindMathPaste($('graph-source'),{multiline:true,surface:()=>kind()==='surface',onError});
   for(const id of ['graph-u-min','graph-u-max','graph-v-min','graph-v-max','graph-parameter-min','graph-parameter-max','graph-theta-min','graph-theta-max','graph-min','graph-max','graph-ymin','graph-ymax','graph-xmin','graph-xmax','graph-initial','graph-t0'])$(id).onchange=()=>{analysisControls();queue();};
   initializeRanges();
-  for(const [id,number] of Object.entries(saved.ranges||{}))if(rangeIds.includes(id))showNumber(id,number);
+  for(const [id,number] of Object.entries(saved.ranges||{}))if(rangeIds.includes(id)&&!fieldRange($(id))?.tree)showNumber(id,number);
   for(const suffix of ['min','max']){
     const theta='graph-theta-'+suffix,t='graph-parameter-'+suffix,legacy='graph-'+suffix;
     if(saved.ranges?.[theta]===undefined){const previous=saved.ranges?.[t]??(kind()==='polar'?saved.ranges?.[legacy]:undefined);if(Number.isFinite(previous))showNumber(theta,previous);}

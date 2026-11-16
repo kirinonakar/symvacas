@@ -304,8 +304,10 @@ internal object CalculatorGraphActions {
         val rowKind=if(graphKind=="cartesian")runCatching {graphPlanarKind(graphInputTree(sourceRows[selectedSource]))}.getOrDefault("cartesian") else graphKind
         val fixedIntercept=action=="yintercept" && rowKind=="cartesian"
         val singled=action in listOf("derivative","tangent","tangentangle") || fixedIntercept
-        val a=if(fixedIntercept)0.0 else first.toDoubleOrNull();val b=if(singled)a else second.toDoubleOrNull()
-        if(a==null || !a.isFinite() || b==null || !b.isFinite() || (!singled && a>=b)) {error="Enter finite values with a < b";return}
+        val firstLimit=if(fixedIntercept)GraphRangeInput(0.0) else parseGraphRangeInput(first)
+        val secondLimit=if(singled)firstLimit else parseGraphRangeInput(second)
+        if(firstLimit==null || secondLimit==null || (!singled && firstLimit.tree==null && secondLimit.tree==null && firstLimit.value>=secondLimit.value)) {error="Enter finite values with a < b";return}
+        val a=firstLimit.value;val b=secondLimit.value
         val sources=graphSource.lines().filter {it.isNotBlank()}.take(24).filter {graphKind!="cartesian" || !isGraphShading(it)}.take(20)
         val selectedTarget=graphAnalysisTarget(selected,graphDerivativeSelected,graphSecondDerivativeSelected)
         val otherTarget=graphAnalysisTarget(other,graphDerivativeSelected,graphSecondDerivativeSelected)
@@ -317,6 +319,8 @@ internal object CalculatorGraphActions {
         val parameters=graphState.parameterPayload()
         val derivative=graphDerivativeSelected;val secondDerivative=graphSecondDerivativeSelected
         val analysisRequest=request("graphAnalysis").put("angle","RAD").put("trees",trees).put("graphKind",kind).put("analysis",action).put("a",a).put("b",b).put("selected",selectedTarget.source).put("selectedDerivativeOrder",selectedTarget.order).put("other",otherTarget?.source ?: 0).put("otherDerivativeOrder",otherTarget?.order ?: 0).put("variable",if(rowKind=="cartesian")"x" else "t").put("parameters",parameters).put("xMin",xMin).put("xMax",xMax).put("yMin",yMin).put("yMax",yMax)
+        firstLimit.tree?.let {analysisRequest.put("a",JSONObject(it.json()))}
+        secondLimit.tree?.let {analysisRequest.put("b",JSONObject(it.json()))}
         trace?.let {analysisRequest.put("tracePoint",JSONArray(listOf(it.first,it.second)))}
         analysisJob=viewModelScope.launch {
             graphState.graphAnalysisBusy=true;error="";graphState.graphAnalysis=null
@@ -325,7 +329,8 @@ internal object CalculatorGraphActions {
                 if(source==graphSource && kind==graphKind && derivative==graphDerivativeSelected && secondDerivative==graphSecondDerivativeSelected && parameters.toString()==graphState.parameterPayload().toString()) {
                     if(response.optBoolean("ok")) {
                         graphState.graphAnalysis=response
-                        shadedInterval=if(action=="integral" && rowKind=="cartesian")a to b else null
+                        val interval=response.optJSONArray("interval")
+                        shadedInterval=if(action=="integral" && rowKind=="cartesian")(interval?.optDouble(0,a) ?: a) to (interval?.optDouble(1,b) ?: b) else null
                         response.optJSONArray("points")?.optJSONArray(0)?.let {trace=it.getDouble(0) to it.getDouble(1)}
                     } else error=response.optString("error","Analysis failed")
                 }
