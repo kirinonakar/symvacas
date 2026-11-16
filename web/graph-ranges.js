@@ -26,7 +26,8 @@ export function createGraphRangeControls({
   const rawValue=(id,number)=>isLog(id)?10**number:number;
   function fieldRange(input){
     const source=input.dataset.displayValue===input.value?input.dataset.fullValue:input.value;
-    if(!expressionIds.has(input.id))return {value:source.trim()===''?NaN:Number(source)};
+    const parameterField=input.dataset.parameterValue!==undefined||input.dataset.parameterBound!==undefined;
+    if(!parameterField&&!expressionIds.has(input.id))return {value:source.trim()===''?NaN:Number(source)};
     const cached=parsedFields.get(input);
     if(cached?.source===source)return cached.result;
     const result=parseGraphRangeInput(source);

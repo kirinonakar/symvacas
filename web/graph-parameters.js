@@ -50,7 +50,7 @@ export function createGraphParameterControls({
       input.oninput=()=>{state.parameters[name]=Number(input.value);if(state.animation)state.animation.phases[name]=parameterPhase(name)-state.animation.phase;syncParameterControls();parameterChanged(true);};
       const finishDrag=()=>{parameterChanged(false);persist();};
       input.onchange=finishDrag;input.addEventListener('pointercancel',finishDrag);
-      valueInput.type='number';valueInput.step='any';displayField(valueInput,state.parameters[name]);editField(valueInput);valueInput.dataset.parameterValue=name;valueInput.setAttribute('aria-label',`${t('Parameter value')}: ${name}`);
+      valueInput.type='text';valueInput.dataset.parameterValue=name;displayField(valueInput,state.parameters[name]);editField(valueInput);valueInput.setAttribute('aria-label',`${t('Parameter value')}: ${name}`);
       const applyValue=()=>{
         const number=fieldNumber(valueInput);
         if(!Number.isFinite(number)||Math.abs(number)>1e9){valueInput.setAttribute('aria-invalid','true');onError(t('Enter a finite value between -1e9 and 1e9'));return;}
@@ -58,11 +58,22 @@ export function createGraphParameterControls({
         const half=(b-a)/2;
         state.parameterRanges[name]=[number-half,number+half];state.parameters[name]=number;
         if(state.animation)state.animation.phases[name]=parameterPhase(name)-state.animation.phase;
-        valueInput.removeAttribute('aria-invalid');$('graph-status').textContent='';syncParameterControls(true);persist();parameterChanged();
+        valueInput.removeAttribute('aria-invalid');displayField(valueInput,number);$('graph-status').textContent='';syncParameterControls(true);persist();parameterChanged();
       };
       valueInput.oninput=()=>valueInput.removeAttribute('aria-invalid');valueInput.onchange=applyValue;
       valueInput.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();applyValue();}else if(event.key==='Escape'){event.preventDefault();displayField(valueInput,state.parameters[name]);valueInput.removeAttribute('aria-invalid');}};
-      for(const [index,[field,number,labelText]] of [[low,limits[0],'Slider minimum'],[high,limits[1],'Slider maximum']].entries()){field.type='number';field.step='any';displayField(field,number);editField(field);field.dataset.parameterBound=String(index);field.setAttribute('aria-label',`${t(labelText)}: ${name}`);field.onchange=()=>{const a=fieldNumber(low),b=fieldNumber(high);if(!Number.isFinite(a)||!Number.isFinite(b)||a>=b){onError(t('Enter finite values with minimum < maximum'));return;}state.parameterRanges[name]=[a,b];state.parameters[name]=a+(b-a)/2;if(state.animation)state.animation.phases[name]=parameterPhase(name)-state.animation.phase;parameterControls(names,true);persist();parameterChanged();};}
+      const applyRange=()=>{
+        const a=fieldNumber(low),b=fieldNumber(high),span=b-a;
+        if(!Number.isFinite(span)||span<=0){onError(t('Enter finite values with minimum < maximum'));return;}
+        state.parameterRanges[name]=[a,b];state.parameters[name]=a+span/2;
+        if(state.animation)state.animation.phases[name]=parameterPhase(name)-state.animation.phase;
+        displayField(low,a);displayField(high,b);$('graph-status').textContent='';syncParameterControls(true);persist();parameterChanged();
+      };
+      for(const [index,[field,number,labelText]] of [[low,limits[0],'Slider minimum'],[high,limits[1],'Slider maximum']].entries()){
+        field.type='text';field.dataset.parameterBound=String(index);displayField(field,number);editField(field);field.setAttribute('aria-label',`${t(labelText)}: ${name}`);
+        field.onchange=applyRange;
+        field.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();applyRange();}};
+      }
       const rangeTrack=document.createElement('div');rangeTrack.className='graph-range-slider';rangeTrack.dataset.parameterRange=name;
       for(const index of [0,1]){
         const boundSlider=document.createElement('input'),span=limits[1]-limits[0];boundSlider.type='range';boundSlider.step='any';boundSlider.min=String(limits[0]-span/2);boundSlider.max=String(limits[1]+span/2);boundSlider.value=String(limits[index]);

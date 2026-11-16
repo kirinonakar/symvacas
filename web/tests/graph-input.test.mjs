@@ -3,8 +3,14 @@ import assert from 'node:assert/strict';
 import {graphInputTree,planarTreeKind,cartesianFormula,graphRangeAxes,isImplicitSurface,surfaceFormula} from '../graph-input.js';
 import {createGraphRangeControls} from '../graph-ranges.js';
 
-test('analysis and viewport range fields read constant expressions without replacing the draft',()=>{
-  const fields=new Map(['graph-analysis-a','graph-min'].map(id=>[id,{id,value:'pi/3+1',dataset:{},hasAttribute:()=>false}]));
+test('graph ranges and parameter fields read constant expressions without replacing the draft',()=>{
+  const fields=new Map([
+    ['graph-analysis-a','graph-analysis-a',{}],
+    ['graph-min','graph-min',{}],
+    ['parameter-value','',{parameterValue:'a'}],
+    ['parameter-min','',{parameterBound:'0'}],
+    ['parameter-max','',{parameterBound:'1'}]
+  ].map(([key,id,dataset])=>[key,{id,dataset,value:'pi/3+1',hasAttribute:()=>false}]));
   const {fieldRange,numeric,editField}=createGraphRangeControls({$:id=>fields.get(id),options:()=>({displayDigits:4})});
   for(const [id,field] of fields){
     assert.equal(numeric(id),Math.PI/3+1);

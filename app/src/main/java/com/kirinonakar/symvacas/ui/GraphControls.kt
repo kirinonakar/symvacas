@@ -61,11 +61,11 @@ import kotlin.math.*
             val wasFocused=focused;focused=state.isFocused
             if(!wasFocused&&focused)editText=graphDisplayNumber(draft,displayDigits)
             if(wasFocused&&!focused) {
-                val number=draft.trim().toDoubleOrNull()
-                if(number==null||!number.isFinite()||abs(number)>1e9) {
+                val number=graphRangeNumber(draft.trim())
+                if(number==null||abs(number)>1e9) {
                     invalid=true
                     onError(if(korean)"-1e9부터 1e9 사이의 유한한 값을 입력하세요." else "Enter a finite value between -1e9 and 1e9")
-                } else {invalid=false;onApply(number)}
+                } else {draft=number.toString();invalid=false;onApply(number)}
             }
         }.semantics {contentDescription=if(korean)"매개변수 값: $name" else "Parameter value: $name"},
         textStyle=MaterialTheme.typography.bodySmall.copy(fontSize=12.sp,color=c.ink),singleLine=true,cursorBrush=SolidColor(c.accent),
