@@ -15,7 +15,7 @@ private fun statisticsHeaderKey(rows:List<List<String>>):String {
 internal fun hasExplicitStatisticsHeader(rows:List<List<String>>):Boolean=synchronized(explicitStatisticsHeaders){explicitStatisticsHeaders.isNotEmpty()&&statisticsHeaderKey(rows) in explicitStatisticsHeaders}
 internal fun registerStatisticsHeader(rows:List<List<String>>) {
     val first=rows.firstOrNull().orEmpty()
-    if(first.any(String::isNotBlank)&&first.none {it.statisticsNumericCell().toDoubleOrNull()?.isFinite()==true})synchronized(explicitStatisticsHeaders){explicitStatisticsHeaders.add(statisticsHeaderKey(rows))}
+    if(first.any(String::isNotBlank))synchronized(explicitStatisticsHeaders){explicitStatisticsHeaders.add(statisticsHeaderKey(rows))}
 }
 internal fun statisticsHeaderKeys():String=synchronized(explicitStatisticsHeaders){JSONArray(explicitStatisticsHeaders.toList()).toString()}
 internal fun restoreStatisticsHeaderKeys(saved:String) {

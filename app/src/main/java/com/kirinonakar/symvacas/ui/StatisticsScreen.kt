@@ -345,7 +345,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
         Row(Modifier.horizontalScroll(rememberScrollState())) {
             StatisticsIconAction("New dataset",R.drawable.ic_statistics_new){startNew()}
             StatisticsIconAction(if(csv)"Table editor" else "Direct input",if(csv)R.drawable.ic_statistics_table else R.drawable.ic_statistics_edit){csv=!csv}
-            SmallAction("Add row"){if(parsedRows.size<999)data+="\n"+",".repeat(dataColumns.size-1)}
+            SmallAction("Add row"){if(parsedRows.size<999)data+="\n"+statisticsCsvLine(List(dataColumns.size){""})}
             SmallAction("Add column",modifier=Modifier.testTag("statistics-add-column"),enabled=maxOf(dataColumns.size,detectedColumns.getOrDefault(dataColumns.size))<100) {
                 val addition=statisticsAddColumn(data,dataColumns.size)
                 m.clearRegression();data=addition.csv
@@ -463,6 +463,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
             m.clearRegression();data=result.csv
             columnCount=statisticsColumnCount(result.kind).toString()
             selectedDataKind=if(selectedDataKind.startsWith("columns:"))"columns:$columnCount" else result.kind
+            if(result.kind=="list"&&plotType=="Scatter")plotType="Histogram"
         }})
         }
             val fittedResponse=if(m.regressionMode in listOf("multiple","logistic","polynomial","ridge","lasso","elasticnet","logisticridge","logisticlasso","logisticelasticnet","randomforest","randomforestclassifier","randomforestregressor","svm","svc","svr","bayeslinear","bayeslogistic"))m.regressionResponseColumn?.takeIf {it in regressionColumns.indices} ?: regressionColumns.lastIndex else regressionColumns.lastIndex

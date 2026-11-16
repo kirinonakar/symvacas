@@ -51,3 +51,28 @@ test('all-text recoded headers survive stored settings and editing rather than b
   mergeData(state,portable);assert.deepEqual(statisticsDataRows(result.csv,'list'),[['male'],['female']]);
   assert.ok(resetSettingsState(state).statisticsHeaderKeys.includes('4021414396:2881141766:3'));
 });
+
+const tableFixture=JSON.parse(readFileSync(new URL('../../tests/fixtures/statistics_table_preparation.json',import.meta.url),'utf8'));
+function transformTable(item){
+  const source=tableFixture.sources[item.source],other=tableFixture.sources[item.other];
+  return preparationTransform(source.csv,source.kind,item.id,item.settings,other);
+}
+test('deletion and row/column alignment match Android, including ragged and quoted CSV data',()=>{
+  for(const item of tableFixture.cases){
+    const result=transformTable(item);
+    assert.deepEqual(result.headers,item.headers);
+    assert.deepEqual(result.rows,item.rows);
+    assert.equal(result.changed,item.changed);
+    assert.deepEqual(preparationDataset(result.csv,result.kind),{headers:result.headers,rows:result.rows});
+  }
+});
+test('header and index ambiguity and deletion of every column fail before the editor can apply them',()=>{
+  for(const item of tableFixture.invalid)assert.throws(()=>transformTable(item),{message:item.error});
+});
+test('the editor can read a combined dataset with 5000 observations plus the generated header',()=>{
+  const source=Array.from({length:2500},(_,i)=>String(i+1)).join('\n');
+  const other={csv:source,kind:'list'};
+  const result=preparationTransform(source,'list','merge',{},other);
+  assert.equal(statisticsDataRows(result.csv,result.kind).length,5000);
+  assert.throws(()=>preparationTransform(source,'list','merge',{}, {...other,csv:source+'\n1'}),/5000/);
+});

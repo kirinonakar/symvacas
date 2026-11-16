@@ -13,13 +13,13 @@ internal fun statisticsColumnCount(kind:String):Int = when(kind) {
 internal fun statisticsColumnNames(kind:String):List<String> = List(statisticsColumnCount(kind)) {listOf("x","y","z").getOrNull(it) ?: "x${it+1}"}
 internal fun statisticsColumnLabels(csv:String,kind:String):List<String> {
     val names=statisticsColumnNames(kind)
-    val raw=csv.removePrefix("\uFEFF").replace("\r\n","\n").replace('\r','\n').split('\n').map {it.splitCsvRecord()}
+    val raw=statisticsCsvRows(csv)
     if(!statisticsHasHeader(raw))return names
     return names.mapIndexed {index,name->raw.first().getOrNull(index)?.trim()?.takeIf {it.isNotBlank()&&it!=name}?.let {"$it ($name)"} ?: name}
 }
 internal fun statisticsHeatMapColumnNames(csv:String,kind:String):List<String> {
     val names=statisticsColumnNames(kind)
-    val raw=csv.removePrefix("\uFEFF").replace("\r\n","\n").replace('\r','\n').split('\n').map {it.splitCsvRecord()}
+    val raw=statisticsCsvRows(csv)
     if(!statisticsHasHeader(raw))return names
     return names.mapIndexed {index,name->raw.firstOrNull()?.getOrNull(index)?.trim()?.takeIf(String::isNotBlank) ?: name}
 }
@@ -50,7 +50,7 @@ internal fun statisticsEffectiveKind(selectedKind:String,columnCount:Int):String
     if(selectedKind.startsWith("columns:"))statisticsKindForColumns(columnCount) else selectedKind
 internal fun statisticsDetectedColumns(source:String):Int {
     if(source.isBlank())return 1
-    val count=source.removePrefix("\uFEFF").replace("\r\n","\n").replace('\r','\n').lineSequence().map {it.splitCsvRecord().size}.maxOrNull() ?: 1
+    val count=statisticsCsvRows(source).maxOfOrNull {it.size} ?: 1
     require(count<=100) {"Column count must be between 1 and 100"}
     return count.coerceAtLeast(1)
 }
@@ -95,13 +95,26 @@ internal fun statisticsRows(csv:String):List<List<String>> {
     return if(statisticsHasHeader(rows))rows.drop(1) else rows
 }
 
-/** Every stored row, a detected header included, so table column edits keep header labels with their column. */
-internal fun statisticsCsvRows(csv:String):List<List<String>> {
-    val normalized=csv.removePrefix("\uFEFF").replace("\r\n","\n").replace('\r','\n')
-    val lines=mutableListOf<String>();var start=0
-    normalized.forEachIndexed {index,char->if(char=='\n'){lines+=normalized.substring(start,index);start=index+1}}
-    lines+=normalized.substring(start)
-    return lines.map {it.splitCsvRecord().map(String::trim)}
+/** Read CSV records including headers. The editor accepts an unfinished quote or trailing draft row. */
+internal fun statisticsCsvRows(csv:String,editing:Boolean=true):List<List<String>> {
+    val source=csv.removePrefix("\uFEFF")
+    val rows=mutableListOf<List<String>>()
+    var start=0
+    var index=0
+    var quoted=false
+    while(index<source.length) {
+        val char=source[index]
+        if(char=='"')quoted=!quoted
+        if(!quoted&&(char=='\n'||char=='\r')) {
+            rows+=source.substring(start,index).splitCsvRecord()
+            if(char=='\r'&&source.getOrNull(index+1)=='\n')index++
+            start=index+1
+        }
+        index++
+    }
+    require(editing||!quoted) {"Unclosed CSV quote"}
+    if(editing||start<source.length)rows+=source.substring(start).splitCsvRecord()
+    return rows
 }
 
 internal fun statisticsRemoveColumn(csv:String,column:Int):String {
@@ -135,7 +148,7 @@ internal fun statisticsRenameColumn(csv:String,columnCount:Int,column:Int,header
     require(statisticsHasHeader(listOf(listOf(name),listOf("1")))) {"Use a text column header"}
     val rows=(if(hasHeader)raw.drop(1) else raw).map {row->List(width){row.getOrElse(it){""}}}
     registerStatisticsHeader(listOf(updatedNames)+rows)
-    return (listOf(updatedNames)+rows.ifEmpty {listOf(List(width){""})}).joinToString("\n") {row->if(row.size==1&&row[0].isBlank())"\"\"" else statisticsCsvLine(row)}
+    return (listOf(updatedNames)+rows.ifEmpty {listOf(List(width){""})}).joinToString("\n",transform=::statisticsCsvLine)
 }
 
 internal fun statisticsMoveColumn(csv:String,column:Int,delta:Int):String {
@@ -316,7 +329,8 @@ internal fun statisticsPasteText(source:String,singleColumn:Boolean=false):Strin
     appendCell(text.length);return result.toString()
 }
 
-internal fun statisticsCsvLine(cells:List<String>):String=cells.joinToString(",") {it.csvCell()}
+internal fun statisticsCsvLine(cells:List<String>):String =
+    if(cells.size==1&&cells[0].isBlank())"\"\"" else cells.joinToString(",") {it.csvCell()}
 
 private fun String.csvCell():String=if(any {it==','||it=='"'||it=='\n'||it=='\r'||it=='\t'})"\"${replace("\"","\"\"")}\"" else this
 
@@ -382,7 +396,7 @@ internal fun parseStatisticsDate(value:String):LocalDate? {
     return runCatching {LocalDate.of(match.groupValues[1].toInt(),match.groupValues[3].toInt(),match.groupValues[4].toInt())}.getOrNull()
 }
 
-internal fun statisticsHasHeader(rows:List<List<String>>):Boolean {
+internal fun statisticsHasHeader(rows:List<List<String>>,allowIncomplete:Boolean=false):Boolean {
     if(hasExplicitStatisticsHeader(rows))return true
     val first=rows.firstOrNull() ?: return false
     if(first.none(String::isNotBlank))return false
@@ -396,7 +410,12 @@ internal fun statisticsHasHeader(rows:List<List<String>>):Boolean {
         if(value.matches(Regex("[\\p{L}_][\\p{L}\\p{N}_]*(?:\\s+[\\p{L}_][\\p{L}\\p{N}_]*)*\\s*\\([^()]*[\\p{L}%][^()]*\\)")))return false
         return runCatching {Parser(value).parse().kind!="symbol"}.getOrDefault(false)
     }
-    return first.all(String::isNotBlank)&&first.none(::dataCell)&&(rows.drop(1).any {row->row.size==first.size&&row.any(::dataCell)}||rows.size>1&&rows.drop(1).all {row->row.all(String::isBlank)})
+    if(first.any(::dataCell))return false
+    val body=rows.drop(1)
+    if(allowIncomplete&&body.any {row->
+        first.indices.any {column->first[column].isNotBlank()&&dataCell(row.getOrNull(column).orEmpty())}
+    })return true
+    return first.all(String::isNotBlank)&&(body.any {row->row.size==first.size&&row.any(::dataCell)}||body.isNotEmpty()&&body.all {row->row.all(String::isBlank)})
 }
 
 private fun statisticsHeader(row:List<String>):Boolean {

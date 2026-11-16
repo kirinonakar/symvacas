@@ -89,6 +89,177 @@ export const statisticsPreparationSchema = [
     ]
   },
   {
+    "id": "dropMissing",
+    "label": "Delete rows / columns with missing values",
+    "fields": [
+      {
+        "key": "axis",
+        "label": "Delete from",
+        "type": "choice",
+        "default": "rows",
+        "options": [
+          [
+            "rows",
+            "Delete rows"
+          ],
+          [
+            "columns",
+            "Delete columns"
+          ]
+        ]
+      },
+      {
+        "key": "rule",
+        "label": "Missing-value rule",
+        "type": "choice",
+        "default": "any",
+        "options": [
+          [
+            "any",
+            "Any value is missing"
+          ],
+          [
+            "all",
+            "All values are missing"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": "merge",
+    "label": "Combine datasets",
+    "fields": [
+      {
+        "key": "dataset",
+        "label": "Dataset to combine",
+        "type": "dataset",
+        "default": ""
+      },
+      {
+        "key": "axis",
+        "label": "Combine direction",
+        "type": "choice",
+        "default": "rows",
+        "options": [
+          [
+            "rows",
+            "Append rows"
+          ],
+          [
+            "columns",
+            "Append columns"
+          ]
+        ]
+      },
+      {
+        "key": "rowAlignment",
+        "label": "Alignment",
+        "type": "choice",
+        "default": "header",
+        "options": [
+          [
+            "header",
+            "Match column headers"
+          ],
+          [
+            "position",
+            "Ignore headers (column order)"
+          ]
+        ],
+        "when": {
+          "axis": "rows"
+        }
+      },
+      {
+        "key": "columnAlignment",
+        "label": "Alignment",
+        "type": "choice",
+        "default": "position",
+        "options": [
+          [
+            "index",
+            "Match index values"
+          ],
+          [
+            "position",
+            "Ignore index (row order)"
+          ]
+        ],
+        "when": {
+          "axis": "columns"
+        }
+      },
+      {
+        "key": "leftHeader",
+        "label": "Current dataset header",
+        "type": "choice",
+        "default": "auto",
+        "options": [
+          [
+            "auto",
+            "Auto-detect header"
+          ],
+          [
+            "first",
+            "First row is a header"
+          ],
+          [
+            "none",
+            "No header"
+          ]
+        ],
+        "when": {
+          "axis": "columns"
+        }
+      },
+      {
+        "key": "rightHeader",
+        "label": "Other dataset header",
+        "type": "choice",
+        "default": "auto",
+        "options": [
+          [
+            "auto",
+            "Auto-detect header"
+          ],
+          [
+            "first",
+            "First row is a header"
+          ],
+          [
+            "none",
+            "No header"
+          ]
+        ],
+        "when": {
+          "axis": "columns"
+        }
+      },
+      {
+        "key": "leftIndex",
+        "label": "Current dataset index column",
+        "type": "column",
+        "default": "0",
+        "when": {
+          "axis": "columns",
+          "columnAlignment": "index"
+        }
+      },
+      {
+        "key": "rightIndex",
+        "label": "Other dataset index column",
+        "type": "column",
+        "source": "dataset",
+        "default": "0",
+        "when": {
+          "axis": "columns",
+          "columnAlignment": "index"
+        }
+      }
+    ]
+  },
+  {
     "id": "wideToLong",
     "label": "Wide → Long",
     "fields": [

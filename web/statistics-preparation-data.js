@@ -5,9 +5,11 @@ import {computationLimitsRemoved} from './computation-limits.js';
 
 const numeric=/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
 const identifier=/^[\p{L}][\p{L}\p{N}_]*$/u;
-export function preparationDataset(source,kind){
-  const raw=csvRows(source+'\n',{skipHeader:false,preserveEmptyRows:true}),width=Math.max(statisticsColumnCount(kind),...raw.map(row=>row.length));
-  const header=statisticsCsvHasHeader(raw),aliases=statisticsColumnNames(width);
+export function preparationDataset(source,kind,keepTrailingEmptyRow=true,headerMode=null){
+  const raw=csvRows(keepTrailingEmptyRow?source+'\n':source,{skipHeader:false,preserveEmptyRows:true,headerMode});
+  const width=raw.reduce((count,row)=>Math.max(count,row.length),statisticsColumnCount(kind));
+  const header=statisticsCsvHasHeader(raw,headerMode);
+  const aliases=statisticsColumnNames(width);
   return {headers:header?aliases.map((name,i)=>raw[0][i]||name):aliases,rows:(header?raw.slice(1):raw).map(row=>Array.from({length:width},(_,i)=>row[i]??''))};
 }
 function number(cell){const text=statisticsNumericCell(cell);return numeric.test(text)&&Number.isFinite(Number(text))?Number(text):NaN;}
@@ -21,15 +23,116 @@ function validateHeaders(headers){
   if(headers.some(name=>!name.trim()||!statisticsCsvHasHeader([[name],['1']])))throw new Error('Use a text column header');
   if(new Set(headers.map(name=>name.toLowerCase())).size!==headers.length)throw new Error('New column header already exists');
 }
-function result(headers,rows,changed,omitted=0,filter=false){
-  if(!filter)validateHeaders(headers);
+function result(headers,rows,changed,omitted=0,validateNewHeaders=true){
+  if(validateNewHeaders)validateHeaders(headers);
   else if(!headers.length||headers.length>100)throw new Error('Column count must be between 1 and 100');
-  if(!filter&&!rows.length||!computationLimitsRemoved()&&rows.length>5000)throw new Error('Enter 1–5000 data rows');
+  if(!computationLimitsRemoved()&&rows.length>5000)throw new Error('Enter 1–5000 data rows');
   const all=[headers,...rows];registerStatisticsHeader(all);
   const quote=text=>/[",\r\n\t]/.test(text)?'"'+text.replaceAll('"','""')+'"':text;
   return {csv:all.map(row=>row.length===1&&!row[0]?'""':row.map(quote).join(',')).join('\n'),kind:statisticsKindForColumns(headers.length),headers,rows,changed,omitted};
 }
-export function preparationTransform(source,kind,operation,settings={}){
+const missing=cell=>!cell.trim()||/^(?:NA|NaN)$/i.test(cell);
+
+function dropMissing(input,{axis='rows',rule='any'}){
+  if(!['rows','columns'].includes(axis)||!['any','all'].includes(rule))throw new Error('Choose a valid missing-value rule');
+  const remove=values=>rule==='all'?values.every(missing):values.some(missing);
+  if(axis==='rows'){
+    const kept=input.rows.filter(row=>!remove(row));
+    return result(input.headers,kept,input.rows.length-kept.length,0,false);
+  }
+  const kept=input.headers.map((_,index)=>index).filter(index=>
+    !(rule==='all'?input.rows.every(row=>missing(row[index])):input.rows.some(row=>missing(row[index]))));
+  if(!kept.length)throw new Error('No columns remain; change the missing-value rule');
+  return result(kept.map(index=>input.headers[index]),input.rows.map(row=>kept.map(index=>row[index])),input.headers.length-kept.length,0,false);
+}
+
+function uniqueHeaders(headers){
+  const reserved=new Set(headers),used=new Set();
+  return headers.map(name=>{
+    if(!used.has(name)){used.add(name);return name;}
+    let suffix=2;
+    while(reserved.has(name+'_'+suffix))suffix++;
+    const label=name+'_'+suffix;
+    reserved.add(label);
+    return label;
+  });
+}
+
+function indexColumn(value='0',width){
+  const index=Number(value);
+  if(!/^\d+$/.test(value)||index>=width)throw new Error('Choose valid index columns');
+  return index;
+}
+
+function indexRows(rows,index){
+  const indexed=new Map();
+  for(const row of rows){
+    const key=row[index];
+    if(missing(key)||indexed.has(key))throw new Error('Index values must be present and unique in each dataset');
+    indexed.set(key,row);
+  }
+  return indexed;
+}
+
+function mergeDatasets(left,right,settings){
+  const {axis='rows',rowAlignment='header',columnAlignment='position'}=settings;
+  if(!['rows','columns'].includes(axis))throw new Error('Choose a valid combine direction');
+  function checkSize(columns,rows){
+    if(!columns||columns>100)throw new Error('Column count must be between 1 and 100');
+    if(!computationLimitsRemoved()&&rows>5000)throw new Error('Enter 1–5000 data rows');
+  }
+  if(axis==='rows'){
+    if(!['header','position'].includes(rowAlignment))throw new Error('Choose a valid alignment');
+    const byHeader=rowAlignment==='header';
+    if(byHeader&&[left,right].some(input=>new Set(input.headers).size!==input.headers.length))throw new Error('Header matching requires unique column headers in each dataset');
+    const headers=byHeader?[...new Set([...left.headers,...right.headers])]:uniqueHeaders([...left.headers,...right.headers.slice(left.headers.length)]);
+    checkSize(headers.length,left.rows.length+right.rows.length);
+    function align(input){
+      const positions=new Map(input.headers.map((name,index)=>[name,index]));
+      const indices=headers.map((name,index)=>byHeader?positions.get(name):index);
+      return input.rows.map(row=>indices.map(index=>row[index]??''));
+    }
+    return result(headers,align(left).concat(align(right)),right.rows.length,0,false);
+  }
+
+  if(!['index','position'].includes(columnAlignment))throw new Error('Choose a valid alignment');
+  const byIndex=columnAlignment==='index';
+  const rightIndex=byIndex?indexColumn(settings.rightIndex,right.headers.length):-1;
+  const rightColumns=right.headers.map((_,index)=>index).filter(index=>index!==rightIndex);
+  const headers=uniqueHeaders([...left.headers,...rightColumns.map(index=>right.headers[index])]);
+  const leftBlank=left.headers.map(()=>''),rightBlank=rightColumns.map(()=>'');
+  const rightValues=row=>row?rightColumns.map(index=>row[index]):rightBlank;
+  let rows;
+  if(byIndex){
+    const leftIndex=indexColumn(settings.leftIndex,left.headers.length);
+    const leftRows=indexRows(left.rows,leftIndex),rightRows=indexRows(right.rows,rightIndex);
+    const keys=new Set([...leftRows.keys(),...rightRows.keys()]);
+    checkSize(headers.length,keys.size);
+    rows=Array.from(keys,key=>[
+      ...(leftRows.get(key)??leftBlank.map((_,index)=>index===leftIndex?key:'')),...rightValues(rightRows.get(key))
+    ]);
+  }else{
+    const count=Math.max(left.rows.length,right.rows.length);
+    checkSize(headers.length,count);
+    rows=Array.from({length:count},(_,index)=>[...(left.rows[index]??leftBlank),...rightValues(right.rows[index])]);
+  }
+  return result(headers,rows,rightColumns.length,0,false);
+}
+
+export function preparationTransform(source,kind,operation,settings={},other=null){
+  if(operation==='dropMissing'||operation==='merge'){
+    if(!source.trim())throw new Error('Enter data first');
+    const mergeColumns=operation==='merge'&&settings.axis==='columns';
+    const input=preparationDataset(source,kind,false,mergeColumns?settings.leftHeader??'auto':null);
+    if(operation==='dropMissing'){
+      if(!input.rows.length)throw new Error('Enter data first');
+      return dropMissing(input,settings);
+    }
+    if(!other)throw new Error('Choose a dataset to combine');
+    if(!other.csv.trim())throw new Error('The selected dataset is empty');
+    const right=preparationDataset(other.csv,other.kind,false,mergeColumns?settings.rightHeader??'auto':null);
+    return mergeDatasets(input,right,settings);
+  }
   const {headers,rows}=preparationDataset(source,kind),width=headers.length;
   if(!rows.some(row=>row.some(Boolean)))throw new Error('Enter data first');
   const get=(key,fallback='')=>String(settings[key]??fallback);
@@ -48,7 +151,7 @@ export function preparationTransform(source,kind,operation,settings={}){
       return row=>{const cell=row[column];return ({textEquals:()=>cell===value,textNotEquals:()=>cell!==value,contains:()=>cell.includes(value),startsWith:()=>cell.startsWith(value),endsWith:()=>cell.endsWith(value),blank:()=>!cell.trim(),notBlank:()=>!!cell.trim()})[op]();};
     });
     const output=rows.filter(row=>match==='all'?predicates.every(test=>test(row)):predicates.some(test=>test(row)));
-    return result(headers,output,rows.length-output.length,0,true);
+    return result(headers,output,rows.length-output.length,0,false);
   }
   if(operation==='wideToLong'){
     const ids=indices(get('ids','0'),width),measures=indices(get('measures','auto'),width,headers.map((_,i)=>i).filter(i=>!ids.includes(i)));

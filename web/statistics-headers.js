@@ -1,4 +1,4 @@
-// CSV itself cannot distinguish an all-text data row from an explicitly set header.
+// CSV itself cannot distinguish a data row from an explicitly set header.
 // Remember exact normalized datasets whose first row was created as a header.
 const keys=new Set();
 function key(rows){
@@ -12,6 +12,6 @@ function key(rows){
   return `${a>>>0}:${b>>>0}:${count}`;
 }
 export const hasExplicitStatisticsHeader=rows=>keys.size>0&&keys.has(key(rows));
-export function registerStatisticsHeader(rows){if(rows[0]?.some(Boolean)&&!rows[0].some(cell=>String(cell).trim()&&Number.isFinite(Number(cell))))keys.add(key(rows));}
+export function registerStatisticsHeader(rows){if(rows[0]?.some(cell=>String(cell??'').trim()))keys.add(key(rows));}
 export const statisticsHeaderKeys=()=>[...keys];
 export function restoreStatisticsHeaderKeys(saved){keys.clear();for(const value of Array.isArray(saved)?saved:[])if(typeof value==='string'&&/^\d+:\d+:\d+$/.test(value))keys.add(value);}

@@ -1,0 +1,42 @@
+{
+  "sources": {
+    "missing": {"kind":"xyz","csv":"ID,score,extra\n1,10,\n2,,NA\n,,nan\n3,30,NaN\n"},
+    "observations": {"kind":"xy","csv":"ID,score\r\n\"a\r\nline\",10\r\nb,20\r\n"},
+    "measurements": {"kind":"xyz","csv":"score,ID,weight\n22,b,2\n33,c,3"},
+    "duplicateIndex": {"kind":"xy","csv":"ID,score\nb,2\nb,3"},
+    "missingIndex": {"kind":"xy","csv":"ID,score\nb,2\n,3"},
+    "duplicateHeaders": {"kind":"xy","csv":"score,score\n1,2"},
+    "allMissing": {"kind":"xy","csv":"x,y\n,NaN\nNA,"},
+    "blankListRow": {"kind":"list","csv":"score\n1\n\"\"\n"},
+    "raggedHeader": {"kind":"xyz","csv":"ID,,cost\nA,2,4\nB,3"},
+    "shortRecords": {"kind":"xy","csv":"size,grade\n12\n14"},
+    "textLocations": {"kind":"xy","csv":"account,city\nB,Seoul\nA,Busan"},
+    "textPlans": {"kind":"xy","csv":"plan,code\nBasic,A\nPlus,B"},
+    "numericHeader": {"kind":"list","csv":"2025\n7\n8"},
+    "headerLikeObservation": {"kind":"list","csv":"x\n9"}
+  },
+  "cases": [
+    {"source":"missing","id":"dropMissing","settings":{},"headers":["ID","score","extra"],"rows":[],"changed":4},
+    {"source":"missing","id":"dropMissing","settings":{"rule":"all"},"headers":["ID","score","extra"],"rows":[["1","10",""],["2","","NA"],["3","30","NaN"]],"changed":1},
+    {"source":"missing","id":"dropMissing","settings":{"axis":"columns","rule":"all"},"headers":["ID","score"],"rows":[["1","10"],["2",""],["",""],["3","30"]],"changed":1},
+    {"source":"missingIndex","id":"dropMissing","settings":{"axis":"columns"},"headers":["score"],"rows":[["2"],["3"]],"changed":1},
+    {"source":"blankListRow","id":"dropMissing","settings":{},"headers":["score"],"rows":[["1"]],"changed":1},
+    {"source":"observations","other":"measurements","id":"merge","settings":{},"headers":["ID","score","weight"],"rows":[["a\r\nline","10",""],["b","20",""],["b","22","2"],["c","33","3"]],"changed":2},
+    {"source":"observations","other":"measurements","id":"merge","settings":{"rowAlignment":"position"},"headers":["ID","score","weight"],"rows":[["a\r\nline","10",""],["b","20",""],["22","b","2"],["33","c","3"]],"changed":2},
+    {"source":"observations","other":"measurements","id":"merge","settings":{"axis":"columns","columnAlignment":"index","rightIndex":"1"},"headers":["ID","score","score_2","weight"],"rows":[["a\r\nline","10","",""],["b","20","22","2"],["c","","33","3"]],"changed":2},
+    {"source":"allMissing","other":"measurements","id":"merge","settings":{"axis":"columns","columnAlignment":"position"},"headers":["x","y","score","ID","weight"],"rows":[["","NaN","22","b","2"],["NA","","33","c","3"]],"changed":3},
+    {"source":"duplicateHeaders","other":"measurements","id":"merge","settings":{"axis":"columns","columnAlignment":"position"},"headers":["score","score_2","score_3","ID","weight"],"rows":[["1","2","22","b","2"],["","","33","c","3"]],"changed":3},
+    {"source":"raggedHeader","other":"shortRecords","id":"merge","settings":{"axis":"columns"},"headers":["ID","y","cost","size","grade"],"rows":[["A","2","4","12",""],["B","3","","14",""]],"changed":2},
+    {"source":"textLocations","other":"textPlans","id":"merge","settings":{"axis":"columns","leftHeader":"first","rightHeader":"first"},"headers":["account","city","plan","code"],"rows":[["B","Seoul","Basic","A"],["A","Busan","Plus","B"]],"changed":2},
+    {"source":"textLocations","other":"textPlans","id":"merge","settings":{"axis":"columns","columnAlignment":"index","rightIndex":"1","leftHeader":"first","rightHeader":"first"},"headers":["account","city","plan"],"rows":[["B","Seoul","Plus"],["A","Busan","Basic"]],"changed":1},
+    {"source":"numericHeader","other":"headerLikeObservation","id":"merge","settings":{"axis":"columns","leftHeader":"first","rightHeader":"none"},"headers":["2025","x"],"rows":[["7","x"],["8","9"]],"changed":1}
+  ],
+  "invalid": [
+    {"source":"allMissing","id":"dropMissing","settings":{"axis":"columns"},"error":"No columns remain; change the missing-value rule"},
+    {"source":"observations","id":"merge","settings":{},"error":"Choose a dataset to combine"},
+    {"source":"observations","other":"duplicateHeaders","id":"merge","settings":{},"error":"Header matching requires unique column headers in each dataset"},
+    {"source":"observations","other":"duplicateIndex","id":"merge","settings":{"axis":"columns","columnAlignment":"index"},"error":"Index values must be present and unique in each dataset"},
+    {"source":"observations","other":"missingIndex","id":"merge","settings":{"axis":"columns","columnAlignment":"index"},"error":"Index values must be present and unique in each dataset"},
+    {"source":"observations","other":"measurements","id":"merge","settings":{"axis":"columns","columnAlignment":"index","rightIndex":"3"},"error":"Choose valid index columns"}
+  ]
+}

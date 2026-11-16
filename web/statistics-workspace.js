@@ -134,7 +134,7 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
   if(automaticResponse())$('regression-response').value=String(dataColumns()-1);
 
   function regressionMode(){const base=value('regression-kind'),penalty=value('regression-penalty');if(base==='svm')return {auto:'svm',classification:'svc',regression:'svr'}[value('regression-svm-task')]||'svm';if(base==='randomforest')return {auto:'randomforest',regression:'randomforestregressor',classification:'randomforestclassifier'}[value('regression-forest-task')]||'randomforest';return ['linear','multiple','logistic'].includes(base)&&penalty!=='none'?(base==='logistic'?'logistic':'')+penalty:base;}
-  function datasetsList(){const previous=value('dataset-list');$('dataset-list').replaceChildren(element('option','새 데이터'));$('dataset-list').firstChild.value='';for(const name of Object.keys(state.datasets)) {const option=element('option',name);option.value=name;$('dataset-list').append(option);}if(Object.hasOwn(state.datasets,previous))$('dataset-list').value=previous;}
+  function datasetsList(){const previous=value('dataset-list');$('dataset-list').replaceChildren(element('option','새 데이터'));$('dataset-list').firstChild.value='';for(const name of Object.keys(state.datasets)) {const option=element('option',name);option.value=name;$('dataset-list').append(option);}if(Object.hasOwn(state.datasets,previous))$('dataset-list').value=previous;preparationTools?.update();}
   $('dataset-list').onchange=()=>{const name=value('dataset-list');if(Object.hasOwn(state.datasets,name)){$('statistics-data').value=state.datasets[name];$('dataset-name').value=name;const savedKind=state.datasetKinds[name];setDataKind(statisticsColumnCount(savedKind)?savedKind:inferDataKind());dataKindChange();persist();}};
   $('dataset-save').onclick=()=>{const name=value('dataset-name').trim();if(!name){toast('데이터 이름을 입력하세요.');return;}state.datasets[name]=value('statistics-data');state.datasetKinds[name]=dataKind();datasetsList();$('dataset-list').value=name;persist();toast('데이터를 저장했습니다.');};
   $('dataset-delete').onclick=()=>{delete state.datasetKinds[value('dataset-list')];delete state.datasets[value('dataset-list')];datasetsList();persist();};
@@ -375,7 +375,12 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
   $('statistics-grouping').onchange=()=>{statisticsControls();refreshWorkspaceMath();};
   for(const id of ['statistics-column','statistics-first-group','statistics-second-group','statistics-group-column','statistics-value-column','statistics-subject-column','statistics-pair-matching','statistics-anova-method','statistics-t-method'])$(id).onchange=()=>{statisticsControls();refreshWorkspaceMath();persist();};
   $('statistics-yates').onchange=()=>{refreshWorkspaceMath();persist();};
-  function editorRows(){return value('statistics-data').trim()?csvRows(value('statistics-data'),{preserveEmptyRows:true}):[];}
+  function editorRows(){
+    const source=value('statistics-data');
+    if(!source.trim())return [];
+    const rows=csvRows(source,{skipHeader:false,preserveEmptyRows:true});
+    return statisticsCsvHasHeader(rows)?rows.slice(1):rows;
+  }
   let gutterSource=null,gutterCount=1,gutterSignature='',editorRefreshTimer=null;
   // Only visible gutter rows are mounted; indices still refer to every source line.
   function updateLineNumbers(){
@@ -398,8 +403,8 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
   // The grid edits only the rows below a detected header, so the header row has to survive every write-back.
   function editorHeader(){
     try{
-      const stored=csvRows(value('statistics-data'),{preserveEmptyRows:true,skipHeader:false}),data=editorRows();
-      return data.length<stored.length?stored.slice(0,stored.length-data.length):[];
+      const stored=csvRows(value('statistics-data'),{preserveEmptyRows:true,skipHeader:false});
+      return statisticsCsvHasHeader(stored)?stored.slice(0,1):[];
     }catch{return [];}
   }
   // Quote an empty List cell so a blank row survives serialization and reload.
@@ -658,7 +663,11 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
     if(selected&&selected===value('dataset-name')&&Object.hasOwn(state.datasets,selected))state.datasets[selected]=updated;
     dataKindChange();persist();toast(t('Missing values applied to current data'));
   }});
-  preparationTools=createPreparationTools({state,data:()=>value('statistics-data'),kind:dataKind,persist,saveAsNew:(result,requestedName)=>{
+  preparationTools=createPreparationTools({
+    state,data:()=>value('statistics-data'),kind:dataKind,persist,
+    savedDatasetNames:()=>Object.keys(state.datasets).sort(),
+    savedDataset:name=>Object.hasOwn(state.datasets,name)?{csv:state.datasets[name],kind:state.datasetKinds[name]||'list'}:null,
+    saveAsNew:(result,requestedName)=>{
     const name=newStatisticsDatasetName(requestedName,Object.keys(state.datasets),value('dataset-name'));
     state.datasets[name]=result.csv;state.datasetKinds[name]=result.kind;
     invalidateRegression();$('statistics-data').value=result.csv;$('dataset-name').value=name;

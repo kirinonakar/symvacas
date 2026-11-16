@@ -6,12 +6,18 @@ import org.json.JSONArray
 import kotlin.math.*
 
 internal data class StatisticsPreparationDataset(val headers:List<String>,val rows:List<List<String>>)
+internal data class StatisticsPreparationSource(val csv:String,val kind:String)
 internal data class StatisticsPreparationResult(val csv:String,val kind:String,val headers:List<String>,val rows:List<List<String>>,val changed:Int,val omitted:Int=0)
 private val preparationNumber=Regex("^[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?$")
 private val preparationIdentifier=Regex("^[\\p{L}][\\p{L}\\p{N}_]*$")
-internal fun preparationDataset(source:String,kind:String):StatisticsPreparationDataset {
-    val raw=statisticsCsvRows(source);val width=maxOf(statisticsColumnCount(kind),raw.maxOfOrNull {it.size} ?: 1)
-    val header=statisticsHasHeader(raw);val aliases=statisticsColumnNames(statisticsKindForColumns(width))
+internal fun preparationDataset(source:String,kind:String,keepTrailingEmptyRow:Boolean=true,headerMode:String?=null):StatisticsPreparationDataset {
+    val raw=statisticsCsvRows(source,keepTrailingEmptyRow);val width=maxOf(statisticsColumnCount(kind),raw.maxOfOrNull {it.size} ?: 1)
+    val header=raw.isNotEmpty()&&when(headerMode) {
+        "first"->true
+        "none"->false
+        else->statisticsHasHeader(raw,allowIncomplete=headerMode=="auto")
+    }
+    val aliases=statisticsColumnNames(statisticsKindForColumns(width))
     return StatisticsPreparationDataset(if(header)List(width){raw.first().getOrElse(it){""}.ifBlank {aliases[it]}} else aliases,(if(header)raw.drop(1) else raw).map {row->List(width){row.getOrElse(it){""}}})
 }
 private fun preparationNumber(cell:String):Double=cell.statisticsNumericCell().let {if(preparationNumber.matches(it))it.toDoubleOrNull()?.takeIf(Double::isFinite) ?: Double.NaN else Double.NaN}
@@ -20,15 +26,137 @@ private fun preparationIndices(text:String,width:Int,defaults:List<Int> = emptyL
     require(values.all {it in 0 until width}&&values.distinct().size==values.size) {"Choose valid data columns"};return values
 }
 private fun preparationNumericText(value:Double):String=if(value==0.0)"0" else value.toString().removeSuffix(".0")
-private fun preparationResult(headers:List<String>,rows:List<List<String>>,changed:Int,omitted:Int,removeLimits:Boolean,filter:Boolean=false):StatisticsPreparationResult {
-    require(headers.size in 1..100) {"Column count must be between 1 and 100"}
-    require(filter||headers.all {it.isNotBlank()&&statisticsHasHeader(listOf(listOf(it),listOf("1")))}) {"Use a text column header"}
-    require(filter||headers.map(String::lowercase).distinct().size==headers.size) {"New column header already exists"}
-    require((filter||rows.isNotEmpty())&&(removeLimits||rows.size<=5000)) {"Enter 1–5000 data rows"}
-    val all=listOf(headers)+rows;registerStatisticsHeader(all)
-    return StatisticsPreparationResult(all.joinToString("\n"){row->if(row.size==1&&row[0].isBlank())"\"\"" else statisticsCsvLine(row)},statisticsKindForColumns(headers.size),headers,rows,changed,omitted)
+
+private fun preparationMissing(cell:String):Boolean =
+    cell.isBlank() || cell.equals("NA",ignoreCase=true) || cell.equals("NaN",ignoreCase=true)
+
+private fun dropMissingPreparationData(
+    input:StatisticsPreparationDataset,settings:Map<String,String>
+):Pair<StatisticsPreparationDataset,Int> {
+    val axis=settings["axis"] ?: "rows"
+    val rule=settings["rule"] ?: "any"
+    require(axis in listOf("rows","columns") && rule in listOf("any","all")) {"Choose a valid missing-value rule"}
+    fun remove(values:Sequence<String>) =
+        if(rule=="all")values.all(::preparationMissing) else values.any(::preparationMissing)
+    if(axis=="rows") {
+        val kept=input.rows.filterNot {remove(it.asSequence())}
+        return input.copy(rows=kept) to (input.rows.size-kept.size)
+    }
+    val kept=input.headers.indices.filterNot {column->remove(input.rows.asSequence().map {it[column]})}
+    require(kept.isNotEmpty()) {"No columns remain; change the missing-value rule"}
+    return StatisticsPreparationDataset(kept.map {input.headers[it]},input.rows.map {row->kept.map {row[it]}}) to
+        (input.headers.size-kept.size)
 }
-internal fun preparationTransform(source:String,kind:String,operation:String,settings:Map<String,String> = emptyMap(),removeLimits:Boolean=false):StatisticsPreparationResult {
+
+private fun uniquePreparationHeaders(headers:List<String>):List<String> {
+    val reserved=headers.toHashSet()
+    val used=mutableSetOf<String>()
+    return headers.map {name->
+        if(used.add(name))name else {
+            var suffix=2
+            while("${name}_$suffix" in reserved)suffix++
+            "${name}_$suffix".also {reserved.add(it)}
+        }
+    }
+}
+
+private fun mergePreparationData(
+    left:StatisticsPreparationDataset,right:StatisticsPreparationDataset,settings:Map<String,String>,removeLimits:Boolean
+):Pair<StatisticsPreparationDataset,Int> {
+    val axis=settings["axis"] ?: "rows"
+    require(axis in listOf("rows","columns")) {"Choose a valid combine direction"}
+    fun checkSize(columns:Int,rows:Long) {
+        require(columns in 1..100) {"Column count must be between 1 and 100"}
+        require(removeLimits||rows<=5000) {"Enter 1–5000 data rows"}
+    }
+    if(axis=="rows") {
+        val alignment=settings["rowAlignment"] ?: "header"
+        require(alignment in listOf("header","position")) {"Choose a valid alignment"}
+        val rowCount=left.rows.size.toLong()+right.rows.size
+        val headers=if(alignment=="header") {
+            require(listOf(left,right).all {it.headers.distinct().size==it.headers.size}) {"Header matching requires unique column headers in each dataset"}
+            (left.headers+right.headers).distinct()
+        } else uniquePreparationHeaders(left.headers+right.headers.drop(left.headers.size))
+        checkSize(headers.size,rowCount)
+        fun align(input:StatisticsPreparationDataset):List<List<String>> {
+            val positions=input.headers.withIndex().associate {it.value to it.index}
+            val indices=if(alignment=="header")headers.map {positions[it] ?: -1} else headers.indices.toList()
+            return input.rows.map {row->indices.map {row.getOrNull(it).orEmpty()}}
+        }
+        return StatisticsPreparationDataset(headers,align(left)+align(right)) to right.rows.size
+    }
+
+    val alignment=settings["columnAlignment"] ?: "position"
+    require(alignment in listOf("index","position")) {"Choose a valid alignment"}
+    val byIndex=alignment=="index"
+    val rightIndex=if(byIndex)preparationIndex(settings["rightIndex"],right.headers.size) else -1
+    val rightColumns=right.headers.indices.filter {it!=rightIndex}
+    val headers=uniquePreparationHeaders(left.headers+rightColumns.map {right.headers[it]})
+    val leftBlank=List(left.headers.size){""}
+    val rightBlank=List(rightColumns.size){""}
+    fun rightValues(row:List<String>?)=row?.let {rightColumns.map(row::get)} ?: rightBlank
+    val rows=if(byIndex) {
+        val leftIndex=preparationIndex(settings["leftIndex"],left.headers.size)
+        val leftRows=indexPreparationRows(left.rows,leftIndex)
+        val rightRows=indexPreparationRows(right.rows,rightIndex)
+        val keys=leftRows.keys+rightRows.keys
+        checkSize(headers.size,keys.size.toLong())
+        keys.map {key->
+            val leftRow=leftRows[key] ?: leftBlank.toMutableList().apply {this[leftIndex]=key}
+            leftRow+rightValues(rightRows[key])
+        }
+    } else {
+        val count=maxOf(left.rows.size,right.rows.size)
+        checkSize(headers.size,count.toLong())
+        List(count){i->(left.rows.getOrNull(i) ?: leftBlank)+rightValues(right.rows.getOrNull(i))}
+    }
+    return StatisticsPreparationDataset(headers,rows) to rightColumns.size
+}
+
+private fun preparationIndex(value:String?,width:Int):Int {
+    val index=(value ?: "0").toIntOrNull() ?: -1
+    require(index in 0 until width) {"Choose valid index columns"}
+    return index
+}
+
+private fun indexPreparationRows(rows:List<List<String>>,index:Int):Map<String,List<String>> {
+    val indexed=linkedMapOf<String,List<String>>()
+    for(row in rows) {
+        val key=row[index]
+        require(!preparationMissing(key) && indexed.put(key,row)==null) {"Index values must be present and unique in each dataset"}
+    }
+    return indexed
+}
+
+private fun preparationResult(headers:List<String>,rows:List<List<String>>,changed:Int,omitted:Int,removeLimits:Boolean,validateNewHeaders:Boolean=true):StatisticsPreparationResult {
+    require(headers.size in 1..100) {"Column count must be between 1 and 100"}
+    require(!validateNewHeaders||headers.all {it.isNotBlank()&&statisticsHasHeader(listOf(listOf(it),listOf("1")))}) {"Use a text column header"}
+    require(!validateNewHeaders||headers.map(String::lowercase).distinct().size==headers.size) {"New column header already exists"}
+    require(removeLimits||rows.size<=5000) {"Enter 1–5000 data rows"}
+    val all=listOf(headers)+rows;registerStatisticsHeader(all)
+    return StatisticsPreparationResult(all.joinToString("\n",transform=::statisticsCsvLine),statisticsKindForColumns(headers.size),headers,rows,changed,omitted)
+}
+internal fun preparationTransform(
+    source:String,kind:String,operation:String,settings:Map<String,String> = emptyMap(),
+    removeLimits:Boolean=false,other:StatisticsPreparationSource?=null
+):StatisticsPreparationResult {
+    if(operation in listOf("dropMissing","merge")) {
+        require(source.isNotBlank()) {"Enter data first"}
+        val mergeColumns=operation=="merge"&&settings["axis"]=="columns"
+        val leftHeader=if(mergeColumns)settings["leftHeader"] ?: "auto" else null
+        val input=preparationDataset(source,kind,keepTrailingEmptyRow=false,headerMode=leftHeader)
+        val (output,changed)=if(operation=="dropMissing") {
+            require(input.rows.isNotEmpty()) {"Enter data first"}
+            dropMissingPreparationData(input,settings)
+        } else {
+            requireNotNull(other) {"Choose a dataset to combine"}
+            require(other.csv.isNotBlank()) {"The selected dataset is empty"}
+            val rightHeader=if(mergeColumns)settings["rightHeader"] ?: "auto" else null
+            val right=preparationDataset(other.csv,other.kind,keepTrailingEmptyRow=false,headerMode=rightHeader)
+            mergePreparationData(input,right,settings,removeLimits)
+        }
+        return preparationResult(output.headers,output.rows,changed,0,removeLimits,validateNewHeaders=false)
+    }
     val (headers,rows)=preparationDataset(source,kind);val width=headers.size
     require(rows.any {row->row.any(String::isNotBlank)}) {"Enter data first"}
     fun get(key:String,fallback:String="")=settings[key] ?: fallback
@@ -53,7 +181,7 @@ internal fun preparationTransform(source:String,kind:String,operation:String,set
                 }
             }
             val output=rows.filter {row->if(match=="all")predicates.all {it(row)} else predicates.any {it(row)}}
-            return preparationResult(headers,output,rows.size-output.size,0,removeLimits,filter=true)
+            return preparationResult(headers,output,rows.size-output.size,0,removeLimits,validateNewHeaders=false)
         }
         "wideToLong"->{
             val ids=preparationIndices(get("ids","0"),width)

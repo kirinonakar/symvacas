@@ -8,7 +8,9 @@ function csvRecordDelimiter(source,start){
   for(let i=start;i<source.length;i++){const ch=source[i];if(ch==='"')quoted=!quoted;else if(!quoted){if(ch==='\t')return '\t';if(ch==='\n'||ch==='\r')break;}}
   return ',';
 }
-export function statisticsCsvHasHeader(rows){
+export function statisticsCsvHasHeader(rows,headerMode=null){
+  if(headerMode==='none')return false;
+  if(headerMode==='first')return rows.length>0;
   if(hasExplicitStatisticsHeader(rows))return true;
   const first=rows[0];if(!first?.some(Boolean))return false;
   const labels=first.map(cell=>cell.toLowerCase());
@@ -22,18 +24,22 @@ export function statisticsCsvHasHeader(rows){
     if(/^[\p{L}_][\p{L}\p{N}_]*(?:\s+[\p{L}_][\p{L}\p{N}_]*)*\s*\([^()]*[\p{L}%][^()]*\)$/u.test(cell))return false;
     try{return parse(latexInput(cell)).kind!=='symbol';}catch{return false;}
   }
-  return first.every(Boolean)&&first.every(cell=>!dataCell(cell))&&(rows.slice(1).some(row=>row.length===first.length&&row.some(dataCell))||rows.length>1&&rows.slice(1).every(row=>row.every(cell=>!cell)));
+  if(first.some(dataCell))return false;
+  const body=rows.slice(1);
+  if(headerMode==='auto'&&body.some(row=>first.some((name,column)=>name&&dataCell(row[column]))))return true;
+  return first.every(Boolean)&&(body.some(row=>row.length===first.length&&row.some(dataCell))||body.length>0&&body.every(row=>row.every(cell=>!cell)));
 }
 
-export function csvRows(source,{maxColumns=100,skipHeader=true,preserveEmptyRows=false}={}){
+export function csvRows(source,{maxColumns=100,skipHeader=true,preserveEmptyRows=false,headerMode=null}={}){
   source=source.replace(/^\uFEFF/,'');
   const rows=[];let row=[],cell='',quoted=false,delimiter=csvRecordDelimiter(source,0);
   for(let i=0;i<source.length;i++){const ch=source[i];if(ch==='"'){if(quoted&&source[i+1]==='"'){cell+='"';i++;}else quoted=!quoted;}else if(!quoted&&ch===delimiter){row.push(cell.trim());cell='';}else if(!quoted&&(ch==='\n'||ch==='\r')){if(ch==='\r'&&source[i+1]==='\n')i++;row.push(cell.trim());if(row.some(Boolean)||preserveEmptyRows)rows.push(row);row=[];cell='';delimiter=csvRecordDelimiter(source,i+1);}else cell+=ch;}
   if(quoted)throw new Error('Unclosed CSV quote');row.push(cell.trim());if(row.some(Boolean)||preserveEmptyRows&&source.length&&!/[\r\n]$/.test(source))rows.push(row);
-  if(!rows.length||!computationLimitsRemoved()&&rows.length>5000)throw new Error('Enter 1–5000 data rows');
-  if(skipHeader&&statisticsCsvHasHeader(rows))rows.shift();
+  const hasHeader=()=>statisticsCsvHasHeader(rows,headerMode);
+  if(!rows.length||!computationLimitsRemoved()&&rows.length>5000&&(rows.length!==5001||!hasHeader()))throw new Error('Enter 1–5000 data rows');
+  if(skipHeader&&hasHeader())rows.shift();
   if(!rows.length)throw new Error('Enter data below the header');
-  const columns=Math.max(...rows.map(r=>r.length));if(!computationLimitsRemoved()&&columns>maxColumns)throw new Error(`Use up to ${maxColumns} data columns`);return rows.map(r=>Array.from({length:columns},(_,i)=>r[i]||''));
+  const columns=rows.reduce((width,row)=>Math.max(width,row.length),0);if(!computationLimitsRemoved()&&columns>maxColumns)throw new Error(`Use up to ${maxColumns} data columns`);return rows.map(r=>Array.from({length:columns},(_,i)=>r[i]||''));
 }
 function markdownCells(line){
   line=line.trim();if(line.startsWith('|'))line=line.slice(1);if(line.endsWith('|')&&!line.endsWith('\\|'))line=line.slice(0,-1);
