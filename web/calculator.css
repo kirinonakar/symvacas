@@ -368,6 +368,7 @@ input:disabled,select:disabled{opacity:.45;cursor:default}
 .statistics-section[open]>summary{margin-bottom:12px}
 .statistics-merge-headers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:end;gap:inherit;flex:0 0 100%;min-width:0}
 .form-row>.statistics-merge-headers>label{min-width:0;overflow-wrap:anywhere}
+.statistics-column-actions{display:flex;gap:inherit;align-items:center}
 .graph-range-actions{display:flex;justify-content:flex-end}
 .graph-range-actions:has(button[hidden]){display:none}
 #graph-help{margin-bottom:12px}

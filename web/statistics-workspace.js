@@ -23,6 +23,7 @@ import {statisticsRenameColumn} from './workspace-commands.js';
 import {createPreparationTools} from './statistics-preparation-tools.js';
 import {registerStatisticsHeader} from './statistics-headers.js';
 import {statisticsGroupedColumn,defaultStatisticsGroupValues} from './statistics-group-column.js';
+import {createStatisticsUndoHistory} from './statistics-undo.js';
 
 export function regressionGraphSource(source,digits=10,variable='x') {
   function rounded(node){return {...node,value:node.kind==='number'?roundNumber(node.value,digits,true):node.kind==='symbol'&&node.value===variable?'x':node.value,args:node.args.map(rounded)};}
@@ -107,7 +108,7 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
   $('statistics-collapse-all').onclick=()=>{for(const details of document.querySelectorAll('.workspace[data-mode="statistics"] details[open]'))details.open=false;persist();};
   $('statistics-new').onclick=()=>{
     cancelRegression();$('statistics-data').value='';$('dataset-name').value='';$('dataset-list').value='';
-    dataKindChange();$('statistics-plot').hidden=true;persist();
+    rememberDatasetEdit();dataKindChange();$('statistics-plot').hidden=true;persist();
   };
   const dataKind=()=>{
     if(value('statistics-kind')!=='columns')return value('statistics-kind');
@@ -119,6 +120,21 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
     return statisticsKindForColumns(Number(value('statistics-columns'))||4);
   };
   const dataColumns=()=>statisticsColumnCount(dataKind());
+  const undoHistory=createStatisticsUndoHistory();
+  let lastDraft;
+  function datasetDraft(){
+    dataKind(); // Auto-detection updates the column count in the form.
+    return {
+      csv:value('statistics-data'),kind:value('statistics-kind'),columns:value('statistics-columns'),
+      auto:$('statistics-columns-auto').checked
+    };
+  }
+  function rememberDatasetEdit(group=null){
+    const draft=datasetDraft();
+    if(lastDraft)undoHistory.record(lastDraft,draft,group);
+    lastDraft=draft;
+    $('statistics-undo').disabled=!undoHistory.canUndo;
+  }
   function setDataKind(kind){
     if(kind?.startsWith('columns:')){
       const count=statisticsColumnCount(kind);
@@ -135,9 +151,46 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
 
   function regressionMode(){const base=value('regression-kind'),penalty=value('regression-penalty');if(base==='svm')return {auto:'svm',classification:'svc',regression:'svr'}[value('regression-svm-task')]||'svm';if(base==='randomforest')return {auto:'randomforest',regression:'randomforestregressor',classification:'randomforestclassifier'}[value('regression-forest-task')]||'randomforest';return ['linear','multiple','logistic'].includes(base)&&penalty!=='none'?(base==='logistic'?'logistic':'')+penalty:base;}
   function datasetsList(){const previous=value('dataset-list');$('dataset-list').replaceChildren(element('option','새 데이터'));$('dataset-list').firstChild.value='';for(const name of Object.keys(state.datasets)) {const option=element('option',name);option.value=name;$('dataset-list').append(option);}if(Object.hasOwn(state.datasets,previous))$('dataset-list').value=previous;preparationTools?.update();}
-  $('dataset-list').onchange=()=>{const name=value('dataset-list');if(Object.hasOwn(state.datasets,name)){$('statistics-data').value=state.datasets[name];$('dataset-name').value=name;const savedKind=state.datasetKinds[name];setDataKind(statisticsColumnCount(savedKind)?savedKind:inferDataKind());dataKindChange();persist();}};
-  $('dataset-save').onclick=()=>{const name=value('dataset-name').trim();if(!name){toast('데이터 이름을 입력하세요.');return;}state.datasets[name]=value('statistics-data');state.datasetKinds[name]=dataKind();datasetsList();$('dataset-list').value=name;persist();toast('데이터를 저장했습니다.');};
-  $('dataset-delete').onclick=()=>{delete state.datasetKinds[value('dataset-list')];delete state.datasets[value('dataset-list')];datasetsList();persist();};
+  $('dataset-list').onchange=()=>{
+    const name=value('dataset-list');
+    if(Object.hasOwn(state.datasets,name)){
+      $('statistics-data').value=state.datasets[name];$('dataset-name').value=name;
+      const savedKind=state.datasetKinds[name];setDataKind(statisticsColumnCount(savedKind)?savedKind:inferDataKind());
+      rememberDatasetEdit();dataKindChange();
+    }
+    persist();
+  };
+  $('dataset-save').onclick=()=>{
+    const name=value('dataset-name').trim();
+    if(!name){toast('데이터 이름을 입력하세요.');return;}
+    undoHistory.endGroup();
+    state.datasets[name]=value('statistics-data');state.datasetKinds[name]=dataKind();
+    datasetsList();$('dataset-list').value=name;
+    persist();toast('데이터를 저장했습니다.');
+  };
+  $('dataset-delete').onclick=()=>{
+    const name=value('dataset-list');
+    if(!Object.hasOwn(state.datasets,name))return;
+    undoHistory.endGroup();
+    delete state.datasetKinds[name];delete state.datasets[name];datasetsList();
+    persist();
+  };
+  $('statistics-undo').onclick=()=>{
+    const previous=undoHistory.undo();
+    if(!previous)return;
+    const {csv,kind,columns,auto}=previous;
+    $('statistics-data').value=csv;$('statistics-kind').value=kind;$('statistics-columns').value=columns;
+    $('statistics-columns-auto').checked=auto;
+    lastDraft=datasetDraft();
+    $('statistics-undo').disabled=!undoHistory.canUndo;
+    clearTimeout(editorRefreshTimer);editorRefreshTimer=null;
+    gridSnapshot={};
+    invalidateRegression();
+    if(!$('statistics-grid').hidden){
+      try{editorRows();}catch{$('statistics-table-toggle').click();}
+    }
+    render();refreshWorkspaceMath();persist();
+  };
   $('csv-open').onclick=()=>pickFile('.csv,.tsv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',async file=>{
     const isXlsx=/\.xlsx$/i.test(file.name)||file.type==='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     if(isXlsx&&file.size>64*1024*1024)throw new Error('XLSX file is too large');
@@ -166,7 +219,8 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
         const body=rows.slice(header.checked?1:0),imported=header.checked?[rows[0],...body]:body;
         if(header.checked)registerStatisticsHeader(imported.map(row=>selected.map(i=>row[i]||'')));
         $('statistics-data').value=imported.map(row=>selected.map(i=>{const cell=row[i]||'';return /[",\r\n\t]/.test(cell)?'"'+cell.replace(/"/g,'""')+'"':cell;}).join(',')).join('\n');
-        $('dataset-name').value=nextStatisticsDatasetName(Object.keys(state.datasets),value('dataset-name'));$('dataset-list').value='';setDataKind(statisticsKindForColumns(selected.length));dataKindChange();persist();$('dialog').close();
+        $('dataset-name').value=nextStatisticsDatasetName(Object.keys(state.datasets),value('dataset-name'));$('dataset-list').value='';setDataKind(statisticsKindForColumns(selected.length));
+        rememberDatasetEdit();dataKindChange();persist();$('dialog').close();
       }));openDialog('Import CSV/XLSX',content);
     }
     if(!isXlsx){showPreview(csvRows((await file.text()).replace(/^\uFEFF/,''),{maxColumns:100,skipHeader:false}));return;}
@@ -364,13 +418,13 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
     }
   }
   function dataKindChange(){cancelClustering();cancelRegression();statisticsGraph=null;$('regression-caption').replaceChildren();$('regression-inference').replaceChildren();$('regression-export').hidden=true;$('regression-transfer').hidden=true;$('statistics-plot').replaceChildren();$('statistics-plot-type').value=dataKind()==='xy'?'scatter':'histogram';render();refreshWorkspaceMath();}
-  $('statistics-kind').onchange=dataKindChange;
+  $('statistics-kind').onchange=()=>{rememberDatasetEdit();dataKindChange();};
   $('statistics-columns').onchange=()=>{
     const count=Number(value('statistics-columns'));
     if(!Number.isInteger(count)||count<1||count>100){$('statistics-columns').value=String(state.fields['statistics-columns']||4);return;}
-    dataKindChange();persist();
+    rememberDatasetEdit();dataKindChange();persist();
   };
-  $('statistics-columns-auto').onchange=()=>{invalidateRegression();render();refreshWorkspaceMath();persist();};
+  $('statistics-columns-auto').onchange=()=>{rememberDatasetEdit();invalidateRegression();render();refreshWorkspaceMath();persist();};
   $('statistics-op').onchange=()=>{if(['tinterval','zinterval'].includes(value('statistics-op'))&&value('statistics-extra')==='0')$('statistics-extra').value='95';statisticsControls();refreshWorkspaceMath();};
   $('statistics-grouping').onchange=()=>{statisticsControls();refreshWorkspaceMath();};
   for(const id of ['statistics-column','statistics-first-group','statistics-second-group','statistics-group-column','statistics-value-column','statistics-subject-column','statistics-pair-matching','statistics-anova-method','statistics-t-method'])$(id).onchange=()=>{statisticsControls();refreshWorkspaceMath();persist();};
@@ -392,6 +446,7 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
       const row=element('div','','graph-input-line'),number=element('span',String(index+1));
       const remove=control('×',()=>{
         const updated=field.value.split('\n');updated.splice(index,1);field.value=updated.join('\n');
+        rememberDatasetEdit();
         field.dispatchEvent(new Event('input',{bubbles:true}));
       });
       remove.setAttribute('aria-label',`${t('Delete')} ${index+1}`);row.append(remove,number);return row;
@@ -408,11 +463,12 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
     }catch{return [];}
   }
   // Quote an empty List cell so a blank row survives serialization and reload.
-  function writeStoredRows(rows,defer=false){
+  function writeStoredRows(rows,editGroup=null){
     if(editorHeader().length)registerStatisticsHeader(rows);invalidateRegression();$('statistics-data').value=rows.map(row=>row.length===1&&!row[0]?'""':row.map(cell=>/[",\r\n\t]/.test(cell)?'"'+cell.replace(/"/g,'""')+'"':cell).join(',')).join('\n');
+    rememberDatasetEdit(editGroup);
     clearTimeout(editorRefreshTimer);
     const refresh=()=>{editorRefreshTimer=null;statisticsControls();refreshWorkspaceMath();persist();};
-    if(defer)editorRefreshTimer=setTimeout(refresh,150);else refresh();
+    if(editGroup)editorRefreshTimer=setTimeout(refresh,150);else refresh();
   }
   let gridSnapshot={};
   function statisticsGrid(){
@@ -422,13 +478,13 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
     const table=editableTable({rows:rows.length,columns:statisticsColumnLabels(value('statistics-data'),dataKind()),label:t('Stats data'),value:(row,col)=>rows[row][col]||'',
       viewport:$('statistics-grid'),
       normalizePaste:statisticsPasteCell,
-      onInput:(row,col,cell)=>{while(rows[row].length<columns)rows[row].push('');rows[row][col]=cell;writeRows(rows,true);},
+      onInput:(row,col,cell)=>{while(rows[row].length<columns)rows[row].push('');rows[row][col]=cell;writeRows(rows,`cell:${row}:${col}`);},
       onMoveColumn:moveColumn,onDeleteColumn:removeColumn,onRenameColumn:renameColumn,
       onDeleteRow:row=>{rows.splice(row,1);writeRows(rows);statisticsGrid();}});
     $('statistics-grid').firstElementChild?.disposeEditableTable?.();$('statistics-grid').replaceChildren(table);
     gridSnapshot={source,kind,language};
   }
-  function writeRows(rows,defer=false){writeStoredRows(editorHeader().concat(rows),defer);}
+  function writeRows(rows,editGroup=null){writeStoredRows(editorHeader().concat(rows),editGroup);}
   function storedRows(){return editorHeader().concat(editorRows());}
   function renameColumn(column){
     const snapshot=value('statistics-data'),kind=dataKind(),content=element('form'),label=element('label','Column header'),input=element('input'),status=element('p','','hint');
@@ -442,7 +498,7 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
       try{
         if(snapshot!==value('statistics-data')||kind!==dataKind()){status.textContent=t('Data changed; reopen the column header editor');return;}
         const updated=statisticsRenameColumn(snapshot,dataColumns(),column,input.value);
-        invalidateRegression();$('statistics-data').value=updated;render();refreshWorkspaceMath();persist();$('dialog').close();
+        invalidateRegression();$('statistics-data').value=updated;rememberDatasetEdit();render();refreshWorkspaceMath();persist();$('dialog').close();
       }catch(exc){status.textContent=t(exc.message);}
     };
     openDialog('Edit column header',content);input.focus();input.select();
@@ -460,16 +516,18 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
   }
   function removeColumn(column){
     try{
+      const rows=storedRows().map(row=>column<row.length?row.filter((_,index)=>index!==column):row);
       const remaining=Math.max(dataColumns()-1,1);
       if(!($('statistics-columns-auto').checked&&value('statistics-kind')==='columns'))setDataKind(statisticsKindForColumns(remaining));
       if(remaining<2&&value('statistics-plot-type')==='scatter')$('statistics-plot-type').value='histogram';
-      writeStoredRows(storedRows().map(row=>column<row.length?row.filter((_,index)=>index!==column):row));
+      writeStoredRows(rows);
       statisticsGrid();
     }catch(exc){error(exc.message);}
   }
   $('statistics-table-toggle').onclick=()=>{
     const grid=$('statistics-grid'),tableMode=grid.hidden;
     if(tableMode)try{statisticsGrid();}catch(exc){error(exc.message);return;}
+    undoHistory.endGroup();
     grid.hidden=!tableMode;$('statistics-data').closest('.statistics-direct-input').hidden=tableMode;
     const toggle=$('statistics-table-toggle'),label=tableMode?'Direct input':'Table editor';
     toggle.querySelector('path').setAttribute('d',tableMode
@@ -486,7 +544,7 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
       const count=statisticsColumnCount(addition.kind);
       if(value('statistics-kind')==='columns')$('statistics-columns').value=String(count);else setDataKind(addition.kind);
       invalidateRegression();$('statistics-data').value=addition.csv;
-      render();refreshWorkspaceMath();persist();
+      rememberDatasetEdit();render();refreshWorkspaceMath();persist();
     }catch(exc){error(exc.message);}
   };
   function groupColumnKey(){return JSON.stringify([value('statistics-data'),dataKind(),value('statistics-group-column-source'),value('statistics-group-column-cuts'),value('statistics-group-column-header'),value('statistics-group-column-values')]);}
@@ -523,6 +581,7 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
       const columnsMode=value('statistics-kind')==='columns';
       invalidateRegression();$('statistics-data').value=result.csv;
       if(columnsMode)$('statistics-columns').value=String(statisticsColumnCount(result.kind));else setDataKind(result.kind);
+      rememberDatasetEdit();
       groupColumnAdded={key:groupColumnKey(),result};
       render();refreshWorkspaceMath();persist();toast(t('Group column added'));
     }catch(exc){error(exc.message);}
@@ -538,13 +597,18 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
     setEditorExpanded(expanded);
     state.statisticsSections['statistics-editor']=expanded;persist();
   };
-  $('statistics-data').addEventListener('input',()=>{invalidateRegression();statisticsControls();});
+  $('statistics-data').addEventListener('input',event=>{
+    rememberDatasetEdit(event.inputType==='insertFromPaste'?null:'direct');
+    invalidateRegression();statisticsControls();
+  });
+  $('statistics-data').addEventListener('blur',()=>undoHistory.endGroup());
   $('statistics-data').addEventListener('scroll',syncLineNumberScroll);
   $('statistics-data').addEventListener('paste',event=>{
     const text=event.clipboardData?.getData('text/plain')||event.clipboardData?.getData('text');if(!text)return;
     const converted=statisticsPasteText(text,{singleColumn:dataKind()==='list'});if(converted===text)return;
     const field=$('statistics-data'),start=field.selectionStart,end=field.selectionEnd;
-    event.preventDefault();field.setRangeText(converted,start,end,'end');field.dispatchEvent(new field.ownerDocument.defaultView.Event('input',{bubbles:true}));
+    event.preventDefault();field.setRangeText(converted,start,end,'end');rememberDatasetEdit();
+    field.dispatchEvent(new field.ownerDocument.defaultView.Event('input',{bubbles:true}));
   });
   $('statistics-data').addEventListener('change',()=>{invalidateRegression();statisticsControls();if(!$('statistics-grid').hidden)statisticsGrid();});
   $('statistics-plot-run').onclick=()=>{try{statisticsGraph={...statisticsGraph,rows:numericStatisticsRows(dataRows()),curve:statisticsGraph?.curve||[]};$('statistics-plot').hidden=false;drawStatisticsGraph();}catch(exc){error(exc.message);}};
@@ -659,25 +723,26 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
     finally{if(regressionRun===run){regressionRun=null;regressionBusy(false);}}
   }
   for(const section of ['preparation','general','tests','models','advanced'])analysisPanels[`statistics-${section}`]=createAdvancedStatistics({state,persist,data:()=>value('statistics-data'),columnLimit:()=>dataColumns(),copy:ui.clipboard,clearResult,section,applyData:updated=>{
-    $('statistics-data').value=updated;const selected=value('dataset-list');
+    $('statistics-data').value=updated;
+    const selected=value('dataset-list');
     if(selected&&selected===value('dataset-name')&&Object.hasOwn(state.datasets,selected))state.datasets[selected]=updated;
-    dataKindChange();persist();toast(t('Missing values applied to current data'));
+    rememberDatasetEdit();dataKindChange();persist();toast(t('Missing values applied to current data'));
   }});
   preparationTools=createPreparationTools({
     state,data:()=>value('statistics-data'),kind:dataKind,persist,
     savedDatasetNames:()=>Object.keys(state.datasets).sort(),
     savedDataset:name=>Object.hasOwn(state.datasets,name)?{csv:state.datasets[name],kind:state.datasetKinds[name]||'list'}:null,
     saveAsNew:(result,requestedName)=>{
-    const name=newStatisticsDatasetName(requestedName,Object.keys(state.datasets),value('dataset-name'));
-    state.datasets[name]=result.csv;state.datasetKinds[name]=result.kind;
-    invalidateRegression();$('statistics-data').value=result.csv;$('dataset-name').value=name;
-    datasetsList();$('dataset-list').value=name;setDataKind(result.kind);
-    dataKindChange();persist();toast(t('Filtered rows saved as a new dataset'));
+      const name=newStatisticsDatasetName(requestedName,Object.keys(state.datasets),value('dataset-name'));
+      state.datasets[name]=result.csv;state.datasetKinds[name]=result.kind;
+      invalidateRegression();$('statistics-data').value=result.csv;$('dataset-name').value=name;
+      datasetsList();$('dataset-list').value=name;setDataKind(result.kind);
+      rememberDatasetEdit();dataKindChange();persist();toast(t('Filtered rows saved as a new dataset'));
   },applyData:result=>{
     const columnsMode=value('statistics-kind')==='columns';
     invalidateRegression();$('statistics-data').value=result.csv;
     if(columnsMode)$('statistics-columns').value=String(statisticsColumnCount(result.kind));else setDataKind(result.kind);
-    render();refreshWorkspaceMath();persist();toast(t('Transformation applied to current data'));
+    rememberDatasetEdit();render();refreshWorkspaceMath();persist();toast(t('Transformation applied to current data'));
   }});
   advanced=analysisPanels['statistics-advanced'];
   // The handler reads editor caches and guided-form handlers: initialize them first.
@@ -686,6 +751,7 @@ export function createStatisticsWorkspace({state,engine,ui,persist,refreshWorksp
     if(state.fields[id]!==undefined){const option=element('option');option.value=String(state.fields[id]);$(id).append(option);$(id).value=option.value;}
   }
   statisticsControls();
+  rememberDatasetEdit();
   return {datasetsList,summaryExpression,summaryTermLabels,expression:statisticsExpression,analysisTermLabels,prepareModelWorkflow:plan=>advanced.prepareModelWorkflow(plan),advancedExpression:(panel='statistics-advanced')=>analysisPanels[panel].expression(),advancedContext:(panel='statistics-advanced')=>analysisPanels[panel].context(),showAdvancedResult:(result,context,panel='statistics-advanced')=>analysisPanels[panel]?.showResult(result,context),analysisSummary,render,showRegression,runRegression,
     showAdvancedError:showAnalysisError,clearAdvancedError:panel=>{analysisPanels[panel]?.clearError();const status=$(analysisErrorId(panel));if(status)status.hidden=true;},
     clearResult:result=>{if(statisticsGraph?.result===result)clearRegression();for(const panel of Object.values(analysisPanels))panel.clearResult(result);}};

@@ -1,5 +1,6 @@
 package com.kirinonakar.symvacas.ui
 
+import android.os.SystemClock
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
@@ -36,6 +37,7 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import com.kirinonakar.symvacas.calculator.CalculatorModel
+import com.kirinonakar.symvacas.calculator.StatisticsDraft
 import com.kirinonakar.symvacas.ui.theme.LocalInstrument
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -79,7 +81,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
     return current to {updated->
         val normalized=if(updated.composition==null)normalizeStatisticsPaste(current.text,updated.text,singleColumn,cell,current.selection.min,current.selection.max) else null
         editing=if(normalized==null)updated else updated.copy(text=normalized,selection=TextRange((updated.selection.end+normalized.length-updated.text.length).coerceIn(0,normalized.length)),composition=null)
-        onValue(editing.text)
+        if(editing.text!=current.text)onValue(editing.text)
     }
 }
 
@@ -94,7 +96,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
     }
 }
 
-@Composable private fun StatDirectInput(value:String,onValue:(String)->Unit,label:String,expanded:Boolean,singleColumn:Boolean=false) {
+@Composable private fun StatDirectInput(value:String,onValue:(String)->Unit,onRemove:(String)->Unit,label:String,expanded:Boolean,singleColumn:Boolean=false) {
     val c=LocalInstrument.current
     val (input,onInput)=rememberStatInput(value,onValue,singleColumn=singleColumn)
     val vertical=rememberScrollState();val horizontal=rememberScrollState()
@@ -118,7 +120,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                 for(index in firstLine until lastLine) {
                     Row(Modifier.fillMaxWidth().height(rowHeight),verticalAlignment=Alignment.CenterVertically) {
                         StatRemoveRow(Modifier.width(26.dp).fillMaxHeight(),index) {
-                            onValue(value.split('\n').filterIndexed {i,_->i!=index}.joinToString("\n"))
+                            onRemove(value.split('\n').filterIndexed {i,_->i!=index}.joinToString("\n"))
                         }
                         Text("${index+1}",Modifier.weight(1f).padding(end=4.dp).then(statCellTouch(fieldFocus)),style=style.copy(color=c.muted),textAlign=TextAlign.End,softWrap=false)
                     }
@@ -246,6 +248,21 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
     var editingHeaderText by rememberSaveable {mutableStateOf("")}
     var editingHeaderError by remember {mutableStateOf("")}
     var csv by rememberSaveable {mutableStateOf(m.statisticsCsv)}
+    val editHistory=m.statisticsState.editHistory
+    DisposableEffect(editHistory) {onDispose {editHistory.endGroup()}}
+    fun draft()=StatisticsDraft(data,selectedDataKind,columnCount,autoColumns)
+    fun editDataset(group:String?=null,edit:()->Unit) {
+        val before=draft()
+        edit()
+        editHistory.record(before,draft(),group,SystemClock.elapsedRealtime())
+    }
+    fun undoDatasetEdit() {
+        val previous=editHistory.undo() ?: return
+        m.statisticsState.restoreDraft(previous)
+        data=previous.csv;selectedDataKind=previous.kind;columnCount=previous.columns;autoColumns=previous.autoColumns
+        if(previous.kind=="list"&&plotType=="Scatter")plotType="Histogram"
+        m.clearRegression()
+    }
     val editorExpanded=m.statisticsSectionExpanded("editor")
     var importPreview by remember {mutableStateOf<StatisticsCsvImport?>(null)}
     var importSheets by remember {mutableStateOf<List<StatisticsXlsxSheet>?>(null)}
@@ -270,11 +287,13 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
     }
     importSheets?.let {sheets->StatisticsXlsxSheetDialog(sheets,onDismiss={importSheets=null}) {preview->importSheets=null;importPreview=preview}}
     importPreview?.let {preview->StatisticsCsvImportDialog(preview,onDismiss={importPreview=null}) {columns,skipHeader->
-        m.clearRegression();data=importStatisticsCsv(preview,columns,skipHeader)
-        selectedDataKind=statisticsKindForColumns(columns.size);columnCount=columns.size.toString()
-        plotType=if(selectedDataKind=="xy")"Scatter" else "Histogram"
-        datasetName=nextStatisticsDatasetName(names,datasetName)
-        selected="";isNew=true
+        editDataset {
+            m.clearRegression();data=importStatisticsCsv(preview,columns,skipHeader)
+            selectedDataKind=statisticsKindForColumns(columns.size);columnCount=columns.size.toString()
+            plotType=if(selectedDataKind=="xy")"Scatter" else "Histogram"
+            datasetName=nextStatisticsDatasetName(names,datasetName)
+            selected="";isNew=true
+        }
         importPreview=null
     }}
     val exportCsv=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) {uri->
@@ -298,7 +317,7 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
     val defaultHeatMapY=heatMapAxisIndices.drop(heatMapAxisSplit).toSet()
     val heatMapXSelection=parseHeatMapSelection(heatMapXColumns,dataColumns.size,defaultHeatMapX).intersect(validHeatMapAxes)
     val heatMapYSelection=parseHeatMapSelection(heatMapYColumns,dataColumns.size,defaultHeatMapY).intersect(validHeatMapAxes)-heatMapXSelection
-    LaunchedEffect(svmTask,svmKernel,svmC,svmGamma,svmEpsilon,data,datasetName,dataKind,regression,plotType,plotGrouping,scatterX,scatterY,plotOrientation,histogramKde,heatMapMode,heatMapCorrelation,heatMapXColumns,heatMapYColumns,heatMapClustering,heatMapFit,autoColumns,csv,selected,isNew,customFormula,customVariable,customInitials,polynomialDegree,logisticResponse,lassoAlpha,forestTrees,forestDepth,forestSeed,regularization,l1Ratio,forestTask,bayesianPriorSD,bayesianLevel,bayesianShape,bayesianScale,bayesianMethod,nutsSamples,nutsWarmup,nutsMaxDepth,nutsSeed,nutsChains) {m.statisticsSvmTask=svmTask;m.statisticsSvmKernel=svmKernel;m.statisticsSvmC=svmC;m.statisticsSvmGamma=svmGamma;m.statisticsSvmEpsilon=svmEpsilon;m.statisticsAutoColumns=autoColumns;m.statisticsPlotGrouping=plotGrouping;m.statisticsScatterX=scatterX;m.statisticsScatterY=scatterY;m.statisticsPlotOrientation=plotOrientation;m.statisticsHistogramKde=histogramKde;m.statisticsHeatMapMode=heatMapMode;m.statisticsHeatMapCorrelation=heatMapCorrelation;m.statisticsHeatMapXColumns=if(heatMapAxisIndices.size<2)"" else encodeHeatMapSelection(heatMapXSelection);m.statisticsHeatMapYColumns=if(heatMapAxisIndices.size<2)"" else encodeHeatMapSelection(heatMapYSelection);m.statisticsHeatMapClustering=heatMapClustering;m.statisticsHeatMapFit=heatMapFit;m.saveStatistics(datasetName,data,dataKind,regression,plotType,csv,selected,isNew,customFormula,customVariable,customInitials,polynomialDegree,logisticResponse,lassoAlpha,forestTrees,forestDepth,forestSeed,regularization,l1Ratio,forestTask,bayesianPriorSD,bayesianLevel,bayesianShape,bayesianScale,bayesianMethod,nutsSamples,nutsWarmup,nutsMaxDepth,nutsSeed,nutsChains)}
+    LaunchedEffect(svmTask,svmKernel,svmC,svmGamma,svmEpsilon,data,datasetName,selectedDataKind,regression,plotType,plotGrouping,scatterX,scatterY,plotOrientation,histogramKde,heatMapMode,heatMapCorrelation,heatMapXColumns,heatMapYColumns,heatMapClustering,heatMapFit,autoColumns,csv,selected,isNew,customFormula,customVariable,customInitials,polynomialDegree,logisticResponse,lassoAlpha,forestTrees,forestDepth,forestSeed,regularization,l1Ratio,forestTask,bayesianPriorSD,bayesianLevel,bayesianShape,bayesianScale,bayesianMethod,nutsSamples,nutsWarmup,nutsMaxDepth,nutsSeed,nutsChains) {m.statisticsSvmTask=svmTask;m.statisticsSvmKernel=svmKernel;m.statisticsSvmC=svmC;m.statisticsSvmGamma=svmGamma;m.statisticsSvmEpsilon=svmEpsilon;m.statisticsAutoColumns=autoColumns;m.statisticsPlotGrouping=plotGrouping;m.statisticsScatterX=scatterX;m.statisticsScatterY=scatterY;m.statisticsPlotOrientation=plotOrientation;m.statisticsHistogramKde=histogramKde;m.statisticsHeatMapMode=heatMapMode;m.statisticsHeatMapCorrelation=heatMapCorrelation;m.statisticsHeatMapXColumns=if(heatMapAxisIndices.size<2)"" else encodeHeatMapSelection(heatMapXSelection);m.statisticsHeatMapYColumns=if(heatMapAxisIndices.size<2)"" else encodeHeatMapSelection(heatMapYSelection);m.statisticsHeatMapClustering=heatMapClustering;m.statisticsHeatMapFit=heatMapFit;m.saveStatistics(datasetName,data,selectedDataKind,regression,plotType,csv,selected,isNew,customFormula,customVariable,customInitials,polynomialDegree,logisticResponse,lassoAlpha,forestTrees,forestDepth,forestSeed,regularization,l1Ratio,forestTask,bayesianPriorSD,bayesianLevel,bayesianShape,bayesianScale,bayesianMethod,nutsSamples,nutsWarmup,nutsMaxDepth,nutsSeed,nutsChains)}
     val dateAxis=remember(parsedRows,dataKind) {if(dataColumns.size>1)statisticsDateAxis(parsedRows) else null}
     val numericRows=remember(parsedRows,dateAxis) {statisticsNumericRows(parsedRows,dateAxis)}
     fun vector(column:Int)=numericRows.mapNotNull {it.getOrNull(column)?.takeIf(String::isNotBlank)}.joinToString(",","[","]")
@@ -320,45 +339,86 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
     Panel("Data & statistics","",panelScroll) {
         CompositionLocalProvider(LocalStatisticsCollapseRequest provides collapseRequest,LocalStatisticsExplanationModel provides m) {
         Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-        if(names.isNotEmpty())Choices(names,activeName,{name->m.clearRegression();selected=name;isNew=false;m.dataSets.optJSONObject(name)?.let {item->datasetName=name;data=item.optString("csv");selectedDataKind=item.optString("kind","list");columnCount=if(selectedDataKind.startsWith("columns:"))statisticsColumnCount(selectedDataKind).toString() else "4";plotType=if(selectedDataKind=="xy")"Scatter" else "Histogram"}})
+        if(names.isNotEmpty())Choices(names,activeName,{name->
+            m.dataSets.optJSONObject(name)?.let {item->
+                editDataset {
+                    m.clearRegression();selected=name;isNew=false;datasetName=name;data=item.optString("csv")
+                    selectedDataKind=item.optString("kind","list")
+                    columnCount=if(selectedDataKind.startsWith("columns:"))statisticsColumnCount(selectedDataKind).toString() else "4"
+                    plotType=if(selectedDataKind=="xy")"Scatter" else "Histogram"
+                }
+            }
+        })
         Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp),verticalAlignment=Alignment.CenterVertically) {
             Field(datasetName,"Dataset name",Modifier.width(120.dp)){datasetName=it}
             Row(horizontalArrangement=Arrangement.spacedBy(0.dp)) {
-                StatisticsIconAction("Save dataset",R.drawable.ic_statistics_save){m.saveDataSet(datasetName,data,dataKind);selected=datasetName;isNew=false}
-                StatisticsIconAction("Delete dataset",R.drawable.ic_statistics_delete){if(activeName.isNotBlank()){m.deleteDataSet(activeName);selected="";isNew=true;startNew()}}
+                StatisticsIconAction("Save dataset",R.drawable.ic_statistics_save){
+                    editHistory.endGroup()
+                    m.saveDataSet(datasetName,data,dataKind)
+                    if(m.error.isBlank()){selected=datasetName;isNew=false}
+                }
+                StatisticsIconAction("Delete dataset",R.drawable.ic_statistics_delete){
+                    if(activeName.isNotBlank())editDataset {
+                        m.deleteDataSet(activeName);startNew()
+                    }
+                }
             }
             SmallAction("Import"){importCsv.launch(arrayOf("text/csv","text/comma-separated-values","text/plain","application/vnd.ms-excel","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))}
             SmallAction("Export"){exportCsv.launch("${datasetName.ifBlank {"dataset"}}.csv")}
         }
-        Choices(listOf("List","x,y data","x,y,z data","n columns"),when(dataKind){"xy"->"x,y data";"xyz"->"x,y,z data";"list"->"List";else->"n columns"},{m.clearRegression();selectedDataKind=when(it){"x,y data"->"xy";"x,y,z data"->"xyz";"n columns"->"columns:${columnCount.toIntOrNull()?.coerceIn(1,100) ?: 4}";else->"list"};plotType=if(selectedDataKind=="xy")"Scatter" else "Histogram"})
+        Choices(listOf("List","x,y data","x,y,z data","n columns"),when(dataKind){"xy"->"x,y data";"xyz"->"x,y,z data";"list"->"List";else->"n columns"},{choice->
+            editDataset {
+                m.clearRegression()
+                selectedDataKind=when(choice){"x,y data"->"xy";"x,y,z data"->"xyz";"n columns"->"columns:${columnCount.toIntOrNull()?.coerceIn(1,100) ?: 4}";else->"list"}
+                plotType=if(selectedDataKind=="xy")"Scatter" else "Histogram"
+            }
+        })
         if(selectedDataKind.startsWith("columns:")) {
             Row(Modifier.horizontalScroll(rememberScrollState()),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 Field(if(autoColumns)statisticsColumnCount(dataKind).toString() else columnCount,"Column count (1–100)",Modifier.width(170.dp).testTag("statistics-columns"),enabled=!autoColumns) {text->
-                    columnCount=text
-                    text.toIntOrNull()?.takeIf {it in 1..100}?.let {m.clearRegression();selectedDataKind="columns:$it"}
+                    editDataset("columns") {
+                        columnCount=text
+                        text.toIntOrNull()?.takeIf {it in 1..100}?.let {m.clearRegression();selectedDataKind="columns:$it"}
+                    }
                 }
-                Checkbox(autoColumns,{m.clearRegression();if(autoColumns){columnCount=statisticsColumnCount(dataKind).toString();selectedDataKind="columns:${statisticsColumnCount(dataKind)}"};autoColumns=it},Modifier.testTag("statistics-columns-auto"))
+                Checkbox(autoColumns,{checked->editDataset {
+                    m.clearRegression()
+                    if(autoColumns){columnCount=statisticsColumnCount(dataKind).toString();selectedDataKind="columns:$columnCount"}
+                    autoColumns=checked
+                }},Modifier.testTag("statistics-columns-auto"))
                 Text(tr("Auto columns"),fontSize=12.sp)
             }
             if(autoColumns&&detectedColumns.isFailure)Text(tr("Column count must be between 1 and 100"),fontSize=11.sp,color=LocalInstrument.current.danger)
         }
         Row(Modifier.horizontalScroll(rememberScrollState())) {
-            StatisticsIconAction("New dataset",R.drawable.ic_statistics_new){startNew()}
-            StatisticsIconAction(if(csv)"Table editor" else "Direct input",if(csv)R.drawable.ic_statistics_table else R.drawable.ic_statistics_edit){csv=!csv}
-            SmallAction("Add row"){if(parsedRows.size<999)data+="\n"+statisticsCsvLine(List(dataColumns.size){""})}
+            StatisticsIconAction("New dataset",R.drawable.ic_statistics_new){editDataset {startNew()}}
+            StatisticsIconAction(if(csv)"Table editor" else "Direct input",if(csv)R.drawable.ic_statistics_table else R.drawable.ic_statistics_edit){editHistory.endGroup();csv=!csv}
+            SmallAction("Add row"){if(parsedRows.size<999)editDataset {data+="\n"+statisticsCsvLine(List(dataColumns.size){""})}}
             SmallAction("Add column",modifier=Modifier.testTag("statistics-add-column"),enabled=maxOf(dataColumns.size,detectedColumns.getOrDefault(dataColumns.size))<100) {
-                val addition=statisticsAddColumn(data,dataColumns.size)
-                m.clearRegression();data=addition.csv
-                columnCount=statisticsColumnCount(addition.kind).toString()
-                selectedDataKind=if(selectedDataKind.startsWith("columns:"))"columns:$columnCount" else addition.kind
+                editDataset {
+                    val addition=statisticsAddColumn(data,dataColumns.size)
+                    m.clearRegression();data=addition.csv
+                    columnCount=statisticsColumnCount(addition.kind).toString()
+                    selectedDataKind=if(selectedDataKind.startsWith("columns:"))"columns:$columnCount" else addition.kind
+                }
             }
+            StatisticsIconAction("Undo",R.drawable.ic_statistics_undo,Modifier.testTag("statistics-undo"),enabled=editHistory.canUndo){undoDatasetEdit()}
             val editorStateDescription=tr(if(editorExpanded)"Expanded" else "Collapsed")
             SmallAction(if(editorExpanded)"Collapse" else "Expand",modifier=Modifier.testTag("statistics-editor-expand").semantics {stateDescription=editorStateDescription}) {m.setStatisticsSectionExpanded("editor",!editorExpanded)}
         }
-        if(csv)StatDirectInput(data,{data=it},if(dataKind=="list")tr("One value per line") else tableColumnLabels.joinToString(", ")+(if(dataKind=="xy"||dataKind=="xyz")(if(isKorean())" 값" else " values") else ""),editorExpanded,singleColumn=dataKind=="list")
+        if(csv)StatDirectInput(
+            value=data,
+            onValue={text->editDataset("direct"){data=text}},
+            onRemove={text->editDataset {data=text}},
+            label=if(dataKind=="list")tr("One value per line") else tableColumnLabels.joinToString(", ")+(if(dataKind=="xy"||dataKind=="xyz")(if(isKorean())" 값" else " values") else ""),
+            expanded=editorExpanded,
+            singleColumn=dataKind=="list"
+        )
         else {
             val grid=LocalInstrument.current.grid
             val tableColumns=tableColumnLabels
+            val renderedData=data
+            fun currentRows()=if(data==renderedData)parsedRows else rows()
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 val tableWidth=maxOf(maxWidth,if(tableColumns.size>3)(tableColumns.size*90+78).dp else 0.dp)
                 val headerHeight=if(tableColumns.size>1)62.dp else 31.dp
@@ -384,15 +444,17 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                                 Box(Modifier.width(30.dp).fillMaxHeight()); VerticalDivider(color=grid,thickness=1.dp)
                                 tableColumns.forEachIndexed {column,_->
                                     Row(Modifier.weight(1f).fillMaxHeight()) {
-                                        StatColumnAction("◀",column>0,tr("Move column left"),Modifier.weight(1f)) {data=statisticsMoveColumn(data,column,-1)}
-                                        StatColumnAction("▶",column<tableColumns.lastIndex,tr("Move column right"),Modifier.weight(1f)) {data=statisticsMoveColumn(data,column,1)}
+                                        StatColumnAction("◀",column>0,tr("Move column left"),Modifier.weight(1f)) {editDataset {data=statisticsMoveColumn(data,column,-1)}}
+                                        StatColumnAction("▶",column<tableColumns.lastIndex,tr("Move column right"),Modifier.weight(1f)) {editDataset {data=statisticsMoveColumn(data,column,1)}}
                                         StatColumnAction("×",true,tr("Delete column"),Modifier.weight(1f)) {
-                                            val remaining=tableColumns.size-1
-                                            data=statisticsRemoveColumn(data,column)
-                                            m.clearRegression()
-                                            if(!autoColumns||!selectedDataKind.startsWith("columns:")) {
-                                                columnCount=remaining.toString();selectedDataKind=statisticsKindForColumns(remaining)
-                                                if(statisticsColumnCount(selectedDataKind)<2&&plotType=="Scatter")plotType="Histogram"
+                                            editDataset {
+                                                val remaining=tableColumns.size-1
+                                                data=statisticsRemoveColumn(data,column)
+                                                m.clearRegression()
+                                                if(!autoColumns||!selectedDataKind.startsWith("columns:")) {
+                                                    columnCount=remaining.toString();selectedDataKind=statisticsKindForColumns(remaining)
+                                                    if(statisticsColumnCount(selectedDataKind)<2&&plotType=="Scatter")plotType="Histogram"
+                                                }
                                             }
                                         }
                                     }
@@ -405,13 +467,18 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                             itemsIndexed(parsedRows) {index,row->
                                 val cellFocus=remember(index,tableColumns.size) {List(tableColumns.size){FocusRequester()} }
                                 Row(Modifier.fillMaxWidth().height(44.dp)) {
-                                    StatRemoveRow(Modifier.width(32.dp).fillMaxHeight(),index) {data=statisticsReplaceDataRows(data,parsedRows.filterIndexed {i,_->i!=index})}
+                                    StatRemoveRow(Modifier.width(32.dp).fillMaxHeight(),index) {editDataset {data=statisticsReplaceDataRows(data,currentRows().filterIndexed {i,_->i!=index})}}
                                     VerticalDivider(color=grid,thickness=1.dp)
                                     Box(Modifier.width(30.dp).fillMaxHeight().then(statCellTouch(cellFocus.first())),contentAlignment=Alignment.Center){Text("${index+1}",fontSize=12.sp,color=LocalInstrument.current.muted)}
                                     VerticalDivider(color=grid,thickness=1.dp)
                                     repeat(tableColumns.size) {column->
                                         StatCell(row.getOrElse(column){""},Modifier.weight(1f),cellFocus[column],"statistics-cell-$index-$column") {text->
-                                            val next=parsedRows.toMutableList();next[index]=row.toMutableList().apply {while(size<tableColumns.size)add("");this[column]=text};data=statisticsReplaceDataRows(data,next)
+                                            editDataset("cell:$index:$column") {
+                                                val next=currentRows().toMutableList()
+                                                if(index !in next.indices)return@editDataset
+                                                next[index]=next[index].toMutableList().apply {while(size<tableColumns.size)add("");this[column]=text}
+                                                data=statisticsReplaceDataRows(data,next)
+                                            }
                                         }
                                         VerticalDivider(color=grid,thickness=1.dp)
                                     }
@@ -447,23 +514,32 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
             StatisticsAnalysisError(m,"statistics-summary")
             statisticsReportFor(m.statisticsResult,m.statisticsResultSource,setOf("stats","mean","median","variance","stdev","mode","skewness","kurtosis","sumdata","quartiles","correlation","covariance"))?.let {StatisticsResultReport(m,it)}
         AdvancedStatistics(m,data,dataKind,"preparation","Data preparation",onDataApplied={updated->
-            m.clearRegression();data=updated
-            if(activeName.isNotBlank()&&datasetName==activeName)m.saveDataSet(activeName,updated,dataKind)
+            val savedName=activeName.takeIf {it.isNotBlank()&&datasetName==it}
+            editDataset {
+                m.clearRegression();data=updated
+                if(savedName!=null)m.saveDataSet(savedName,updated,dataKind)
+            }
         },preparationContent={StatisticsGroupColumn(m,data,dataKind) {result->
-            m.clearRegression();data=result.csv
-            columnCount=statisticsColumnCount(result.kind).toString()
-            selectedDataKind=if(selectedDataKind.startsWith("columns:"))"columns:$columnCount" else result.kind
+            editDataset {
+                m.clearRegression();data=result.csv
+                columnCount=statisticsColumnCount(result.kind).toString()
+                selectedDataKind=if(selectedDataKind.startsWith("columns:"))"columns:$columnCount" else result.kind
+            }
         }
         StatisticsPreparationTools(m,data,dataKind,onSaveAsNew={result,requestedName->
             val name=newStatisticsDatasetName(requestedName,names,datasetName)
-            m.saveDataSet(name,result.csv,result.kind)
-            m.clearRegression();data=result.csv;datasetName=name;selected=name;isNew=false
-            columnCount=statisticsColumnCount(result.kind).toString();selectedDataKind=result.kind
+            editDataset {
+                m.saveDataSet(name,result.csv,result.kind)
+                m.clearRegression();data=result.csv;datasetName=name;selected=name;isNew=false
+                columnCount=statisticsColumnCount(result.kind).toString();selectedDataKind=result.kind
+            }
         }) {result->
-            m.clearRegression();data=result.csv
-            columnCount=statisticsColumnCount(result.kind).toString()
-            selectedDataKind=if(selectedDataKind.startsWith("columns:"))"columns:$columnCount" else result.kind
-            if(result.kind=="list"&&plotType=="Scatter")plotType="Histogram"
+            editDataset {
+                m.clearRegression();data=result.csv
+                columnCount=statisticsColumnCount(result.kind).toString()
+                selectedDataKind=if(selectedDataKind.startsWith("columns:"))"columns:$columnCount" else result.kind
+                if(result.kind=="list"&&plotType=="Scatter")plotType="Histogram"
+            }
         }})
         }
             val fittedResponse=if(m.regressionMode in listOf("multiple","logistic","polynomial","ridge","lasso","elasticnet","logisticridge","logisticlasso","logisticelasticnet","randomforest","randomforestclassifier","randomforestregressor","svm","svc","svr","bayeslinear","bayeslogistic"))m.regressionResponseColumn?.takeIf {it in regressionColumns.indices} ?: regressionColumns.lastIndex else regressionColumns.lastIndex
@@ -781,7 +857,10 @@ internal val LocalStatisticsExplanationModel=staticCompositionLocalOf<Calculator
                 if(editingHeaderError.isNotBlank())Text(tr(editingHeaderError),fontSize=11.sp,color=LocalInstrument.current.danger)
             }
         },confirmButton={TextButton(enabled=editingHeaderText.isNotBlank()&&!m.busy&&!m.regressionBusy,onClick={
-            runCatching {statisticsRenameColumn(data,dataColumns.size,column,editingHeaderText)}.onSuccess {updated->m.clearRegression();data=updated;editingHeaderColumn=null}.onFailure {editingHeaderError=it.message.orEmpty()}
+            runCatching {statisticsRenameColumn(data,dataColumns.size,column,editingHeaderText)}.onSuccess {updated->
+                editDataset {m.clearRegression();data=updated}
+                editingHeaderColumn=null
+            }.onFailure {editingHeaderError=it.message.orEmpty()}
         }){Text(tr("Save"))}},dismissButton={TextButton(onClick={editingHeaderColumn=null}){Text(tr("Cancel"))}})
     }
     FilledTonalButton(onClick={m.collapseStatisticsSections();collapseRequest++},

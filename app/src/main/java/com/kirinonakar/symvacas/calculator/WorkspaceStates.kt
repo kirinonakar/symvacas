@@ -272,6 +272,7 @@ internal class StatisticsState(private val prefs:SharedPreferences) {
     }
 
     var dataSets by mutableStateOf(prefs.jsonObject("dataSets"))
+    val editHistory=StatisticsEditHistory()
     var regressionCurve by mutableStateOf(loadRegressionCurve())
     var regressionFit by mutableStateOf(prefs.getString("regressionFit","") ?: "")
     var regressionData by mutableStateOf(prefs.getString("regressionData","") ?: "")
@@ -347,6 +348,10 @@ internal class StatisticsState(private val prefs:SharedPreferences) {
     }
 
     fun deleteDataSet(name:String) {dataSets=JSONObject(dataSets.toString()).apply {remove(name)}}
+
+    fun restoreDraft(draft:StatisticsDraft) {
+        statisticsData=draft.csv;statisticsKind=draft.kind;statisticsAutoColumns=draft.autoColumns
+    }
 
     fun updateSelection(name:String,data:String,kind:String,regression:String,plot:String,csv:Boolean,selected:String,isNew:Boolean,customFormula:String,customVariable:String,customInitials:String,polynomialDegree:String,logisticResponse:String,lassoAlpha:String,forestTrees:String,forestDepth:String,forestSeed:String,regularization:String,l1Ratio:String,forestTask:String,bayesianPriorSD:String,bayesianLevel:String,bayesianShape:String,bayesianScale:String,bayesianMethod:String,nutsSamples:String,nutsWarmup:String,nutsMaxDepth:String,nutsSeed:String,nutsChains:String) {
         statisticsBayesianMethod=bayesianMethod

@@ -2,11 +2,47 @@ package com.kirinonakar.symvacas
 
 import android.content.SharedPreferences
 import com.kirinonakar.symvacas.calculator.GraphState
+import com.kirinonakar.symvacas.calculator.StatisticsDraft
+import com.kirinonakar.symvacas.calculator.StatisticsState
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
 
 class WorkspaceStatesTest {
+    @Test fun statisticsUndoRestoresDraftShapeWithoutChangingSavedDataOrSelection() {
+        val state=StatisticsState(MemoryPreferences())
+        val before=StatisticsDraft("a,b\n1,20","columns:2","2",true)
+        val combined=before.copy(csv="a,b,c\n1,20,3",kind="columns:3",columns="3")
+        state.saveDataSet("Study",combined.csv,"xyz")
+        state.statisticsName="Study";state.statisticsSelected="Study";state.statisticsIsNew=false
+        state.restoreDraft(combined)
+        state.editHistory.record(before,combined,null,0)
+
+        state.restoreDraft(state.editHistory.undo()!!)
+        assertEquals(combined.csv,state.dataSets.getJSONObject("Study").getString("csv"))
+        assertEquals(before.csv,state.statisticsData)
+        assertEquals("columns:2",state.statisticsKind)
+        assertTrue(state.statisticsAutoColumns)
+        assertEquals("Study",state.statisticsSelected)
+        assertFalse(state.statisticsIsNew)
+        assertFalse(state.editHistory.canUndo)
+    }
+
+    @Test fun statisticsUndoGroupsTypingAndSkipsAnEditRevertedWithinTheGroup() {
+        val history=StatisticsState(MemoryPreferences()).editHistory
+        val before=StatisticsDraft("1","list","1",false)
+        val one=before.copy(csv="12")
+        val two=before.copy(csv="123")
+        history.record(before,one,"direct",0)
+        history.record(one,two,"direct",200)
+        history.record(two,two.copy(csv="123\n"),null,201)
+        assertEquals(two,history.undo())
+        assertEquals(before,history.undo())
+        history.record(before,one,"direct",300)
+        history.record(one,before,"direct",400)
+        assertFalse(history.canUndo)
+    }
+
     @Test fun histogramKdeDefaultsOffAndPersistsInDraftAndFullSnapshots() {
         val prefs=MemoryPreferences();val state=com.kirinonakar.symvacas.calculator.StatisticsState(prefs)
         assertFalse(state.statisticsHistogramKde)
