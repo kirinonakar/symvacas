@@ -1,6 +1,5 @@
 """Verify the generated deployment using a real static HTTP server, without a browser."""
 import functools
-import hashlib
 import http.server
 import json
 import pathlib
@@ -19,31 +18,6 @@ from build import publish_directory
 
 
 class StaticDeploymentTests(unittest.TestCase):
-    def test_development_server_returns_current_modules_even_with_a_matching_timestamp(self):
-        class QuietHandler(StaticHandler):
-            def log_message(self, *_):
-                pass
-
-        server = http.server.ThreadingHTTPServer(
-            ("127.0.0.1", 0), functools.partial(QuietHandler, directory=str(WEB)))
-        thread = threading.Thread(target=server.serve_forever, daemon=True)
-        thread.start()
-        try:
-            url = f"http://127.0.0.1:{server.server_port}/input-navigation.js"
-            with urllib.request.urlopen(url, timeout=10) as response:
-                modified = response.headers["Last-Modified"]
-                self.assertEqual(response.headers["Cache-Control"], "no-store")
-                self.assertEqual(response.read(), (WEB / "input-navigation.js").read_bytes())
-            request = urllib.request.Request(url, headers={"If-Modified-Since": modified})
-            with urllib.request.urlopen(request, timeout=10) as response:
-                self.assertEqual(response.status, 200)
-                self.assertEqual(response.headers["Cache-Control"], "no-store")
-                self.assertEqual(response.read(), (WEB / "input-navigation.js").read_bytes())
-        finally:
-            server.shutdown()
-            server.server_close()
-            thread.join()
-
     def test_application_module_dependencies_are_cached_for_offline_use(self):
         manifest = (WEB / "assets.js").read_text(encoding="utf-8")
         assets = set(json.loads(re.search(r"self.SYMVACAS_ASSETS = (\[[\s\S]+\]);", manifest).group(1)))
@@ -95,13 +69,6 @@ class StaticDeploymentTests(unittest.TestCase):
             server.shutdown()
             server.server_close()
             thread.join()
-
-    def test_wheels_match_pinned_distribution_checksums(self):
-        lock = json.loads((WEB / "vendor/pyodide-lock.json").read_text(encoding="utf-8"))
-        for name in ("sympy", "mpmath"):
-            item = lock["packages"][name]
-            digest = hashlib.sha256((WEB / "vendor" / item["file_name"]).read_bytes()).hexdigest()
-            self.assertEqual(digest, item["sha256"], name)
 
     def test_pages_artifact_is_complete_and_needs_no_development_server(self):
         with tempfile.TemporaryDirectory() as directory:

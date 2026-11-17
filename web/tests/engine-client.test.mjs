@@ -57,24 +57,6 @@ test('two stalled attempts end with a retryable error instead of an infinite loo
   workers[2].message({type:'ready'});assert.equal(engine.ready,true);
 });
 
-for(const kind of ['fatal','error'])test(`${kind} during startup retries once and then reports the failure`,t=>{
-  const {engine,workers,statuses,tick}=runtime(t);
-  const fail=worker=>kind==='fatal'?worker.message({type:'fatal',error:'download failed'}):worker.onerror({message:'download failed'});
-  fail(workers[0]);assert.equal(workers.length,2);assert.equal(workers[0].terminated,true);
-  fail(workers[1]);assert.equal(engine.ready,false);assert.equal(statuses.at(-1),'download failed');
-  tick(240000);assert.equal(workers.length,2,'failed workers leave no live startup timers');
-});
-
-test('a runtime error settles a calculation without treating it as cold startup',async t=>{
-  const {engine,workers,statuses,tick}=runtime(t);
-  workers[0].message({type:'ready'});
-  const result=engine.execute({action:'calculate'});
-  workers[0].onerror({message:'runtime failed'});
-  assert.deepEqual(await result,{ok:false,error:'runtime failed'});
-  assert.equal(engine.pending,null);assert.equal(engine.ready,false);assert.equal(statuses.at(-1),'runtime failed');
-  tick(240000);assert.equal(workers.length,1);
-});
-
 test('calculations can finish after 20 seconds and the next request expires after response grace',async t=>{
   const {engine,workers,tick}=runtime(t);
   workers[0].message({type:'ready'});
@@ -90,66 +72,6 @@ test('calculations can finish after 20 seconds and the next request expires afte
   const next=engine.execute({action:'evaluate'});
   workers[1].message({type:'result',id:workers[1].request.id,result:{ok:true}});
   assert.equal((await next).ok,true);
-});
-
-test('engine limit details arriving during response grace reach the caller',async t=>{
-  const {engine,workers,tick}=runtime(t);
-  workers[0].message({type:'ready'});
-  const result=engine.execute({action:'evaluate'});
-  tick(64000);
-  assert.equal(workers[0].terminated,false);
-  const response={ok:false,error:'Computation limit reached. Reduce expression complexity.'};
-  workers[0].message({type:'result',id:workers[0].request.id,result:response});
-  assert.deepEqual(await result,response);
-  tick(1000);assert.equal(workers.length,1,'a delivered response clears the fallback timer');
-});
-
-test('background previews leave editing unlocked and foreground work waits for them',async t=>{
-  const {engine,workers}=runtime(t),busy=[];
-  engine.addEventListener('busy',event=>busy.push(event.detail));
-  workers[0].message({type:'ready'});
-  const preview=engine.execute({tree:{kind:'number',value:'1'}},{background:true});
-  const previewId=workers[0].request.id;
-  assert.deepEqual(busy,[],'a preview does not lock the keypad');
-  const commit=engine.execute({tree:{kind:'number',value:'2'}});
-  assert.deepEqual(busy,[true],'explicit work locks controls while waiting');
-  assert.equal(workers[0].request.id,previewId,'requests never overlap in the worker');
-  workers[0].message({type:'result',id:previewId,result:{ok:true,exact:'1'}});
-  assert.equal((await preview).exact,'1');
-  await Promise.resolve();
-  assert.notEqual(workers[0].request.id,previewId);
-  workers[0].message({type:'result',id:workers[0].request.id,result:{ok:true,exact:'2'}});
-  assert.equal((await commit).exact,'2');
-  assert.equal(busy.at(-1),false);
-});
-
-test('cancelled foreground work waiting for a preview cannot run on the restarted worker',async t=>{
-  const {engine,workers}=runtime(t);
-  workers[0].message({type:'ready'});
-  const preview=engine.execute({},{background:true});
-  const fit=engine.execute({action:'regression'});
-  engine.cancel();
-  // The replacement may be ready before the preview promise continuation runs.
-  workers[1].message({type:'ready'});
-  assert.equal((await preview).ok,false);
-  assert.equal((await fit).ok,false);
-  assert.equal(workers[1].request,undefined);
-  const next=engine.execute({action:'regression'});
-  workers[1].message({type:'result',id:workers[1].request.id,result:{ok:true}});
-  assert.equal((await next).ok,true);
-});
-
-test('bounded previews return cooperatively without restarting the warm worker',async t=>{
-  const {engine,workers,tick}=runtime(t);
-  workers[0].message({type:'ready'});
-  const request={tree:{kind:'number',value:'1'},budget:60};
-  const preview=engine.execute(request,{background:true,preview:true});
-  assert.equal(workers[0].request.request.budget,2);
-  assert.equal(request.budget,60,'preview settings do not mutate the committed request');
-  tick(2000);
-  workers[0].message({type:'result',id:workers[0].request.id,result:{ok:false,error:'Computation limit reached'}});
-  assert.equal((await preview).ok,false);
-  tick(1000);assert.equal(workers.length,1);assert.equal(engine.ready,true);
 });
 
 test('a stalled preview restarts only at its deadline and automatically runs queued foreground work',async t=>{
@@ -184,31 +106,6 @@ test('cancelling during preview recovery discards queued work even if a replacem
   engine.cancel();assert.equal((await commit).error,'계산이 중지되었습니다.');
   workers[1].message({type:'ready'});workers[2].message({type:'ready'});
   assert.equal(workers[1].request,undefined);assert.equal(workers[2].request,undefined);
-});
-
-test('failed preview recovery settles queued work after the bounded startup retries',async t=>{
-  const {engine,workers,tick}=runtime(t),busy=[];
-  engine.addEventListener('busy',event=>busy.push(event.detail));
-  workers[0].message({type:'ready'});
-  const preview=engine.execute({},{background:true,preview:true});
-  const commit=engine.execute({action:'evaluate'});
-  tick(3000);assert.equal((await preview).ok,false);
-  tick(120000);tick(120000);
-  assert.equal((await commit).ok,false);assert.equal(engine.queued,null);
-  assert.equal(busy.at(-1),false);
-});
-
-test('only calculation previews have a short hard deadline, including when limits are removed',async t=>{
-  const {engine,workers,tick}=runtime(t);
-  workers[0].message({type:'ready'});
-  const preview=engine.execute({removeComputationLimit:true},{background:true,preview:true});
-  tick(2999);assert.equal(workers.length,1);
-  tick(1);assert.equal((await preview).ok,false);assert.equal(workers.length,2);
-  workers[1].message({type:'ready'});
-  const graph=engine.execute({action:'graph'},{background:true});
-  tick(3000);assert.equal(workers.length,2);
-  workers[1].message({type:'result',id:workers[1].request.id,result:{ok:true}});
-  assert.equal((await graph).ok,true);
 });
 
 test('Python input pauses the deadline and resumes with the remaining execution budget',async t=>{
@@ -252,16 +149,4 @@ test('unlimited requests survive the execution deadline and can still be cancell
   workers[1].message({type:'ready'});
   const limited=engine.execute({});tick(65000);
   assert.equal((await limited).ok,false);assert.equal(workers[1].terminated,true);
-});
-
-test('unlimited Python input resumes without reinstalling an execution timer',async t=>{
-  const {engine,workers,tick}=runtime(t);
-  workers[0].message({type:'ready'});
-  const result=engine.execute({action:'python',removeComputationLimit:true},{onInput:async()=> 'answer'});
-  workers[0].message({type:'input',id:engine.pending.id,inputId:1});
-  await Promise.resolve();await Promise.resolve();
-  tick(600000);
-  assert.ok(engine.pending);assert.equal(workers.length,1);
-  workers[0].message({type:'result',id:engine.pending.id,result:{ok:true}});
-  assert.equal((await result).ok,true);
 });

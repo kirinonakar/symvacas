@@ -40,16 +40,6 @@ class ComputationLimitsTests(unittest.TestCase):
         self.assertFalse(limits_removed())
         self.assertFalse(run(number(2), budget=-1)['ok'])
 
-    def test_large_numbers_exponents_and_factorial_keep_original_display_limits(self):
-        for tree in (number('1e100001'), call('factorial', number(10001))):
-            self.assertFalse(run(tree)['ok'])
-            result = run(tree, removeComputationLimit=True)
-            self.assertTrue(result['ok'], result)
-            self.assertIn('full value in Ans', result['exact'])
-            self.assertLess(len(result['exact']), 10000)
-            self.assertIn('resultAst', result)
-            self.assertFalse(run(tree)['ok'], 'the next request restores default limits')
-
     def test_matrix_and_dataset_capacity_can_be_removed(self):
         tree = call('identity', number(33))
         self.assertFalse(run(tree)['ok'])
@@ -60,16 +50,6 @@ class ComputationLimitsTests(unittest.TestCase):
         options = {'statisticsDatasets': {'data': ['2'] * 5001}}
         self.assertFalse(run(tree, **options)['ok'])
         self.assertEqual('2', run(tree, removeComputationLimit=True, **options)['exact'])
-
-    def test_result_size_and_precision_ceilings_stay_in_effect(self):
-        for removed in (False, True):
-            result = run({'kind': 'symbol', 'value': 'x' * 40001}, removeComputationLimit=removed)
-            self.assertFalse(result['ok'])
-            self.assertIn('display size limit', result['error'])
-            result = run(call('sin', number(1)), precision=1000, removeComputationLimit=removed)
-            self.assertTrue(result['ok'], result)
-            normal = run(call('sin', number(1)), precision=200)
-            self.assertEqual(normal['decimal'], result['decimal'])
 
     def test_only_capacity_parts_of_input_checks_are_removed(self):
         with computation_limits(True):

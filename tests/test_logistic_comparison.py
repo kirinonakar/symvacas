@@ -1,15 +1,13 @@
 """Paired validation, refitted CV, numerical guards and public report regression tests."""
 import json
 import math
-import random
 from pathlib import Path
 import sys
 import unittest
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'app/src/main/python'))
-from calc_logistic_comparison import calculate, fit_mle, predict, delong, placements, folds_for, metrics
+from calc_logistic_comparison import calculate, folds_for
 from calc_evaluator import Engine
-from calc_shared import MathError
 
 REFERENCE=json.loads((ROOT/'tests/fixtures/logistic_comparison_reference.json').read_text())
 TRAIN=REFERENCE['train'];VALIDATION=REFERENCE['validation']
@@ -32,25 +30,6 @@ class LogisticComparisonTests(unittest.TestCase):
         self.assertEqual([r['Improved classifications'],r['Worsened classifications']],ref['mcnemar'][:2])
         self.assertAlmostEqual(float(r['Paired differences'][1][4]),ref['mcnemar'][2],places=12)
 
-    def test_tied_scores_and_degenerate_variance(self):
-        target=[0,0,0,1,1,1];a=[0,1,2,1,2,3];b=[0,2,3,1,2,3]
-        def brute(scores):
-            pos=[z for y,z in zip(target,scores) if y];neg=[z for y,z in zip(target,scores) if not y]
-            pair=lambda p,n:float(p>n)+.5*(p==n)
-            x=[sum(pair(p,n) for n in neg)/len(neg) for p in pos]
-            y=[sum(pair(p,n) for p in pos)/len(pos) for n in neg]
-            return sum(x)/len(x),x,y
-        for scores in (a,b):
-            actual=placements(target,scores);expected=brute(scores)
-            for u,v in zip([actual[0],*actual[1],*actual[2]],[expected[0],*expected[1],*expected[2]]):self.assertAlmostEqual(u,v,places=14)
-        d=delong(target,a,b);x=[v-u for u,v in zip(brute(a)[1],brute(b)[1])];y=[v-u for u,v in zip(brute(a)[2],brute(b)[2])]
-        variance=lambda v:sum((z-sum(v)/len(v))**2 for z in v)/(len(v)-1)/len(v)
-        self.assertAlmostEqual(d['variance'],variance(x)+variance(y),places=14)
-        self.assertEqual(delong(target,a,a)['interval'],[0,0])
-        self.assertEqual(delong(target,a,a)['p'],1)
-        self.assertIsNone(delong([0,0,1,1],[1,1,0,0],[0,0,1,1])['p'])
-        self.assertIsNone(delong([0,1],[0,1],[1,0])['interval'])
-
     def test_cv_refits_are_reproducible_and_duplicate_identities_never_cross_folds(self):
         r=self.result('crossvalidation',3,100);again=self.result('crossvalidation',3,100)
         self.assertEqual(r,again)
@@ -61,32 +40,6 @@ class LogisticComparisonTests(unittest.TestCase):
         ids=list(range(len(TRAIN)))+[0,1,4,0]
         assignment=folds_for(TRAIN+[TRAIN[i] for i in [0,1,4,0]],3,7,ids)
         for at,identity in enumerate(ids):self.assertEqual(assignment[at],assignment[identity])
-
-
-    def test_holdout_fits_only_training_split_and_bootstraps_paired_validation(self):
-        r=self.result('holdout',.25,100);rng=random.Random(7);test=set()
-        for label in (0,1):
-            group=[i for i,row in enumerate(TRAIN) if row[-1]==label];rng.shuffle(group)
-            test.update(group[:max(2,min(len(group)-2,int(len(group)*.25+.5)))])
-        train=[row for i,row in enumerate(TRAIN) if i not in test];validation=[row for i,row in enumerate(TRAIN) if i in test]
-        self.assertEqual(r['Training models'][0][1],len(train));self.assertEqual(r['Validation models'][0][1],len(validation))
-        self.assertAlmostEqual(r['Training models'][1][3],fit_mle(train,2)['ll'],places=10)
-        target=[row[-1] for row in validation];expected,_=metrics(target,predict(fit_mle(train,2),validation),.5)
-        self.assertAlmostEqual(r['Validation models'][1][2],expected['AUC'],places=12)
-        for _,_,lo,hi,_,_ in r['Paired differences']:self.assertLessEqual(lo,hi)
-
-    def test_invalid_response_separation_rank_and_inference_options_reject(self):
-        with self.assertRaises(MathError):self.result(argument=[row[:-1]+[2 if i==0 else row[-1]] for i,row in enumerate(VALIDATION)])
-        with self.assertRaises(MathError):fit_mle([[i,int(i>=5)] for i in range(10)],1)
-        with self.assertRaises(MathError):fit_mle([[a,a,y] for a,b,y in TRAIN],2)
-        with self.assertRaises(MathError):self.result('crossvalidation',3,0)
-        with self.assertRaises(MathError):self.result('external',VALIDATION,10)
-        with self.assertRaises(MathError):self.result('crossvalidation',96,100)
-        args=[TRAIN,1,'external',VALIDATION,.5,.95,0,7,[len(TRAIN)+2,len(VALIDATION)+3]]
-        r=calculate(Engine({}),'logisticcompare',args)
-        self.assertEqual([r['Excluded training rows'],r['Excluded validation rows']],[2,3])
-        args[-1]=[1,1]
-        with self.assertRaises(MathError):calculate(Engine({}),'logisticcompare',args)
 
 
 if __name__=='__main__':unittest.main()

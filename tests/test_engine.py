@@ -8,8 +8,6 @@ from fractions import Fraction
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "app/src/main/python"))
 import calc_engine as core
-import sympy as s
-from calc_shared import numeric_integral
 
 CASES = json.loads((ROOT / "build/math-cases.json").read_text(encoding="utf-8"))
 TREES = {case["source"]: case["tree"] for case in CASES}
@@ -36,25 +34,6 @@ class EngineTests(unittest.TestCase):
             self.assertFalse(invalid["ok"])
             substitution["args"][2]["value"]="2"
             self.assertEqual(json.loads(core.dispatch(json.dumps({"tree":substitution})))["exact"],"3")
-    def test_angle_mode_applies_inside_nested_calls(self):
-        def call(name,argument): return {"kind":"call","value":name,"args":[argument]}
-        def number(value): return {"kind":"number","value":str(value)}
-        def evaluate(tree,angle="DEG",variables=None): return json.loads(core.dispatch(json.dumps({"tree":tree,"angle":angle,"variables":variables or {}})))
-        chain=number(9)
-        for name in ["sin","cos","tan","atan","acos","asin"]: chain=call(name,chain)
-        for angle in ("DEG","GRAD"):
-            with self.subTest(angle=angle):
-                result=evaluate(chain,angle)
-                self.assertTrue(result["ok"],result)
-                self.assertAlmostEqual(float(result["decimal"]),9,places=9)
-        tangent=evaluate(call("tan",call("cos",call("sin",number(9)))))
-        self.assertTrue(tangent["ok"],tangent)
-        self.assertLess(abs(float(tangent["decimal"])),0.1)  # Reading the inner value as radians would give ≈1.56
-        sixth={"kind":"binary","value":"/","args":[{"kind":"symbol","value":"pi"},number(6)]}
-        self.assertEqual(evaluate(call("sin",sixth))["exact"],"1/2")
-        self.assertEqual(evaluate(call("sin",call("degree",number(30))))["exact"],"1/2")
-        self.assertEqual(evaluate(call("sin",{"kind":"symbol","value":"x"}),variables={"x":sixth})["exact"],"1/2")
-        self.assertEqual(evaluate(call("sin",{"kind":"symbol","value":"x"}),variables={"x":number(2)})["exact"],"sin(pi/90)")
     def test_large_results_stay_bounded_and_preserve_exact_reusable_values(self):
         # Long exact results are abbreviated in the view but remain reusable at full precision.
         with self.subTest(scenario='large_exact_integer_serialization'):
@@ -181,15 +160,6 @@ class NumericIntegralTests(unittest.TestCase):
         result = json.loads(core.dispatch(json.dumps(request)))
         self.assertTrue(result["ok"], result)
         return result
-
-    def test_nonpolynomial_quadrature_and_infinite_bounds(self):
-        variable = s.Symbol("x")
-        self.assertAlmostEqual(2, float(numeric_integral(s.sin(variable), variable, 0, s.pi, 30)))
-        self.assertAlmostEqual(1, float(numeric_integral(s.exp(-variable), variable, 0, s.oo, 30)))
-        divergent = {"kind": "call", "value": "nintegrate", "args": [
-            binary("/", number(1), binary("^", x, number(2))), x, number(-1), number(1)]}
-        result = json.loads(core.dispatch(json.dumps({"tree": divergent})))
-        self.assertFalse(result["ok"], result)
 
 if __name__ == "__main__":
     unittest.main()

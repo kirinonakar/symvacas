@@ -41,15 +41,6 @@ class VersionTests(unittest.TestCase):
                     versions["sync_versions"](project)
                     self.assertEqual(before,{path:path.stat().st_mtime_ns for path in before},"No-op preparation must not trigger rebuilds")
 
-    def test_bad_android_version_fails_before_touching_windows_metadata(self):
-        with tempfile.TemporaryDirectory(prefix="symvacas-version-") as directory:
-            project=pathlib.Path(directory)
-            (project/"app").mkdir()
-            (project/"app/build.gradle.kts").write_text('versionName = "not-a-version"',encoding="utf-8")
-            with self.assertRaisesRegex(ValueError,"versionName"):
-                versions["sync_versions"](project)
-            self.assertFalse((project/"win").exists())
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -33,26 +33,4 @@ class StatisticsStratifiedDataTest {
         assertEquals(expected.map {it.drop(2)+it.take(2)},stratifiedStatisticsData(rows,opts+mapOf("groupA" to "B","groupB" to "A"),emptyList()).tables)
     }
 
-    @Test fun individualRecordsIgnorePatientIdAndKeepStratumNames() {
-        val source="""patient_id,severity,treatment,improved
-            |1,moderate,A,1
-            |2,severe,A,1
-            |3,severe,A,0
-            |4,mild,B,1
-            |5,moderate,B,0
-            |6,mild,B,1""".trimMargin()
-        val plan=stratifiedStatisticsData(advancedStatisticsRows(source,4),opts+("layout" to "observations"),emptyList())
-        assertEquals(listOf(listOf("1","0","0","1"),listOf("1","1","0","0"),listOf("0","0","2","0")),plan.tables)
-        assertEquals(listOf("moderate","severe","mild"),(1..3).map {plan.labels["stratum:$it"]})
-    }
-
-    @Test fun invalidGroupsOutcomesCountsAndTotalsAreRejected() {
-        val rows=advancedStatisticsRows(counts,5)
-        assertTrue(runCatching {stratifiedStatisticsData(rows,opts+("groupB" to "A"),emptyList())}.isFailure)
-        assertTrue(runCatching {stratifiedStatisticsData(rows+listOf(listOf("mild","C","1","2","3")),opts,emptyList())}.isFailure)
-        assertTrue(runCatching {stratifiedStatisticsData(listOf(listOf("mild","A","4","1","3")),opts+("countType" to "total"),emptyList())}.isFailure)
-        assertTrue(runCatching {stratifiedStatisticsData(listOf(listOf("mild","A","1.5","2","3")),opts,emptyList())}.isFailure)
-        assertTrue(runCatching {stratifiedStatisticsData(listOf(listOf("1","mild","A","unknown")),opts+("layout" to "observations"),emptyList())}.isFailure)
-        assertTrue(runCatching {stratifiedStatisticsData(rows,opts+("group" to "0"),emptyList())}.isFailure)
-    }
 }

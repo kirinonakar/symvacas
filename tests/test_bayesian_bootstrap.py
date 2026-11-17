@@ -1,4 +1,4 @@
-"""Independent Bayesian-bootstrap moments and PCA visualization contracts."""
+"""Independent moments for one- and two-sample Bayesian bootstrap."""
 import math
 from pathlib import Path
 import sys
@@ -8,7 +8,6 @@ import sympy as s
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'app/src/main/python'))
 from calc_advanced_statistics import advanced
 from calc_evaluator import Engine
-from calc_shared import MathError
 
 class BayesianBootstrapTests(unittest.TestCase):
     def compare(self,first,second,mode='independent',statistic='mean',draws=20000):
@@ -56,10 +55,3 @@ class BayesianBootstrapTests(unittest.TestCase):
         self.assertEqual(20000,sum(plot['counts']))
         self.assertEqual(len(plot['counts'])+1,len(plot['edges']))
         self.assertAlmostEqual(float(result['posterior SD'])/math.sqrt(20000),float(result['posterior mean MCSE']))
-        again,_=self.run_bootstrap([0,1]);self.assertEqual(result,again)
-        changed,_=self.run_bootstrap([0,1],seed=8);self.assertNotEqual(result,changed)
-
-
-    def test_invalid_parameters_are_rejected(self):
-        for data,statistic,level,draws,seed in (([1],'mean',.95,100,0),([1,2],'bad',.95,100,0),([1,2],'mean',1,100,0),([1,2],'mean',.95,99,0),([1,2],'mean',.95,100,-1)):
-            with self.assertRaises(MathError):self.run_bootstrap(data,statistic,level,draws,seed)

@@ -32,15 +32,19 @@ export function renderPreviousCalculations(container,entries,{decimal=false,digi
 
 // Keep the current input at the top of the viewport. Wheel/touch gestures can
 // browse older rows without focus/status updates interrupting the gesture.
-export function followTape(scroll,active,{schedule=setTimeout,cancel=clearTimeout,now=Date.now,
-  requestFrame=callback=>globalThis.requestAnimationFrame(callback),cancelFrame=id=>globalThis.cancelAnimationFrame(id)}={}){
-  let dragging=false,quietUntil=0,pending=false,timer=null,frame=null;
+export function followTape(scroll,history,active,{schedule=setTimeout,cancel=clearTimeout,now=Date.now,
+  requestFrame=callback=>globalThis.requestAnimationFrame(callback),cancelFrame=id=>globalThis.cancelAnimationFrame(id),
+  ResizeObserver=globalThis.ResizeObserver}={}){
+  let dragging=false,quietUntil=0,pending=false,timer=null,frame=null,anchor=null;
   function clear(){if(timer!==null)cancel(timer);timer=null;}
   function settle(){clear();if(pending&&!dragging)timer=schedule(()=>{timer=null;latest();},Math.max(0,quietUntil-now()));}
+  function activeTop(){
+    return Math.max(0,scroll.scrollTop+active.getBoundingClientRect().top-scroll.getBoundingClientRect().top-scroll.clientTop);
+  }
   function align(){
     if(dragging||quietUntil>now()){pending=true;settle();return;}
     pending=false;clear();
-    scroll.scrollTop=Math.max(0,scroll.scrollTop+active.getBoundingClientRect().top-scroll.getBoundingClientRect().top-scroll.clientTop);
+    anchor=activeTop();scroll.scrollTop=anchor;
   }
   function latest(){
     align();
@@ -49,9 +53,20 @@ export function followTape(scroll,active,{schedule=setTimeout,cancel=clearTimeou
     // with the final layout, while still respecting history-browsing gestures.
     if(frame===null)frame=requestFrame(()=>{frame=null;align();});
   }
+  function resize(){
+    if(anchor===null||!scroll.clientHeight)return;
+    // Reflow can move the active input and clamp the old scroll position.
+    // Follow it only when the tape was already showing the active input at the top.
+    const previousTop=Math.min(anchor,scroll.scrollHeight-scroll.clientHeight);
+    const wasAligned=Math.abs(scroll.scrollTop-previousTop)<=1;
+    anchor=activeTop();
+    if(wasAligned&&!dragging)scroll.scrollTop=anchor;
+  }
+  const observer=ResizeObserver?new ResizeObserver(resize):null;
+  observer?.observe(scroll);observer?.observe(history);
   scroll.addEventListener('pointerdown',()=>{dragging=true;clear();});
   for(const name of ['pointerup','pointercancel'])scroll.addEventListener(name,()=>{dragging=false;quietUntil=now()+160;settle();});
   scroll.addEventListener('wheel',()=>{quietUntil=now()+160;settle();},{passive:true});
   scroll.addEventListener('scroll',()=>{if(pending){quietUntil=now()+160;settle();}},{passive:true});
-  return {latest,dispose(){clear();if(frame!==null)cancelFrame(frame);frame=null;}};
+  return {latest,dispose(){clear();if(frame!==null)cancelFrame(frame);frame=null;observer?.disconnect();}};
 }

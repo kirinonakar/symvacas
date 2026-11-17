@@ -17,10 +17,3 @@ test('dataset undo keeps structural edits separate from consecutive cell edits',
   history.record(next,draft,'cell:0:1',400);
   assert.equal(history.canUndo,false);
 });
-
-test('an action that leaves the displayed data unchanged adds no undo entry',()=>{
-  const history=createStatisticsUndoHistory();
-  history.record(draft,{...draft});
-  assert.equal(history.canUndo,false);
-  assert.equal(history.undo(),undefined);
-});

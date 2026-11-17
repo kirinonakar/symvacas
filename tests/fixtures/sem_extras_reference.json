@@ -1,5 +1,5 @@
 {
-  "source": "Independent SciPy normal likelihood optimization; NumPy expected-information Schur complement; seeded full model row refits and linearly interpolated percentiles.",
+  "source": "Independent SciPy normal likelihood optimization and NumPy expected-information Schur complement.",
   "efaML": {
     "commonCovariance": [
       [
@@ -3374,32 +3374,6 @@
         -2.80963,
         -3.7708
       ]
-    ],
-    "expected": {
-      "direct": 0.4549344297617885,
-      "indirect": 0.41748493036652845,
-      "total": 0.872419360128317,
-      "standardizedIndirect": 0.2847435184665992
-    },
-    "samples": 25,
-    "seed": 31,
-    "bootstrap": {
-      "direct": [
-        0.2772590226744976,
-        0.7075032388440996
-      ],
-      "indirect": [
-        0.3043713590138664,
-        0.5809095163509547
-      ],
-      "total": [
-        0.6918995581145634,
-        1.0808355528144333
-      ],
-      "standardizedIndirect": [
-        0.20522173620241013,
-        0.3904325526813873
-      ]
-    }
+    ]
   }
 }

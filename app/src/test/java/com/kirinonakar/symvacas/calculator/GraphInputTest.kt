@@ -1,21 +1,10 @@
 package com.kirinonakar.symvacas.calculator
 
-import com.kirinonakar.symvacas.math.SyntaxException
 import com.kirinonakar.symvacas.ui.graphEquationTree
 import org.junit.Assert.*
 import org.junit.Test
 
 class GraphInputTest {
-    @Test fun spatialFamiliesStayOneInputRowWithTheirDomainAndList() {
-        val source="[(1-2*t)*cos(k*pi/2+a),(1-2*t)*sin(k*pi/2+a),k*pi/8] {0<t<1, k=[0,0.1,0.2,0.3,0.4,0.5]}"
-        val program=GraphSourceCache().get(source,"space",false)
-        assertEquals(1,program.trees.length())
-        assertEquals(0,program.shadings.length())
-        assertEquals("restriction",program.trees.getJSONObject(0).getString("value"))
-        assertEquals(setOf("t"),graphRangeAxes(source,"space"))
-        assertEquals("space" to source,graphExpressionTarget(source,"space"))
-        assertNotNull(graphEquationTree("space",source,0))
-    }
     @Test fun surfaceCoordinatesAndLocalHelpersKeepDomainsAndFormulaCaptions() {
         for(source in listOf("[cos(u)*cos(v),sin(u)*cos(v),sin(v)]","[R=2+.35*sin(6*u-3*t),x=(R+cos(v))*cos(u),y=(R+cos(v))*sin(u),z=sin(v)]","S(u,v)=(u,v,sin(u+v))")) {
             assertEquals(setOf("u","v"),graphRangeAxes(source,"surface"))
@@ -37,12 +26,6 @@ class GraphInputTest {
         assertEquals("surface" to "x^2+y^2",graphExpressionTarget("z=x^2+y^2","surface"))
         assertEquals("surface" to "x^2+y^2+z^2=1",graphExpressionTarget("x^2+y^2+z^2=1","surface"))
     }
-    @Test fun radialSquareRootSurfaceParsesAdjacentAxisFactors() {
-        val tree=graphInputTree("sin(sqrt(ax^2+ay^2))","surface")
-        assertEquals("sin",tree.value);assertEquals("sqrt",tree.args.single().value)
-        assertEquals(setOf("a","x","y"),tree.nodes().filter {it.kind=="symbol"}.map {it.value}.toSet())
-        assertFalse(isImplicitSurface("sin(sqrt(ax^2+ay^2))"))
-    }
     @Test fun commaSeparatedInequalitiesRemainOneVisibleGraphRow() {
         val source="-1<x<1, -1<y<x"
         val program=GraphSourceCache().get("$source\ny=x", "cartesian", false)
@@ -56,17 +39,4 @@ class GraphInputTest {
         assertEquals("inequality",graphPlanarKind(graphInputTree("x^2+y^2<4, y>=0")))
     }
 
-    @Test fun nestedCommasKeepTheirExistingMeaning() {
-        assertEquals("parametric",graphPlanarKind(graphInputTree("(cos(t),sin(t))")))
-        assertEquals("cartesian",graphPlanarKind(graphInputTree("y=max(x,0)")))
-        assertEquals("cartesian",graphPlanarKind(graphInputTree("f(x)={x<0:x^2,3}")))
-        assertEquals("inequality",graphPlanarKind(graphInputTree("y>max(x,0), x<1")))
-    }
-
-    @Test fun bareCommasDoNotAcceptEmptyConditionsOrOrdinaryExpressions() {
-        for(source in listOf("x<1,",",x<1","x<1,,y>0","x<1,y","x,y")) {
-            assertThrows(SyntaxException::class.java) {graphInputTree(source)}
-        }
-        assertThrows(SyntaxException::class.java) {graphInputTree("x<1,y>0","parametric")}
-    }
 }

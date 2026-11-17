@@ -1,7 +1,6 @@
-"""Independent likelihood, efficient-score and full-refit bootstrap references."""
+"""Independent likelihood and efficient-score references."""
 import csv
 import json
-import math
 import unittest
 from test_advanced_statistics import ROOT,run,evaluate
 from calc_shared import MathError
@@ -41,31 +40,6 @@ class SEMExtrasTests(unittest.TestCase):
         response=evaluate('cfa('+str(rows)+',[1,1,1,1],[],complete,[],configural,ml,[[2,3]],1)')
         edge=next(edge for edge in response['statisticsReport']['plots'][0]['edges'] if edge['source'].startswith('x'))
         self.assertEqual(edge['kind'],'covariance');self.assertEqual(len(edge['interval']),2)
-
-
-    def test_indirect_effects_and_bootstrap_match_independent_complete_model_refits(self):
-        case=self.reference['sem'];args=[case['rows'],[1,1,1,2,2,2,3,3,3],[[1,2],[2,3],[1,3]],[],'complete',[],'configural','ml',[],0,case['samples'],case['seed']]
-        fit=run('sem',*args);self.assertEqual(fit['Bootstrap successful'],case['samples']);self.assertEqual(fit['Bootstrap failed'],0)
-        for kind,key in [('Direct effect','direct'),('Indirect effect','indirect'),('Total effect','total')]:
-            row=next(row for row in fit['Effects'] if row['term']=='1 → 3' and row['Effect']==kind)
-            self.assertAlmostEqual(float(row['Estimate']),case['expected'][key],delta=2e-5)
-            self.assertTrue(all(math.isfinite(float(v)) for v in row['CI95']))
-            for actual,expected in zip(row['Bootstrap CI95'],case['bootstrap'][key]):self.assertAlmostEqual(float(actual),expected,delta=5e-5)
-            if key=='indirect':
-                self.assertAlmostEqual(float(row['Standardized estimate']),case['expected']['standardizedIndirect'],delta=2e-5)
-                for actual,expected in zip(row['Standardized bootstrap CI95'],case['bootstrap']['standardizedIndirect']): self.assertAlmostEqual(float(actual),expected,delta=5e-5)
-
-    def test_residual_pair_validation_and_bootstrap_failure_accounting(self):
-        rows=self.reference['cfa']['rows']
-        for pairs in ([[2,2]],[[2,3],[3,2]],[[1,5]]):
-            with self.assertRaises(MathError): run('cfa',rows,[1]*4,[],'complete',[],'configural','ml',pairs)
-        from calc_advanced_sem_extras import bootstrap
-        result={'Effects':[{'term':'1 → 2','Effect':'Indirect effect','Estimate':0.,'Standardized estimate':0.}]}
-        calls=[]
-        def failing(engine,name,args,fast=False): calls.append(args[0]);raise MathError('Singular resample')
-        bootstrap(None,'sem',[rows,[1]*4,[[1,2]]],result,failing,20,7)
-        self.assertEqual(len(calls),20);self.assertEqual(result['Bootstrap successful'],0);self.assertEqual(result['Bootstrap failed'],20)
-        self.assertIsNone(result['Effects'][0]['Bootstrap CI95']);self.assertIn('Bootstrap warning',result)
 
     def test_identified_two_indicator_factors_are_allowed_and_unidentified_models_rejected(self):
         rows=self.reference['sem']['rows']

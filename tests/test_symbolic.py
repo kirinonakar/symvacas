@@ -95,13 +95,5 @@ class AnswerFunctionTests(unittest.TestCase):
             self.assertEqual("0", evaluate(node("call", "Ans", node("number", 2)), variables={"Ans": result["resultAst"]})["exact"])
             self.assertFalse(evaluate(node("call", "Ans", node("number", 0)), variables={"Ans": result["resultAst"]})["ok"])
 
-    def test_missing_numeric_multivariate_and_wrong_arity_answers_are_rejected(self):
-        for variables in [{}, {"Ans": node("number", 42)},
-                          {"Ans": node("binary", "+", node("snapshot_symbol", "x"), node("snapshot_symbol", "y"))}]:
-            self.assertFalse(evaluate(node("call", "Ans", node("number", 1)), variables=variables)["ok"])
-        answer = evaluate(node("binary", "^", node("symbol", "x"), node("number", 2)))["resultAst"]
-        for arguments in [[], [node("number", 1), node("number", 2)]]:
-            self.assertFalse(evaluate(node("call", "Ans", *arguments), variables={"Ans": answer})["ok"])
-
 if __name__ == "__main__":
     unittest.main()

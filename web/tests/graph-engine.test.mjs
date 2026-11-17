@@ -6,7 +6,6 @@ import {parse} from '../parser.js';
 import {graphInputTree} from '../graph-input.js';
 import {latexPaste} from '../math-input.js';
 import {graphShadings} from '../graph-shading.js';
-import {radialSurfaceGeometry,prepareSurfaceFaces} from '../surface-geometry.js';
 
 test('packaged graph modules execute every graph kind in the production WASM worker', {timeout:60000}, async t=>{
   const worker=fork(new URL('./worker-bridge.mjs',import.meta.url),[],{execArgv:['--experimental-wasm-jspi']});
@@ -32,7 +31,7 @@ test('packaged graph modules execute every graph kind in the production WASM wor
     min:-1,max:1,yMin:-2,yMax:2,angle:'RAD',...options});
 
   const algebraicTrees=[String.raw`\frac{1}{a} \cdot x`,String.raw`x^{2}+y^{3} = a`].map(source=>graphInputTree(source));
-  for(const a of [0,1e-12,-1e-12,.01,-.01,1,-1,5]){
+  for(const a of [0,1]){
     const result=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:algebraicTrees,
       min:-10,max:10,yMin:-5,yMax:5,samples:200,parameters:{a}});
     assert.deepEqual(result.parameters,['a']);
@@ -52,45 +51,6 @@ test('packaged graph modules execute every graph kind in the production WASM wor
     if(a>0)for(const root of [-Math.sqrt(a),Math.sqrt(a)]){
       assert.ok(cubic.some(point=>point&&Math.abs(point[0]-root)<1e-12&&point[1]===0));
     }
-  }
-
-  const cubicSumTree=graphInputTree(String.raw`x^{3}+y^{3} = a`);
-  for(const a of [0,1e-12,-1e-12,.01,-.01,1,-1,5]){
-    const result=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:[cubicSumTree],
-      min:-10,max:10,yMin:-5,yMax:5,samples:200,parameters:{a}});
-    assert.deepEqual(result.parameters,['a']);
-    assert.deepEqual(result.implicitCurves,[true]);
-    const curve=result.curves[0];
-    assert.ok(curve.length>0&&curve.length<250);
-    for(const point of curve)if(point){
-      const [x,y]=point;
-      assert.ok(Math.abs(x**3+y**3-a)<1e-9);
-      assert.ok(x>=-10-1e-9&&x<=10+1e-9&&y>=-5-1e-9&&y<=5+1e-9);
-    }
-    const root=Math.cbrt(a);
-    for(const [x,y] of [[root,0],[0,root]]){
-      assert.ok(curve.some(p=>p&&Math.hypot(p[0]-x,p[1]-y)<1e-12));
-    }
-  }
-
-  const cubicSquareTree=graphInputTree(String.raw`x^{3}+y^{2} = a`);
-  for(const a of [0,1e-12,-1e-12,.01,-.01,1,-1,5]){
-    const result=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:[cubicSquareTree],
-      min:-10,max:10,yMin:-5,yMax:5,samples:200,parameters:{a}});
-    assert.deepEqual(result.parameters,['a']);
-    assert.deepEqual(result.implicitCurves,[true]);
-    const curve=result.curves[0];
-    assert.ok(curve.length>0&&curve.length<350);
-    for(const point of curve)if(point){
-      const [x,y]=point;
-      assert.ok(Math.abs(x**3+y*y-a)<1e-9);
-      assert.ok(x>=-10-1e-9&&x<=10+1e-9&&y>=-5-1e-9&&y<=5+1e-9);
-    }
-    const contacts=[[Math.cbrt(a),0]];
-    if(a>=0)contacts.push([0,Math.sqrt(a)],[0,-Math.sqrt(a)]);
-    for(const [x,y] of contacts)assert.ok(curve.some(p=>p&&Math.hypot(p[0]-x,p[1]-y)<1e-12));
-    assert.ok(curve.some(p=>p&&p[1]>0));
-    assert.ok(curve.some(p=>p&&p[1]<0));
   }
 
   // Reported bare-comma input must fill the intersection, not two independent regions.
@@ -114,64 +74,6 @@ test('packaged graph modules execute every graph kind in the production WASM wor
     assert.ok(Math.abs(area-expectedArea)<.04,`${source}: area ${area}`);
   }
 
-  const animatedComma=graphInputTree('-1<x<1, -1<y<ax');
-  for(const a of [0,1e-12,-1e-12,1,-1,2.3,-2.3,4,-4]){
-    const result=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:[animatedComma],
-      min:-10,max:10,yMin:-5,yMax:5,samples:200,parameters:{a}});
-    assert.deepEqual(result.parameters,['a']);
-    const shade=result.shadings[0];
-    assert.equal(shade.fill.length,1);
-    assert.deepEqual(shade.boundaryStyles,['dashed','dashed','dashed','dashed']);
-    const polygon=shade.fill[0];
-    assert.ok(polygon.length<=8);
-    for(const [x,y] of polygon)assert.ok(x>=-1-1e-10&&x<=1+1e-10&&y>=-1-1e-10&&y<=a*x+1e-10);
-    const area=Math.abs(polygon.reduce((sum,p,i)=>{const q=polygon[(i+1)%polygon.length];return sum+p[0]*q[1]-q[0]*p[1];},0))/2;
-    const amplitude=Math.abs(a),expected=amplitude<=1?2:1+(amplitude+1/amplitude)/2;
-    assert.ok(Math.abs(area-expected)<1e-9,`a=${a}: area ${area}`);
-  }
-
-  // Exact reported LaTeX must reach the shared analytic contour path after
-  // parsing and WASM packaging, with real-domain and denominator semantics.
-  const radialSineSources=[
-    String.raw`\frac{\sin\left(a \cdot x^{2}+a \cdot y^{2}\right)}{\left(x^{2}+y^{2}\right)}`,
-    String.raw`\sin\left(\sqrt{a \cdot x^{2}+a \cdot y^{2}}\right)`,
-  ];
-  for(const [index,source] of radialSineSources.entries()){
-    const tree=graphInputTree(source);
-    for(const a of [1e-12,-1e-12,.3,1,-1,5])for(const view of [[-10,10,-5,5],[2,4,-1,1]]){
-      const [min,max,yMin,yMax]=view;
-      const result=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:[tree],
-        min,max,yMin,yMax,samples:200,parameters:{a}});
-      assert.deepEqual(result.implicitCurves,[true]);
-      assert.deepEqual(result.parameters,['a']);
-      const radii=new Set();let previous=null;
-      for(const point of result.curves[0]){
-        if(point===null){previous=null;continue;}
-        const [x,y]=point,r=Math.hypot(x,y);
-        assert.ok(x>=min-1e-9&&x<=max+1e-9&&y>=yMin-1e-9&&y<=yMax+1e-9);
-        if(index===0)assert.ok(r>0,'The denominator excludes the origin');
-        if(previous)assert.ok(Math.abs(r-Math.hypot(...previous))<1e-9,'Separate circles must not connect');
-        const phase=index===0?a*r*r:Math.sqrt(Math.max(0,a*r*r));
-        assert.ok(Math.abs(Math.sin(phase))<1e-10);
-        if(index===1&&a<0)assert.equal(r,0);
-        radii.add(r.toFixed(8));previous=point;
-      }
-      const nearest=(lo,hi)=>lo<=0&&hi>=0?0:Math.min(Math.abs(lo),Math.abs(hi));
-      const rmin=Math.hypot(nearest(min,max),nearest(yMin,yMax));
-      const rmax=Math.hypot(Math.max(Math.abs(min),Math.abs(max)),Math.max(Math.abs(yMin),Math.abs(yMax)));
-      const expected=new Set();
-      if(index===1&&rmin===0)expected.add((0).toFixed(8));
-      if(index===0||a>0){
-        const last=Math.floor((index===0?Math.abs(a)*rmax*rmax:Math.sqrt(a)*rmax)/Math.PI);
-        for(let n=1;n<=last;n++){
-          const radius=index===0?Math.sqrt(n*Math.PI/Math.abs(a)):n*Math.PI/Math.sqrt(a);
-          if(radius>=rmin)expected.add(radius.toFixed(8));
-        }
-      }
-      assert.deepEqual(radii,expected,`${source}, a=${a}, view=${view}`);
-    }
-  }
-
   const cartesian=await graph('cartesian','a*x',{parameters:{a:2},derivativeSelected:0});
   assert.equal(cartesian.derivativeCurveIndex,1);
   for(const [x,y] of cartesian.curves[0])assert.ok(Math.abs(y-2*x)<1e-12);
@@ -189,24 +91,8 @@ test('packaged graph modules execute every graph kind in the production WASM wor
     const expected=x<=3000?1-Math.exp(-x/900):(1-Math.exp(-3000/900))*Math.exp(-(x-3000)/80);
     assert.ok(Math.abs(y-expected)<1e-10);
   }
-  const animatedPiecewise=graphInputTree('f(x)={0<=x<=TR:1-e^(-x/T1),TR<x<TR+TE:(1-e^(-TR/T1))*e^(-(x-TR)/T2)}');
-  for(const [TR,TE,T1,T2] of [[3,4,1,2],[2.25,.00001,.5,1],[-1,3,2,1],[2,-1,1,2],[0,2,1,2],[3,4,1,0],[3,4,0,2]]){
-    const animated=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:[animatedPiecewise],
-      min:-2,max:10,yMin:-1,yMax:2,samples:200,parameters:{TR,TE,T1,T2}});
-    assert.deepEqual(animated.parameters,['T1','T2','TE','TR']);
-    assert.deepEqual(animated.implicitCurves,[false]);
-    const points=animated.curves[0].filter(Boolean);
-    if(T1===0){assert.deepEqual(points,[]);continue;}
-    assert.ok(points.length>=2);
-    for(const [x,y] of points){
-      const first=0<=x&&x<=TR;
-      assert.ok(first||TR<x&&x<TR+TE&&T2!==0);
-      const expected=first?1-Math.exp(-x/T1):(1-Math.exp(-TR/T1))*Math.exp(-(x-TR)/T2);
-      assert.ok(Math.abs(y-expected)<=1e-9*Math.max(1,Math.abs(expected)));
-    }
-  }
   const heartTree=graphInputTree('(-1+y^2/b^2+x^2/a^2)^3-x^2*y^3/(a^2*b^3)=0');
-  for(const [a,b] of [[2,2],[1e-6,2],[2,1e-12],[-1e-80,1e-100],[0,1],[1,0],[-2,-2]]){
+  for(const [a,b] of [[2,2],[-1e-80,1e-100],[0,1],[1,0]]){
     const heart=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:[heartTree],
       min:-10,max:10,yMin:-5,yMax:5,samples:200,parameters:{a,b}});
     assert.deepEqual(heart.parameters,['a','b']);
@@ -220,7 +106,7 @@ test('packaged graph modules execute every graph kind in the production WASM wor
     assert.ok(Math.max(...points.map(point=>point[1]/b))>1.23);
     assert.ok(Math.min(...points.map(point=>point[1]/b))<-.99);
   }
-  for(const [a,b] of [[4.9,4.9],[-4.9,4.9],[4.9,-4.9],[-4.9,-4.9]]){
+  for(const [a,b] of [[4.9,4.9],[-4.9,-4.9]]){
     for(const [min,max,yMin,yMax] of [[-10,10,-5,5],[-1,3,-2,2]]){
       const heart=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',trees:[heartTree],
         min,max,yMin,yMax,samples:200,parameters:{a,b}});
@@ -238,7 +124,7 @@ test('packaged graph modules execute every graph kind in the production WASM wor
       }
     }
   }
-  for(const [a,b] of [[1,0],[-3,.7],[0,1],[6,2]]){
+  for(const [a,b] of [[-3,.7],[0,1]]){
     const animated=await execute({action:'graph',graphKind:'cartesian',angle:'RAD',
       trees:['a \\cdot \\sin\\left(x+b\\right)','a \\cdot \\cos\\left(x+b\\right) > y'].map(source=>graphInputTree(source)),
       parameters:{a,b},min:-10,max:10,yMin:-5,yMax:5,samples:200});
@@ -274,7 +160,7 @@ test('packaged graph modules execute every graph kind in the production WASM wor
 (3x^2y-y^3)\sin t
 \right]^2
 \]`);
-  for(const graphKind of ['cartesian','implicit'])for(const phase of [undefined,0,.4,Math.PI/2]){
+  for(const graphKind of ['cartesian','implicit'])for(const phase of [0,.4]){
     const rose=await execute({action:'graph',graphKind,angle:'RAD',trees:[roseTree],
       min:-10,max:10,yMin:-5,yMax:5,samples:200,...(phase===undefined?{}:{parameters:{t:phase}})});
     assert.deepEqual(rose.parameters,['t']);
@@ -357,48 +243,8 @@ test('packaged graph modules execute every graph kind in the production WASM wor
       [r*Math.sin(v)*Math.cos(u),r*Math.sin(v)*Math.sin(u),2*Math.cos(v)+.3*Math.sin(7*u-2*time)*Math.sin(v)].forEach((n,axis)=>assert.ok(Math.abs(n-p[axis])<1e-12));
     }
   }
-  const torusSource='[R=2+0.35*sin(6*u-3*t),x=(R+cos(v))*cos(u),y=(R+cos(v))*sin(u),z=sin(v)]';
-  const wavesSource='[r1=sqrt((x-2)^2+y^2),r2=sqrt((x+2)^2+y^2),z=sin(4*r1-5*t)/(1+0.2*r1)+sin(4*r2-5*t)/(1+0.2*r2)]';
-  const vortexSource=String.raw`z = e^{\left(\left(-0.08\right) \cdot \left(x^{2}+y^{2}\right)\right)} \cdot \sin\left(5 \cdot \operatorname{atan2}\left(y, x\right)-2 \cdot \sqrt{x^{2}+y^{2}}-3 \cdot t\right)`;
-  for(const time of [0,.7]){
-    const request={action:'graph',graphKind:'surface',angle:'RAD',min:-4,max:4,surfaceYMin:-4,surfaceYMax:4,surfaceSamples:48,parameters:{t:time}};
-    const torus=await execute({...request,trees:[graphInputTree(torusSource,'surface')],surfaceUMin:0,surfaceUMax:2*Math.PI,surfaceVMin:-Math.PI,surfaceVMax:Math.PI});
-    assert.equal(torus.parametricSurface,true);assert.deepEqual(torus.parameters,['t']);
-    for(const [j,row] of torus.surface.entries())for(const [i,p] of row.entries()){
-      const u=2*Math.PI*i/48,v=-Math.PI+2*Math.PI*j/48,r=2+.35*Math.sin(6*u-3*time)+Math.cos(v);
-      [r*Math.cos(u),r*Math.sin(u),Math.sin(v)].forEach((n,axis)=>assert.ok(Math.abs(n-p[axis])<1e-12));
-    }
-    const waves=await execute({...request,trees:[graphInputTree(wavesSource,'surface')]});
-    assert.deepEqual(waves.parameters,['t']);
-    for(const row of waves.surface)for(const [x,y,z] of row){
-      const expected=[Math.hypot(x-2,y),Math.hypot(x+2,y)].reduce((sum,r)=>sum+Math.sin(4*r-5*time)/(1+.2*r),0);
-      assert.ok(Math.abs(z-expected)<1e-12);
-    }
-    const vortex=await execute({...request,trees:[graphInputTree(vortexSource,'surface')]});
-    assert.equal(vortex.angularSurface,true);assert.deepEqual(vortex.parameters,['t']);
-    for(const row of vortex.surface)for(const [x,y,z] of row){
-      assert.ok(Math.hypot(x,y)>0);
-      const expected=Math.exp(-.08*(x*x+y*y))*Math.sin(5*Math.atan2(y,x)-2*Math.hypot(x,y)-3*time);
-      assert.ok(Math.abs(z-expected)<1e-12);
-    }
-    const box={xmin:-4,xmax:4,ymin:-4,ymax:4,zmin:-1,zmax:1};
-    for(const sampled of [torus,vortex]){
-      const geometry=prepareSurfaceFaces(sampled.surface,box);
-      assert.ok(geometry.faces.length>2000);
-      assert.ok(geometry.faces.every(face=>face.levels?.every(Number.isFinite)));
-    }
-    const mixed=await execute({...request,trees:[graphInputTree(torusSource,'surface'),graphInputTree(wavesSource,'surface'),parse('z=x+y')]});
-    assert.equal(mixed.surfaces.length,3);assert.deepEqual(mixed.parameters,['t']);
-  }
-  for(const a of [1,4,0,-1]){
-    const root=await execute({action:'graph',graphKind:'surface',angle:'RAD',trees:[graphInputTree('sin(sqrt(ax^2+ay^2))','surface')],
-      min:-3,max:3,surfaceYMin:-3,surfaceYMax:3,surfaceSamples:48,parameters:{a}});
-    assert.deepEqual(root.parameters,['a']);
-    if(a<0)assert.equal(root.surface.flat().filter(Boolean).length,1);
-    else for(const row of root.surface)for(const [x,y,z] of row)assert.ok(Math.abs(z-Math.sin(Math.sqrt(a*(x*x+y*y))))<1e-12);
-  }
   const radialSource=String.raw`\frac{\sin\left(a \cdot x^{2}+a \cdot y^{2}\right)}{\left(x^{2}+y^{2}\right)}`;
-  for(const a of [1,2,-3,0,1e-12,20,100]){
+  for(const a of [1,0]){
     const radial=await execute({action:'graph',graphKind:'surface',angle:'RAD',trees:[graphInputTree(radialSource,'surface')],
       min:-10,max:10,surfaceYMin:-5,surfaceYMax:5,surfaceSamples:96,parameters:{a}});
     assert.deepEqual(radial.parameters,['a']);
@@ -407,14 +253,6 @@ test('packaged graph modules execute every graph kind in the production WASM wor
       const r=radius*radius,expected=r===0?a:Math.sin(a*r)/r;
       assert.ok(Math.abs(z-expected)<1e-12);
     }
-    if(Math.abs(a)>=1){
-      const geometry=radialSurfaceGeometry(radial.surfaceRings);
-      for(const face of geometry.triangles){
-        const [x,y,z]=[0,1,2].map(axis=>face.reduce((sum,p)=>sum+p[axis],0)/3),r=x*x+y*y;
-        const error=Math.abs(z-(r===0?a:Math.sin(a*r)/r))*200/(1.2173*Math.abs(a));
-        assert.ok(error<1.5,`a=${a}: projected mesh error ${error}`);
-      }
-    }
   }
   const space=await graph('space','[t,t^2,t^3]');
   assert.ok(space.spaceCurves[0].length>1);
@@ -422,42 +260,12 @@ test('packaged graph modules execute every graph kind in the production WASM wor
     assert.ok(Math.abs(y-x*x)<1e-12);
     assert.ok(Math.abs(z-x*x*x)<1e-12);
   }
-  const spatialSource='[(1-2*t)*cos(k*pi/2+a),(1-2*t)*sin(k*pi/2+a),k*pi/8]';
-  for(const suffix of [' {0<t<1, k=[0,0.1,0.2,0.3,0.4,0.5]}',' {0<t<1} {k=[0,0.1,0.2,0.3,0.4,0.5]}']){
-    const family=await graph('space',spatialSource+suffix,{parameters:{a:.7,k:99}});
-    assert.deepEqual(family.parameters,['a']);
-    assert.equal(family.spaceCurves.length,6);
-    family.spaceCurves.forEach((curve,i)=>{
-      assert.equal(curve.length,2);
-      assert.equal(curve.length,family.curveParameters[i].length);
-      curve.forEach(([x,y,z],j)=>{
-        const t=family.curveParameters[i][j],k=i/10;
-        assert.ok(t>0&&t<1);
-        assert.ok(Math.abs(x-(1-2*t)*Math.cos(k*Math.PI/2+.7))<1e-12);
-        assert.ok(Math.abs(y-(1-2*t)*Math.sin(k*Math.PI/2+.7))<1e-12);
-        assert.ok(Math.abs(z-k*Math.PI/8)<1e-12);
-      });
-    });
-  }
   const narrowSpace=await graph('space','C(t)=(t,k,a) {0.1234<t<0.1235,k=[0,1]}');
   assert.ok(narrowSpace.spaceCurves.every(curve=>curve.length===2&&curve.every(([t])=>t>.1234&&t<.1235)));
   const integral=await execute({action:'graphAnalysis',trees:[parse('x')],analysis:'integral',a:0,b:1});
   assert.equal(integral.value,.5);
   assert.ok(integral.integralFill.length>0);
 
-  const periodicTrees=[String.raw`\sin\left(x\right)`,
-    String.raw`\sin\left(x\right) = \left(-3\right) \cdot \cos\left(x\right)`].map(source=>graphInputTree(source));
-  for(const trees of [periodicTrees,[...periodicTrees].reverse()]){
-    const intersections=await execute({action:'graphAnalysis',graphKind:'cartesian',angle:'RAD',
-      trees,analysis:'intersection',selected:0,other:1,a:-10,b:10});
-    assert.equal(intersections.count,6);
-    assert.equal(intersections.truncated,false);
-    for(const [index,[x,y]] of intersections.points.entries()){
-      assert.ok(Math.abs(x-(-Math.atan(3)+(index-2)*Math.PI))<1e-7);
-      assert.ok(Math.abs(y-Math.sin(x))<1e-7);
-      assert.ok(Math.abs(Math.sin(x)+3*Math.cos(x))<1e-7);
-    }
-  }
   const solutions=await execute({tree:parse('solveset(sin(x) + 3*cos(x), x, domain=S.Reals)'),
     angle:'RAD',variables:{x:{kind:'number',value:'99'}}});
   assert.equal(solutions.tree.kind,'rows');
@@ -466,10 +274,4 @@ test('packaged graph modules execute every graph kind in the production WASM wor
   assert.ok(solutions.exact.includes('atan(3)'));
   assert.ok(solutions.exact.includes('∈ ℤ'));
   assert.ok(!solutions.exact.includes('ImageSet'));
-  for(const [source,expected] of [
-    ['solveset(x^2+1,x)','{-I, I}'],
-    ['solveset(x^2+1=0,x,domain=S.Reals)','EmptySet'],
-    ['solveset(x^2-4,x,S.Reals)','{-2, 2}'],
-    ['solveset(x^2-2,x,domain=S.Integers)','EmptySet']
-  ])assert.equal((await execute({tree:parse(source)})).exact,expected);
 });

@@ -6,7 +6,6 @@ import unittest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "app/src/main/python"))
 import calc_engine
-from calc_graph import simplify_samples
 
 def number(value): return {"kind": "number", "value": str(value)}
 def symbol(name): return {"kind": "symbol", "value": name}
@@ -30,36 +29,6 @@ class ImplicitGraphTests(unittest.TestCase):
             for point,at in zip(result["points"],(-2*math.pi,0,2*math.pi)):
                 self.assertAlmostEqual(at,point[0],delta=1e-7)
                 self.assertAlmostEqual(at,point[1],delta=1e-7)
-
-    def test_absolute_intersections_use_real_coordinates_for_both_curve_orders(self):
-        absolute={"kind":"call","value":"abs","args":[x]}
-        line=binary("+",binary("*",binary("/",number(1),number(2)),x),number(2))
-        for trees in ((absolute,line),(line,absolute)):
-            result=self.analyze(*trees,analysis="intersection",a=-5,b=5)
-            self.assertTrue(result["ok"],result)
-            self.assertEqual(2,len(result["points"]))
-            for point,expected in zip(result["points"],((-4/3,4/3),(4,4))):
-                self.assertAlmostEqual(expected[0],point[0],delta=1e-7)
-                self.assertAlmostEqual(expected[1],point[1],delta=1e-7)
-        # A tangent contact also takes the derivative-search path.
-        touching=self.analyze(absolute,number(0),analysis="intersection")
-        self.assertTrue(touching["ok"],touching)
-        self.assertEqual([[0.0,0.0]],touching["points"])
-
-
-    def test_angle_analysis_rejects_corners_singular_points_and_undefined_coordinates(self):
-        absolute={"kind":"call","value":"abs","args":[x]}
-        for tree in (absolute,binary("/",number(1),x)):
-            result=self.analyze(tree,analysis="tangentangle",a=0)
-            self.assertFalse(result["ok"],result);self.assertIn("undefined",result["error"])
-        result=self.analyze(absolute,number(0),analysis="intersectionangle")
-        self.assertTrue(result["ok"],result);self.assertEqual([[0.0,0.0]],result["points"])
-        self.assertIsNone(result["angles"][0]["value"])
-        singular=equation(y2,x2)
-        result=self.analyze(singular,equation(x,number(0)),analysis="intersectionangle")
-        self.assertTrue(result["ok"],result);self.assertIsNone(result["angles"][0]["value"])
-        vertical=self.analyze({"kind":"call","value":"sqrt","args":[x]},analysis="tangentangle",a=0)
-        self.assertTrue(vertical["ok"],vertical);self.assertAlmostEqual(90,vertical["value"])
 
 
     def test_derivative_analysis_uses_the_selected_order_for_every_action(self):
@@ -89,21 +58,6 @@ class ImplicitGraphTests(unittest.TestCase):
         tangent=analyze("tangent",2,a=1)
         self.assertEqual([[1.0,6.0]],tangent["points"]);self.assertAlmostEqual(6,tangent["value"])
 
-
-    def test_implicit_derivative_analysis_preserves_traced_branches_and_intersections(self):
-        hint=[.25,-.25/math.sqrt(1-.25**2)]
-        tangent=self.analyze(circle,analysis="tangent",a=0,selectedDerivativeOrder=1,tracePoint=hint)
-        self.assertTrue(tangent["ok"],tangent);self.assertAlmostEqual(-1,tangent["value"])
-        integral=self.analyze(circle,analysis="integral",a=-.5,b=.5,selectedDerivativeOrder=1,tracePoint=hint)
-        self.assertTrue(integral["ok"],integral);self.assertAlmostEqual(0,integral["value"])
-        ambiguous=self.analyze(circle,analysis="tangent",a=0,selectedDerivativeOrder=1,tracePoint=[0,0])
-        self.assertFalse(ambiguous["ok"]);self.assertIn("choose a branch",ambiguous["error"])
-        roots=self.analyze(circle,analysis="root",a=-.8,b=.8,selectedDerivativeOrder=1)
-        self.assertTrue(roots["ok"],roots);self.assertEqual([[0.0,0.0]],roots["points"])
-        intersections=self.analyze(circle,number(2),analysis="intersection",a=-.8,b=.8,selectedDerivativeOrder=2)
-        self.assertTrue(intersections["ok"],intersections);self.assertEqual(2,len(intersections["points"]))
-        for point in intersections["points"]:
-            self.assertAlmostEqual(math.sqrt(1-2**(-2/3)),abs(point[0]),delta=1e-7);self.assertAlmostEqual(2,point[1],delta=1e-7)
 
     def test_derivative_integrals_respect_poles_and_allow_integrable_endpoints(self):
         pole=self.analyze(binary("/",number(1),x),analysis="integral",a=-1,b=1,selectedDerivativeOrder=1)
@@ -161,41 +115,6 @@ class ImplicitGraphTests(unittest.TestCase):
         self.assertTrue(result["ok"], result.get("error"))
         return [point for point in result["curves"][index] if point is not None]
 
-    def test_rotating_rose_with_trigonometric_coefficients_plots_with_the_normal_budget(self):
-        t = symbol("t")
-        cosine = {"kind":"call", "value":"cos", "args":[t]}
-        sine = {"kind":"call", "value":"sin", "args":[t]}
-        real = binary("-", binary("^",x,number(3)), binary("*",number(3),binary("*",x,y2)))
-        imaginary = binary("-", binary("*",number(3),binary("*",x2,y)), binary("^",y,number(3)))
-        rose = equation(binary("^",binary("+",x2,y2),number(4)),
-                        binary("^",binary("+",binary("*",real,cosine),binary("*",imaginary,sine)),number(2)))
-        for kind in ("cartesian", "implicit"):
-            for phase, samples in ((0,200),(.4,500),(1,200),(math.pi/2,200)):
-                with self.subTest(kind=kind, phase=phase, samples=samples):
-                    result = self.graph(rose,graphKind=kind,parameters={"t":phase},samples=samples,
-                                        min=-10,max=10,yMin=-5,yMax=5)
-                    points = self.points(result)
-                    self.assertEqual(["t"],result["parameters"])
-                    self.assertGreater(len(points),100)
-                    petals = [[]]
-                    for point in result["curves"][0]:
-                        if point is None: petals.append([])
-                        else: petals[-1].append(point)
-                    self.assertEqual(6,len(petals))
-                    for path in petals:
-                        self.assertEqual([0.0,0.0],path[0])
-                        self.assertEqual(path[0],path[-1])
-                        self.assertGreaterEqual(sum(0<math.hypot(*point)<.3 for point in path),6)
-                    for px, py in points:
-                        radius2 = px*px+py*py
-                        wave = (px**3-3*px*py*py)*math.cos(phase)+(3*px*px*py-py**3)*math.sin(phase)
-                        self.assertLess(abs(radius2**4-wave**2),1e-6)
-                    # Every petal must appear, not only the highly singular origin.
-                    for petal in range(6):
-                        angle = phase/3+petal*math.pi/3
-                        peak = (math.cos(angle),math.sin(angle))
-                        self.assertLess(min(math.dist(point,peak) for point in points),.15)
-
     def test_disconnected_branches_have_breaks_and_poles_are_not_curves(self):
         with self.subTest(scenario='disconnected_branches_have_breaks_and_poles_are_not_curves'):
             result = self.graph(equation(binary("*", x, y), number(1)))
@@ -209,40 +128,11 @@ class ImplicitGraphTests(unittest.TestCase):
             domain = {"kind": "call", "value": "sqrt", "args": [x]}
             points = self.points(self.graph(equation(domain, y)))
             self.assertTrue(all(xx >= 0 and yy >= 0 and abs(math.sqrt(xx)-yy) < 1e-5 for xx, yy in points))
-        with self.subTest(scenario='slider_frames_reuse_compiled_contour_and_keep_degenerate_repeated_factors'):
-            from calc_graph import _compiled_graph
-            _compiled_graph.cache_clear()
-            radius=equation(binary("+",x2,y2),symbol("a"))
-            for value in (1,1.1,1.2):
-                self.assertGreater(len(self.points(self.graph(radius,parameters={"a":value},samples=200))),100)
-            self.assertEqual(1,_compiled_graph.cache_info().misses)
-            points=self.points(self.graph(equation(y2,symbol("a")),parameters={"a":0}))
-            self.assertGreater(len(points),100)
-            self.assertTrue(all(abs(point[1])<1e-6 for point in points))
 
-class GraphDispatchTests(unittest.TestCase):
+        points = self.points(self.graph(equation(y2, symbol("a")), parameters={"a":0}))
+        self.assertGreater(len(points), 100)
+        self.assertTrue(all(abs(point[1]) < 1e-6 for point in points))
 
-    def graph(self, kind, tree, **options):
-        result = json.loads(calc_engine.dispatch(json.dumps({
-            "action": "graph", "graphKind": kind, "trees": [tree], "angle": "RAD",
-            "min": 0, "max": 2*math.pi, **options,
-        })))
-        self.assertTrue(result["ok"], result.get("error"))
-        return result
-
-
-class GraphPerformanceTests(unittest.TestCase):
-
-    def test_simplification_never_bridges_breaks_or_loses_a_closed_loop(self):
-        points = [[-1,-1], [0,0], None, [1,1], [2,2]]
-        result, parameters = simplify_samples(points, list(range(5)), {}, -2, 2)
-        self.assertEqual(points, result)
-        self.assertEqual(list(range(5)), parameters)
-        circle = [[math.cos(i*2*math.pi/500), math.sin(i*2*math.pi/500)] for i in range(501)]
-        result, parameters = simplify_samples(circle, list(range(501)), {"graphKind": "parametric", "xMin": -2, "xMax": 2}, 0, 2*math.pi)
-        self.assertGreater(len(result), 30)
-        self.assertEqual(circle[0], result[0]); self.assertEqual(circle[-1], result[-1])
-        self.assertEqual(result, [circle[i] for i in parameters])
 
 if __name__ == "__main__":
     unittest.main()

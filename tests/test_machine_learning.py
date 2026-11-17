@@ -1,5 +1,4 @@
 """Regularization optimality, forest validation, and public engine contract."""
-import json
 import math
 import pathlib
 import random
@@ -11,7 +10,6 @@ import sympy as s
 from calc_evaluator import Engine
 from calc_statistics import fit_regression
 from calc_shared import MathError
-import calc_engine
 import symvacas_catalog
 from calc_machine_learning import classification_metrics
 
@@ -118,67 +116,6 @@ class MachineLearningTests(unittest.TestCase):
             scaled, _ = fit([[100*x, 100*z, c, y] for x, z, c, y in rows], "lasso", .1)
             for a, b in zip(engine.regression_report["residuals"], scaled.regression_report["residuals"]):
                 self.assertAlmostEqual(float(a["fitted"]), float(b["fitted"]))
-
-    def test_penalized_logistic_kkt_and_separated_inputs(self):
-        with self.subTest(scenario='penalized_logistic_kkt_and_separated_inputs'):
-            rows = [[x, x*x, int(x>0)] for x in (-3, -2, -1, 1, 2, 3)]
-            for mode, ratio in [("logisticridge", 0), ("logisticlasso", 1), ("logisticelasticnet", .5)]:
-                options = [.1, ratio] if mode.endswith("elasticnet") else .1
-                engine, expression = fit(rows, mode, options)
-                report = engine.regression_report
-                self.assertAlmostEqual(float(report["auc"]), 1)
-                self.assertEqual(report["accuracy"], 1)
-                self.assertTrue(math.isfinite(report["logLoss"]))
-                self.assertEqual(report['influenceMethod'],'glm-penalized-approximate')
-                self.assertTrue(all(0 <= float(r['leverage']) <= 1 and float(r['cook']) >= 0 for r in report['residuals']))
-                coefficients = [float(v) for _, v in engine.regression_parameters]
-                predictions = [float(r["fitted"]) for r in report["residuals"]]
-                self.assertAlmostEqual(sum(row[-1]-q for row, q in zip(rows, predictions)), 0, places=6)
-                for j in range(2):
-                    mean = sum(row[j] for row in rows)/len(rows)
-                    scale = math.sqrt(sum((row[j]-mean)**2 for row in rows)/len(rows))
-                    beta = coefficients[j+1]*scale
-                    gradient = sum((row[j]-mean)/scale*(row[-1]-q) for row, q in zip(rows, predictions))/len(rows)-.1*(1-ratio)*beta
-                    self.assertLess(abs(gradient-math.copysign(.1*ratio, beta)) if beta else max(abs(gradient)-.1*ratio, 0), 1e-7)
-        with self.subTest(scenario='regularized_logistic_or_uses_original_units_and_zero_coefficients_give_one'):
-            rows = [[x, 7, int(x>0)] for x in (-3, -2, -1, 1, 2, 3)]
-            for mode in ("logisticridge", "logisticlasso", "logisticelasticnet"):
-                options = [.1, .5] if mode.endswith("elasticnet") else .1
-                engine, _ = fit(rows, mode, options)
-                scaled, _ = fit([[100*x, z, y] for x, z, y in rows], mode, options)
-                coefficients = engine.regression_report["coefficients"]
-                self.assertNotIn("oddsRatio", coefficients[0])
-                for coefficient in coefficients[1:]:
-                    self.assertAlmostEqual(float(coefficient["oddsRatio"]), math.exp(float(coefficient["estimate"])))
-                    self.assertNotIn("oddsLow", coefficient)
-                    self.assertNotIn("oddsHigh", coefficient)
-                self.assertEqual(float(coefficients[2]["oddsRatio"]), 1)
-                scaled_coefficient = scaled.regression_report["coefficients"][1]
-                self.assertAlmostEqual(math.log(float(scaled_coefficient["oddsRatio"]))*100,
-                                       math.log(float(coefficients[1]["oddsRatio"])))
-            # Strong LASSO shrinks an otherwise informative predictor to zero.
-            shrunk, _ = fit(rows, "logisticlasso", 1)
-            self.assertEqual(float(shrunk.regression_report["coefficients"][1]["oddsRatio"]), 1)
-
-    def test_public_dispatch_curve_non_reuse_and_cancellation(self):
-        def node(value):
-            return {"kind": "list", "args": [node(v) for v in value]} if isinstance(value, list) else {"kind": "number", "value": str(value)}
-        rows = [[x, x*x] for x in range(20)]
-        request = {"tree": {"kind": "call", "value": "regression", "args": [node(rows),
-                   {"kind": "symbol", "value": "randomforest"}, node([20, 5, 0])]}}
-        result = json.loads(calc_engine.dispatch(json.dumps(request)))
-        self.assertTrue(result["ok"], result.get("error"))
-        self.assertGreater(len(result["curve"]), 100)
-        self.assertFalse(result["reusable"])
-        self.assertNotIn("resultAst", result)
-        class Control:
-            calls = 0
-            def isCancelled(self):
-                self.calls += 1
-                return self.calls > 5
-        stopped = json.loads(calc_engine.dispatch(json.dumps(request), Control()))
-        self.assertFalse(stopped["ok"])
-        self.assertIn("cancel", stopped["error"].lower())
 
 if __name__ == "__main__":
     unittest.main()

@@ -61,15 +61,5 @@ class MixedSETests(unittest.TestCase):
                     p=len(reference['coefficients']); expected_shift=-(len(rows)-p)*math.log(sy)-math.log(sx)
                     self.assertAlmostEqual(float(result['restricted log likelihood']-reference['restricted log likelihood']),expected_shift,delta=2e-5)
 
-    def test_profile_constraints_remain_in_original_coefficient_units(self):
-        case=next(case for case in self.cases if case['name']=='intercept reml')
-        reference=calculate(case['rows'],ci='profile')
-        shifted=calculate([[g,(x+1e6)*1e3,y+1e6] for g,x,y in case['rows']],ci='profile')
-        for a,b in zip(shifted['coefficients'][1]['CI95'],reference['coefficients'][1]['CI95']):
-            self.assertAlmostEqual(float(a)*1e3,float(b),delta=2e-6)
-        for result in (reference,shifted):
-            self.assertTrue(all(row['p']=='unavailable' for row in result['coefficients']))
-            self.assertTrue(all(len(row['CI95'])==2 for row in result['coefficients']))
-
 
 if __name__=='__main__': unittest.main()

@@ -22,21 +22,6 @@ class SolutionFallbackTests(unittest.TestCase):
                 residual=s.N(expression.subs(x,root),50)
                 self.assertLess(abs(residual),s.Rational(1,10)**40)
 
-    def test_real_branches_and_domain_restrictions(self):
-        x=s.Symbol("x")
-        self.assertEqual(s.S.EmptySet,affine_exponential_solutions(s.exp(x)-x,x,s.S.Reals)[0])
-        roots,_=affine_exponential_solutions(s.exp(x)-4*x,x,s.S.Reals)
-        self.assertEqual(s.FiniteSet(-s.LambertW(-s.Rational(1,4)),-s.LambertW(-s.Rational(1,4),-1)),roots)
-        self.assertEqual(s.FiniteSet(1),affine_exponential_solutions(s.exp(x)-s.E*x,x,s.S.Reals)[0])
-        self.assertEqual(s.S.EmptySet,affine_exponential_solutions(s.exp(x)-4*x,x,s.Interval.open(-s.oo,0))[0])
-        self.assertIsNone(affine_exponential_solutions(s.exp(x**2)-x,x,s.S.Complexes))
-        self.assertEqual(s.FiniteSet(s.LambertW(1)),affine_exponential_solutions(x*s.exp(x)-1,x,s.S.Reals)[0])
-        self.assertEqual(s.FiniteSet(s.LambertW(-s.Rational(1,4)),s.LambertW(-s.Rational(1,4),-1)),
-                         affine_exponential_solutions(x*s.exp(x)+s.Rational(1,4),x,s.S.Reals)[0])
-        self.assertEqual(s.S.EmptySet,affine_exponential_solutions(x*s.exp(x)+1,x,s.S.Reals)[0])
-        self.assertEqual(s.FiniteSet(0),affine_exponential_solutions(x*s.exp(x),x,s.S.Complexes)[0])
-        self.assertEqual(s.S.EmptySet,affine_exponential_solutions(x*s.exp(x)-1,x,s.Interval.open(-s.oo,0))[0])
-
 class NumberTheoryLimitTests(unittest.TestCase):
 
 

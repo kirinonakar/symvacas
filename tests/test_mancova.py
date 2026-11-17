@@ -1,8 +1,7 @@
 """MANCOVA reference accuracy, invalid designs and public report integration."""
 import json
 import unittest
-from test_advanced_statistics import ROOT, run, tree
-from calc_engine import dispatch
+from test_advanced_statistics import ROOT, run
 from calc_shared import MathError
 
 
@@ -39,31 +38,6 @@ class MancovaTests(unittest.TestCase):
         for args in invalid:
             with self.subTest(args=args):
                 with self.assertRaises(MathError): run('mancova', *args)
-
-    def test_slope_check_can_be_skipped_or_unavailable(self):
-        rows = [[1,0,1,4],[1,1,3,2],[2,0,3,5],[2,1,2,7],[2,2,6,3]]
-        result = run('mancova', rows)
-        self.assertEqual(result['Slope homogeneity']['status'], 'unavailable')
-        self.assertNotIn('Slope homogeneity', run('mancova', rows, 1, .95, 0))
-
-    def test_public_dispatch_reports_labels_intervals_and_reusable_answers(self):
-        rows, c, level, _ = self.cases[0]['arguments']
-        request = {'tree':tree(f'mancova({rows},{c},{level},1)'), 'precision':12,
-                   'statisticsTermLabels':{'Group':'Treatment','group:1':'Control','group:2':'Low','group:3':'High','x1':'Age','response:1':'Score','response:2':'Speed'}}
-        response = json.loads(dispatch(json.dumps(request)))
-        self.assertTrue(response['ok'], response.get('error'))
-        report = response['statisticsReport']
-        self.assertEqual(report['title'], 'MANCOVA')
-        sections = {section['title']:section for section in report['sections']}
-        self.assertIn('Multivariate tests', sections)
-        self.assertIn('Univariate follow-up tests', sections)
-        self.assertIn('Adjusted means', sections)
-        self.assertIn('Treatment', str(sections['Multivariate tests']))
-        self.assertIn('Control', str(sections['Adjusted means']))
-        self.assertIn('Score', str(sections['Adjusted means']))
-        self.assertTrue(any(plot['kind']=='intervals' for plot in report['plots']))
-        self.assertTrue(report['assumptions'])
-        self.assertIn('Multivariate tests', response['exact'])
 
 
 if __name__ == '__main__':

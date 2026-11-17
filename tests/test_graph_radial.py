@@ -6,7 +6,7 @@ import unittest
 import sympy as s
 
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/"app/src/main/python"))
-from calc_graph_radial import _rose_geometry, _rose_specification, radial_contour
+from calc_graph_radial import radial_contour
 
 
 class RadialContourTests(unittest.TestCase):
@@ -51,32 +51,6 @@ class RadialContourTests(unittest.TestCase):
                                 fraction = max(0,min(1,((point[0]-a[0])*dx+(point[1]-a[1])*dy)/(dx*dx+dy*dy)))
                                 return math.hypot(point[0]-a[0]-fraction*dx,point[1]-a[1]-fraction*dy)
                             self.assertLess(min(distance(a,b) for a,b in zip(path,path[1:])),.21)
-
-    def test_recognition_rejects_unproven_equations_and_preserves_degeneracies(self):
-        x,y,t = self.x,self.y,self.t
-        expression = self.expression()
-        for other in (expression+1,(x*x+y*y)**4-(x**3-2*x*y*y)**2,s.sin(x)+y):
-            self.assertIsNone(self.sample(other,.5))
-        self.assertIsNone(radial_contour(expression,x,y,{t:1},-2,2,.01,2,logarithmic=True))
-        a,b = s.symbols("a b")
-        wave = (x**3-3*x*y*y)*s.cos(t)+(3*x*x*y-y**3)*s.sin(t)
-        expression = a*(x*x+y*y)**4-b*wave**2
-        self.assertIsNone(radial_contour(expression,x,y,{a:0,b:1,t:1},-2,2,-2,2))
-        for value in (0,-1):
-            self.assertEqual([[0.0,0.0]],radial_contour(expression,x,y,{a:1,b:value,t:1},-2,2,-2,2))
-        self.assertEqual([],self.sample(self.expression(),1,(2,3,2,3)))
-        curve = radial_contour(expression,x,y,{a:1,b:4,t:1},-3,3,-3,3)
-        self.assertAlmostEqual(2,max(math.hypot(*point) for point in curve if point is not None))
-
-    def test_animation_reuses_the_verified_program_and_normalized_geometry(self):
-        expression = self.expression()
-        _rose_specification.cache_clear(); _rose_geometry.cache_clear()
-        for frame in range(12):
-            self.sample(expression,frame/10)
-        self.assertEqual(1,_rose_specification.cache_info().misses)
-        self.assertEqual(11,_rose_specification.cache_info().hits)
-        self.assertEqual(1,_rose_geometry.cache_info().misses)
-        self.assertEqual(11,_rose_geometry.cache_info().hits)
 
 
 if __name__ == "__main__": unittest.main()

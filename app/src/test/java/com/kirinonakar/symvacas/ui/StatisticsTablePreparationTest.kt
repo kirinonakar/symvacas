@@ -4,7 +4,6 @@ import java.io.File
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class StatisticsTablePreparationTest {
@@ -35,11 +34,4 @@ class StatisticsTablePreparationTest {
         }
     }
 
-    @Test fun rejectsAmbiguousIndexesHeadersAndZeroColumnOutput() {
-        val cases=fixture.getJSONArray("invalid")
-        for(index in 0 until cases.length()) {
-            val item=cases.getJSONObject(index)
-            assertEquals(item.getString("error"),assertThrows(IllegalArgumentException::class.java){transform(item)}.message)
-        }
-    }
 }

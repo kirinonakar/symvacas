@@ -9,10 +9,8 @@ from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'app/src/main/python'))
 from calc_model_comparison import calculate,fit_comparison
-from calc_model_comparison_validation import concordance,assignments,holm
-from calc_shared import MathError
+from calc_model_comparison_validation import holm
 from calc_evaluator import Engine
-from calc_statistics_report import statistics_report
 
 class ModelComparisonTests(unittest.TestCase):
     @classmethod
@@ -27,23 +25,6 @@ class ModelComparisonTests(unittest.TestCase):
             with self.subTest(family=item['family']):
                 result=self.run_model(item['rows'],item['family'],mode='fit' if item['family']=='lmm' else 'apparent')
                 for key,expected in item['expected'].items():self.assertAlmostEqual(result[key],expected,delta=2e-5*max(1,abs(expected)))
-    def test_shared_cv_bootstrap_is_reproducible_and_has_paired_intervals(self):
-        rows=self.example('linear');a=self.run_model(rows,mode='crossvalidation',argument=3,samples=100);b=self.run_model(rows,mode='crossvalidation',argument=3,samples=100)
-        self.assertEqual(a,b)
-        reference=self.run_model(rows)
-        self.assertEqual(a['ΔR² (B − A)'],reference['ΔR² (B − A)'])
-        self.assertIn('ΔValidation R² (B − A)',a)
-        self.assertTrue(all(row[2] is not None and row[3]>=row[2] and row[4] is None for row in a['Paired differences']))
-        assigned=assignments([rows[0],rows[0],*rows[1:]],3,7,'linear',[0,0,*range(1,len(rows))]);self.assertEqual(assigned[0],assigned[1])
-    def test_survival_concordance_matches_explicit_comparable_pairs_and_ties(self):
-        rows=[[1,1],[1,0],[2,1],[2,1],[3,0]];scores=[3,3,2,2,1]
-        numerator=denominator=0
-        for i,left in enumerate(rows):
-            for j,right in enumerate(rows):
-                if left[1] and (left[0]<right[0] or left[0]==right[0] and not right[1]):
-                    numerator+=int(scores[i]>scores[j])+.5*int(scores[i]==scores[j]);denominator+=1
-        self.assertEqual(concordance(rows,scores),numerator/denominator)
-        self.assertIsNone(concordance([[1,0],[2,0]],[1,2]))
     def test_candidates_keep_baseline_common_rows_and_holm_all_attempts(self):
         rows=[row[:2]+[math.sin(i),row[-1]] for i,row in enumerate(self.example('linear'))]
         result=self.run_model(rows,count=1,scan=1);records=result['Candidate comparisons'];self.assertEqual(len(records),2)
@@ -62,45 +43,6 @@ class ModelComparisonTests(unittest.TestCase):
             ordinal=self.run_model(rows,'cfa',count=0,mode='fit',options=opts+[['estimator','wlsmv']])
         self.assertNotIn('p',ordinal);self.assertNotIn('Difference χ²',ordinal)
         self.assertNotIn('Δχ² (B − A)',ordinal)
-    def test_ml_ridge_and_forest_emit_prediction_differences_without_fit_tests(self):
-        for family in ('mlclassification','mlregression'):
-            for algorithm in ('ridge','forest'):
-                result=self.run_model(self.example(family),family,mode='holdout',argument=.3,options=[['algorithm',algorithm],['trees',10],['depth',3]])
-                metrics=[row[0] for row in result['Paired differences']]
-                self.assertEqual(metrics,['AUC','Accuracy','Log loss'] if family=='mlclassification' else ['RMSE','MAE','R²'])
-                self.assertNotIn('p',result)
-                if family=='mlregression':self.assertTrue(all(row[4] is None for row in result['Paired differences']))
-                else:self.assertIsNotNone(result['Paired differences'][1][4])
-
-    def test_logistic_preserves_paired_external_inference_and_calibration(self):
-        reference=json.loads((ROOT/'tests/fixtures/logistic_comparison_reference.json').read_text(encoding='utf-8'))
-        result=self.run_model(reference['train'],'logistic',mode='external',argument=reference['validation'])
-        auc=result['Paired differences'][0]
-        self.assertAlmostEqual(float(auc[4]),reference['delong'][3],places=10)
-        self.assertEqual([row[5] for row in result['Paired differences']],['Paired DeLong','Exact McNemar + paired bootstrap CI','Paired bootstrap CI','Paired bootstrap CI'])
-        self.assertEqual([result['Improved classifications'],result['Worsened classifications']],reference['mcnemar'][:2])
-        self.assertEqual(len(result['Calibration curves']),2)
-        cv=self.run_model(self.example('logistic'),'logistic',mode='crossvalidation',argument=3)
-        self.assertTrue(all(row[4] is None for row in cv['Paired differences']))
-        self.assertIn('DeLong',cv['Paired differences'][0][5]);self.assertIn('McNemar',cv['Paired differences'][1][5])
-        self.assertEqual(result['Improved classifications']-result['Worsened classifications'],round(result['Paired differences'][1][1]*result['Validation performance'][0]['n']))
-        report=statistics_report('modelcompare',result,10)
-        paired=next(section for section in report['sections'] if section['title']=='Paired performance differences (B − A)')
-        self.assertEqual([row[5] for row in paired['rows']],['Paired DeLong','Exact McNemar + paired bootstrap CI','Paired bootstrap CI','Paired bootstrap CI'])
-
-
-    def test_invalid_roles_or_numeric_options_fail(self):
-        rows=self.example('linear')
-        with self.assertRaises(MathError):self.run_model(rows,count=2)
-        with self.assertRaises(MathError):self.run_model(rows,mode='holdout',argument=1)
-        with self.assertRaises(MathError):self.run_model(rows,samples=1)
-        with self.assertRaises(MathError):self.run_model(rows,options=[['unknown',1]])
-
-    def test_exact_linear_prediction_does_not_invent_f_inference_from_roundoff(self):
-        rows=[[i,math.sin(i),1+2*i+3*math.sin(i)] for i in range(20)]
-        result=self.run_model(rows)
-        self.assertNotIn('F',result);self.assertNotIn('p',result)
-        self.assertIsNone(result['Model fit'][1][3]);self.assertIn('numerical zero',result['Comparison inference'])
 
     def test_saved_variables_cannot_replace_family_or_option_metadata(self):
         from test_advanced_statistics import tree

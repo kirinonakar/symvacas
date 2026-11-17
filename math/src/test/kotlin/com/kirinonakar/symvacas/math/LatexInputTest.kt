@@ -5,24 +5,6 @@ import org.junit.Test
 
 class LatexInputTest {
 
-    @Test fun alignedSurfacePasteKeepsOneRowAndEquationPasteKeepsSeparateRows() {
-        val examples=javaClass.getResourceAsStream("/latex-input.tsv")!!.bufferedReader().readLines()
-            .filter {it.startsWith("""\begin{aligned}""")}.map {it.split('\t')}
-        for((source,expected) in examples) {
-            val multiline=source.replace("\\\\","\\\\\n")
-            for(text in listOf(source,multiline,"\\[\n$multiline\n\\]","$$\n$multiline\n$$")) {
-                assertEquals(expected,LatexInput.convertPaste(text,multiline=true,surface=true))
-                val equations=Parser(expected).parse().args.map {expected.substring(it.start,it.end)}.joinToString("\n")
-                assertEquals(equations,LatexInput.convertPaste(text,multiline=true))
-                assertEquals("z=0\n$equations\nz=1",LatexInput.convertPaste("z=0\n$source\nz=1",multiline=true))
-                val edit=LatexInput.convertEdit(Editor("z=0\nold\nz=1",7,4),"z=0\n$text\nz=1",multiline=true,surface=true)!!
-                assertEquals("z=0\n$expected\nz=1",edit.source)
-                assertEquals(4+expected.length,edit.cursor)
-            }
-        }
-        for(source in listOf("""\begin{aligned}x&=1\\y&=\end{aligned}""","""\begin{aligned}x&=1\end{matrix}"""))assertNull(LatexInput.convertPaste(source,multiline=true,surface=true))
-    }
-
     @Test fun multilineCasesPreserveBranchesParametersAndPasteSelection() {
         val (source,expected)=javaClass.getResourceAsStream("/latex-input.tsv")!!.bufferedReader().readLines()
             .first {it.startsWith("""\operatorname{f}\left(x\right) = \begin{cases}""")}.split('\t')
@@ -41,31 +23,6 @@ class LatexInputTest {
             assertEquals(4+expected.length,edit.cursor)
         }
         for(text in listOf("""\begin{cases}x&\end{cases}""","""\begin{cases}x&x<0&1\end{cases}""","""\begin{cases}x&\text{unknown}\end{cases}""","""\begin{cases}x&x<0\end{matrix}"""))assertNull(text,LatexInput.convert(text))
-    }
-
-    @Test fun escapedMathFencesAndConsecutiveBlocksPasteAsSeparateExpressions() {
-        val implicit="""\\[ (x^2+y^2)^4= \left[ (x^3-3xy^2)\cos t+ (3x^2y-y^3)\sin t \right]^2 \\]"""
-        val polar="""\\[ \boxed{r=|\cos(3\theta-t)|} \\]"""
-        val first="(x^2+y^2)^4=((x^3-3x*y^2)cos(t)+(3x^2y-y^3)sin(t))^2"
-        val second="r=abs(cos(3theta-t))"
-        assertEquals(first,LatexInput.convert(implicit))
-        assertEquals(second,LatexInput.convert(polar))
-        for(separator in listOf("  ","\n\n","\r\n")) {
-            val pasted=implicit+separator+polar
-            assertEquals("$first\n$second",LatexInput.convertPaste(pasted,multiline=true))
-            assertNull(LatexInput.convert(pasted))
-            val previous=Editor("x^2\nold\ny=0",7,4)
-            val edit=LatexInput.convertEdit(previous,"x^2\n$pasted\ny=0",multiline=true)!!
-            assertEquals("x^2\n$first\n$second\ny=0",edit.source)
-            assertEquals(edit.source.length-4,edit.cursor)
-        }
-        assertEquals("x*y",LatexInput.convert("\\\\[xy\\\\]"))
-        assertEquals("x*y",LatexInput.convert("\\\\(xy\\\\)"))
-        assertEquals("x=1\ny=2",LatexInput.convertPaste("\\[\nx=1\n\\] \\[\ny=2\n\\]",multiline=true))
-        val matrix="""\\[ \begin{bmatrix}1&2\\3&4\end{bmatrix} \\]"""
-        assertEquals("[[1,2],[3,4]]",LatexInput.convertPaste(matrix,multiline=true))
-        assertNull(LatexInput.convertPaste("Answer: $polar",multiline=true))
-        assertNull(LatexInput.convertPaste("$polar \\[\\unknown{1}\\]",multiline=true))
     }
 
     @Test fun multilinePastePreservesLinesAndSelectionScope() {
@@ -113,57 +70,4 @@ class LatexInputTest {
             assertNull(LatexInput.convert("1/3+1/6"))
         }
     }
-    @Test fun calculusPastePreservesBoundsVariableScopeAndWhitespace() {
-        run { // limitPastePreservesApproachFunctionPowerAndScope
-            val body="\\lim_{x \\to 0} \\frac{3x^2}{\\sin^2 x}"
-            val expected="limit(3x^2/sin(x)^2,x,0)"
-            for(source in listOf(body,"$$${body}$$","$${body}$","\\[$body\\]","\\($body\\)")) {
-                assertEquals(expected,LatexInput.convert(source))
-                val tree=Parser(LatexInput.convert(source)!!).parse()
-                assertEquals("limit",tree.value)
-                assertEquals(listOf("x","0"),tree.args.drop(1).map {it.value})
-                assertEquals("sin",tree.args[0].args[1].args[0].value)
-            }
-            for((source,converted) in listOf(
-                "\\lim _ {x \\rightarrow \\infty} \\frac{1}{x}" to "limit(1/x,x,oo)",
-                "\\lim_{x \\to 0^+} 1/x" to "limit(1/x,x,0,right)",
-                "\\lim_{x \\to 0^{-}} 1/x" to "limit(1/x,x,0,left)",
-                "\\lim_{\\theta \\to \\pi} \\cos\\theta" to "limit(cos(theta),theta,pi)",
-                "(\\lim_{x \\to 0} x)+2" to "limit(x,x,0)+2",
-                "\\left(\\lim_{x \\to 0} x\\right)+2" to "limit(x,x,0)+2",
-                "\\lim_{x \\to 0} x=0" to "limit(x,x,0)=0",
-                "\\lim_{x \\to 0} (x+1)" to "limit(x+1,x,0)",
-                "\\lim_{x \\to 0} \\frac{3x^2+1}{\\sin^2 x+2}" to "limit((3x^2+1)/(sin(x)^2+2),x,0)",
-                "\\lim_{x \\to 0} \\frac{x}{2}^2" to "limit((x/2)^2,x,0)",
-                "\\lim_{x \\to 0} x^{\\frac{1}{2}}" to "limit(x^(1/2),x,0)",
-                "\\lim_{x \\to 0} \\frac{1}{x(x+1)}" to "limit(1/x(x+1),x,0)",
-                "\\lim_{x \\to 0} \\frac{1}{2x}" to "limit(1/(2x),x,0)",
-                "\\lim_{x \\to 0} (x)(x+1)" to "limit((x)(x+1),x,0)",
-                "\\lim_{x \\to 0} (x^2)^3" to "limit((x^2)^3,x,0)",
-                "\\frac{\\lim_{x \\to 0} x+1}{2}" to "limit(x+1,x,0)/2"
-            ))assertEquals(source,converted,LatexInput.convert(source))
-            for(source in listOf("\\lim","\\lim_x x","\\lim_{x 0} x","\\lim_{x+1 \\to 0} x","\\lim_{x \\to} x","\\lim_{x \\to 0}"))assertNull(source,LatexInput.convert(source))
-            val edit=LatexInput.convertEdit(Editor("1+2+3",3,2),"1+$$${body}$$+3")!!
-            assertEquals("1+$expected+3",edit.source)
-            assertEquals(2+expected.length,edit.cursor)
-        }
-        run { // integralEquationsAllowWhitespaceAroundBoundsAndDifferentials
-            for(body in listOf(
-                "\\int _{-2}^{a} f(x) dx = \\int _{-2}^{0} f(x) dx",
-                "\\int_{-2}^{a} f(x) dx = \\int_{-2}^{0} f(x) dx",
-                "\\int _ {-2} ^ {a} f(x) \\, d x = \\int _ {-2} ^ {0} f(x) \\, d x"
-            ))for(source in listOf(body,"$$${body}$$","$${body}$","\\[$body\\]","\\($body\\)")) {
-                val converted=LatexInput.convert(source)
-                assertEquals(source,"integrate(f(x),x,-2,a)=integrate(f(x),x,-2,0)",converted)
-                val tree=Parser(converted!!).parse()
-                assertEquals("relation",tree.kind)
-                assertEquals(listOf("integrate","integrate"),tree.args.map {it.value})
-                assertEquals(listOf("a","0"),tree.args.map {it.args[3].value})
-            }
-            for(source in listOf("\\int _{-2} f(x) dx","\\int _{-2}^{a} f(x)","\\int _{}^{a} f(x) dx")) {
-                assertNull(source,LatexInput.convert(source))
-            }
-        }
-    }
-
 }

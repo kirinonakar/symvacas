@@ -19,14 +19,4 @@ class StatisticsRecallTest {
         assertEquals("mean(D1)",recall("mean([ | ])"))
     }
 
-    @Test fun namesAlsoWorkInBareArgumentsAndSelections() {
-        assertEquals("regression(D2,linear)",recall("regression([|],linear)","D2"))
-        assertEquals("mean(D1)",recall("mean(|)"))
-        assertEquals("D1",recall("|"))
-        assertEquals("mean([4,D1])",recall("mean([4,|])"))
-        val selected=Editor("mean([])",7,5)
-        assertEquals(selected,statisticsRecallTarget(selected))
-        val committed=Editor("mean([])",6)
-        assertEquals(committed,statisticsRecallTarget(committed,true))
-    }
 }

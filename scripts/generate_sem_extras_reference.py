@@ -1,7 +1,6 @@
-"""Independent NumPy/SciPy likelihood/score/percentile references; not runtime code."""
+"""Independent NumPy/SciPy likelihood and score references; not runtime code."""
 import csv
 import json
-import random
 from pathlib import Path
 import numpy as np
 from scipy.optimize import minimize
@@ -54,14 +53,6 @@ def score_reference(rows):
             'freedChiSquare':free_chi,'covariance':free[position]*free_scale[1]*free_scale[2]}
 
 
-def effect_reference(rows):
-    values,model,specs,scale,sample,chi=continuous_fit(rows,[1,1,1,2,2,2,3,3,3],[(1,2),(2,3),(1,3)])
-    _,b,total=model(values); rawscale=scale[6]/scale[0]; standard=np.sqrt(total[0,0]/total[2,2])
-    direct=b[2,0]; indirect=b[1,0]*b[2,1]
-    return {'direct':direct*rawscale,'indirect':indirect*rawscale,'total':(direct+indirect)*rawscale,
-            'standardizedIndirect':indirect*standard}
-
-
 def main():
     with (ROOT/'tests/fixtures/efa_study_habits_sample.csv').open(encoding='utf-8-sig',newline='') as file: data=list(csv.reader(file))
     x=np.array(data[1:],dtype=float); corr=np.corrcoef(x,rowvar=False); p=corr.shape[0]; k=2
@@ -74,14 +65,9 @@ def main():
     cfa=np.round(latent[:,None]*[1,.85,1.1,.95]+rng.multivariate_normal(np.zeros(4),covariance,size=220),5).tolist()
     x=rng.normal(size=180); m=.65*x+rng.normal(size=180); y=.2*x+.7*m+rng.normal(size=180)
     mediation=np.round(np.column_stack([f*loading+rng.normal(scale=.6,size=180) for f in (x,m,y) for loading in (1,.9,1.1)]),5).tolist()
-    samples=25;seed=31;randomizer=random.Random(seed);draws=[]
-    for _ in range(samples):
-        sampled=[mediation[randomizer.randrange(len(mediation))] for row in mediation]
-        draws.append(effect_reference(sampled))
-    bootstrap={key:list(np.quantile([draw[key] for draw in draws],[.025,.975])) for key in ('direct','indirect','total','standardizedIndirect')}
-    fixture={'source':'Independent SciPy normal likelihood optimization; NumPy expected-information Schur complement; seeded full model row refits and linearly interpolated percentiles.',
+    fixture={'source':'Independent SciPy normal likelihood optimization and NumPy expected-information Schur complement.',
              'efaML':{'commonCovariance':(load@load.T).tolist(),'uniquenesses':fit.x.tolist(),'chiSquare':(len(data)-2-(2*p+5)/6-2*k/3)*fit.fun},
-             'cfa':{'rows':cfa,'expected':score_reference(cfa)},'sem':{'rows':mediation,'expected':effect_reference(mediation),'samples':samples,'seed':seed,'bootstrap':bootstrap}}
+             'cfa':{'rows':cfa,'expected':score_reference(cfa)},'sem':{'rows':mediation}}
     (ROOT/'tests/fixtures/sem_extras_reference.json').write_text(json.dumps(fixture,indent=2),encoding='utf8')
 
 

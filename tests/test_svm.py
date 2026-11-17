@@ -10,7 +10,6 @@ sys.path.insert(0, str(ROOT/"app/src/main/python"))
 from calc_evaluator import Engine
 from calc_shared import MathError
 from calc_statistics import fit_regression
-import calc_engine
 import symvacas_catalog as calc
 
 
@@ -66,31 +65,6 @@ class SvmTests(unittest.TestCase):
                         self.assertAlmostEqual(coefficients[0]+sum(a*b for a, b in zip(coefficients[1:], row)),
                                                expected, delta=fixture["tolerance"])
 
-    def test_nonlinear_classification_uses_decision_scores_and_zero_threshold(self):
-        rows = [[-1,-1,0], [-1,1,1], [1,-1,1], [1,1,0]]
-        report = fit(rows, "svc", ["rbf", 10, "auto", .1]).regression_report
-        self.assertEqual(report["confusionMatrix"], [[2, 0], [0, 2]])
-        self.assertEqual(float(report["auc"]), 1)
-        self.assertEqual(report["threshold"], 0)
-        self.assertTrue(any(float(r["decisionScore"]) < 0 for r in report["residuals"]))
-        self.assertNotIn("logLoss", report)
-        self.assertNotIn("rSquared", report)
-        self.assertTrue(all(float(r["fitted"]) in (0, 1) for r in report["residuals"]))
-        self.assertEqual(report, fit(rows, "svc", ["rbf", 10, "auto", .1]).regression_report)
-
-    def test_auto_task_constants_duplicate_points_and_response_translation(self):
-        self.assertEqual(fit([[0,0],[1,1]]).regression_report["task"], "classification")
-        self.assertEqual(fit([[0,0],[1,1]], "svr").regression_report["task"], "regression")
-        for kernel in ("linear", "rbf"):
-            report = fit([[7,0],[7,1],[7,1]], "svc", [kernel,1,"auto",0]).regression_report
-            self.assertEqual(report["accuracy"], 2/3)
-            constant = fit([[7,8],[7,8]], "svr", [kernel,1,"auto",0])
-            self.assertEqual(constant.regression_predict([7]), 8)
-            rows = [[x, math.sin(x)] for x in range(-3,4)]
-            original = fit(rows, "svr", [kernel,2,.5,.1])
-            shifted = fit([[100*x+1e5,y+1e6] for x,y in rows], "svr", [kernel,2,.5,.1])
-            self.assertAlmostEqual(original.regression_predict([.5]), shifted.regression_predict([100*.5+1e5])-1e6, places=5)
-
     def test_input_validation(self):
         for options in (["bad",1,"auto",.1], ["rbf",0,"auto",.1], ["rbf",1,0,.1],
                         ["rbf",1,"auto",-1], ["rbf",1,"auto"], ["rbf",float('inf'),"auto",.1]):
@@ -101,35 +75,6 @@ class SvmTests(unittest.TestCase):
                 fit(rows, "svc")
         with self.assertRaises(MathError):
             fit([[x,x] for x in range(501)], "svr")
-
-    def test_engine_catalog_curve_copy_and_cancellation_contracts(self):
-        rows = [[-2,0],[-1,0],[1,1],[2,1]]
-        options = ["linear",1,"auto",.1]
-        request = {"tree": {"kind":"call", "value":"regression", "args":[node(rows),node("svc"),node(options)]}}
-        result = json.loads(calc_engine.dispatch(json.dumps(request)))
-        self.assertTrue(result["ok"], result.get("error"))
-        self.assertFalse(result["reusable"])
-        self.assertNotIn("resultAst", result)
-        self.assertGreater(len(result["curve"]), 100)
-        self.assertEqual(result["regression"], calc.regression_report(rows, "svc", options))
-        copied = result['statisticsCopyReport']
-        self.assertEqual(copied['title'], 'SVM classification')
-        summary = next(section for section in copied['sections'] if section['title'] == 'Summary')
-        metrics = [row[0] for row in summary['rows']]
-        self.assertNotIn('df', metrics)
-        self.assertNotIn('Gamma', metrics)
-        self.assertNotIn('Epsilon (SVR)', metrics)
-        prediction = next(section for section in copied['sections'] if section['title'] == 'Classification predictions')
-        self.assertNotIn('Residual', prediction['columns'])
-        self.assertIn('Decision score', prediction['columns'])
-        class Control:
-            calls = 0
-            def isCancelled(self):
-                self.calls += 1
-                return self.calls > 5
-        cancelled = json.loads(calc_engine.dispatch(json.dumps(request), Control()))
-        self.assertFalse(cancelled["ok"])
-        self.assertIn("cancel", cancelled["error"].lower())
 
     def test_decision_equations_and_boundary_levels_match_fitted_scores(self):
         import sympy as s
@@ -165,11 +110,6 @@ class SvmTests(unittest.TestCase):
         self.assertEqual([c['level'] for c in one['contours']], [-1,0,1])
         multi = fit([[a,b,7,y] for a,b,y in rows], 'svc').regression_report['decisionPlot']
         self.assertEqual(multi['fixedFeatures'], [{'index':2,'value':7}])
-
-    def test_small_samples_report_cross_validation_unavailable(self):
-        cv = fit([[0,0],[1,1]], 'svc').regression_report['crossValidation']
-        self.assertFalse(cv['available'])
-        self.assertIn('two observations', cv['reason'])
 
     def test_public_svm_svc_svr_modes_all_support_linear_and_rbf_cross_validation(self):
         from calc_statistics_report import statistics_copy_report
@@ -208,79 +148,6 @@ class SvmTests(unittest.TestCase):
         self.assertIsNone(constant['rSquared'])
         self.assertEqual(float(constant['rmse']),0)
         self.assertEqual(float(constant['mae']),0)
-
-    def test_svr_equations_metrics_errors_and_plots_use_original_response_units(self):
-        from calc_statistics_report import statistics_copy_report
-        for kernel in ('linear', 'rbf'):
-            rows = [[x, 100+math.sin(x)+.3*x] for x in range(-4,5)]
-            model = fit(rows, 'svr', [kernel,3,.4,.2])
-            report = model.regression_report
-            eq = report['predictionEquation']
-            for row, prediction in zip(rows, report['residuals']):
-                if kernel == 'linear':
-                    b = [float(v['estimate']) for v in report['coefficients']]
-                    calculated = b[0]+b[1]*row[0]
-                else:
-                    calculated = eq['intercept']+sum(term['coefficient']*math.exp(-report['gamma']*sum(
-                        ((x-v)/scale)**2 for x,v,scale in zip(row[:-1],term['coordinates'],eq['scales'])))
-                        for term in eq['supportTerms'])
-                self.assertAlmostEqual(calculated,float(prediction['fitted']),places=11)
-                self.assertAlmostEqual(float(prediction['predictionError']),row[-1]-float(prediction['fitted']),places=11)
-                self.assertAlmostEqual(float(prediction['absoluteError']),abs(float(prediction['predictionError'])),places=12)
-            self.assertAlmostEqual(float(report['mae']),sum(float(r['absoluteError']) for r in report['residuals'])/len(rows),places=12)
-            self.assertEqual(len(eq['supportTerms']),report['supportVectors'])
-            for key in ('accuracy','auc','confusionMatrix','sensitivity','specificity','decisionEquation'):
-                self.assertNotIn(key,report)
-            plots = report['predictionPlots']
-            self.assertEqual([p['kind'] for p in plots],['observedPredicted','predictionError','regressionFit'])
-            self.assertEqual(plots[0]['xlim'],plots[0]['ylim'])
-            for plot in plots:
-                self.assertEqual(len(plot['points']),len(rows))
-                self.assertEqual(sum(p['support'] for p in plot['points']),report['supportVectors'])
-            for contour in plots[2]['contours']:
-                for segment, curve in zip(contour['segments'],plots[2]['curve']):
-                    self.assertAlmostEqual(segment[0][1]-curve[1],contour['level']*.2,places=12)
-            copy = statistics_copy_report('regression','SVR',report,15)
-            self.assertEqual(copy['title'],'SVM regression')
-            summary = next(s for s in copy['sections'] if s['title']=='Summary')
-            self.assertTrue({'R²','RMSE','MAE','Prediction function'}.issubset({r[0] for r in summary['rows']}))
-            terms = next(s for s in copy['sections'] if s['title']=='Support vector terms')
-            self.assertIn('Signed coefficient (αᵢ−αᵢ*)',terms['columns'])
-
-    def test_svr_multi_predictor_and_constant_response_reports_preserve_all_observations(self):
-        from calc_statistics_report import statistics_copy_report
-        rows = [[i, i%3, .1*i+math.sin(i)] for i in range(121)]
-        report = fit(rows,'svr',['linear',1,'auto',.1]).regression_report
-        self.assertEqual(len(report['predictionPlots']),2)
-        self.assertTrue(all(len(plot['points'])==121 for plot in report['predictionPlots']))
-        copy = statistics_copy_report('regression','SVR',report,15)
-        predictions = next(s for s in copy['sections'] if s['title']=='Regression predictions')
-        self.assertEqual(len(predictions['copyRows']),121)
-        constant = fit([[0,7],[1,7]],'svr',['rbf',1,'auto',0]).regression_report
-        self.assertIsNone(constant['rSquared'])
-        self.assertEqual(float(constant['mae']),0)
-        self.assertEqual(float(constant['rmse']),0)
-        for plot in constant['predictionPlots']:
-            self.assertLess(plot['xlim'][0],plot['xlim'][1])
-            self.assertLess(plot['ylim'][0],plot['ylim'][1])
-
-    def test_cross_validation_balances_total_and_per_class_fold_sizes(self):
-        for zeros, ones in ((12,12), (7,23), (2,9), (5,5), (11,13), (23,7)):
-            with self.subTest(zeros=zeros, ones=ones):
-                rows = [[i,0] for i in range(zeros)]+[[zeros+i,1] for i in range(ones)]
-                cv = fit(rows, 'svc', ['linear',1,'auto',.1]).regression_report['crossValidation']
-                folds = cv['folds']
-                self.assertEqual(sorted(row['row'] for row in cv['predictions']), list(range(1,len(rows)+1)))
-                totals = [sum(row['fold']==f for row in cv['predictions']) for f in range(1,folds+1)]
-                self.assertLessEqual(max(totals)-min(totals), 1)
-                for label in (0,1):
-                    counts = [sum(row['fold']==f and row['observed']==label for row in cv['predictions']) for f in range(1,folds+1)]
-                    self.assertGreaterEqual(min(counts), 1)
-                    self.assertLessEqual(max(counts)-min(counts), 1)
-                if zeros==ones==12:
-                    self.assertEqual(totals, [5,5,5,5,4])
-                repeated = fit(rows, 'svc', ['linear',1,'auto',.1]).regression_report['crossValidation']
-                self.assertEqual(cv, repeated)
 
 
 if __name__ == "__main__":

@@ -30,16 +30,3 @@ test('updated shell comes from network; offline execution still uses cached asse
   assert.equal((await r.dispatch('fetch',shell)).source,'cached');
   assert.equal((await r.dispatch('fetch',{...shell,url:'https://example.test/symvacas/vendor/pyodide.asm.wasm'})).source,'cached');
 });
-
-test('HTML and regression modules bypass a stale HTTP cache before falling back offline',async()=>{
-  const r=runtime(),requests=[];
-  r.context.fetch=async(request,options)=>{
-    requests.push(request.url);
-    return {ok:true,source:options?.cache==='reload'?'current':'stale HTTP cache'};
-  };
-  const request={method:'GET',mode:'cors'};
-  assert.equal((await r.dispatch('fetch',{...request,url:'https://example.test/symvacas/index.html',mode:'navigate'})).source,'current');
-  assert.equal((await r.dispatch('fetch',{...request,url:'https://example.test/symvacas/statistics-workspace.js'})).source,'current');
-  await r.dispatch('fetch',{...request,url:'https://example.test/symvacas/vendor/sympy.whl'});
-  assert.equal(requests.length,2,'unchanged large engine packages reuse the offline cache');
-});

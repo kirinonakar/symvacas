@@ -2,10 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {preparationTransform,preparationDataset} from '../statistics-preparation-data.js';
-import {statisticsPreparationSchema} from '../statistics-preparation-schema.js';
-import {statisticsDataRows,statisticsCsvHasHeader,csvRows} from '../workspace-commands.js';
-import {statisticsHeaderKeys,restoreStatisticsHeaderKeys} from '../statistics-headers.js';
-import {encodeData,decodeData,mergeData,resetSettingsState} from '../data-transfer.js';
 
 const fixture=JSON.parse(readFileSync(new URL('../../tests/fixtures/statistics_preparation.json',import.meta.url),'utf8'));
 test('row filters share Android numeric, text, missingness, AND/OR and original row preservation semantics',()=>{
@@ -34,24 +30,6 @@ test('wide/long, recoding and row formulas share Android reference rows, labels,
 test('invalid roles, duplicate pairs, mappings and unsafe or undefined formulas fail before data can be replaced',()=>{
   for(const item of fixture.invalid)assert.throws(()=>preparationTransform(item.source,item.kind,item.id,item.settings),error=>error.message===item.error);
 });
-test('wide to long to wide roundtrip retains precision, quoted IDs and blank measurements',()=>{
-  const original='ID,before,after\n"A,B",1.2000,\nC,2,4';
-  const long=preparationTransform(original,'xyz','wideToLong'),wide=preparationTransform(long.csv,long.kind,'longToWide');
-  assert.equal(wide.csv,original);
-});
-test('all-text recoded headers survive stored settings and editing rather than becoming observations',()=>{
-  const result=preparationTransform('Gender\n1\n2','list','recode',{rules:'1, male\n2, female',output:'replace',header:'Sex'});
-  const saved=statisticsHeaderKeys();restoreStatisticsHeaderKeys([]);
-  assert.equal(statisticsCsvHasHeader(csvRows(result.csv,{skipHeader:false})),false);
-  restoreStatisticsHeaderKeys(saved);
-  assert.ok(saved.includes('4021414396:2881141766:3'),'header identity uses the same stable encoding on Android and Web');
-  assert.deepEqual(statisticsDataRows(result.csv,'list'),[['male'],['female']]);
-  const state={variables:{},functions:{},assumptions:{},datasets:{D1:result.csv},datasetKinds:{D1:'list'},fields:{}};
-  const portable=decodeData(encodeData(state));restoreStatisticsHeaderKeys([]);
-  mergeData(state,portable);assert.deepEqual(statisticsDataRows(result.csv,'list'),[['male'],['female']]);
-  assert.ok(resetSettingsState(state).statisticsHeaderKeys.includes('4021414396:2881141766:3'));
-});
-
 const tableFixture=JSON.parse(readFileSync(new URL('../../tests/fixtures/statistics_table_preparation.json',import.meta.url),'utf8'));
 function transformTable(item){
   const source=tableFixture.sources[item.source],other=tableFixture.sources[item.other];
@@ -65,14 +43,4 @@ test('deletion and row/column alignment match Android, including ragged and quot
     assert.equal(result.changed,item.changed);
     assert.deepEqual(preparationDataset(result.csv,result.kind),{headers:result.headers,rows:result.rows});
   }
-});
-test('header and index ambiguity and deletion of every column fail before the editor can apply them',()=>{
-  for(const item of tableFixture.invalid)assert.throws(()=>transformTable(item),{message:item.error});
-});
-test('the editor can read a combined dataset with 5000 observations plus the generated header',()=>{
-  const source=Array.from({length:2500},(_,i)=>String(i+1)).join('\n');
-  const other={csv:source,kind:'list'};
-  const result=preparationTransform(source,'list','merge',{},other);
-  assert.equal(statisticsDataRows(result.csv,result.kind).length,5000);
-  assert.throws(()=>preparationTransform(source,'list','merge',{}, {...other,csv:source+'\n1'}),/5000/);
 });

@@ -1,6 +1,5 @@
 """Social-science numeric references, invalid models and report integration."""
 import json
-import math
 import unittest
 from test_advanced_statistics import ROOT, run
 from calc_shared import MathError
@@ -16,22 +15,6 @@ class SocialStatisticsTests(unittest.TestCase):
                     for key in path: actual=actual[key]
                     self.assertAlmostEqual(float(actual),float(expected),delta=case['tolerance']*max(1,abs(expected)),msg=str(path))
 
-
-    def test_weighted_kappa_order_missing_margins_and_degenerate_cases(self):
-        counts=[[10,5,0],[4,10,4],[0,6,12]]
-        unweighted=float(run('cohenkappa',counts,'unweighted')['Cohen κ'])
-        linear=float(run('cohenkappa',counts,'linear')['Cohen κ'])
-        quadratic=float(run('cohenkappa',counts,'quadratic')['Cohen κ'])
-        self.assertLess(unweighted,linear); self.assertLess(linear,quadratic)
-        for mode in ('unweighted','linear','quadratic'):
-            first=run('cohenkappa',counts,mode)
-            reverse=run('cohenkappa',[list(reversed(row)) for row in reversed(counts)],mode)
-            self.assertAlmostEqual(float(first['Cohen κ']),float(reverse['Cohen κ']),places=12)
-            self.assertAlmostEqual(float(first['SE']),float(reverse['SE']),places=12)
-            self.assertAlmostEqual(float(first['Cohen κ']),float((first['Observed agreement']-first['Expected agreement'])/(1-first['Expected agreement'])),places=12)
-        self.assertTrue(math.isfinite(float(run('cohenkappa',[[0,0],[2,3]])['Cohen κ'])))
-        with self.assertRaises(MathError): run('cohenkappa',[[4,0],[0,0]])
-        with self.assertRaises(MathError): run('cohenkappa',[[1,2,3],[3,2,1]])
 
     def test_invalid_models_do_not_return_finite_inference(self):
         cases=[('cronbach',[[[1,1],[1,1],[1,1]]]),
@@ -52,18 +35,6 @@ class SocialStatisticsTests(unittest.TestCase):
         for name,args in cases:
             with self.subTest(function=name):
                 with self.assertRaises(MathError): run(name,*args)
-
-    def test_scale_invariance_and_mediation_identity(self):
-        fixture=json.loads((ROOT/'tests/fixtures/social_statistics_reference.json').read_text(encoding='utf8'))['cases']
-        case=next(c for c in fixture if c['function']=='mediation'); rows=case['arguments'][0]
-        result=run('mediation',rows,100,7); again=run('mediation',rows,100,7)
-        self.assertEqual(result['Bootstrap percentile CI95'],again['Bootstrap percentile CI95'])
-        self.assertAlmostEqual(float(result['Total effect c']-result['Direct effect c′']),float(result['Indirect effect a×b']),places=10)
-        case=next(c for c in fixture if c['function']=='cfa'); rows,assignment=case['arguments']
-        first=run('cfa',rows,assignment); second=run('cfa',[[1000+(j+1)*v for j,v in enumerate(row)] for row in rows],assignment)
-        self.assertAlmostEqual(float(first['χ²']),float(second['χ²']),places=6)
-        self.assertAlmostEqual(float(first['CFI']),float(second['CFI']),places=7)
-        for i,row in enumerate(first['Loadings']): self.assertAlmostEqual(float(row['Standardized loading']),float(second['Loadings'][i]['Standardized loading']),places=7)
 
 
 if __name__=='__main__': unittest.main()

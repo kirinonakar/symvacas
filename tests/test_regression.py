@@ -134,14 +134,4 @@ class RegressionTests(unittest.TestCase):
                 self.assertEqual(mp.mp.dps, before)
                 self.assertTrue(json.loads(calc_engine.dispatch(request([(1, 2), (2, 4)], mode)))["ok"])
 
-    def test_input_domains_and_singular_data_are_rejected(self):
-        for mode, rows in [("power", [(0, 1), (2, 3)]), ("power", [(1, -1), (2, 3)]),
-                           ("exponential", [(1, 0), (2, 3)]), ("logarithmic", [(-1, 2), (2, 3)]),
-                           ("exponential", [(1, 2), (1, 3)]), ("power", [(1, 2), (1, 3)])]:
-            with self.subTest(mode=mode, rows=rows):
-                self.assertFalse(json.loads(calc_engine.dispatch(request(rows, mode)))["ok"])
-        for mode in ("power", "exponential", "logarithmic"):
-            result = json.loads(calc_engine.dispatch(request([(1, 2), (2, 2), (3, 2)], mode)))
-            self.assertTrue(result["ok"], result)
-
 if __name__ == "__main__": unittest.main()

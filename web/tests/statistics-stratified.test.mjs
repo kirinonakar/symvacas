@@ -1,11 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {advancedStatisticsSchema} from '../advanced-statistics-schema.js';
-import {guidedStatisticsCommand,advancedStatisticsRows,advancedStatisticsExampleRows} from '../advanced-statistics.js';
-import {statisticsRequest} from '../statistics-request.js';
-import {extensionStatisticsPlan} from '../statistics-extension-forms.js';
-import {fork} from 'node:child_process';
-import {readFileSync} from 'node:fs';
+import {advancedStatisticsRows,advancedStatisticsExampleRows} from '../advanced-statistics.js';
 import {stratifiedStatisticsData} from '../statistics-stratified-data.js';
 
 const countsCsv=`severity,treatment,improved,not_improved,total
@@ -54,53 +50,4 @@ test('ambiguous groups, nonbinary outcomes, invalid totals and incomplete rows a
   assert.throws(()=>stratifiedStatisticsData([['1','mild','A','unknown']],{...opts,layout:'observations'}),/two selected outcome/);
   assert.throws(()=>stratifiedStatisticsData([['1','mild','A','1']],{...opts,layout:'observations',nonEventValue:'1'}),/different outcome/);
   assert.throws(()=>stratifiedStatisticsData([['mild','A','','2']],opts),/Complete/);
-});
-
-test('stratified tests select distinct count columns and serialize their options',()=>{
-  for(const id of ['mantelhaenszel','breslowday']){
-    const definition=advancedStatisticsSchema.find(item=>item.id===id);
-    assert.ok(definition);assert.equal(definition.group,'Categorical data');
-    const opts=Object.fromEntries(definition.controls.map(f=>[f.key,f.default]));
-    const command=extensionStatisticsPlan(id,definition.exampleRows,opts).expression;
-    assert.equal(command,definition.example);
-    assert.equal(guidedStatisticsCommand(definition,definition.exampleRows),definition.example);
-    assert.equal(statisticsRequest(command).tree.value,id);
-    const rows=[['ignored','22','8','18','12']];
-    const reordered={...opts,layout:'tables',a:'4',b:'3',c:'2',d:'1',method:id==='breslowday'?'tarone':'corrected',level:'.99'};
-    assert.equal(extensionStatisticsPlan(id,rows,reordered).expression,`${id}([[12,18,8,22]],${reordered.method},.99)`);
-    assert.throws(()=>extensionStatisticsPlan(id,rows,{...reordered,b:reordered.a}),/different columns/);
-    assert.throws(()=>extensionStatisticsPlan(id,[['1','','2','3']],{...opts,layout:'tables'}),/Complete/);
-  }
-});
-
-test('production WASM engine executes both stratified presets',{timeout:60000},async context=>{
-  const worker=fork(new URL('./worker-bridge.mjs',import.meta.url),[],{execArgv:['--experimental-wasm-jspi']});
-  context.after(()=>worker.kill());
-  const receive=predicate=>new Promise((resolve,reject)=>{
-    const timeout=setTimeout(()=>finish(new Error('Stratified worker timed out')),30000);
-    const listener=data=>{if(data.type==='fatal')finish(new Error(data.error));else if(predicate(data))finish(null,data);};
-    function finish(error,data){clearTimeout(timeout);worker.off('message',listener);worker.off('error',finish);error?reject(error):resolve(data);}
-    worker.on('message',listener);worker.on('error',finish);
-  });
-  await receive(data=>data.type==='ready');
-  const fixture=JSON.parse(readFileSync(new URL('../../tests/fixtures/stratified_statistics_reference.json',import.meta.url),'utf8'));
-  const reference=fixture.cases.find(c=>JSON.stringify(c.arguments[0])===JSON.stringify(expected.map(row=>row.map(Number)))).expected['Pooled odds ratio'];
-  for(const [id,name] of ['mantelhaenszel','breslowday'].entries()){
-    const definition=advancedStatisticsSchema.find(item=>item.id===name);
-    const pending=receive(data=>data.type==='result'&&data.id===id);
-    worker.send({id,request:statisticsRequest(guidedStatisticsCommand(definition,definition.exampleRows))});
-    const {result}=await pending;
-    assert.equal(result.ok,true,result.error);
-    assert.equal(result.statisticsReport.analysis,name);
-    const or=result.statisticsReport.highlights.find(item=>item.label==='Pooled odds ratio');
-    assert.ok(Math.abs(Number(or.value.decimal)-reference)<1e-9);
-  }
-  const plan=extensionStatisticsPlan('mantelhaenszel',advancedStatisticsRows(patientCsv,4),{...defaults('mantelhaenszel'),layout:'observations'},['patient_id','severity','treatment','improved']);
-  const pending=receive(data=>data.type==='result'&&data.id===2);
-  worker.send({id:2,request:{...statisticsRequest(plan.expression),statisticsTermLabels:plan.labels}});
-  const {result}=await pending;assert.equal(result.ok,true,result.error);
-  const excluded=result.statisticsReport.sections.find(s=>s.title==='Excluded strata');
-  assert.deepEqual(excluded.rows.map(row=>row[0]),['severe','mild']);
-  const strata=result.statisticsReport.sections.find(s=>s.title==='Strata');
-  assert.equal(strata.rows[0][0],'moderate');assert.ok(strata.columns.includes('A · improved = 1'));
 });

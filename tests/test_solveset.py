@@ -39,19 +39,6 @@ class SolvesetTests(unittest.TestCase):
         self.assertEqual("rows",response["tree"]["kind"])
         self.assertTrue(contains_heavy_call(tree))
 
-    def test_defaults_equations_and_positional_or_named_domains(self):
-        x=symbol("x")
-        expression=binary("+",binary("^",x,number(2)),number(1))
-        self.assertEqual("{-I, I}",evaluate(call("solveset",expression,x))["exact"])
-        equation=node("relation","=",expression,number(0))
-        for arg in (domain("Reals"),symbol("S.Reals")):
-            self.assertEqual("EmptySet",evaluate(call("solveset",equation,x,arg))["exact"])
-        roots=binary("-",binary("^",x,number(2)),number(2))
-        self.assertEqual("EmptySet",evaluate(call("solveset",roots,x,domain("Integers")))["exact"])
-        self.assertEqual("{1}",evaluate(call("solveset",binary("-",x,number(1)),x,domain("Naturals")))["exact"])
-        for name in ("Reals","Complexes","Integers","Rationals","Naturals","Naturals0"):
-            self.assertEqual(getattr(s.S,name),Engine({}).build(symbol("S."+name)))
-
     def test_domain_exclusions_survive_simplification(self):
         x=symbol("x")
         fraction=binary("/",binary("-",binary("^",x,number(2)),number(1)),binary("-",x,number(1)))

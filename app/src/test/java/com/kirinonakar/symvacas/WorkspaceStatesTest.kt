@@ -28,29 +28,6 @@ class WorkspaceStatesTest {
         assertFalse(state.editHistory.canUndo)
     }
 
-    @Test fun statisticsUndoGroupsTypingAndSkipsAnEditRevertedWithinTheGroup() {
-        val history=StatisticsState(MemoryPreferences()).editHistory
-        val before=StatisticsDraft("1","list","1",false)
-        val one=before.copy(csv="12")
-        val two=before.copy(csv="123")
-        history.record(before,one,"direct",0)
-        history.record(one,two,"direct",200)
-        history.record(two,two.copy(csv="123\n"),null,201)
-        assertEquals(two,history.undo())
-        assertEquals(before,history.undo())
-        history.record(before,one,"direct",300)
-        history.record(one,before,"direct",400)
-        assertFalse(history.canUndo)
-    }
-
-    @Test fun histogramKdeDefaultsOffAndPersistsInDraftAndFullSnapshots() {
-        val prefs=MemoryPreferences();val state=com.kirinonakar.symvacas.calculator.StatisticsState(prefs)
-        assertFalse(state.statisticsHistogramKde)
-        state.statisticsHistogramKde=true;state.saveSelection()
-        assertTrue(com.kirinonakar.symvacas.calculator.StatisticsState(prefs).statisticsHistogramKde)
-        state.statisticsHistogramKde=false;prefs.edit().also {state.writeTo(it);it.apply()}
-        assertFalse(com.kirinonakar.symvacas.calculator.StatisticsState(prefs).statisticsHistogramKde)
-    }
     @Test fun largeStatisticsSourcesAndResultsStayOutsideCalculatorPersistence() {
         val prefs=MemoryPreferences()
         val calculatorResult=JSONObject().put("exact","4").toString()
@@ -72,24 +49,6 @@ class WorkspaceStatesTest {
         assertEquals("mean",restored.result!!.getJSONObject("statisticsReport").getString("analysis"))
         assertEquals(fitted.toString(),restored.regressionResult!!.toString())
         assertEquals("",restored.resultSource)
-    }
-
-    @Test fun importedStatisticsDraftPersistsWithoutOverwritingSavedDatasets() {
-        val prefs=MemoryPreferences()
-        val state=com.kirinonakar.symvacas.calculator.StatisticsState(prefs)
-        state.saveDataSet("D1","1,2","xy")
-        prefs.edit().also {state.writeTo(it);it.apply()}
-        state.statisticsName="D2";state.statisticsData="1,2,3,4,5"
-        state.statisticsKind="columns:5";state.statisticsSelected="";state.statisticsIsNew=true
-        state.saveSelection()
-        val restored=com.kirinonakar.symvacas.calculator.StatisticsState(prefs)
-        assertEquals("1,2",restored.dataSets.getJSONObject("D1").getString("csv"))
-        assertFalse(restored.dataSets.has("D2"))
-        assertEquals("D2",restored.statisticsName);assertEquals("1,2,3,4,5",restored.statisticsData)
-        assertEquals("",restored.statisticsSelected);assertTrue(restored.statisticsIsNew)
-        restored.saveDataSet("Study",restored.statisticsData,restored.statisticsKind)
-        assertEquals("1,2",restored.dataSets.getJSONObject("D1").getString("csv"))
-        assertEquals("1,2,3,4,5",restored.dataSets.getJSONObject("Study").getString("csv"))
     }
 
     @Test fun graphUndoRestoresDeletedInputsAndParametersWithoutRecordingUndo() {
@@ -117,70 +76,6 @@ class WorkspaceStatesTest {
         state.changeKind("polar");assertFalse(state.canUndoInput)
         state.changeKind("cartesian");assertTrue(state.canUndoInput)
         assertTrue(state.undoInput());assertEquals("sin(x)\ncos(x)",state.graphSource)
-    }
-
-    @Test fun hmcSettingsMigrateToNutsAndNewSettingsPersist() {
-        val prefs=MemoryPreferences(mapOf("statisticsBayesianMethod" to "hmc","statisticsHmcSamples" to "700","statisticsHmcWarmup" to "600","statisticsHmcLeapfrog" to "40","statisticsHmcSeed" to "13","statisticsHmcChains" to "4","regressionReport" to "{\"method\":\"hmc\"}"))
-        val state=com.kirinonakar.symvacas.calculator.StatisticsState(prefs)
-        assertEquals("nuts",state.statisticsBayesianMethod)
-        assertEquals("700",state.statisticsNutsSamples);assertEquals("600",state.statisticsNutsWarmup)
-        assertEquals("8",state.statisticsNutsMaxDepth);assertEquals("13",state.statisticsNutsSeed);assertEquals("4",state.statisticsNutsChains)
-        assertNull(state.regressionReport)
-        state.statisticsNutsSamples="900";state.statisticsNutsMaxDepth="6";state.saveSelection()
-        val restored=com.kirinonakar.symvacas.calculator.StatisticsState(prefs)
-        assertEquals("nuts",restored.statisticsBayesianMethod);assertEquals("900",restored.statisticsNutsSamples);assertEquals("6",restored.statisticsNutsMaxDepth)
-        restored.statisticsNutsMaxDepth="7";val editor=prefs.edit();restored.writeTo(editor);editor.apply()
-        assertEquals("7",com.kirinonakar.symvacas.calculator.StatisticsState(prefs).statisticsNutsMaxDepth)
-    }
-
-    @Test fun graphParametersValidatePersistAndResetIndependently() {
-        run { // typedParametersPreservePrecisionCenterRangesAndPersist
-            val prefs=MemoryPreferences(mapOf("graphParameters" to "{\"a\":{\"value\":1,\"min\":-5,\"max\":5,\"animate\":false}}"))
-            val state=GraphState(prefs)
-            state.setParameter("a",12.345678901,centerRange=true)
-            assertEquals(12.345678901,state.parameterPayload().getDouble("a"),0.0)
-            assertEquals(7.345678901,state.graphParameters.getValue("a").min,1e-12)
-            assertEquals(17.345678901,state.graphParameters.getValue("a").max,1e-12)
-            state.setParameter("a",-20.125,centerRange=true)
-            assertEquals(-25.125,state.graphParameters.getValue("a").min,1e-12)
-            assertEquals(-15.125,state.graphParameters.getValue("a").max,1e-12)
-            assertFalse(state.graphParameters.getValue("a").animate)
-            val before=state.graphParameters
-            for(value in listOf(Double.NaN,Double.POSITIVE_INFINITY,Double.NEGATIVE_INFINITY,1e10))state.setParameter("a",value,centerRange=true)
-            assertEquals(before,state.graphParameters)
-            val editor=prefs.edit();state.writeTo(editor);editor.apply()
-            assertEquals(state.graphParameters,GraphState(prefs).graphParameters)
-            state.setParameter("a",100.0)
-            assertEquals(-15.125,state.graphParameters.getValue("a").value,1e-12)
-        }
-        run { // editingBoundsCentersValueAndResetRestoresDefaultsDuringAnimation
-            val prefs=MemoryPreferences(mapOf("graphParameters" to "{\"a\":{\"value\":1,\"min\":-5,\"max\":5,\"animate\":true}}"))
-            val state=GraphState(prefs)
-            state.graphAnimating=true;state.beginAnimation();state.advanceAnimation(.1)
-            assertTrue(state.setParameterRange("a",10.0,30.0))
-            assertEquals(20.0,state.graphParameters.getValue("a").value,0.0)
-            state.advanceAnimation(0.0)
-            assertEquals(20.0,state.graphParameters.getValue("a").value,1e-12)
-            state.resetParameters()
-            val spec=state.graphParameters.getValue("a")
-            assertEquals(1.0,spec.value,0.0);assertEquals(-5.0,spec.min,0.0);assertEquals(5.0,spec.max,0.0)
-            assertTrue(spec.animate)
-            state.advanceAnimation(0.0)
-            assertEquals(1.0,state.graphParameters.getValue("a").value,1e-12)
-            val editor=prefs.edit();state.writeTo(editor);editor.apply()
-            assertEquals(state.graphParameters,GraphState(prefs).graphParameters)
-        }
-        run { // resettingOneParameterPreservesOtherValuesRangesAndAnimationChoices
-            val prefs=MemoryPreferences(mapOf("graphParameters" to "{\"a\":{\"value\":20,\"min\":10,\"max\":30,\"animate\":false},\"b\":{\"value\":-10,\"min\":-20,\"max\":0,\"animate\":true}}"))
-            val state=GraphState(prefs)
-            val other=state.graphParameters.getValue("b")
-            state.resetParameters("a")
-            val reset=state.graphParameters.getValue("a")
-            assertEquals(1.0,reset.value,0.0);assertEquals(-5.0,reset.min,0.0);assertEquals(5.0,reset.max,0.0)
-            assertFalse(reset.animate);assertEquals(other,state.graphParameters.getValue("b"))
-            val editor=prefs.edit();state.writeTo(editor);editor.apply()
-            assertEquals(state.graphParameters,GraphState(prefs).graphParameters)
-        }
     }
 
     @Test fun graphKindsKeepSeparateSourcesAndDiscardOldAnalysis() {

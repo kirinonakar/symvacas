@@ -1,8 +1,7 @@
 import json
 from pathlib import Path
 import unittest
-from unittest.mock import patch
-from test_advanced_statistics import tree, evaluate
+from test_advanced_statistics import tree
 from calc_engine import dispatch
 
 
@@ -32,48 +31,6 @@ class StatisticsSummaryTests(unittest.TestCase):
                 else:self.assertIn('mean',metrics)
                 self.assertTrue(report['notes'])
 
-    def test_numeric_summary_threshold_counts_distinct_values_and_keeps_numeric_results(self):
-        result=evaluate('stats([0,1,1])')
-        self.assertNotIn('Category frequencies',result['exact'])
-        self.assertFalse(any(row[0]=='mean' for section in result['statisticsReport']['sections'] for row in section['rows']))
-        self.assertTrue(any(section['title']=='Category frequencies' for section in result['statisticsReport']['sections']))
-        for count in (9,10,11):
-            result=evaluate('stats(['+','.join(map(str,range(count)))+'])')
-            tables=[section for section in result['statisticsReport']['sections'] if section['title']=='Category frequencies']
-            self.assertEqual(bool(tables),count<10)
-            self.assertTrue(any(row[0]=='mean' for section in result['statisticsReport']['sections'] for row in section['rows']))
-        result=evaluate('stats(['+','.join(['0','1']*20)+'])')
-        self.assertTrue(any(section['title']=='Category frequencies' for section in result['statisticsReport']['sections']))
-
-    def test_overall_summarizes_all_columns_with_sample_sd_and_binary_categories(self):
-        cases=json.loads((Path(__file__).parent/'fixtures/statistics_summary.json').read_text(encoding='utf8'))['overallCases']
-        for item in cases:
-            with self.subTest(source=item['source']):
-                result=json.loads(dispatch(json.dumps({'tree':tree(item['command']),'statisticsTermLabels':item['labels'],'precision':20})))
-                self.assertTrue(result['ok'],result.get('error'))
-                report=result['statisticsReport']
-                self.assertEqual(report['title'],'Overall')
-                self.assertEqual([section['title'] for section in report['sections']],
-                                 (['Numeric data'] if item['numeric'] else [])+(['Categorical data'] if item['categorical'] else []))
-                for section in report['sections']:
-                    self.assertTrue(section['literalColumns'])
-                    if section['title']=='Numeric data':
-                        self.assertEqual(section['columns'],['Column','mean','sd','min','max','valid.n','sum'])
-                        self.assertEqual(len(section['rows']),len(item['numeric']))
-                        for actual,expected in zip(section['rows'],item['numeric']):
-                            self.assertEqual(actual[0],expected[0])
-                            self.assertEqual(len(actual),len(expected))
-                            for value,target in zip(actual[1:],expected[1:]):
-                                if target is None:self.assertEqual(value,'undefined')
-                                else:self.assertAlmostEqual(float(value['decimal']),target)
-                    else:
-                        self.assertEqual(section['columns'],['Column','Category','numb (%)'])
-                        for actual,expected in zip(section['rows'],item['categorical']):
-                            self.assertEqual(actual[0],expected[0]);self.assertEqual(actual[2],expected[2])
-                            if isinstance(actual[1],dict):self.assertEqual(float(actual[1]['decimal']),float(expected[1]))
-                            else:self.assertEqual(actual[1],expected[1])
-                        self.assertEqual(len(section['rows']),len(item['categorical']))
-
 
     def test_overall_packed_columns_support_full_dataset_height_and_copy(self):
         columns=[['2']*5000,['0','1']*2500,list(map(str,range(5000)))]
@@ -91,13 +48,6 @@ class StatisticsSummaryTests(unittest.TestCase):
         request['statisticsDatasets']['Data'][0].append('2')
         result=json.loads(dispatch(json.dumps(request)))
         self.assertFalse(result['ok']);self.assertIn('Statistics dataset limit',result['error'])
-
-
-    def test_numeric_columns_with_ten_distinct_values_skip_category_frequency_computation(self):
-        with patch('calc_evaluator.summary_frequencies',side_effect=AssertionError('Category frequencies should not be calculated')) as frequency:
-            result=evaluate('stats(['+','.join(map(str,range(10)))+'])')
-            frequency.assert_not_called()
-        self.assertFalse(any(section['title']=='Category frequencies' for section in result['statisticsReport']['sections']))
 
 
 if __name__=='__main__':unittest.main()

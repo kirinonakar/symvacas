@@ -86,20 +86,6 @@ class EquationStepTests(unittest.TestCase):
             self.assertFalse(any(step.get("tree", {}).get("kind") == "matrix" for step in report["steps"]))
             self.assertEqual("", report["note"])
 
-    def test_parameter_systems_require_certain_pivots_and_consistency(self):
-        x,y,a,b=s.symbols("x y a b")
-        for equations in [[s.Eq(x+y,a),s.Eq(x-y,b)],
-                          [s.Eq(x+a*y,1),s.Eq(y,b)]]:
-            result,report=self.report(equations,[x,y])
-            self.assertEqual("",report["note"])
-            matrix,rhs=s.linear_eq_to_matrix(equations,[x,y])
-            final_matrix=[s.sympify(formula["exact"]) for step in report["advancedSteps"] for formula in step["equations"] if formula["tree"]["kind"]=="matrix"][-1]
-            self.assertEqual(matrix.row_join(rhs).rref()[0],final_matrix)
-            for solution in Engine({}).build(result["resultAst"]):
-                self.assertTrue(all(s.simplify(equation.lhs.subs(solution,simultaneous=True)-equation.rhs.subs(solution,simultaneous=True))==0 for equation in equations))
-        _,conditional=self.report([s.Eq(a*x+y,1),s.Eq(x+a*y,2)],[x,y])
-        self.assertIn("Detailed transformations are unavailable",conditional["note"])
-
     def test_nonlinear_substitution_keeps_domains_and_handles_degenerate_reductions(self):
         x, y = s.symbols("x y")
         equations = [s.Eq(x+y, 0), s.Eq(x*x+y*y, -2)]

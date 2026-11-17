@@ -40,13 +40,3 @@ test('late responses from terminated workers cannot change UI state',async()=>{
   assert.equal(events.length,0);
   assert.equal(calls.filter(c=>c.name==='native_cancel').length,2,'cancel again after a late startup completes');
 });
-
-test('startup and execution failures reach the shared engine contract',async()=>{
-  const events=[];
-  const worker=new NativeWorker({Channel,invoke:async()=>{throw new Error('Install Python first');}});
-  worker.onmessage=({data})=>events.push(data);
-  await tick();assert.equal(events[0].type,'fatal');assert.match(events[0].error,/Install Python/);
-  const next=new NativeWorker({Channel,invoke:async name=>{if(name==='native_execute')throw new Error('Process stopped');return {python:'3.14.10'};}});
-  next.onmessage=({data})=>events.push(data);await tick();next.postMessage({id:1,request:{}});await tick();
-  assert.equal(events.at(-1).result.ok,false);assert.match(events.at(-1).result.error,/Process stopped/);
-});

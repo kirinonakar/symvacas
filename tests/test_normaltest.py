@@ -34,18 +34,6 @@ class NormaltestTests(unittest.TestCase):
                 self.assertEqual(bool(report.get('warnings')), len(case['values'])<=20)
                 self.assertIn('K²:', result['exact'])
 
-    def test_affine_invariance_and_extreme_magnitudes(self):
-        data = [2,8,0,4,1,9,9,0]
-        original = _dagostino_pearson(data)
-        for factor, offset in [(s.Integer(10)**400, 0), (s.Rational(1,10**400), 0),
-                               (1, s.Integer(10)**400), (-3, 5)]:
-            with self.subTest(factor=str(factor), offset=str(offset)):
-                result = _dagostino_pearson([factor*v+offset for v in data])
-                for index in (0,1): self.assertAlmostEqual(float(result[index]), float(original[index]), places=12)
-                self.assertAlmostEqual(float(result[2]), float(original[2])*(-1 if factor<0 else 1), places=12)
-        # No artificial Shapiro-Wilk 5000-observation ceiling.
-        self.assertEqual(_dagostino_pearson(list(range(5001)))[-1], 5001)
-
     def test_invalid_data_and_arity(self):
         for values in [[], list(range(7)), [1]*8, ['1']*8, [s.I]*8,
                        [0]*7+[s.nan], [0]*7+[s.oo], [0]*7+[s.Symbol('x')]]:

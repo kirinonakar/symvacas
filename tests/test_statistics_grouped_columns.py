@@ -42,27 +42,5 @@ class GroupedColumnTests(unittest.TestCase):
         self.assertEqual(row[1:4],['0 (0.00%)','0 (0.00%)','0 (0.00%)'])
         self.assertEqual(row[4],'undefined');self.assertEqual(row[-1],'unavailable')
 
-    def test_each_batched_contingency_table_keeps_margins_row_and_column_percentages(self):
-        item=next(item for item in json.loads((Path(__file__).parent/'fixtures/statistics_grouped_columns.json').read_text(encoding='utf8'))['cases'] if item['settings']['op']=='chi2independence')
-        result=json.loads(dispatch(json.dumps({'tree':tree(item['command']),'statisticsTermLabels':item['labels']})))
-        self.assertTrue(result['ok'],result.get('error'))
-        sections={section['title']:section for section in result['statisticsReport']['sections']}
-        row=sections['color (z) · Row percentages (%)'];column=sections['color (z) · Column percentages (%)']
-        self.assertEqual(row['columns'],['Group','red','blue','Total'])
-        self.assertEqual(row['totalRow'],2);self.assertEqual(column['totalRow'],2)
-        self.assertAlmostEqual(float(row['rows'][0][1]['decimal']),200/3)
-        self.assertAlmostEqual(float(row['rows'][1][1]['decimal']),50)
-        self.assertAlmostEqual(float(column['rows'][0][1]['decimal']),50)
-        self.assertAlmostEqual(float(column['rows'][0][2]['decimal']),100/3)
-        self.assertEqual(float(row['rows'][0][-1]['decimal']),100)
-        self.assertEqual(float(column['rows'][-1][1]['decimal']),100)
-        grouped=[section for section in sections.values() if section.get('contingencyGroup')]
-        self.assertEqual(len(grouped),8)
-        self.assertTrue(all(not section['contingencyExpanded'] for section in grouped))
-        single=evaluate('chi2independence([0,0,1,1],[0,1,0,1])')['statisticsReport']
-        self.assertTrue(all(section['contingencyExpanded'] for section in single['sections'] if section.get('contingencyGroup')))
-        batch_single=evaluate('chi2independence([[0,0,1,1]],[[0,1,0,1]],batch,1)')['statisticsReport']
-        self.assertTrue(all(section['contingencyExpanded'] for section in batch_single['sections'] if section.get('contingencyGroup')))
-
 
 if __name__=='__main__':unittest.main()

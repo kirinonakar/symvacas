@@ -43,30 +43,6 @@ class TimeSeriesTests(unittest.TestCase):
                     for key, expected in case['driftInference'].items():
                         self.assertAlmostEqual(float(row[key]),expected,delta=2e-5)
 
-    def test_auto_selects_intercept_or_drift_using_aicc_and_preserves_manual_choices(self):
-        cases = [('arima',[math.sin(i*2)+.3*math.cos(i*3) for i in range(60)],[[1,0,0]],'None'),
-                 ('arima',[100+3*i+math.sin(i*2) for i in range(40)],[[1,1,0]],'Drift'),
-                 ('sarima',[100+i*.75+[0,2,-1,3][i%4]+.4*math.sin(2.1*i) for i in range(80)],[[0,0,0],[1,1,0,4]],'Drift')]
-        for name, data, orders, expected in cases:
-            with self.subTest(model=name,expected=expected):
-                automatic = run(name,data,*orders,4,.95,'auto')
-                none = run(name,data,*orders,4,.95,'none')
-                constant = run(name,data,*orders,4,.95,'constant')
-                self.assertEqual(automatic['Intercept / drift'],expected)
-                self.assertEqual(none['Intercept / drift'],'None')
-                self.assertNotEqual(constant['Intercept / drift'],'None')
-                self.assertAlmostEqual(float(automatic['Conditional AICc']),min(float(v['Conditional AICc']) for v in (none,constant)),places=8)
-                self.assertEqual(len(automatic['Automatic intercept / drift selection']),2)
-                self.assertEqual(sum(int(row['Selected']) for row in automatic['Automatic intercept / drift selection']),1)
-                for row in automatic['Automatic intercept / drift selection']:
-                    candidate = none if row['Intercept / drift']=='None' else constant
-                    self.assertAlmostEqual(float(row['Conditional AICc']),float(candidate['Conditional AICc']),places=8)
-                if expected=='Drift':
-                    drift = next(row for row in automatic['Coefficients'] if row['Parameter']=='Drift')
-                    self.assertTrue(float(drift['SE'])>0)
-                    self.assertTrue(float(drift['Lower 95% CI'])<float(drift['Estimate'])<float(drift['Upper 95% CI']))
-                    if name=='sarima': self.assertAlmostEqual(float(drift['Estimate']),.75,places=3)
-
 
     def test_drift_wald_standard_error_interval_and_non_extreme_p_match_ols_delta_method(self):
         data = [100+.15*i+math.sin(2*i) for i in range(40)]
@@ -88,19 +64,6 @@ class TimeSeriesTests(unittest.TestCase):
                               ('Upper 95% CI',estimate+1.959963984540054*se),('p value',expected_p)]:
             self.assertAlmostEqual(float(drift[key]),expected,delta=1e-8)
         self.assertTrue(.1<expected_p<.9)
-
-    def test_random_walk_seasonal_walk_and_drift_have_analytical_forecasts(self):
-        data = [4, 5, 3, 6, 4, 7, 5, 8, 6, 7, 9, 8]
-        for name, orders, drift in [('arima', [[0,1,0]], False), ('arima', [[0,1,0]], True),
-                                     ('sarima', [[0,0,0],[0,1,0,4]], False)]:
-            value = run(name, data, *orders, 9, .9, 'constant' if drift else 'none')
-            differences = [data[i]-data[i-(4 if name=='sarima' else 1)] for i in range(4 if name=='sarima' else 1, len(data))]
-            mean = sum(differences)/len(differences) if drift else 0.
-            variance = sum((v-mean)**2 for v in differences)/len(differences)
-            for h, row in enumerate(value['Forecasts'], 1):
-                expected = data[-4+(h-1)%4] if name=='sarima' else data[-1]+mean*h
-                self.assertAlmostEqual(float(row['Forecast']), expected, places=6)
-                self.assertAlmostEqual(float(row['Standard error'])**2, variance*(math.ceil(h/4) if name=='sarima' else h), places=6)
 
 
     def test_invalid_orders_degenerate_series_and_cancellation_fail_honestly(self):

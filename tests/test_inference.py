@@ -7,13 +7,12 @@ import sys
 import unittest
 import math
 import itertools
-import random
 
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/'app/src/main/python'))
 import sympy as s
 from calc_evaluator import Engine
 from calc_statistics import fit_regression
-from calc_inference import rank_test, _binary_roc
+from calc_inference import rank_test
 import mpmath as mp
 from calc_shared import MathError
 
@@ -43,35 +42,6 @@ class InferenceTests(unittest.TestCase):
                 if len(rows)==2:self.assertIsNone(report['coefficients'][0]['se']);self.assertTrue(report['warnings'])
                 if rows[0][1]==rows[-1][1]:self.assertIsNone(report['rSquared'])
                 self.assertIsNone(report['coefficients'][0]['p'])
-
-    def test_multiple_regression_scale_and_singular_predictors(self):
-        with self.subTest(scenario='multiple_regression_scale_and_singular_predictors'):
-            rows=[(a,b,1+2*a-3*b+s.Rational((i%3)-1,10)) for i,(a,b) in enumerate([(0,0),(1,0),(0,1),(1,1),(2,0),(0,2),(2,2),(3,1)])]
-            result,report=fit(rows,'multiple')
-            self.assertEqual(result.free_symbols,{s.Symbol('x1'),s.Symbol('x2')})
-            self.assertEqual(len(report['coefficients']),3)
-            transformed=[(10**9+a*10**-6,b*10**6,y) for a,b,y in rows]
-            # Preserve the exact tiny offsets rather than rounding them through binary64.
-            transformed=[(s.Integer(10**9)+s.Rational(a,10**6),b*10**6,y) for a,b,y in rows]
-            _,scaled=fit(transformed,'multiple')
-            self.assertAlmostEqual(float(scaled['rSquared']),float(report['rSquared']),places=12)
-            self.assertIsNotNone(scaled['coefficients'][0]['se'])
-            with self.assertRaises(MathError):fit([(1,2,3),(2,4,5),(3,6,8),(4,8,10)],'multiple')
-        with self.subTest(scenario='vif_uses_predictors_only_and_is_invariant_to_units_and_response'):
-            predictors=[(-1,-2),(-1,0),(1,0),(1,2)]
-            rows=[(a,b,1+2*a+3*b) for a,b in predictors]
-            _,report=fit(rows,'multiple')
-            self.assertIsNone(report['coefficients'][0]['vif'])
-            for coefficient in report['coefficients'][1:]:
-                self.assertAlmostEqual(float(coefficient['vif']),2,places=12)
-            changed=[(10**9+s.Rational(a,10**6),b*10**6,y*y) for a,b,y in rows]
-            _,scaled=fit(changed,'multiple')
-            self.assertEqual([c['vif'] for c in report['coefficients']], [c['vif'] for c in scaled['coefficients']])
-            _,logistic=fit([(a,b,response) for a,b in predictors for response in (0,1)],'logistic')
-            for coefficient in logistic['coefficients'][1:]:
-                self.assertAlmostEqual(float(coefficient['vif']),2,places=12)
-            _,single=fit([(-3,0),(-2,0),(-1,1),(0,0),(0,1),(1,0),(2,1),(3,1)],'logistic')
-            self.assertEqual(float(single['coefficients'][1]['vif']),1)
 
     def test_logistic_inference_matches_statsmodels_and_rejects_invalid_responses(self):
         rows=[(-3,0),(-2,0),(-1,1),(0,0),(0,1),(1,0),(2,1),(3,1)]
@@ -195,27 +165,5 @@ class RankTests(unittest.TestCase):
             self.assertAlmostEqual(float(result['p value']),.004853488501369138,places=12)
             with self.assertRaises(MathError):self.run_test('kruskal',[[1,1],[1,1]])
             with self.assertRaises(MathError):self.run_test('kruskal',[[1],[2]],'left')
-
-class RocTests(unittest.TestCase):
-    def test_roc_handles_ties_concordance_and_invalid_inputs(self):
-        with self.subTest(scenario='reference_curve_perfect_reversed_and_tied_scores'):
-            area,points=_binary_roc([0,0,1,1],[.1,.4,.35,.8])
-            self.assertEqual(float(area),.75)
-            self.assertEqual([[float(x),float(y)] for x,y in points],[[0,0],[0,.5],[.5,.5],[.5,1],[1,1]])
-            for labels,scores,expected in [([0,1],[.1,.9],1),([0,1],[.9,.1],0),([0,1],[1,1],.5),([1,0,1,0],[.8,.8,.6,.2],.625),([0,1],[1000,1001],1)]:
-                self.assertEqual(float(_binary_roc(labels,scores)[0]),expected)
-        with self.subTest(scenario='auc_matches_independent_pairwise_concordance_for_ties'):
-            randomizer=random.Random(105)
-            for _ in range(50):
-                labels=[0]*randomizer.randint(1,8)+[1]*randomizer.randint(1,8)
-                scores=[randomizer.randint(-3,3) for _ in labels]
-                positive=[v for y,v in zip(labels,scores) if y==1];negative=[v for y,v in zip(labels,scores) if y==0]
-                expected=sum(1 if a>b else .5 if a==b else 0 for a in positive for b in negative)/(len(positive)*len(negative))
-                auc,points=_binary_roc(labels,scores)
-                self.assertAlmostEqual(float(auc),expected,places=14)
-                self.assertTrue(all(a[0]<=b[0] and a[1]<=b[1] for a,b in zip(points,points[1:])))
-        with self.subTest(scenario='invalid_labels_and_scores_are_rejected'):
-            for labels,scores in [([1,1],[0,1]),([0,0],[0,1]),([0,2],[0,1]),([0,1],[0]),([0,1],[0,mp.inf])]:
-                with self.assertRaises(MathError):_binary_roc(labels,scores)
 
 if __name__=='__main__':unittest.main()

@@ -25,7 +25,7 @@ export function createCalculator({state,engine,isBusy,ui,persist,schedulePersist
   let lastResult=null,decimal=false,typing=false,overwrite=false,committed=false,screenExpanded=false,grouping=false,mixed=false,lastResultSource='';
   let calcSession=null,activeHistoryEntry=null,inputAnswer=null,tapeRows=null,tapeFormat='';
   let engineeringConversion=false,engineeringShift=0;
-  const tapeFollow=followTape($('calculation-tape'),$('tape-active'));
+  const tapeFollow=followTape($('calculation-tape'),$('tape-history'),$('tape-active'));
   const displaySizing=createDisplaySizing(document.querySelector('main'),$('expression-preview'),$('answer'));
   const solutionSteps=createEquationSteps($('result-steps'),$('result-steps-body'),state,clipboard);
   let displayedStepResult=null;

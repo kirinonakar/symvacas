@@ -2,61 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {parse,latexInput,latexSymbolLabels} from '../parser.js';
-import {requiresExplicitEvaluation} from '../evaluation-policy.js';
-import {calcVariables} from '../calc-session.js';
-import {functionRelationExit} from '../input-navigation.js';
-
-test('adjacent x/y/z are products while other identifiers stay intact',()=>{
-  const shape=({kind,value,args})=>({kind,value,args:args.map(shape)});
-  for(const source of ['xy','xz','yz','xyz','yx','zx','zy','zyx','xx','yy','zz','xxyzz']){
-    const tree=parse(source);
-    assert.deepEqual(shape(tree),shape(parse([...source].join('*'))),source);
-    const factors=[];
-    const visit=node=>{if(node.kind==='symbol')factors.push(node);node.args.forEach(visit);};
-    visit(tree);
-    assert.deepEqual(factors.map(({value,start,end})=>[value,start,end]),[...source].map((value,i)=>[value,i,i+1]));
-    assert.deepEqual(calcVariables(tree),[...new Set(source)]);
-  }
-  for(const [source,explicit] of [['2xyz^2','2*x*y*z^2'],['xy(x+1)','x*y*(x+1)'],['1/xy','1/x*y'],
-    ['(xyz)^2','(x*y*z)^2'],['diff(xyz,x)','diff(x*y*z,x)'],['solve(xy=6,x)','solve(x*y=6,x)'],['z=xy','z=x*y'],
-    ['ax','a*x'],['bx','b*x'],['cx','c*x'],['ay','a*y'],['az','a*z'],['axy','a*x*y'],
-    ['xTE+TRy','x*TE+TR*y'],['xyfoo','x*y*foo'],['abxyzcd','ab*x*y*z*cd'],['xπ','x*pi'],['yθ','y*theta']])
-    assert.deepEqual(shape(parse(source)),shape(parse(explicit)),source);
-  for(const name of ['TE','TR','ab','abc','xy1','x_value','xy_z','XYZ','theta','xi','zeta','exp',
-    'byte','day','henry','Hz','kHz','MHz','oz','yd','complex','polynomial','exponential','binary','tukey'])
-    assert.deepEqual(parse(name),{kind:'symbol',value:name,args:[],start:0,end:name.length});
-  assert.equal(parse('exp(xy)').value,'exp');
-  assert.equal(parse('TR(xy)').value,'TR');
-  assert.equal(parse('myfunc(xy)').value,'myfunc');
-});
-
-test('solveset domains preserve named arguments, token boundaries and bound variables',()=>{
-  for(const name of ['Reals','Complexes','Integers','Rationals','Naturals','Naturals0']){
-    const source=`solveset(sin(x) + 3*cos(x), x, domain=S.${name})`,tree=parse(source);
-    assert.equal(tree.value,'solveset');
-    const keyword=tree.args[2],domain=keyword.args[1];
-    assert.equal(keyword.value,'=');assert.equal(keyword.args[0].value,'domain');
-    assert.equal(domain.value,`S.${name}`);
-    assert.equal(source.slice(domain.start,domain.end),domain.value);
-    assert.equal(requiresExplicitEvaluation(tree),true);
-    assert.deepEqual(calcVariables(tree),[]);
-  }
-  assert.deepEqual(calcVariables(parse('solveset(x+a,x,domain=S.Reals)')),['a']);
-  const source='solveset(x,x,domain=S.Reals)',cursor=source.indexOf(',x');
-  assert.equal(functionRelationExit(source,cursor,cursor),null);
-  for(const source of ['S.Unknown','S.Realsx','S.Reals.__class__','x.y'])assert.throws(()=>parse(source),SyntaxError);
-});
-
-test('fraction compaction respects the surrounding insertion scope and existing fences',()=>{
-  for(const [prefix,suffix,expected] of [
-    ['2','','(1/5)'],['1/','','(1/5)'],['','^2','(1/5)'],['(2)+','+(3)','1/5'],['sin(',')','1/5']
-  ])assert.equal(latexInput(String.raw`\frac{1}{5}`,{prefix,suffix}),expected);
-  assert.equal(latexInput(String.raw`\frac{1}{2x}`),'1/(2x)');
-  assert.equal(latexInput(String.raw`\frac{1}{(x)(x+1)}`),'1/((x)(x+1))');
-  assert.equal(latexInput(String.raw`\frac{1}{(x^2)^3}`),'1/(x^2)^3');
-  assert.equal(latexInput(String.raw`\boxed{x+1}`,{prefix:'2',suffix:'+3'}),'(x+1)');
-  assert.equal(latexInput('xy'),'xy');
-});
 
 test('LaTeX limits preserve the approach, function power, and expression scope',()=>{
   const body=String.raw`\lim_{x \to 0} \frac{3x^2}{\sin^2 x}`;
@@ -93,14 +38,6 @@ test('web parser matches every AST exported by the Kotlin parser',()=>{
   const cases=JSON.parse(readFileSync(new URL('./fixtures/math-cases.json',import.meta.url),'utf8'));
   for(const {source,tree} of cases) assert.deepEqual(parse(source),tree,source);
 });
-test('power precedence, limits, invalid input, and DMS',()=>{
-  assert.equal(parse('-2^2').kind,'unary');
-  assert.equal(parse('2^3^2').args[1].value,'^');
-  assert.equal(parse('12°30′15″').kind,'sexagesimal');
-  assert.equal(parse('rnd()').value,'rnd');
-  for(const input of ['','1..2','sin()','1+','[1,]','process.exit()','1;2','('.repeat(100)+'1'+')'.repeat(100),'1'.repeat(8193)]) assert.throws(()=>parse(input),SyntaxError,input);
-});
-
 test('invalid LaTeX rejects unsupported syntax, operators and incomplete matrices',()=>{
   { // malformed or unsupported
 

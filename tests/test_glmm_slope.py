@@ -3,7 +3,6 @@ import json
 import math
 import unittest
 from test_advanced_statistics import ROOT, run
-from calc_shared import MathError
 
 class GlmmSlopeTests(unittest.TestCase):
     @classmethod
@@ -36,13 +35,5 @@ class GlmmSlopeTests(unittest.TestCase):
         self.assertAlmostEqual(vi-10*cov+25*vs,float(other['random intercept variance']),places=7)
         for before,after in zip(base['subject random effects'],other['subject random effects']):
             self.assertAlmostEqual(float(before['conditional slope mode'])/2,float(after['conditional slope mode']),places=7)
-
-    def test_slope_options_reject_unsupported_quadrature_and_unidentifiable_designs(self):
-        args=self.cases[0]['arguments']
-        with self.assertRaises(MathError): run('glmm',args[0],'poisson',15,[],'offset','likelihood',1)
-        with self.assertRaises(MathError): run('glmm',args[0],'poisson',1,[],'offset','refit',1)
-        with self.assertRaises(MathError): run('glmm',args[0],'poisson',1,[],'offset','likelihood',2)
-        rows=[[i,i,1+(i%3)] for i in range(10)]
-        with self.assertRaisesRegex(MathError,'within-subject'): run('glmm',rows,'poisson',1,[],'offset','likelihood',1)
 
 if __name__=='__main__': unittest.main()

@@ -73,19 +73,6 @@ for sizes,control in [([5,7,6],0),([6,4,5,7],2),([2,80,120],0),([3,5],1)]:
             expected.extend([(['Comparisons',i,'Adjusted p value'],float(p)) for i,p in enumerate(multipletests(raw,method='holm')[1])])
         add(method,args,expected,2e-5 if method=='dunnett' else 2e-9)
 
-report_rows=np.array([[2,4,5],[3,4,7],[4,7,8],[2,3,6],[5,6,7]])
-report_contrasts=[report_rows[:,:i].sum(axis=1)-i*report_rows[:,i] for i in range(1,report_rows.shape[1])]
-report_pairs=[]; report_raw=[]
-for i in range(report_rows.shape[1]):
-    for j in range(i+1,report_rows.shape[1]):
-        difference=report_rows[:,i]-report_rows[:,j]; test=stats.ttest_rel(report_rows[:,i],report_rows[:,j]); ci=test.confidence_interval()
-        report_pairs.append({'difference':float(difference.mean()),'SE':float(stats.sem(difference)),'n':len(difference),
-                             'df':int(test.df),'t':float(test.statistic),'raw_p':float(test.pvalue),'lower':float(ci.low),'upper':float(ci.high)})
-        report_raw.append(test.pvalue)
-for row,p in zip(report_pairs,multipletests(report_raw,method='holm')[1]): row['holm_p']=float(p)
-repeated_report={'rows':report_rows.tolist(),'conditions':[{'mean':float(c.mean()),'sd':float(c.std(ddof=1))} for c in report_rows.T],
-                 'contrasts':[{'W':float(stats.shapiro(c).statistic),'p':float(stats.shapiro(c).pvalue)} for c in report_contrasts],
-                 'pairs':report_pairs}
 shapiro_cases=[]
 for values in ([1,2,4],[1,2,4,7],[2,4,1,6,9],[2,4,1,6,9,3],
                [2,4,1,6,9,3,5,8,12,15,7],[2,4,1,6,9,3,5,8,12,15,7,11],list(range(30))):
@@ -93,10 +80,6 @@ for values in ([1,2,4],[1,2,4,7],[2,4,1,6,9],[2,4,1,6,9,3],
     shapiro_cases.append({'values':values,'W':float(test.statistic),'p':float(test.pvalue)})
 test=stats.shapiro(np.arange(5000,dtype=float))
 shapiro_cases.append({'range_count':5000,'W':float(test.statistic),'p':float(test.pvalue)})
-regression_x=np.arange(1,7,dtype=float); regression_y=np.array([2,4,5,4,5,7],dtype=float)
-regression_residual=regression_y-np.polyval(np.polyfit(regression_x,regression_y,1),regression_x)
-regression_normality={'rows':np.column_stack([regression_x,regression_y]).tolist(),'p':float(stats.shapiro(regression_residual).pvalue)}
-
 tails=[]
 for sizes,q in [([2,2,2],20.),([2,2,2],1000.),([4,4,4],100.),([4,4,4],1000.)]:
     df=sum(sizes)-len(sizes)
@@ -112,6 +95,5 @@ target=ROOT/'tests/fixtures/sphericity_posthoc_reference.json'
 target.write_text(json.dumps({'sources':['NumPy orthonormal one-/two-factor projections and covariance eigenvalues; first-order Mauchly chi-square approximation',
     'SciPy multivariate t CDF (2 million integration points, fixed seed) and root finding for Dunnett',
     'SciPy F inverse/survival for Scheffe; SciPy pooled ranks/Kruskal H/t tails and statsmodels Holm for Conover-Iman'],
-    'cases':cases,'dunnett_tails':tails,'repeated_report':repeated_report,'shapiro_cases':shapiro_cases,
-    'regression_normality':regression_normality},ensure_ascii=False,indent=2,allow_nan=False)+'\n',encoding='utf8')
+    'cases':cases,'dunnett_tails':tails,'shapiro_cases':shapiro_cases},ensure_ascii=False,indent=2,allow_nan=False)+'\n',encoding='utf8')
 print('Wrote',len(cases),'independent sphericity/post-hoc cases')

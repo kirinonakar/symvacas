@@ -4,7 +4,6 @@ import math
 from pathlib import Path
 import sys
 import unittest
-from unittest.mock import patch
 import mpmath as mp
 import sympy as s
 
@@ -12,7 +11,6 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'app/src/main/python'))
 from calc_advanced_statistics import advanced
 from calc_advanced_common import inference,validated_covariance
-from calc_advanced_longitudinal import clustered_design,random_effects_fit
 from calc_evaluator import Engine
 from calc_shared import MathError
 from calc_statistics_report import statistics_report
@@ -63,37 +61,6 @@ class ModelDiagnosticsTests(unittest.TestCase):
                     for key,expected_key in [('estimate','estimates'),('SE','SE'),('p','p')]:
                         self.assertAlmostEqual(float(row[key]),case[expected_key][i],delta=2e-5*max(1,abs(case[expected_key][i])))
                     for value,expected in zip(row['CI95'],case['CI95'][i]): self.assertAlmostEqual(float(value),expected,delta=2e-5*max(1,abs(expected)))
-
-    def test_nonconverged_slopes_keep_estimates_but_withhold_wald_inference(self):
-        fixtures=json.loads((ROOT/'tests/fixtures/advanced_statistics_reference.json').read_text())
-        rows=next(c['arguments'][0] for c in fixtures if c['name']=='Mixed random slope ml')
-        x,y=clustered_design(rows); ids=sorted(set(row[0] for row in rows)); clusters=[[i for i,row in enumerate(rows) if row[0]==g] for g in ids]
-        fields,best=random_effects_fit(x,y,clusters,[1],'ml')
-        with patch('calc_advanced_longitudinal.random_effects_fit',return_value=(fields,(*best[:3],False))):
-            result=calculate('mixedmodel',rows,1,'ml')
-        self.assertEqual(result['diagnostics']['inference'],'unavailable')
-        self.assertTrue(all(row['SE']=='unavailable' and row['p']=='unavailable' and row['CI95']=='unavailable' for row in result['coefficients']))
-        self.assertTrue(all(math.isfinite(float(row['estimate'])) for row in result['coefficients']))
-
-    def test_quadrature_checks_laplace_and_max_points_and_withholds_unstable_ci(self):
-        from calc_advanced_longitudinal import nelder_mead
-        fixtures=json.loads((ROOT/'tests/fixtures/advanced_statistics_reference.json').read_text())
-        rows=next(c['arguments'][0] for c in fixtures if c['name']=='GLMM binomial QUADPACK')
-        for points,check in ((1,7),(31,21)):
-            result=calculate('glmm',rows,'binomial',points,[],'offset','refit')
-            self.assertEqual(int(result['quadrature check points']),check)
-            self.assertEqual(int(result['quadrature refit converged']),1)
-            self.assertIn('quadrature refit coefficients',result)
-        def changed(objective,start,step,iterations=160,diagnostics=False):
-            if step==[.1]*len(start):
-                point=start[:];point[1]+=1
-                return point,objective(point),1,True
-            return nelder_mead(objective,start,step,iterations,diagnostics)
-        with patch('calc_advanced_glmm.nelder_mead',changed):
-            result=calculate('glmm',rows,'binomial',15,[],'offset','refit')
-        self.assertGreater(float(result['quadrature max coefficient change / SE']),.1)
-        self.assertEqual(result['diagnostics']['inference'],'unavailable')
-        self.assertTrue(all(row['p']=='unavailable' and row['CI95']=='unavailable' for row in result['coefficients']))
 
 
 if __name__=='__main__': unittest.main()

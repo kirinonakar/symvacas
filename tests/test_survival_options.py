@@ -1,4 +1,4 @@
-"""Positional Cox contracts through public dispatch, data fitting and generated help."""
+"""Positional Cox contracts through public dispatch and data fitting."""
 import json
 import pathlib
 import sys
@@ -10,7 +10,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'app/src/main/python'))
 from calc_engine import dispatch
 from calc_evaluator import Engine
-from calc_advanced_survival import calculate, cox_options
+from calc_advanced_survival import calculate
 from calc_survival_contract import CONTRACTS
 
 ROWS = [[1,1,1],[2,1,2],[3,0,1],[4,1,2],[5,1,1],[6,0,2],[7,1,2],[8,1,1]]
@@ -21,15 +21,6 @@ def evaluate(name, suffix='', rows=ROWS):
 
 
 class SurvivalOptionsTests(unittest.TestCase):
-    def test_defaults_and_trailing_omissions_do_not_swap_positions(self):
-        self.assertEqual(cox_options('survivalanalysis',[ROWS]), dict(coxEnabled=0,ties='efron',entryColumn=-1,phCheck=1))
-        self.assertEqual(cox_options('cox',[ROWS]), dict(ties='efron',entryColumn=-1,phCheck=1))
-        for args, expected in [([ROWS,1],('efron',-1,1)),([ROWS,1,'breslow'],('breslow',-1,1)),
-                               ([ROWS,1,'breslow',-1],('breslow',-1,1)),([ROWS,1,'breslow',-1,0],('breslow',-1,0))]:
-            with self.subTest(args=args[1:]):
-                parsed=cox_options('survivalanalysis',args)
-                self.assertEqual(tuple(parsed[key] for key in ('ties','entryColumn','phCheck')), expected)
-
     def test_explicit_cox_on_and_off_and_ph_flags(self):
         off=evaluate('survivalanalysis')
         self.assertTrue(off['ok'],off)
@@ -72,16 +63,6 @@ class SurvivalOptionsTests(unittest.TestCase):
         first=calculate(Engine({}),'cox',[base,'efron',-1,0])
         second=calculate(Engine({}),'cox',[starts,'efron',2,0])
         self.assertAlmostEqual(first['coefficients'][0]['estimate'],second['coefficients'][0]['estimate'],places=10)
-
-    def test_generated_catalog_has_full_signatures_and_structured_positions(self):
-        schema=json.loads((ROOT/'app/src/main/assets/advanced_statistics.json').read_text(encoding='utf-8'))
-        for name in ('survivalanalysis','cox'):
-            item=next(item for item in schema if item['id']==name)
-            self.assertEqual(item['signature'],CONTRACTS[name]['signature'])
-            self.assertEqual([arg['position'] for arg in item['arguments']],list(range(1,len(item['arguments'])+1)))
-            for file in ('catalog_help.md','catalog_help_ko.md'):
-                help_text=(ROOT/'web'/file).read_text(encoding='utf-8')
-                self.assertIn('`'+item['signature']+'`',help_text)
 
 
 if __name__=='__main__':

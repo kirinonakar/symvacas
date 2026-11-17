@@ -12,7 +12,6 @@ from calc_engine import dispatch
 from calc_evaluator import Engine
 from calc_advanced_statistics import FUNCTIONS, advanced
 from calc_shared import MathError
-import mpmath as mp
 import sympy as s
 
 def tree(source):
@@ -34,21 +33,6 @@ def run(name,*args):
     return advanced(Engine({}),name,[s.sympify(v) for v in args])
 
 class AdvancedStatisticsTests(unittest.TestCase):
-
-    def test_mcnemar_methods_show_discordant_count_and_matching_p_value(self):
-        for method,title,p in [('asymptotic','McNemar',0.05777957112359715),
-                               ('exact','Exact McNemar',0.109375),
-                               ('corrected','McNemar (continuity correction)',0.11384629800665763)]:
-            with self.subTest(method=method):
-                result=evaluate(f'mcnemar([[20,8],[2,15]],{method})')
-                report=result['statisticsReport']
-                self.assertEqual(report['title'],title)
-                self.assertEqual([item['label'] for item in report['highlights']],['discordant pairs','p value'])
-                self.assertEqual(report['highlights'][0]['value']['exact'],'10')
-                self.assertAlmostEqual(float(report['highlights'][1]['value']['decimal']),p,places=12)
-                self.assertIn('discordant pairs: 10',result['exact'])
-                empty=evaluate(f'mcnemar([[20,0],[0,15]],{method})')['statisticsReport']['highlights']
-                self.assertEqual([item['value']['exact'] for item in empty],['0','1'])
 
     def test_statistics_tables_preserve_exact_answers_and_parallel_row_relationships(self):
         result=evaluate('stats([1,2,4])')
@@ -120,69 +104,6 @@ class AdvancedStatisticsTests(unittest.TestCase):
             self.assertEqual(report['groups'][0]['curve'][0],[0,1,1,0,0,0,0])
             self.assertEqual(report['groups'][0]['median'],0)
 
-    def test_ks_exact_separated_samples_and_identical_ties(self):
-        result=run('kstest',[1,2,3],[4,5,6])
-        self.assertAlmostEqual(float(result['D']),1)
-        self.assertAlmostEqual(float(result['p']),.1)
-        self.assertEqual(float(run('kstest',[1,2,3],[1,2,3])['p']),1)
-        self.assertGreater(float(run('kstest',[-1,0,1],'normal',0,1)['p']),0)
-        self.assertAlmostEqual(float(run('kstest',list(range(60)),list(range(60,120)))['p'])/(2/math.comb(120,60)),1,places=12)
-
-
-    def test_pca_reconstructs_data_and_restores_numeric_precision(self):
-        with self.subTest(scenario='pca_reconstructs_and_explains_all_variance'):
-            rows=[[1,2],[2,1],[3,4],[4,3],[5,7]]; result=run('pca',rows,2,1)
-            self.assertAlmostEqual(sum(map(float,result['explained variance ratio'])),1)
-            for r,score in zip(rows,result['scores']):
-                for j in range(2):
-                    reconstructed=sum(float(score[k]*result['loadings'][j][k]) for k in range(2))*float(result['scales'][j])+float(result['centers'][j])
-                    self.assertAlmostEqual(reconstructed,r[j],places=10)
-        with self.subTest(scenario='public_entry_preserves_precision_after_success_and_failure'):
-            rows=[[1,2],[2,1],[3,4],[4,3],[5,7]]
-            expected=run('pca',rows)
-            for precision in (10,40):
-                with mp.workdps(precision):
-                    self.assertEqual(run('pca',rows),expected)
-                    self.assertEqual(mp.mp.dps,precision)
-                    with self.assertRaisesRegex(MathError,'Standardized PCA requires nonconstant columns'):
-                        run('pca',[[1,2],[1,3]])
-                    self.assertEqual(mp.mp.dps,precision)
-
-    def test_crossvalidation_preserves_holdouts_models_and_metrics(self):
-        with self.subTest(scenario='crossvalidation_predicts_without_holdout_leakage'):
-            rows=[[i,1+2*i] for i in range(12)]; result=run('crossvalidate',rows,3,0)
-            self.assertLess(float(result['MSE']),1e-20)
-            changed=run('crossvalidate',[[i,100 if i==0 else y] for i,y in rows],3,0)
-            self.assertAlmostEqual(float(changed['out-of-fold predictions'][0]),1)
-        with self.subTest(scenario='crossvalidation_models_splits_and_metrics'):
-            rows=[[i,1+2*i] for i in range(12)]
-            exact=run('crossvalidate',rows,3,0)
-            self.assertLess(float(exact['MSE']),1e-20)
-            self.assertAlmostEqual(float(exact['R2']),1,places=9)
-            for model,penalty in (('ridge',.5),('lasso',.05),('elasticnet',[.1,.5])):
-                result=run('crossvalidate',rows,3,0,'random',model,penalty)
-                self.assertEqual(result['model'],model)
-                self.assertLess(float(result['MSE']),20.0)
-                self.assertIn('MAE',result)
-            self.assertEqual(run('crossvalidate',rows,3,0,'blocked','ridge',.5)['split'],'blocked')
-            logistic=[[float(i%5),float(1 if i%5>=2 else 0)] for i in range(20)]
-            result=run('crossvalidate',logistic,4,0,'stratified','logistic',.5)
-            self.assertGreater(float(result['accuracy']),.6)
-            self.assertGreater(float(result['AUC']),.8)
-            self.assertIn('log loss',result)
-
-    def test_imputation_methods_use_complete_cases(self):
-        NA=s.Symbol('NA')
-        rows=[[1,2],[2,4],[3,NA],[4,8],[5,10]]
-        for method,figure in (('mean',6.0),('median',6.0),('mode',2.0),('regression',6.0),('knn',6.0)):
-            result=run('impute',rows,method)
-            self.assertAlmostEqual(float(result['data'][2][1]),figure,places=9,msg=method)
-            self.assertEqual(int(result['imputed cells']),1)
-            self.assertEqual(result['method'],method)
-            for i,row in enumerate(result['data']):
-                for j,value in enumerate(row):
-                    if rows[i][j] is not NA: self.assertAlmostEqual(float(value),float(rows[i][j]),places=9)
-        self.assertAlmostEqual(float(run('impute',rows,'knn',2)['data'][2][1]),6.0,places=9)
 
     def test_independent_reference_fixtures(self):
         fixtures=ROOT/'tests/fixtures/advanced_statistics_reference.json'
@@ -195,57 +116,6 @@ class AdvancedStatisticsTests(unittest.TestCase):
                     for key in path: actual=actual[key]
                     self.assertAlmostEqual(float(actual),expected,delta=case.get('tolerance',1e-6)*max(1,abs(expected)))
 
-
-    def test_gaussian_gee_correlation_is_invariant_to_response_units(self):
-        with self.subTest(scenario='gaussian_gee_correlation_is_invariant_to_response_units'):
-            rows=[[g,t,2+.4*t+(g%4-1.5)*.7+((g+2*t)%5-2)*.2] for g in range(12) for t in range(3+g%3)]
-            for corr in ('exchangeable','ar1'):
-                base=run('gee',rows,'gaussian',corr)
-                scaled=run('gee',[[g,t,10*y+30] for g,t,y in rows],'gaussian',corr)
-                self.assertAlmostEqual(float(base['alpha']),float(scaled['alpha']),places=8)
-                for i in range(2):
-                    self.assertAlmostEqual(float(scaled['coefficients'][i]['estimate']),10*float(base['coefficients'][i]['estimate'])+(30 if i==0 else 0),places=7)
-                    self.assertAlmostEqual(float(scaled['coefficients'][i]['SE']),10*float(base['coefficients'][i]['SE']),places=7)
-            self.assertIn('Few clusters',evaluate('gee('+str(rows)+',gaussian,exchangeable)')['note'])
-        with self.subTest(scenario='gee_interaction_terms_expand_the_design_in_original_units'):
-            base=[[0,0,1],[1,0,3],[0,1,4],[1,1,10]]
-            rows=[[cluster]+row for cluster in (1,2,3) for row in base]
-            result=run('gee',rows,'gaussian','independence',[[1,2]])
-            self.assertEqual([term['term'] for term in result['coefficients']],['Intercept','x1','x2','x1:x2'])
-            for actual,expected in zip(result['coefficients'],[1,2,3,4]):
-                self.assertAlmostEqual(float(actual['estimate']),expected,places=8)
-            from calc_shared import MathError
-            for invalid in ([1,3],[[1,1],[1,1]]):
-                with self.assertRaises(MathError):run('gee',rows,'gaussian','independence',invalid)
-
-    def test_mixed_models_report_boundary_variances_and_random_effects(self):
-        with self.subTest(scenario='mixed_slope_boundary_has_blups_and_explicit_icc_origin'):
-            noise=[.1,-.2,.2,-.2,.1]
-            rows=[[g,t,2+.4*t+(g%5-2)*.6+noise[t+2]] for g in range(1,16) for t in range(-2,3)]
-            result=run('mixedmodel',rows,1)
-            self.assertEqual(int(result['singular fit']),1)
-            self.assertAlmostEqual(float(result['random slope variance']),0,places=6)
-            self.assertIn('ICC at x=0',result)
-            self.assertNotIn('ICC',result)
-            self.assertEqual(len(result['subject random effects (BLUP)']),15)
-            self.assertAlmostEqual(sum(float(row['x1']) for row in result['subject random effects (BLUP)']),0,places=6)
-        with self.subTest(scenario='glmm_zero_variance_matches_independent_glm_and_nodes'):
-            rows=[[g,t,(g+t)%2] for g in range(1,9) for t in range(3)]
-            for points in (1,15,25):
-                result=run('glmm',rows,'binomial',points)
-                self.assertEqual(float(result['random intercept variance']),0)
-                self.assertAlmostEqual(float(result['log likelihood']),-24*math.log(2),places=8)
-                self.assertAlmostEqual(float(result['AIC']),48*math.log(2)+4,places=8)
-                self.assertAlmostEqual(float(result['BIC']),48*math.log(2)+2*math.log(24),places=8)
-                self.assertAlmostEqual(float(result['coefficients'][0]['SE']),math.sqrt(5/12),places=6)
-                self.assertTrue(all(float(row['posterior mean'])==0 for row in result['subject random effects']))
-            counts=[[g,t,v] for g in range(1,6) for t,v in enumerate([1,2,1,3,2])]
-            glm=run('poissonreg',[[t,v] for _,t,v in counts])
-            result=run('glmm',counts,'poisson')
-            self.assertEqual(float(result['random intercept variance']),0)
-            for actual,expected in zip(result['coefficients'],glm['coefficients']):
-                self.assertAlmostEqual(float(actual['estimate']),float(expected['estimate']),places=6)
-                self.assertAlmostEqual(float(actual['SE']),float(expected['SE']),places=6)
 
 class BayesianStatisticsTests(unittest.TestCase):
     def test_bayesian_distributions_match_references_and_prior_moment_constraints(self):

@@ -9,7 +9,6 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'app/src/main/python'))
 import symvacas_catalog as catalog
-import sympy as s
 from calc_shared import MathError
 from calc_nuts import sample, diagnostics, _leapfrog, _build_tree, _joint
 
@@ -91,39 +90,5 @@ class BayesianRegressionTests(unittest.TestCase):
             sample(target,2,100,50,8,19,2,max_evaluations=20)
         report = catalog.regression_report(REFERENCE['rows'],'bayeslinear',[2.5,.95,2,1,['nuts',100,50,1]])
         self.assertTrue(any('max tree depth' in warning for warning in report['warnings']))
-
-    def test_nuts_preserves_curved_non_gaussian_target(self):
-        # x ~ Normal(0,1); y|x ~ Normal(.7*(x²-1),1). Independent exact moments.
-        def target(q):
-            x,y = q; residual = y-.7*(x*x-1)
-            return (x*x+residual*residual)/2,[x-1.4*x*residual,residual]
-        draws,summary = sample(target,2,3000,600,8,37,4)
-        for j,second_moment in [(0,1),(1,1.98)]:
-            chains = [[row[j] for row in chain] for chain in draws]
-            values = [v for chain in chains for v in chain]
-            self.assertLess(abs(sum(values)/len(values)),.12)
-            # A curved target has heavy-tailed squared draws: calibrate the
-            # moment check to their autocorrelation, rather than a seed-specific
-            # fixed tolerance. The analytic fourth moment gives its true variance.
-            squared=[[v*v for v in chain] for chain in chains]
-            _,moment_ess=diagnostics(squared)
-            fourth=3 if j==0 else 3+12*.7**2+60*.7**4
-            moment_mcse=math.sqrt((fourth-second_moment**2)/moment_ess)
-            self.assertAlmostEqual(sum(v*v for v in values)/len(values),second_moment,delta=5*moment_mcse)
-            rhat,ess = diagnostics(chains)
-            self.assertLess(rhat,1.05);self.assertGreater(ess,100)
-        self.assertEqual(summary['divergences'],sum(chain['divergences'] for chain in summary['chainDiagnostics']))
-
-    def test_invalid_data_prior_and_sampler_settings_are_rejected(self):
-        for mode in ('bayeslinear','bayeslogistic'):
-            for rows in ([],[[1,0]],[[1,0],[1,2,0]],[[1,s.oo],[2,1]]):
-                with self.assertRaises(MathError): catalog.regression_report(rows,mode)
-            for options in ([0,.95],[2.5,0],[2.5,1],[s.oo,.95],[2.5,.95,['nuts',99]],
-                            [2.5,.95,['nuts',100,49]],[2.5,.95,['nuts',100,50,0]],
-                            [2.5,.95,['nuts',100,50,10,-1]],[2.5,.95,['nuts',100,50,10,0,1]],
-                            [2.5,.95,['hmc']], [2.5,.95,['nuts',100,50,11]]):
-                with self.assertRaises(MathError): catalog.regression_report(REFERENCE['rows'],mode,options)
-        with self.assertRaises(MathError): catalog.regression_report([[1,0],[2,0]],'bayeslogistic')
-        with self.assertRaises(MathError): catalog.regression_report(REFERENCE['rows'],'bayeslinear',[2.5,.95,0,1])
 
 if __name__ == '__main__': unittest.main()

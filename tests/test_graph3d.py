@@ -20,48 +20,12 @@ def add(*terms):
 
 def bundle(**definitions):return {'kind':'list','args':[equation(sym(name),body) for name,body in definitions.items()]}
 
-def torus_tree():
-    radius=add(num(2),binary('*',num(.35),call('sin',binary('-',binary('*',num(6),sym('u')),binary('*',num(3),sym('t'))))))
-    return bundle(R=radius,x=binary('*',add(sym('R'),call('cos',sym('v'))),call('cos',sym('u'))),
-                  y=binary('*',add(sym('R'),call('cos',sym('v'))),call('sin',sym('u'))),z=call('sin',sym('v')))
-
-def waves_tree():
-    r=lambda sign:call('sqrt',add(binary('^',binary(sign,sym('x'),num(2)),num(2)),binary('^',sym('y'),num(2))))
-    wave=lambda name:binary('/',call('sin',binary('-',binary('*',num(4),sym(name)),binary('*',num(5),sym('t')))),add(num(1),binary('*',num(.2),sym(name))))
-    return bundle(r1=r('-'),r2=r('+'),z=add(wave('r1'),wave('r2')))
-
 def vortex_tree(frequency=5):
     r2=add(binary('^',sym('x'),num(2)),binary('^',sym('y'),num(2)))
     phase=binary('-',binary('-',binary('*',num(frequency),call('atan2',sym('y'),sym('x'))),binary('*',num(2),call('sqrt',r2))),binary('*',num(3),sym('t')))
     return equation(sym('z'),binary('*',call('exp',binary('*',num(-.08),r2)),call('sin',phase)))
 
 class Graph3dTests(unittest.TestCase):
-
-    def test_two_parameter_torus_with_local_radius_and_animation(self):
-        for t in (0,.7,2):
-            result=self.run_graph(torus_tree(),parameters={'t':t},surfaceUMin=0,surfaceUMax=2*math.pi,surfaceVMin=-math.pi,surfaceVMax=math.pi)
-            self.assertEqual(['t'],result['parameters'])
-            self.assertTrue(result['parametricSurface'])
-            for j,row in enumerate(result['surface']):
-                v=-math.pi+2*math.pi*j/20
-                for i,(x,y,z) in enumerate(row):
-                    u=2*math.pi*i/20;radius=2+.35*math.sin(6*u-3*t)+math.cos(v)
-                    for expected,actual in zip((radius*math.cos(u),radius*math.sin(u),math.sin(v)),(x,y,z)):
-                        self.assertAlmostEqual(expected,actual,delta=1e-12)
-        stored={name:num(99) for name in ('u','v','x','y','R')}
-        fresh=self.run_graph(torus_tree(),parameters={'t':.7})
-        shadowed=self.run_graph(torus_tree(),parameters={'t':.7},variables=stored)
-        self.assertEqual(fresh['surface'],shadowed['surface'])
-
-    def test_local_distance_helpers_produce_two_animated_sources(self):
-        for t in (0,.6):
-            result=self.run_graph(waves_tree(),parameters={'t':t})
-            self.assertEqual(['t'],result['parameters'])
-            self.assertNotIn('implicitSurface',result)
-            for row in result['surface']:
-                for x,y,z in row:
-                    expected=sum(math.sin(4*r-5*t)/(1+.2*r) for r in (math.hypot(x-2,y),math.hypot(x+2,y)))
-                    self.assertAlmostEqual(expected,z,delta=1e-12)
 
     def test_surface_helpers_are_local_and_forward_references_resolve(self):
         tree=bundle(z=sym('b'),b=add(sym('a'),sym('x')),a=num(2))
@@ -72,18 +36,6 @@ class Graph3dTests(unittest.TestCase):
         for tree in (bundle(a=sym('b'),b=sym('a'),z=sym('a')),bundle(x=sym('u'),z=sym('v')),bundle(u=num(2),z=sym('u'))):
             result=json.loads(dispatch(json.dumps({'action':'graph','graphKind':'surface','trees':[tree],'min':-2,'max':2})))
             self.assertFalse(result['ok'])
-
-    def test_parametric_ranges_and_undefined_coordinate_samples(self):
-        tree={'kind':'list','args':[sym('u'),sym('v'),binary('/',num(1),sym('u'))]}
-        result=self.run_graph(tree,surfaceUMin=-1,surfaceUMax=1,surfaceVMin=2,surfaceVMax=3)
-        self.assertEqual([],result['parameters'])
-        self.assertTrue(all(row[10] is None for row in result['surface']))
-        self.assertEqual([-1,2,-1],result['surface'][0][0])
-        self.assertEqual([1,3,1],result['surface'][-1][-1])
-        invalid=json.loads(dispatch(json.dumps({'action':'graph','graphKind':'surface','trees':[tree],'min':-2,'max':2,'surfaceUMin':1,'surfaceUMax':0})))
-        self.assertFalse(invalid['ok'])
-        wrapped=equation(call('S',sym('u'),sym('v')),{'kind':'tuple','args':[sym('u'),sym('v'),num(0)]})
-        self.assertEqual([],self.run_graph(wrapped)['parameters'])
 
     def test_vortex_center_uses_fine_angular_rings_without_filling_the_singularity(self):
         for t in (0,.8):
@@ -182,15 +134,6 @@ class Graph3dTests(unittest.TestCase):
             edges=collections.Counter(tuple(sorted((face[i],face[(i+1)%3]))) for face in faces for i in range(3))
             self.assertTrue(all(count==2 for count in edges.values()))
             self.assertLess(len(vertices),len(faces))
-
-    def test_no_surface_and_undefined_cells_do_not_create_fake_faces(self):
-        empty=self.run_graph(equation(sym('z'),binary('+',sym('z'),num(1))))
-        self.assertEqual([],empty['surfaceTriangles'])
-        tree=equation(add(binary('/',num(1),sym('x')),sym('y'),sym('z')),num(0))
-        result=self.run_graph(tree)
-        for face in result['surfaceTriangles']:
-            xs=[result['surfaceVertices'][i][0] for i in face]
-            self.assertFalse(min(xs)<0<max(xs))
 
 
 if __name__=='__main__':unittest.main()

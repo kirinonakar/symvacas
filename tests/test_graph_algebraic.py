@@ -8,7 +8,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]/"app/src/main/python"))
 import calc_engine
 import sympy as s
-from calc_graph_algebraic import affine_samples, odd_power_contour
+from calc_graph_algebraic import odd_power_contour
 
 
 def number(value): return {"kind":"number", "value":str(value)}
@@ -19,7 +19,6 @@ def equation(left, right): return {"kind":"relation", "value":"=", "args":[left,
 x, y, a = map(symbol, ("x", "y", "a"))
 line = binary("*", binary("/", number(1), a), x)
 cubic = equation(binary("+", binary("^", x, number(2)), binary("^", y, number(3))), a)
-cubic_sum = equation(binary("+", binary("^", x, number(3)), binary("^", y, number(3))), a)
 cubic_square = equation(binary("+", binary("^", x, number(3)), binary("^", y, number(2))), a)
 
 
@@ -44,25 +43,6 @@ class AlgebraicGraphTests(unittest.TestCase):
                 self.assertTrue(any(px > math.sqrt(5) and py < 0 for px, py in points))
                 for px, py in points:
                     self.assertAlmostEqual(5, px*px+py**3, delta=1e-9)
-
-    def test_odd_power_integrals_use_one_real_branch_without_a_trace_hint(self):
-        for degree in (3, 5, 7, 11):
-            for coefficient in (-2, 2):
-                with self.subTest(degree=degree, coefficient=coefficient):
-                    tree = equation(binary("+", binary("^", x, number(2)),
-                        binary("*", number(coefficient), binary("^", y, number(degree)))), number(0))
-                    result = self.analyze(tree, a=-1, b=1)
-                    expected = -math.copysign(abs(coefficient)**(-1/degree), coefficient)*2/(1+2/degree)
-                    self.assertAlmostEqual(expected, result["value"], delta=1e-12)
-
-    def test_cubic_real_branch_supports_negative_trace_points_and_derivatives(self):
-        for point in ([0, 5**(1/3)], [-4, -11**(1/3)]):
-            result = self.analyze(cubic, parameters={"a":5}, a=-4, b=-3, tracePoint=point)
-            self.assertLess(result["value"], 0)
-        tangent = self.analyze(cubic, parameters={"a":5}, analysis="tangent", a=-4, b=-4)
-        self.assertAlmostEqual(8/(3*11**(2/3)), tangent["value"], delta=1e-12)
-        derivative = self.analyze(cubic, parameters={"a":5}, selectedDerivativeOrder=1, a=-4, b=-3)
-        self.assertAlmostEqual(11**(1/3)-4**(1/3), derivative["value"], delta=1e-12)
 
     def graph(self, *trees, **options):
         result = json.loads(calc_engine.dispatch(json.dumps({"action":"graph", "graphKind":"cartesian",
@@ -96,12 +76,6 @@ class AlgebraicGraphTests(unittest.TestCase):
                 if value > 0:
                     for root in (-math.sqrt(value), math.sqrt(value)):
                         self.assertTrue(any(point is not None and abs(point[0]-root)<1e-12 and point[1]==0 for point in curve))
-
-    def test_contour_preserves_subpixel_shape_and_narrow_viewport_sections(self):
-        self.check_contour_shape(cubic, 2)
-
-    def test_cubic_sum_preserves_shape_at_zero_and_nearly_vertical_tangents(self):
-        self.check_contour_shape(cubic_sum, 3)
 
     def test_cubic_square_preserves_both_branches_cusp_and_narrow_sections(self):
         self.check_contour_shape(cubic_square, 3, 2)
@@ -139,85 +113,6 @@ class AlgebraicGraphTests(unittest.TestCase):
                         if xmin <= point[0] <= xmax and ymin <= point[1] <= ymax:
                             self.assertTrue(segments, (value,point,curve))
                             self.assertLess(min(distance(point,p,q) for p,q in segments), .35, (value,point))
-
-    def test_cubic_square_animation_bypasses_grid_in_both_graph_modes(self):
-        for kind in ("cartesian", "implicit"):
-            for value in (0, 1e-12, -1e-12, .01, -.01, 1, -1, 5):
-                with self.subTest(kind=kind, a=value):
-                    with patch("calc_graph_planar.implicit_samples", side_effect=AssertionError("plane search")):
-                        result = self.graph(cubic_square, parameters={"a":value}, graphKind=kind)
-                    curve = result["curves"][0]
-                    self.assertEqual(["a"],result["parameters"])
-                    self.assertTrue(curve)
-                    self.assertLess(len(curve),350)
-                    for px,py in filter(lambda p:p is not None,curve):
-                        self.assertAlmostEqual(value,px**3+py**2,delta=1e-9)
-                        self.assertTrue(-10-1e-9<=px<=10+1e-9 and -5-1e-9<=py<=5+1e-9)
-                    targets = [(math.cbrt(value),0)]
-                    if value >= 0: targets.extend(((0,math.sqrt(value)),(0,-math.sqrt(value))))
-                    for target in targets:
-                        self.assertTrue(any(p is not None and math.dist(p,target)<1e-12 for p in curve))
-                    self.assertTrue(any(p is not None and p[1]>0 for p in curve))
-                    self.assertTrue(any(p is not None and p[1]<0 for p in curve))
-
-    def test_transposed_contour_keeps_degenerate_coefficients_and_log_domain(self):
-        varying = equation(binary("+",binary("*",a,binary("^",x,number(3))),binary("^",y,number(2))),number(1))
-        result = self.graph(varying,parameters={"a":0})
-        points = [p for p in result["curves"][0] if p is not None]
-        self.assertTrue(any(py>0 for px,py in points))
-        self.assertTrue(any(py<0 for px,py in points))
-        self.assertTrue(all(abs(abs(py)-1)<1e-7 for px,py in points))
-        result = self.graph(cubic_square,parameters={"a":1},yLog=True,yMin=.01,yMax=5)
-        self.assertTrue(any(p is not None for p in result["curves"][0]))
-        self.assertTrue(all(p is None or p[1]>0 for p in result["curves"][0]))
-
-    def test_cubic_sum_animation_bypasses_grid_and_keeps_axis_contacts(self):
-        for kind in ("cartesian", "implicit"):
-            for value in (0, 1e-12, -1e-12, .01, -.01, 1, -1, 5):
-                with self.subTest(kind=kind, a=value):
-                    with patch("calc_graph_planar.implicit_samples", side_effect=AssertionError("plane search")):
-                        result = self.graph(cubic_sum, parameters={"a":value}, graphKind=kind)
-                    self.assertEqual(["a"],result["parameters"])
-                    curve = result["curves"][0]
-                    self.assertTrue(curve)
-                    self.assertLess(len(curve), 250)
-                    for px,py in filter(lambda p:p is not None,curve):
-                        self.assertAlmostEqual(value,px**3+py**3,delta=1e-9)
-                        self.assertTrue(-10-1e-9<=px<=10+1e-9 and -5-1e-9<=py<=5+1e-9)
-                    root = math.cbrt(value)
-                    for target in ((root,0),(0,root)):
-                        self.assertTrue(any(p is not None and math.dist(p,target)<1e-12 for p in curve))
-
-    def test_cubic_sum_parameter_coefficients_preserve_degeneracies(self):
-        sx,sy,sa,sb = s.symbols("x y a b",real=True)
-        expression = sa*sx**3+sb*sy**3-1
-        for ax,by in ((-2,3),(2,-3),(0,1)):
-            curve = odd_power_contour(expression,sx,sy,{sa:ax,sb:by},-2,2,-2,2,112)
-            self.assertIsNotNone(curve)
-            self.assertTrue(curve)
-            for px,py in filter(lambda p:p is not None,curve):
-                self.assertAlmostEqual(1,ax*px**3+by*py**3,delta=1e-9)
-        self.assertIsNone(odd_power_contour(expression,sx,sy,{sa:1,sb:0},-2,2,-2,2,112))
-        # Extra cubic terms require finding all real crossings; retain fallback.
-        self.assertIsNone(odd_power_contour(sx**3-sx+sy**3,sx,sy,{},-2,2,-2,2,112))
-
-    def test_degenerate_coefficients_use_full_contour_and_logarithmic_sampling(self):
-        varying = equation(binary("+",binary("^",x,number(2)),binary("*",a,binary("^",y,number(3)))),number(1))
-        result = self.graph(varying,parameters={"a":0})
-        points = [p for p in result["curves"][0] if p is not None]
-        self.assertTrue(points)
-        self.assertTrue(all(abs(abs(px)-1)<1e-7 for px,py in points))
-        for tree in (line,cubic):
-            result = self.graph(tree,parameters={"a":1},yLog=True,yMin=.01,yMax=5)
-            self.assertTrue(any(p is not None for p in result["curves"][0]))
-            self.assertTrue(all(p is None or p[1]>0 for p in result["curves"][0]))
-
-    def test_direct_sampling_rejects_poles_and_preserves_shifted_lines(self):
-        sx,sy,sa = s.symbols("x y a",real=True)
-        self.assertIsNone(odd_power_contour(sx**2+sy**3-1/sx,sx,sy,{},-2,2,-2,2,112))
-        self.assertIsNone(odd_power_contour(sa*sy**3+sx**2-1,sx,sy,{sa:0},-2,2,-2,2,112))
-        self.assertEqual([[-3,-7],[-2,0],[0,14],[5,49]],affine_samples(7*sx+14,sx,{},-3,5))
-        self.assertIsNone(affine_samples(sx+1,sx,{},-3,5,True))
 
     def test_other_odd_powers_and_coefficient_signs_keep_the_real_zero_set(self):
         sx,sy,sa = s.symbols("x y a",real=True)

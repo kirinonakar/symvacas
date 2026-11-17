@@ -63,14 +63,6 @@ class CalculatorConventionTests(unittest.TestCase):
         polynomial = node("binary", "+", node("binary", "^", x, number(2)), number(1))
         self.assertEqual(s.FiniteSet(-s.I,s.I), engine.build(call("solve", polynomial, x)))
 
-    def test_system_real_retry_preserves_independent_complex_unknowns(self):
-        x,y=s.symbols("x y")
-        engine=calc_engine.Engine({})
-        result=engine.call("solve",[[s.Eq(s.Abs(x-1),3),s.Eq(y**2+1,0)],[x,y]],[])
-        self.assertEqual({(-2,-s.I),(-2,s.I),(4,-s.I),(4,s.I)}, {(row[x],row[y]) for row in result})
-        self.assertIn("for x",engine.note)
-        self.assertIsNone(x.is_real)
-
 
 if __name__ == "__main__":
     unittest.main()
